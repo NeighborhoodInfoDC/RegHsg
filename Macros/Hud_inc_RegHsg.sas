@@ -24,7 +24,7 @@
 
 /** Macro Hud_inc_RegHsg - Start Definition **/
 
-%macro Hud_inc_RegHsg(  );
+%macro Hud_inc_RegHsg(hhinc=, hhsize=  );
 
   ** HUD income categories (<year>) **;
 
