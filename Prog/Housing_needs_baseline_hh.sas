@@ -68,9 +68,9 @@ run;
 
 data Housing_needs_baseline;
 
-  set COGSarea;
-        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp ownershpd rentgrs valueh
-         where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )))
+  set COGSarea
+        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh
+         where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
   
   %Hud_inc_RegHsg( hhinc=hhincome, hhsize=numprec )
   
@@ -116,12 +116,12 @@ proc summary data = Housing_needs_baseline (where=(ownershp = 2));
 	class hud_inc;
 	var rentburdened tothh;
 	weight hhwt;
-	output out = Housing_needs_baseline_hh sum=;
+	output out = Housing_needs_baseline_renter sum=;
 run;
 
 proc summary data = Housing_needs_baseline (where=(ownershp = 1));
 	class hud_inc;
 	var ownerburdened tothh;
 	weight hhwt;
-	output out = Housing_needs_baseline_unit  sum=;
+	output out = Housing_needs_baseline_owner  sum=;
 run;

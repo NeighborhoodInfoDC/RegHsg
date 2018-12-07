@@ -68,7 +68,7 @@ run;
 
 data Housing_needs_baseline;
 
-  set COGSarea;
+  set COGSarea
         (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp ownershpd rentgrs valueh
          where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )))
 	  COGSvacant
@@ -139,23 +139,15 @@ data Housing_needs_baseline;
         %err_put( msg="Invalid bedroom size: " serial= bedrooms= ) 
       end;
   end;
-
-  if ownershpd in ( 12,13,21,22 ) then do;
-    %Hud_inc_RegHsg( hhinc=hhincome )
-  end;
-  else do;
-    Hud_inc_hh = .n;
-  end;
   
-  %Hud_inc_RegHsg( hhinc=Max_income, hhsize=Max_hh_size, hud_inc = Hud_inc_unit )
+  %Hud_inc_RegHsg( hhinc=Max_income, hhsize=Max_hh_size )
   
   label
-    Hud_inc_hh = 'HUD income category for household'
-    Hud_inc_unit = 'HUD income category for unit';
+    Hud_inc = 'HUD income category for unit';
 
 run;
 
-%File_info( data=Housing_needs_baseline, freqvars=Hud_inc_hh Hud_inc_unit )
+%File_info( data=Housing_needs_baseline, freqvars=Hud_inc Tenure )
 
 proc freq data=Housing_needs_baseline;
   tables tenure * ownershpd * vacancy * ( Hud_inc_hh Hud_inc_unit ) / list missing;
