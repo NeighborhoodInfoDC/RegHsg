@@ -125,3 +125,17 @@ proc summary data = Housing_needs_baseline (where=(ownershp = 1));
 	weight hhwt;
 	output out = Housing_needs_baseline_owner  sum=;
 run;
+
+proc export data = Housing_needs_baseline_renter
+   outfile="&_dcdata_default_path\RegHsg\Renter_baseline.csv"
+   dbms=csv
+   replace;
+run;
+
+proc export data = Housing_needs_baseline_owner
+   outfile="&_dcdata_default_path\RegHsg\Owner_baseline.csv"
+   dbms=csv
+   replace;
+run;
+
+
