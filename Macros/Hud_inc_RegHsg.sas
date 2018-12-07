@@ -108,7 +108,7 @@
 
   end;
 
-  label Hud_inc = "HUD income categories";
+  label hud_inc = "HUD income categories";
   
 %mend Hud_inc_RegHsg;
 
