@@ -132,7 +132,7 @@ data Housing_needs_baseline;
       Max_hh_size = 4;
     when ( 5 )       /** 4 bedroom **/
       Max_hh_size = 5;
-    when ( 6, 7, 8, 9, 10, 11, 12 )       /** 5+ bedroom **/
+    when ( 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 )       /** 5+ bedroom **/
       Max_hh_size = 7;
     otherwise
       do; 
@@ -150,7 +150,7 @@ run;
 %File_info( data=Housing_needs_baseline, freqvars=Hud_inc Tenure )
 
 proc freq data=Housing_needs_baseline;
-  tables tenure * ownershpd * vacancy * ( Hud_inc_hh Hud_inc_unit ) / list missing;
+  tables tenure * ownershpd * vacancy * ( hud_inc ) / list missing;
   format ownershpd vacancy ;
 run;
 
@@ -161,31 +161,46 @@ proc format;
     2 = '31-50%'
     3 = '51-80%'
     4 = '81-120%'
-    5 = '120-200%';
-    6 = 'More than 200%'
+    5 = '120-200%'
+    6 = 'More than 200%';
   value tenure
     1 = 'Renter units'
     2 = 'Owner units';
 run;
 
-ods tagsets.excelxp file="D:\Libraries\RegHsg\Prog\Housing_needs_baseline.xls" style=Minimal options(sheet_interval='Page' );
+ods tagsets.excelxp file="D:\Libraries\RegHsg\Prog\Housing_needs_baseline_units.xls" style=Minimal options(sheet_interval='Page' );
 
 proc tabulate data=Housing_needs_baseline format=comma12.0 noseps missing;
-  class hud_inc_hh hud_inc_unit Tenure;
+  class hud_inc Tenure;
   var Total;
   weight hhwt;
   table 
     /** Pages **/
     all='All units' Tenure=' ',
     /** Rows **/
-    all='Total' hud_inc_hh=' ',
+    all='Total' hud_inc=' ',
     /** Columns **/
-    sum='Units' * (all='Total' hud_inc_unit='Unit affordability') * Total=' '
+    sum='Units' * (all='Total' hud_inc='Unit affordability') * Total=' '
     / box='HH income'
   ;
-  format Hud_inc_hh Hud_inc_unit hudinc. tenure tenure.;
+  format Hud_inc hudinc. tenure tenure.;
 run;
 
-/*
+
 ods tagsets.excelxp close;
-*/
+
+
+proc summary data = Housing_needs_baseline;
+	class hud_inc Tenure;
+	var Total;
+	weight hhwt;
+	output out = Housing_needs_baseline_units  sum=;
+run;
+
+proc export data = Housing_needs_baseline_units
+   outfile="&_dcdata_default_path\RegHsg\Prog\Units_affordability.csv"
+   dbms=csv
+   replace;
+run;
+
+

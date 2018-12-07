@@ -105,8 +105,8 @@ proc format;
     2 = '31-50%'
     3 = '51-80%'
     4 = '81-120%'
-    5 = '120-200%';
-    6 = 'More than 200%'
+    5 = '120-200%'
+    6 = 'More than 200%';
   value tenure
     1 = 'Renter units'
     2 = 'Owner units';
@@ -127,13 +127,13 @@ proc summary data = Housing_needs_baseline (where=(ownershp = 1));
 run;
 
 proc export data = Housing_needs_baseline_renter
-   outfile="&_dcdata_default_path\RegHsg\Renter_baseline.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Renter_baseline.csv"
    dbms=csv
    replace;
 run;
 
 proc export data = Housing_needs_baseline_owner
-   outfile="&_dcdata_default_path\RegHsg\Owner_baseline.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Owner_baseline.csv"
    dbms=csv
    replace;
 run;
