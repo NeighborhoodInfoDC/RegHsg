@@ -70,9 +70,7 @@ data Housing_needs_baseline_avail;
 
   set COGSarea
         (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp ownershpd rentgrs valueh
-         where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )))
-
-  retain Total 1;
+         where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 
   if ownershpd in (21, 22) then do;
     
@@ -149,13 +147,14 @@ data Housing_needs_baseline_avail;
   label
     Hud_inc = 'HUD income category for unit';
 
+	total=1;
 
 run;
 
-%File_info( data=Housing_needs_baseline, freqvars=Hud_inc Tenure )
+%File_info( data=Housing_needs_baseline_avail, freqvars=Hud_inc Tenure )
 
 proc freq data=Housing_needs_baseline_avail;
-  tables tenure * ownershpd * vacancy * ( hud_inc ) / list missing;
+  tables tenure * ownershpd * availability *( hud_inc ) / list missing;
   format ownershpd vacancy ;
 run;
 
@@ -200,8 +199,8 @@ ods tagsets.excelxp close;
 
 
 proc summary data = Housing_needs_baseline_avail;
-	class hud_inc Tenure;
-	var Total availability;
+	class hud_inc Tenure availability;
+	var Total ;
 	weight hhwt;
 	output out = Housing_needs_baseline_units  sum=;
 run;
