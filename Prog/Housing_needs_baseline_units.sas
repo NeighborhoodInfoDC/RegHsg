@@ -30,8 +30,8 @@
 %include "L:\SAS\Inc\StdLocal.sas";
 
 ** Define libraries **;
-%DCData_lib( RegHsg, local=n )
-%DCData_lib( Ipums, local=n )
+%DCData_lib( RegHsg )
+%DCData_lib( Ipums )
 
 
 ** Calculate average ratio of gross rent to contract rent for occupied units **;
@@ -103,7 +103,7 @@ data Housing_needs_baseline;
     ******; 
     
     loan = .9 * valueh;
-    month_mortgage= (3.69 / 12) / 100; 
+    month_mortgage= (3.79 / 12) / 100; 
     monthly_PI = loan * month_mortgage * ((1+month_mortgage)**360)/(((1+month_mortgage)**360)-1);
 
     ****

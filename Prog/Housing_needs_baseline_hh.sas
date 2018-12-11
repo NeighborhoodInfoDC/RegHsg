@@ -30,8 +30,8 @@
 %include "L:\SAS\Inc\StdLocal.sas";
 
 ** Define libraries **;
-%DCData_lib( RegHsg, local=n )
-%DCData_lib( Ipums, local=n )
+%DCData_lib( RegHsg)
+%DCData_lib( Ipums)
 
 
 ** Calculate average ratio of gross rent to contract rent for occupied units **;
