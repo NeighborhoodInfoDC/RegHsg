@@ -39,12 +39,33 @@ data COGSvacant;
 set Ipums.Acs_2012_16_vacant_dc Ipums.Acs_2012_16_vacant_md Ipums.Acs_2012_16_vacant_va;
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")
      then output;
+
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400301", "2400302") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
+  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
+  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
+  if upuma in ("5151255") then Jurisdiction =10; 
 run;
 
 data COGSarea;
 set Ipums.Acs_2012_16_dc Ipums.Acs_2012_16_md Ipums.Acs_2012_16_va;
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")
      then output;
+	   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400301", "2400302") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
+  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
+  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
+  if upuma in ("5151255") then Jurisdiction =10; 
 run;
 
 proc contents data=COGSarea;
@@ -129,6 +150,17 @@ proc format;
   value tenure
     1 = 'Renter units'
     2 = 'Owner units';
+  value Jurisdiction
+    1= "DC"
+	2= "Charles County"
+	3= "Frederick County "
+	4="Montgomery County"
+	5="Prince Georges "
+	6="Arlington"
+	7="Fairfax and Fairfax city"
+	8="Loudoun"
+	9="Prince William and Manassas city"
+    10="Alexandria";
 run;
 
 proc summary data = Housing_needs_baseline (where=(ownershp = 2));
