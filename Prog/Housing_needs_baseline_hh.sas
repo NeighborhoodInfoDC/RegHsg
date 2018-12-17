@@ -35,10 +35,8 @@
 
 
 ** Calculate average ratio of gross rent to contract rent for occupied units **;
-data COGSvacant;
-set Ipums.Acs_2012_16_vacant_dc Ipums.Acs_2012_16_vacant_md Ipums.Acs_2012_16_vacant_va;
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")
-     then output;
+data COGSvacant(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
+set Ipums.Acs_2012_16_vacant_dc Ipums.Acs_2012_16_vacant_md Ipums.Acs_2012_16_vacant_va ;
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
@@ -52,11 +50,10 @@ set Ipums.Acs_2012_16_vacant_dc Ipums.Acs_2012_16_vacant_md Ipums.Acs_2012_16_va
   if upuma in ("5151255") then Jurisdiction =10; 
 run;
 
-data COGSarea;
+data COGSarea (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
 set Ipums.Acs_2012_16_dc Ipums.Acs_2012_16_md Ipums.Acs_2012_16_va;
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")
-     then output;
-	   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
   if upuma in ("2400301", "2400302") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
@@ -74,7 +71,7 @@ run;
 data Ratio;
 
   set COGSarea
-    (keep= rent rentgrs pernum gq ownershpd
+    (keep= rent rentgrs pernum gq ownershpd Jurisdiction
      where=(pernum=1 and gq in (1,2) and ownershpd in ( 22 )));
      
   Ratio_rentgrs_rent_12_16 = rentgrs / rent;
@@ -90,7 +87,7 @@ run;
 data Housing_needs_baseline;
 
   set COGSarea
-        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh
+        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh Jurisdiction
          where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
   
   %Hud_inc_RegHsg( hhinc=hhincome, hhsize=numprec )
@@ -157,21 +154,21 @@ proc format;
 	4="Montgomery County"
 	5="Prince Georges "
 	6="Arlington"
-	7="Fairfax and Fairfax city"
+	7="Fairfax, Fairfax city and Falls Church"
 	8="Loudoun"
-	9="Prince William and Manassas city"
+	9="Prince William, Manassas and Manassas Park"
     10="Alexandria";
 run;
 
 proc summary data = Housing_needs_baseline (where=(ownershp = 2));
-	class hud_inc;
+	class hud_inc Jurisdiction;
 	var rentburdened severerentburden tothh;
 	weight hhwt;
 	output out = Housing_needs_baseline_renter sum=;
 run;
 
 proc summary data = Housing_needs_baseline (where=(ownershp = 1));
-	class hud_inc;
+	class hud_inc Jurisdiction;
 	var ownerburdened severeownerburden tothh;
 	weight hhwt;
 	output out = Housing_needs_baseline_owner  sum=;

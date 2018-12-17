@@ -35,25 +35,42 @@
 
 
 ** Calculate average ratio of gross rent to contract rent for occupied units **;
-data COGSvacant;
-set Ipums.Acs_2012_16_vacant_dc Ipums.Acs_2012_16_vacant_md Ipums.Acs_2012_16_vacant_va;
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")
-     then output;
+data COGSvacant(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
+set Ipums.Acs_2012_16_vacant_dc Ipums.Acs_2012_16_vacant_md Ipums.Acs_2012_16_vacant_va ;
+
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400301", "2400302") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
+  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
+  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
+  if upuma in ("5151255") then Jurisdiction =10; 
 run;
 
-data COGSarea;
+data COGSarea (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
 set Ipums.Acs_2012_16_dc Ipums.Acs_2012_16_md Ipums.Acs_2012_16_va;
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")
-     then output;
-run;
 
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400301", "2400302") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
+  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
+  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
+  if upuma in ("5151255") then Jurisdiction =10; 
+run;
 proc contents data=COGSarea;
 run;
 
 data Ratio;
 
   set COGSarea
-    (keep=rent rentgrs pernum gq ownershpd
+    (keep=rent rentgrs pernum gq ownershpd Jurisdiction
      where=(pernum=1 and gq in (1,2) and ownershpd in ( 22 )));
      
   Ratio_rentgrs_rent_12_16 = rentgrs / rent;
@@ -69,7 +86,7 @@ run;
 data Housing_needs_baseline_avail;
 
   set COGSarea
-        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp ownershpd rentgrs valueh
+        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp ownershpd rentgrs valueh Jurisdiction
          where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 
   if ownershpd in (21, 22) then do;
@@ -173,13 +190,25 @@ proc format;
 
   value availability
   1= 'Available'
-  0= 'Not availabile'
+  0= 'Not availabile';
+
+  value Jurisdiction
+    1= "DC"
+	2= "Charles County"
+	3= "Frederick County "
+	4="Montgomery County"
+	5="Prince Georges "
+	6="Arlington"
+	7="Fairfax, Fairfax city and Falls Church"
+	8="Loudoun"
+	9="Prince William, Manassas and Manassas Park"
+    10="Alexandria";
 run;
 
 ods tagsets.excelxp file="D:\Libraries\RegHsg\Prog\Housing_needs_baseline_units_avail.xls" style=Minimal options(sheet_interval='Page' );
 
 proc tabulate data=Housing_needs_baseline_avail format=comma12.0 noseps missing;
-  class hud_inc Tenure;
+  class hud_inc Tenure Jurisdiction;
   var Total availability;
   weight hhwt;
   table 
@@ -199,7 +228,7 @@ ods tagsets.excelxp close;
 
 
 proc summary data = Housing_needs_baseline_avail;
-	class hud_inc Tenure availability;
+	class hud_inc Tenure availability Jurisdiction;
 	var Total ;
 	weight hhwt;
 	output out = Housing_needs_baseline_units  sum=;
@@ -215,7 +244,7 @@ run;
 /*calculate vacant units*/
 data Housing_needs_baseline_vacant;
 
-  set COGSvacant(keep=year serial hhwt bedrooms gq vacancy rent valueh where=(vacancy in (1,2)));
+  set COGSvacant(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction where=(vacancy in (1,2)));
 
   retain Total 1;
     
@@ -311,7 +340,7 @@ run;
 ods tagsets.excelxp file="D:\Libraries\RegHsg\Prog\Housing_needs_baseline_units.xls" style=Minimal options(sheet_interval='Page' );
 
 proc tabulate data=Housing_needs_baseline format=comma12.0 noseps missing;
-  class hud_inc Tenure;
+  class hud_inc Tenure Jurisdiction;
   var Total;
   weight hhwt;
   table 
@@ -331,7 +360,7 @@ ods tagsets.excelxp close;
 
 
 proc summary data = Housing_needs_baseline_vacant;
-	class hud_inc Tenure;
+	class hud_inc Tenure Jurisdiction;
 	var Total;
 	weight hhwt;
 	output out = Housing_needs_baseline_vacant  sum=;
