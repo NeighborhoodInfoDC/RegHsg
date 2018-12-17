@@ -76,6 +76,9 @@ data Housing_needs_baseline;
 
   retain Total 1;
 
+  if vacancy in (1,2) then vacunit = 1; else vacunit = 0;
+
+
   if ownershpd in (21, 22) or vacancy = 1 then do;
     
     ****** Rental units ******;
@@ -189,9 +192,8 @@ run;
 
 ods tagsets.excelxp close;
 
-
 proc summary data = Housing_needs_baseline;
-	class hud_inc Tenure;
+	class hud_inc Tenure vacunit;
 	var Total;
 	weight hhwt;
 	output out = Housing_needs_baseline_units  sum=;

@@ -77,6 +77,8 @@ data Housing_needs_baseline;
   label
     hud_inc = 'HUD income category for household';
 
+** Rent burdened flag **;
+
     if ownershp = 2 then do;
 		if rentgrs*12>= HHINCOME*0.3 then rentburdened=1;
 	    else if HHIncome~=. then rentburdened=0;
@@ -87,6 +89,19 @@ data Housing_needs_baseline;
 	    else if HHIncome~=. then ownerburdened=0;
 	end;
 
+** Severely rent burdened flag **;
+
+    if ownershp = 2 then do;
+		if rentgrs*12>= HHINCOME*0.5 then severerentburden=1;
+	    else if HHIncome~=. then severerentburden=0;
+	end;
+
+    if ownershp = 1 then do;
+		if owncost*12>= HHINCOME*0.5 then severeownerburden=1;
+	    else if HHIncome~=. then severeownerburden=0;
+	end;
+
+
 	tothh = 1;
 
 run;
@@ -95,6 +110,10 @@ run;
 
 proc freq data=Housing_needs_baseline;
   tables ownershpd * ownerburdened * rentburdened ( hud_inc ) / list missing;
+  format ownershpd vacancy ;
+run;
+proc freq data=Housing_needs_baseline;
+  tables ownershpd * severeownerburden * severerentburden ( hud_inc ) / list missing;
   format ownershpd vacancy ;
 run;
 
@@ -114,14 +133,14 @@ run;
 
 proc summary data = Housing_needs_baseline (where=(ownershp = 2));
 	class hud_inc;
-	var rentburdened tothh;
+	var rentburdened severerentburden tothh;
 	weight hhwt;
 	output out = Housing_needs_baseline_renter sum=;
 run;
 
 proc summary data = Housing_needs_baseline (where=(ownershp = 1));
 	class hud_inc;
-	var ownerburdened tothh;
+	var ownerburdened severeownerburden tothh;
 	weight hhwt;
 	output out = Housing_needs_baseline_owner  sum=;
 run;

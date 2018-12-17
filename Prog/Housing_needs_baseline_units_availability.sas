@@ -205,8 +205,140 @@ proc summary data = Housing_needs_baseline_avail;
 	output out = Housing_needs_baseline_units  sum=;
 run;
 
-proc export data = Housing_needs_baseline_units_avail
+proc export data = Housing_needs_baseline_units 
    outfile="&_dcdata_default_path\RegHsg\Prog\Units_affordability_avail.csv"
+   dbms=csv
+   replace;
+run;
+
+
+/*calculate vacant units*/
+data Housing_needs_baseline_vacant;
+
+  set COGSvacant(keep=year serial hhwt bedrooms gq vacancy rent valueh where=(vacancy in (1,2)));
+
+  retain Total 1;
+    
+    ****** Rental units ******;
+ if  vacancy = 1 then do;
+    Tenure = 1;
+    
+    		** Impute gross rent for vacant units **;
+  		rentgrs = rent*&Ratio_rentgrs_rent_12_16;
+  		Max_income = ( rentgrs * 12 ) / 0.30;
+    
+  end;
+
+
+  else if vacancy = 2 then do;
+
+    ****** Owner units ******;
+    
+    Tenure = 2;
+
+    **** 
+    Calculate max income for first-time homebuyers. 
+    Using 3.69% as the effective mortgage rate for DC in 2016, 
+    calculate monthly P & I payment using monthly mortgage rate and compounded interest calculation
+    ******; 
+    
+    loan = .9 * valueh;
+    month_mortgage= (3.79 / 12) / 100; 
+    monthly_PI = loan * month_mortgage * ((1+month_mortgage)**360)/(((1+month_mortgage)**360)-1);
+
+    ****
+    Calculate PMI and taxes/insurance to add to Monthly_PI to find total monthly payment
+    ******;
+    
+    PMI = (.007 * loan ) / 12; **typical annual PMI is .007 of loan amount;
+    tax_ins = .25 * monthly_PI; **taxes assumed to be 25% of monthly PI; 
+    total_month = monthly_PI + PMI + tax_ins; **Sum of monthly payment components;
+
+    ** Calculate annual_income necessary to finance house **;
+    Max_income = 12 * total_month / .28;
+
+  end;
+  
+  ** Determine maximum HH size based on bedrooms **;
+  
+  select ( bedrooms );
+    when ( 1 )       /** Efficiency **/
+      Max_hh_size = 1;
+    when ( 2 )       /** 1 bedroom **/
+      Max_hh_size = 2;
+    when ( 3 )       /** 2 bedroom **/
+      Max_hh_size = 3;
+    when ( 4 )       /** 3 bedroom **/
+      Max_hh_size = 4;
+    when ( 5 )       /** 4 bedroom **/
+      Max_hh_size = 5;
+    when ( 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 )       /** 5+ bedroom **/
+      Max_hh_size = 7;
+    otherwise
+      do; 
+        %err_put( msg="Invalid bedroom size: " serial= bedrooms= ) 
+      end;
+  end;
+  
+  %Hud_inc_RegHsg( hhinc=Max_income, hhsize=Max_hh_size )
+  
+  label
+    Hud_inc = 'HUD income category for unit';
+
+run;
+
+%File_info( data=Housing_needs_baseline_vacant, freqvars=Hud_inc Tenure )
+
+proc freq data=Housing_needs_baseline;
+  tables  vacancy * ( hud_inc ) / list missing;
+  format hudinc vacancy ;
+run;
+
+proc format;
+  value hudinc
+   .n = 'Vacant'
+    1 = '0-30% AMI'
+    2 = '31-50%'
+    3 = '51-80%'
+    4 = '81-120%'
+    5 = '120-200%'
+    6 = 'More than 200%';
+  value tenure
+    1 = 'Renter units'
+    2 = 'Owner units';
+run;
+
+ods tagsets.excelxp file="D:\Libraries\RegHsg\Prog\Housing_needs_baseline_units.xls" style=Minimal options(sheet_interval='Page' );
+
+proc tabulate data=Housing_needs_baseline format=comma12.0 noseps missing;
+  class hud_inc Tenure;
+  var Total;
+  weight hhwt;
+  table 
+    /** Pages **/
+    all='All units' Tenure=' ',
+    /** Rows **/
+    all='Total' hud_inc=' ',
+    /** Columns **/
+    sum='Units' * (all='Total' hud_inc='Unit affordability') * Total=' '
+    / box='HH income'
+  ;
+  format Hud_inc hudinc. tenure tenure.;
+run;
+
+
+ods tagsets.excelxp close;
+
+
+proc summary data = Housing_needs_baseline_vacant;
+	class hud_inc Tenure;
+	var Total;
+	weight hhwt;
+	output out = Housing_needs_baseline_vacant  sum=;
+run;
+
+proc export data = Housing_needs_baseline_vacant
+   outfile="&_dcdata_default_path\RegHsg\Prog\Units_affordability_vacant.csv"
    dbms=csv
    replace;
 run;
