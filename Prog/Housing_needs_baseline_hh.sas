@@ -165,6 +165,7 @@ proc summary data = Housing_needs_baseline (where=(ownershp = 2));
 	var rentburdened severerentburden tothh;
 	weight hhwt;
 	output out = Housing_needs_baseline_renter sum=;
+	format hud_inc hud_inc. Jurisdiction Jurisdiction.;
 run;
 
 proc summary data = Housing_needs_baseline (where=(ownershp = 1));
@@ -172,6 +173,7 @@ proc summary data = Housing_needs_baseline (where=(ownershp = 1));
 	var ownerburdened severeownerburden tothh;
 	weight hhwt;
 	output out = Housing_needs_baseline_owner  sum=;
+	format hud_inc hud_inc. Jurisdiction Jurisdiction.;
 run;
 
 proc export data = Housing_needs_baseline_renter

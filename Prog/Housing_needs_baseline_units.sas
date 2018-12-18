@@ -226,6 +226,7 @@ proc summary data = Housing_needs_baseline;
 	var Total;
 	weight hhwt;
 	output out = Housing_needs_baseline_units  sum=;
+	format hud_inc hud_inc. Tenure tenure. Jurisdiction Jurisdiction.;
 run;
 
 proc export data = Housing_needs_baseline_units

@@ -232,6 +232,7 @@ proc summary data = Housing_needs_baseline_avail;
 	var Total ;
 	weight hhwt;
 	output out = Housing_needs_baseline_units  sum=;
+	format hud_inc hud_inc. Tenure tenure. availability availability. Jurisdiction Jurisdiction.;
 run;
 
 proc export data = Housing_needs_baseline_units 
@@ -323,20 +324,6 @@ proc freq data=Housing_needs_baseline;
   format hudinc vacancy ;
 run;
 
-proc format;
-  value hudinc
-   .n = 'Vacant'
-    1 = '0-30% AMI'
-    2 = '31-50%'
-    3 = '51-80%'
-    4 = '81-120%'
-    5 = '120-200%'
-    6 = 'More than 200%';
-  value tenure
-    1 = 'Renter units'
-    2 = 'Owner units';
-run;
-
 ods tagsets.excelxp file="D:\Libraries\RegHsg\Prog\Housing_needs_baseline_units.xls" style=Minimal options(sheet_interval='Page' );
 
 proc tabulate data=Housing_needs_baseline format=comma12.0 noseps missing;
@@ -364,6 +351,7 @@ proc summary data = Housing_needs_baseline_vacant;
 	var Total;
 	weight hhwt;
 	output out = Housing_needs_baseline_vacant  sum=;
+	format hud_inc hud_inc. Tenure tenure. Jurisdiction Jurisdiction.;
 run;
 
 proc export data = Housing_needs_baseline_vacant
