@@ -39,7 +39,7 @@
           else if 38050 < &hhinc. <= 60816 then hud_inc = 3;
           else if 60816 < &hhinc. <= 91224 then hud_inc = 4;
           else if 91224 < &hhinc. <= 152040 then hud_inc = 5;
-		  else if 152040 <&hhinc.  then hudinc=6;
+		  else if 152040 <&hhinc.  then hud_inc=6;
         end;
       when ( 2 )
         do;
@@ -48,7 +48,7 @@
           else if 43440 < &hhinc. <= 69504 then hud_inc = 3;
           else if 69504 < &hhinc. <= 104256 then hud_inc = 4;
           else if 104256 < &hhinc. <= 173760 then hud_inc = 5;
-		  else if 173760 < &hhinc. then hudinc=6;
+		  else if 173760 < &hhinc. then hud_inc=6;
         end;
       when ( 3 )
         do;
@@ -57,7 +57,7 @@
           else if 48870 < &hhinc. <= 78192 then hud_inc = 3;
           else if 78192 < &hhinc. <= 117288 then hud_inc = 4;
           else if 117288 < &hhinc. <= 195480 then hud_inc = 5;
-          else if 195480 < &hhinc. then hudinc=6;
+          else if 195480 < &hhinc. then hud_inc=6;
         end;
       when ( 4 )
         do;
@@ -66,7 +66,7 @@
           else if 54300 < &hhinc. <= 86880 then hud_inc = 3;
           else if 86880 < &hhinc. <= 130320 then hud_inc = 4;
           else if 130320 < &hhinc. <= 217200 then hud_inc = 5;
-		  else if 217200 < &hhinc. then hudinc=6;
+		  else if 217200 < &hhinc. then hud_inc=6;
         end;
       when ( 5 )
         do;
@@ -75,7 +75,7 @@
           else if 58644 < &hhinc. <= 93830 then hud_inc = 3;
           else if 93830 < &hhinc. <= 140746 then hud_inc = 4;
           else if 140746 < &hhinc. <= 234576 then hud_inc = 5;
-		  else if 234576 < &hhinc. then hudinc=6;
+		  else if 234576 < &hhinc. then hud_inc=6;
         end;
       when ( 6 )
         do;
@@ -84,7 +84,7 @@
           else if 62988 < &hhinc. <= 100781 then hud_inc = 3;
           else if 100781 < &hhinc. <= 151171 then hud_inc = 4;
           else if 151171 < &hhinc. <= 251952 then hud_inc = 5;
-		  else if 251952 < &hhinc. then hudinc=6;
+		  else if 251952 < &hhinc. then hud_inc=6;
         end;
       when ( 7 )
         do;
