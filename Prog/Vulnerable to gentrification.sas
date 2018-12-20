@@ -1,14 +1,13 @@
 /**************************************************************************
- Program:  Housing_needs_baseline.sas
+ Program:  Gentrification and displacement risk.sas
  Library:  RegHsg
  Project:  NeighborhoodInfo DC
- Author:   Yipeng Su adapted from P. Tatian 
- Created:  11/03/14
+ Author:   Yipeng Su 
+ Created:  12/19/14
  Version:  SAS 9.2
  Environment:  Local Windows session (desktop)
  
- Description:  Produce numbers for housing needs analysis from 2016
- ACS IPUMS data for the COGS region:
+ Description:  Calculate risk of gentrification and displacement for the COGS region: methodology by https://www.portlandoregon.gov/bps/article/454027
  DC (11001)
  Charles Couty(24017)
  Frederick County(24021)
@@ -24,31 +23,35 @@
  Manassas City (51683)
  Manassas Park City (51685)
 
+change in characteristics that make resisting displacement more difficult(binary): % renters, %people of color, %college attainment, %lower income
+
+change in characteristics that reflect gentrification (low median high): median home value relative to citywide median, appreciation rates for owner-occupoed units
+
  Modifications:
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
 
 ** Define libraries **;
-%DCData_lib( RegHsg, local=n )
-%DCData_lib( Ipums, local=n )
+%DCData_lib( RegHsg)
+%DCData_lib( Ipums)
+%DCData_lib( ACS)
+%DCData_lib( NCDB)
 
+%let _years=2012_16;
 
 ** Calculate average ratio of gross rent to contract rent for occupied units **;
-data COGSvacant;
-set Ipums.Acs_2012_16_vacant_dc Ipums.Acs_2012_16_vacant_md Ipums.Acs_2012_16_vacant_va;
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")
-     then output;
+data demographics (where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
+set ACS.Acs_2012_16_dc_sum_tr_tr10 ACS.Acs_2012_16_md_sum_tr_tr10 ACS.Acs_2012_16_va_sum_tr_tr10 ACS.Acs_2012_16_wv_sum_tr_tr10;
+keep geo2010 county popwithrace_&_years. popalonew_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. aggincome_&_years.;
+county= substr(geo2010,1,5);
 run;
 
-data COGSarea;
-set Ipums.Acs_2012_16_dc Ipums.Acs_2012_16_md Ipums.Acs_2012_16_va;
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")
-     then output;
-run;
+data housing16;
+set NCDB.Ncdb_sum_was15_tr10;
+keep geo2010 
 
-proc contents data=COGSarea;
-run;
+
 
 data Ratio;
 
