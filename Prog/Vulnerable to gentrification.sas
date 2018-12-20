@@ -135,3 +135,29 @@ else if deltahhinc=. then gentrifier_inc=.;
 gentrifier= gentrifier_owner + gentrifier_white = gentrifier_college + gentrifier_inc;
 
 run;
+
+
+proc format;
+  value signofrisk
+   .n = 'No complete data'
+    1 = 'gentrifying and vulnerable now'
+    2 = 'gentrifying but not vulnerable now'
+    3 = 'not gentrified but vulnerable'
+    4 = 'not gentrified and not vulnerable'
+run;
+
+/*signofrisk: 1: gentrifying and vulnerable now 2: gentrifying but not vulnerable now 3; not gentrified but vulnerable 3: not gentrified and not vulnerable*/
+data flag_type;
+set risk_gentrification;
+if vulnerable>=2 then do;
+		if gentrifier>=2 then signofrisk= 1;
+		else if gentrifier<2 then signofrisk=3;
+	end;
+
+if vulnerable<2 then do;
+		if gentrifier>=2 then signofrisk= 2;
+		else if gentrifier<2 then signofrisk=4;
+	end;
+format signofrisk signofrisk. ;
+run;
+
