@@ -34,111 +34,104 @@ change in characteristics that reflect gentrification (low median high): median 
 
 ** Define libraries **;
 %DCData_lib( RegHsg)
-%DCData_lib( Ipums)
 %DCData_lib( ACS)
+%DCData_lib( Census)
 %DCData_lib( NCDB)
 
 %let _years=2012_16;
 
 ** Calculate average ratio of gross rent to contract rent for occupied units **;
-data demographics (where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
+data demographics16 (where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
 set ACS.Acs_2012_16_dc_sum_tr_tr10 ACS.Acs_2012_16_md_sum_tr_tr10 ACS.Acs_2012_16_va_sum_tr_tr10 ACS.Acs_2012_16_wv_sum_tr_tr10;
-keep geo2010 county popwithrace_&_years. popalonew_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. aggincome_&_years.;
+keep geo2010 county percentrenter_2016 percentwhite_2016 percentcollege_2016 avghhinc_2016 popwithrace_&_years. popalonew_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. agghshldincome_&_years.  nonfamilyhhtot_&_years. familyhhtot_&_years. medianhomevalue_&_years. ;
 county= substr(geo2010,1,5);
+percentrenter_2016= numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.);
+percentwhite_2016= popalonew_&_years./popwithrace_&_years.;
+percentcollege_2016= pop25andoverwcollege_&_years./pop25andoveryears_&_years.;
+avghhinc_2016= agghshldincome_&_years./(nonfamilyhhtot_&_years. + familyhhtot_&_years. );
 run;
 
-data housing16;
-set NCDB.Ncdb_sum_was15_tr10;
-keep geo2010 
-
-
-
-data Ratio;
-
-  set COGSarea
-    (keep= rent rentgrs pernum gq ownershpd
-     where=(pernum=1 and gq in (1,2) and ownershpd in ( 22 )));
-     
-  Ratio_rentgrs_rent_12_16 = rentgrs / rent;
- 
+proc sort data=demographics16;
+by geo2010;
 run;
 
-proc means data=Ratio;
-  var  Ratio_rentgrs_rent_12_16 rentgrs rent;
+data demographics00;
+set NCDB.Ncdb_master_update;
+keep geo2010 county percentrenter_00 percentwhite_00 percentcollege_00 avghhinc_00 sprntoc0 spownoc0 shr0d minwht0n educpp0 educ160 avhhin0;
+county= substr(geo2010,1,5);
+percentrenter_00= sprntoc0/(sprntoc0+spownoc0);
+percentwhite_00= minwht0n/shr0d;
+percentcollege_00= educ160/educpp0;
+avghhinc_00= avhhin0;
 run;
 
-%let Ratio_rentgrs_rent_12_16 = 1.1512114;         %** Value copied from Proc Means output **;
+proc sort data=demographics00;
+by geo2010;
+run;
 
-data Housing_needs_baseline;
+data merged;
+merge demographics16 demographics00;
+by geo2010;
+run;
 
-  set COGSarea
-        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh
-         where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
-  
-  %Hud_inc_RegHsg( hhinc=hhincome, hhsize=numprec )
-  
-  label
-    hud_inc = 'HUD income category for household';
+data changeintime;
+set merged;
+deltarenter= percentrenter_2016-percentrenter_00;
+deltawhite= percentwhite_2016- percentwhite_00;
+deltacollege= percentcollege_2016- percentcollege_00;
+deltahhinc= avghhinc_2016-avghhinc_00;
+run;
 
-    if ownershp = 2 then do;
-		if rentgrs*12>= HHINCOME*0.3 then rentburdened=1;
-	    else if HHIncome~=. then rentburdened=0;
-	end;
+proc means data=changeintime;
+run;
+/* identify tracts with higher than average population with characteristics that make resisting displacement more difficult:
+renters, POC, lack college degree, lower income*/
+/*mean for 2016: percentwhite:0.5249191 percentrenter: 0.3711398 percentcollege 0.5070980 averageincome 123615.75*/
 
-    if ownershp = 1 then do;
-		if owncost*12>= HHINCOME*0.3 then ownerburdened=1;
-	    else if HHIncome~=. then ownerburdened=0;
-	end;
+data risk_displacement;
+set changeintime;
+		if percentrenter_2016 >= 0.37 then vulnerable_renter =1;
+	    else if percentrenter_2016< 0.37 then vulnerable_renter =0;
+		else if percentrenter_2016=. then vulnerable_renter =.;
 
-	tothh = 1;
+if percentwhite_2016<= 0.52 then vulnerable_POC=1;
+else if percentwhite_2016> 0.52 then vulnerable_POC=0;
+else if percentwhite_2016=. then vulnerable_POC=.;
+
+if percentcollege_2016<=0.51 then vulnerable_college=1;
+else if percentcollege_2016 >0.51 then vulnerable_college=0;
+else if percentcollege_2016=. then vulnerable_college=.;
+
+if avghhinc_2016 <= 123626 then vulnerable_inc=1;
+else if avghhinc_2016> 123626 then vulnerable_inc=0;
+else if avghhinc_2016=. then vulnerable_inc=.;
+
+vulnerable= vulnerable_renter + vulnerable_POC + vulnerable_college + vulnerable_inc;
 
 run;
 
-%File_info( data=Housing_needs_baseline, freqvars=hud_inc rentburdened ownerburdened )
+/* identify change of tract demographics that are signalling gentrification:
+change in renters, more white people, more college degree, higher income*/
+/*means for deltarenter:-0.0195884   deltawhite: -0.0444152 deltacollege: 0.0775480 deltainc: 41637.55*/
 
-proc freq data=Housing_needs_baseline;
-  tables ownershpd * ownerburdened * rentburdened ( hud_inc ) / list missing;
-  format ownershpd vacancy ;
+data risk_gentrification;
+set risk_displacement;
+		if deltarenter <= 0.02 then gentrifier_owner =1;
+	    else if deltarenter> 0.02 then vulnerable_renter =0;
+		else if deltarenter=. then vulnerable_renter =.;
+
+if deltawhite>=0.04 then gentrifier_white=1;
+else if deltawhite<0.04 then gentrifier_white=0;
+else if deltawhite=. then gentrifier_white=.;
+
+if deltacollege>=0.08 then gentrifier_college=1;
+else if deltacollege <0.08 then gentrifier_college=0;
+else if deltacollege=. then gentrifier_college=.;
+
+if deltahhinc >= 41638 then gentrifier_inc=1;
+else if deltahhinc < 41638 then gentrifier_inc=0;
+else if deltahhinc=. then gentrifier_inc=.;
+
+gentrifier= gentrifier_owner + gentrifier_white = gentrifier_college + gentrifier_inc;
+
 run;
-
-proc format;
-  value hud_inc
-   .n = 'Vacant'
-    1 = '0-30% AMI'
-    2 = '31-50%'
-    3 = '51-80%'
-    4 = '81-120%'
-    5 = '120-200%'
-    6 = 'More than 200%';
-  value tenure
-    1 = 'Renter units'
-    2 = 'Owner units';
-run;
-
-proc summary data = Housing_needs_baseline (where=(ownershp = 2));
-	class hud_inc;
-	var rentburdened tothh;
-	weight hhwt;
-	output out = Housing_needs_baseline_renter sum=;
-run;
-
-proc summary data = Housing_needs_baseline (where=(ownershp = 1));
-	class hud_inc;
-	var ownerburdened tothh;
-	weight hhwt;
-	output out = Housing_needs_baseline_owner  sum=;
-run;
-
-proc export data = Housing_needs_baseline_renter
-   outfile="&_dcdata_default_path\RegHsg\Prog\Renter_baseline.csv"
-   dbms=csv
-   replace;
-run;
-
-proc export data = Housing_needs_baseline_owner
-   outfile="&_dcdata_default_path\RegHsg\Prog\Owner_baseline.csv"
-   dbms=csv
-   replace;
-run;
-
-
