@@ -42,13 +42,13 @@ change in characteristics that reflect gentrification (low median high): median 
 
 ** Calculate average ratio of gross rent to contract rent for occupied units **;
 data demographics16 (where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
-set ACS.Acs_2012_16_dc_sum_tr_tr10 ACS.Acs_2012_16_md_sum_tr_tr10 ACS.Acs_2012_16_va_sum_tr_tr10 ACS.Acs_2012_16_wv_sum_tr_tr10;
-keep geo2010 county percentrenter_2016 percentwhite_2016 percentcollege_2016 avghhinc_2016 popwithrace_&_years. popalonew_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. agghshldincome_&_years.  nonfamilyhhtot_&_years. familyhhtot_&_years. medianhomevalue_&_years. ;
+	set ACS.Acs_2012_16_dc_sum_tr_tr10 ACS.Acs_2012_16_md_sum_tr_tr10 ACS.Acs_2012_16_va_sum_tr_tr10 ACS.Acs_2012_16_wv_sum_tr_tr10;
+keep geo2010 county percentrenter_2016 percentwhite_2016 percentcollege_2016 avghhinc_2016 popwithrace_&_years. popalonew_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. agghshldincome_&_years.  numhshlds_&_years. medianhomevalue_&_years. ;
 county= substr(geo2010,1,5);
 percentrenter_2016= numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.);
 percentwhite_2016= popalonew_&_years./popwithrace_&_years.;
 percentcollege_2016= pop25andoverwcollege_&_years./pop25andoveryears_&_years.;
-avghhinc_2016= agghshldincome_&_years./(nonfamilyhhtot_&_years. + familyhhtot_&_years. );
+avghhinc_2016= agghshldincome_&_years./(numhshlds_&_years. );
 run;
 
 proc sort data=demographics16;
@@ -56,16 +56,17 @@ by geo2010;
 run;
 
 data demographics00(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
-set NCDB.Ncdb_master_update;
+	set NCDB.Ncdb_master_update;
 keep geo2010 county percentrenter_00 percentwhite_00 percentcollege_00 avghhinc_00 sprntoc0 spownoc0 shr0d minwht0n educpp0 educ160 avhhin0 avghhinc_00a;
 county= substr(geo2010,1,5);
 
-%dollar_convert( avghhinc_00, avghhinc_00a, 1999, 2016, series=CUUR0000SA0 )
 
 percentrenter_00= sprntoc0/(sprntoc0+spownoc0);
 percentwhite_00= minwht0n/shr0d;
 percentcollege_00= educ160/educpp0;
 avghhinc_00= avhhin0;
+
+%dollar_convert( avghhinc_00, avghhinc_00a, 1999, 2016, series=CUUR0000SA0 )
 
 run;
 
@@ -79,11 +80,11 @@ by geo2010;
 run;
 
 data changeintime;
-set merged;
+	set merged;
 deltarenter= percentrenter_2016-percentrenter_00;
 deltawhite= percentwhite_2016- percentwhite_00;
 deltacollege= percentcollege_2016- percentcollege_00;
-deltahhinc= avghhinc_2016-avghhinc_00;
+deltahhinc= avghhinc_2016-avghhinc_00a;
 run;
 
 proc means data=changeintime;
