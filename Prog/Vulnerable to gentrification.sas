@@ -46,7 +46,7 @@ data demographics16 (where=(county in ("11001", "24017", "24021", "24031", "2403
 keep geo2010 county percentrenter_2016 percentwhite_2016 percentcollege_2016 avghhinc_2016 popwithrace_&_years. popalonew_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. agghshldincome_&_years.  numhshlds_&_years. medianhomevalue_&_years. ;
 county= substr(geo2010,1,5);
 percentrenter_2016= numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.);
-percentwhite_2016= popalonew_&_years./popwithrace_&_years.;
+percentwhite_2016= popwhitenonhispbridge_&_years./popwithrace_&_years.;
 percentcollege_2016= pop25andoverwcollege_&_years./pop25andoveryears_&_years.;
 avghhinc_2016= agghshldincome_&_years./(numhshlds_&_years. );
 run;
@@ -56,11 +56,9 @@ by geo2010;
 run;
 
 data demographics00(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
-	set NCDB.Ncdb_master_update;
+set NCDB.Ncdb_master_update;
 keep geo2010 county percentrenter_00 percentwhite_00 percentcollege_00 avghhinc_00 sprntoc0 spownoc0 shr0d minwht0n educpp0 educ160 avhhin0 avghhinc_00a;
 county= substr(geo2010,1,5);
-
-
 percentrenter_00= sprntoc0/(sprntoc0+spownoc0);
 percentwhite_00= minwht0n/shr0d;
 percentcollege_00= educ160/educpp0;
@@ -117,7 +115,7 @@ run;
 
 /* identify change of tract demographics that are signalling gentrification:
 change in renters, more white people, more college degree, higher income*/
-/*means for deltarenter:-0.0195884   deltawhite: -0.0444152 deltacollege: 0.0775480 deltainc: 41637.55*/
+/*means for deltarenter:-0.0195884   deltawhite: -0.0444152 deltacollege: 0.0775480 deltainc: 5516*/
 
 data risk_gentrification;
 set risk_displacement;
@@ -133,8 +131,8 @@ if deltacollege>=0.08 then gentrifier_college=1;
 else if deltacollege <0.08 then gentrifier_college=0;
 else if deltacollege=. then gentrifier_college=.;
 
-if deltahhinc >= 41638 then gentrifier_inc=1;
-else if deltahhinc < 41638 then gentrifier_inc=0;
+if deltahhinc >= 5516 then gentrifier_inc=1;
+else if deltahhinc < 5516 then gentrifier_inc=0;
 else if deltahhinc=. then gentrifier_inc=.;
 
 gentrifier= gentrifier_owner + gentrifier_white = gentrifier_college + gentrifier_inc;
