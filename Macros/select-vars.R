@@ -6,7 +6,7 @@ select_vars <- function(dataset) {
          bkfsinternalpid,
          assessorsparcelnumberapnpin,
          duplicateapn,
-         propadress = propertyfullstreetaddress,
+         propaddress = propertyfullstreetaddress,
          propcity = propertycityname,
          propstate = propertystate,
          propzip = propertyzipcode,
