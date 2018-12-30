@@ -17,6 +17,8 @@
 # load libraries and functions --------------------------------------------
 
 library(tidyverse)
+library(DescTools)
+library(purrr)
 
 source("Macros/read-bk.R")
 source("Macros/filter-bk.R")
@@ -24,23 +26,29 @@ source("Macros/select-vars.R")
 source("Macros/sample-properties.R")
 source("Macros/collapse-properties.R")
 
+
+# set fips and filepath ---------------------------------------------------
+
+currentfips <- "51013"
+filepath <- "arlington"
+
 # read and filter ---------------------------------------------------------
 
 region <- read_bk("dc-cog-assessment_20181228.csv")
 
-arlington <- region %>% 
+currentjur <- region %>% 
   filter_bk(fips = "51013") %>% 
   select_vars()
 
 # recategorize county land use --------------------------------------------
 
 # county land use description tabulation
-arlington_county <- arlington %>% 
+currentjur_county <- currentjur %>% 
   group_by(countylandusedescription) %>% 
   count()
 
-write_csv(arlington_county,
-          "Data/arlington-county-land-use.csv")
+write_csv(currentjur_county,
+          paste0("Data/", filepath, "-county-land-use.csv"))
 
 # create three variables:
 # 1. residential indicator
@@ -77,7 +85,7 @@ res_codes <-
     "SFD - APT ZONED/SITE PLAN",
     "VACANT RESIDENTIAL")
 
-arlington1 <- arlington %>% 
+currentjur_cat <- currentjur %>% 
   mutate(residential =
            ifelse(countylandusedescription %in% res_codes, 1, 0),
          category = case_when(
@@ -235,12 +243,12 @@ arlington1 <- arlington %>%
          )
 
 # check for missing values
-count(arlington1, residential)
-count(arlington1, is.na(residential))
-count(arlington1, category)
-count(arlington1, is.na(category))
-count(arlington1, category_detail)
-count(arlington1, is.na(category_detail))
+count(currentjur_cat, residential)
+count(currentjur_cat, is.na(residential))
+count(currentjur_cat, category)
+count(currentjur_cat, is.na(category))
+count(currentjur_cat, category_detail)
+count(currentjur_cat, is.na(category_detail))
 
 
 # collapse properties -----------------------------------------------------
@@ -248,23 +256,39 @@ count(arlington1, is.na(category_detail))
 # goal- one observation per property, based on street address
 # functions for this section found in "Macros/collapse-properties.R"
 
-# identify properties with more than one observation
-singles <- get_single_properties(arlington1)
-multiples <- get_multiple_properties(arlington1)
-check_classification(arlington1)
+# identify properties with more than one observation, those with missing
+# addresses or house numbers
+singles <- get_single_properties(currentjur_cat)
+multiples <- get_multiple_properties(currentjur_cat)
+missing_address <- get_missing_address(currentjur_cat)
+check_classification(currentjur_cat)
 
-count(multiples, is.na(prophouseno))
+# first- fill in missing zoning
+multiples <- multiples %>% 
+  group_by(propaddress) %>% 
+  fill(zoning) %>% 
+  fill(zoning, .direction = "up")
 
+# check
 mult_grouped <- multiples %>% 
-  # take out properties without address or street number
-  filter(!is.na(propaddress),
-         !is.na(prophouseno)) %>% 
   group_by(propaddress, zoning) %>% 
   count()
 
-multiples
-  
 
+# take most common zoning variable, categorization
+# sum building areas and 
+nested <- multiples %>% 
+  group_by(propaddress) %>% 
+  summarize(zoning = list(zoning),
+            lotsizeorarea = list(lotsizeorarea),
+            buildingarea = list(buildingarea),
+            countylandusedescription = list(countylandusedescription))
+
+multiples_vars <- nested %>% 
+  mutate(zoning2 = map(zoning, Mode))
+  
+currentjur_cat %>% group_by(zoning) %>% count() %>% arrange(desc(n)) %>% 
+  write_csv(paste0("Data/", filepath, "-zoning.csv"))
 
 # filling values ----------------------------------------------------------
 
