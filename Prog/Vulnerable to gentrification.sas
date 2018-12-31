@@ -164,3 +164,45 @@ if vulnerable<2 then do;
 format signofrisk signofrisk. ;
 run;
 
+
+/*Calculate appreciation of home values and rank baseline median home values*/
+
+data housing1990(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
+set NCDB.Ncdb_master_update;
+keep geo2010 county mdvalhs9 mdvalhs0;
+county= substr(geo2010,1,5);
+run;
+
+data housingmarket;
+merge merged housing1990;
+keep geo2010 county mdvalhs9 mdvalhs0 medianhomevalue_2012_16 appre90_16 appre00_16;
+by geo2010;
+appre90_16 = (medianhomevalue_2012_16- mdvalhs9)/ mdvalhs9;
+appre00_16 = (medianhomevalue_2012_16-mdvalhs0)/mdvalhs0;
+run;
+
+proc rank data=housingmarket out=valuehousing groups=5;
+ var mdvalhs9 mdvalhs0 medianhomevalue_2012_16 appre90_16 appre00_16;
+ ranks rank90 rank2000 rank2016 rank90_16 rank00_16;
+run;
+
+
+data appreciationtracts;
+set valuehousing;
+
+if mdvalhs9 <= 2 &  medianhomevalue_2012_16 >=3 & appre90_16 >= 3 then appreciated =1;
+if medianhomevalue_2012_16<=2 & appre00_16>=3 then accelerating=1;
+
+run;
+
+
+proc export data = appreciationtracts
+   outfile="&_dcdata_default_path\RegHsg\Prog\Housing market condition.csv"
+   dbms=csv
+   replace;
+run;
+
+
+
+
+
