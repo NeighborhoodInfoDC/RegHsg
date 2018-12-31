@@ -255,40 +255,116 @@ count(currentjur_cat, is.na(category_detail))
 
 # goal- one observation per property, based on street address
 # functions for this section found in "Macros/collapse-properties.R"
+nrow(filter(currentjur_cat, is.na(propaddress)))
+nrow(filter(currentjur_cat, is.na(prophouseno)))
+nrow(filter(currentjur_cat2, is.na(propaddress)))
 
+# identify properties with letters in address- remove for collapse
+currentjur_cat2 <- currentjur_cat %>% 
+  mutate(house_letter = ifelse(str_detect(prophouseno, "[:alpha:]") == 1, 1, 0),
+         oldadd = propaddress,
+         new_houseno = ifelse(house_letter == 1,
+                              str_replace(prophouseno, "[:alpha:]", ""), prophouseno),
+         propaddress = ifelse(house_letter == 1, 
+                              paste(str_replace_all(new_houseno, "-", ""),
+                                    propstreetname, 
+                                    propstreetsuffix,
+                                    sep = " "),
+                              propaddress),
+         propaddress = ifelse(is.na(propaddress), oldadd, propaddress))
+
+currentjur_cat2 %>% filter(house_letter == 1) %>% select(oldadd, propaddress) %>% head(20)
+
+# test to make sure we did not introduce any NAs
+if (nrow(filter(currentjur_cat2, is.na(propaddress))) > 
+    nrow(filter(currentjur_cat, is.na(propaddress)))) {
+  warning("additional NAs are introduced") 
+  } else if (nrow(filter(currentjur_cat2, is.na(propaddress))) < 
+             nrow(filter(currentjur_cat, is.na(propaddress)))) {
+  warning("less NAs than original")
+    } else if (nrow(filter(currentjur_cat2, is.na(propaddress))) == 
+               nrow(filter(currentjur_cat, is.na(propaddress)))) {
+      print("no additional NAs")
+  }
+    
+    
 # identify properties with more than one observation, those with missing
 # addresses or house numbers
-singles <- get_single_properties(currentjur_cat)
-multiples <- get_multiple_properties(currentjur_cat)
-missing_address <- get_missing_address(currentjur_cat)
-check_classification(currentjur_cat)
+singles <- get_single_properties(currentjur_cat2)
+multiples <- get_multiple_properties(currentjur_cat2)
+missing_address <- get_missing_address(currentjur_cat2)
+check_classification(currentjur_cat2)
 
 # first- fill in missing zoning
 multiples <- multiples %>% 
   group_by(propaddress) %>% 
   fill(zoning) %>% 
-  fill(zoning, .direction = "up")
+  fill(zoning, .direction = "up") %>% 
+  ungroup()
 
 # check
 mult_grouped <- multiples %>% 
-  group_by(propaddress, zoning) %>% 
+  group_by(propaddress) %>% 
   count()
 
 
 # take most common zoning variable, categorization
 # sum building areas and 
 nested <- multiples %>% 
-  group_by(propaddress) %>% 
-  summarize(zoning = list(zoning),
-            lotsizeorarea = list(lotsizeorarea),
-            buildingarea = list(buildingarea),
-            countylandusedescription = list(countylandusedescription))
+  group_by(propaddress) %>%
+  summarise_at(vars(zoning, lotsizeorarea, lotsizesquarefeet,
+                    buildingarea, countylandusedescription,
+                    residential, category, category_detail,
+                    yearbuilt, long, lat), list) %>% 
+  rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
+  mutate(nprops = map(zoning_list, length),
+         zoning = map(zoning_list, Mode),
+         lotsizeorarea = map(lotsizeorarea_list, sum),
+         buildingarea = map(buildingarea_list, sum),
+         countylandusedescription = map(countylandusedescription_list, Mode),
+         residential = map(residential_list, max),
+         category = map(category_list, Mode),
+         category_detail = map(category_detail_list, Mode),
+         yearbuilt = map(yearbuilt_list, max),
+         long = map(long_list, median),
+         lat = map(lat_list, median))
 
-multiples_vars <- nested %>% 
-  mutate(zoning2 = map(zoning, Mode))
-  
-currentjur_cat %>% group_by(zoning) %>% count() %>% arrange(desc(n)) %>% 
-  write_csv(paste0("Data/", filepath, "-zoning.csv"))
+ties <- nested %>% 
+  mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
+  filter(ties_z == 1) %>% 
+  mutate(z1 = map(zoning, function(x) x[1]),
+         z2 = map(zoning, function(x) x[2]),
+         z3 = map(zoning, function(x) x[3]),
+         cl1 = map(countylandusedescription, function(x) x[1]),
+         cl2 = map(countylandusedescription, function(x) x[2]),
+         cl3 = map(countylandusedescription, function(x) x[3])) %>% 
+  select(propaddress, nprops,
+         z1, z2, z3,
+         cl1, cl2, cl3) %>% 
+  unnest()
+write_csv(ties,
+          paste0("Data/", filepath, "-zoning-ties.csv"))
+
+# write out zoning codes for Chris
+# currentjur_cat %>% group_by(zoning) %>% count() %>% arrange(desc(n)) %>% 
+#  write_csv(paste0("Data/", filepath, "-zoning.csv"))
+
+# test if there are condos that need to be re-labeled
+singles %>% count(category_detail)
+singles <- singles %>% 
+  mutate(category = ifelse(category_detail == "condo",
+                           "sf",
+                           category),
+         category_detail = ifelse(category_detail == "condo",
+                                  "sf attached",
+                                  category_detail))
+dup <- singles %>% filter(category_detail == "duplex")
+
+multiples %>% count(category_detail)
+msf <- multiples %>% filter(category_detail == "sf detached")
+a <- multiples %>% filter(propaddress == "1006 N QUINTANA ST")
+
+check <- multiples %>% group_by(propaddress) %>% count()
 
 # filling values ----------------------------------------------------------
 

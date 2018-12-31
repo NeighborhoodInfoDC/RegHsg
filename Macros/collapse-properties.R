@@ -9,7 +9,8 @@ get_single_properties <- function(dataset) {
   dataset %>% 
     filter(propaddress %in% addresses,
            !is.na(prophouseno),
-           !is.na(propaddress))
+           !is.na(propaddress)) %>% 
+    mutate(address_type = "single")
   
 }
 
@@ -23,7 +24,8 @@ get_multiple_properties <- function(dataset) {
   dataset %>% 
     filter(propaddress %in% addresses,
            !is.na(prophouseno),
-           !is.na(propaddress))
+           !is.na(propaddress)) %>% 
+    mutate(address_type = "multiple")
   
 }
 
@@ -31,7 +33,8 @@ get_missing_address <- function(dataset) {
   
   dataset %>% 
     filter(is.na(prophouseno) |
-           is.na(propaddress))
+           is.na(propaddress)) %>% 
+    mutate(address_type = "missing")
   
 }
 
