@@ -794,6 +794,17 @@ xpose, clear varname format
 
 order _varname v1-v9
 
+label variable _varname "Age category"
+label variable v1 "2009"
+label variable v2 "2010"
+label variable v3 "2011"
+label variable v4 "2012"
+label variable v5 "2013"
+label variable v6 "2014"
+label variable v7 "2015"
+label variable v8 "2016"
+label variable v9 "2017"
+
 save "D:\DCData\Libraries\RegHsg\Data\ACS_5year_gender.dta", replace
 
 export excel using "D:\DCData\Libraries\RegHsg\Prog\ACS_5year_gender.xlsx", replace
