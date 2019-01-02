@@ -186,15 +186,16 @@ proc rank data=housingmarket out=valuehousing groups=5;
  ranks rank90 rank2000 rank2016 rank90_16 rank00_16;
 run;
 
-
 data appreciationtracts;
 set valuehousing;
 
-if mdvalhs9 <= 2 &  medianhomevalue_2012_16 >=3 & appre90_16 >= 3 then appreciated =1;
-if medianhomevalue_2012_16<=2 & appre00_16>=3 then accelerating=1;
+if mdvalhs9 <= 2 &  medianhomevalue_2012_16 >=3 & appre90_16 >= 3 then appreciated =1;else appreciated =0;
+if medianhomevalue_2012_16<=2 & appre00_16>=3 then accelerating=1;else accelerating=0;
 
 run;
 
+proc freq data=appreciationtracts;
+run;
 
 proc export data = appreciationtracts
    outfile="&_dcdata_default_path\RegHsg\Prog\Housing market condition.csv"
