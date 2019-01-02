@@ -1,68 +1,95 @@
-# /****************************************************************************
-# Program:  clean-arlington.R
-# Library:  RegHsg
-# Project:  Regional Housing Framework
-# Author:   Sarah Strochak 
-# Created:  12/26/2018
-# Version:  R 3.5.1, RStudio 1.1.423
-# Environment:  Local Windows session (desktop)
-# 
-# Description:  Clean and reorganize property records data for
-# Arlington County (51013)
-# 
-# Modifications:
-# ****************************************************************************/
+---
+title: "Regional Housing Framework"
+subtitle: "Clean Arlington County public records data"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
 
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
 
-# load libraries and functions --------------------------------------------
+#### Library: RegHsg
+#### Project: Regional Housing Framework
+#### Author: Sarah Strochak
+#### Version: R 3.5.1, RStudio 1.1.423
+#### Last updated `r format(Sys.time(), '%B %d, %Y')`
+#### Environment: Local Windows session (desktop)
 
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+##### There are three main goals of the jurisdiction level cleaning process:
+1. Recategorize the county land use codes into more general codes
+2. Collapse observations at the address level
+3. Clean the variables needed to provide density estimates
+
+## Set-up
+### Load libraries and functions
+```{r setup}
 library(tidyverse)
 library(DescTools)
 library(purrr)
 
-source("Macros/read-bk.R")
-source("Macros/filter-bk.R")
-source("Macros/select-vars.R")
-source("Macros/sample-properties.R")
-source("Macros/collapse-properties.R")
+source("../Macros/read-bk.R")
+source("../Macros/filter-bk.R")
+source("../Macros/select-vars.R")
+source("../Macros/sample-properties.R")
+source("../Macros/collapse-properties.R")
+```
 
-
-# set fips and filepath ---------------------------------------------------
-
+#### Set FIPS code and filepath name
+```{r fips}
 currentfips <- "51013"
 filepath <- "arlington"
+```
 
-# read and filter ---------------------------------------------------------
-
-region <- read_bk("dc-cog-assessment_20181228.csv")
+#### Load in Black Knight data for the region, select jurisdiction and standard variables
+```{r read}
+if (!exists("region")) {
+  region <- read_bk_rmd("dc-cog-assessment_20181228.csv")
+} else {
+  warning("region data already read in")
+}
 
 currentjur <- region %>% 
-  filter_bk(fips = "51013") %>% 
+  filter_bk(fips = currentfips) %>% 
   select_vars()
 
-# recategorize county land use --------------------------------------------
+```
+## Recatagorize county land use codes
+##### In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates three variables:
+1. residential: 1 for residential, 0 for other
+2. category: categories are sf, mf, commercial, office, and vacant.
+3. category_detail: this will vary by jurisdiction, but  includes the most detail possible to generalize from the county land use codes.
 
-# county land use description tabulation
+#### Export county land use codes for manual classification
+```{r export-landuse}
 currentjur_county <- currentjur %>% 
   group_by(countylandusedescription) %>% 
   count()
 
-# check if this file has already been written- this will avoid writing over
-# land use codes that have already been categorized
-
-if (!file.exists(paste0("Data/", filepath, "-county-land-use.csv"))) {
+if (!file.exists(paste0("../Data/", filepath, "-county-land-use.csv"))) {
   write_csv(currentjur_county,
-            paste0("Data/", filepath, "-county-land-use.csv"))
-} else {
-  stop("land use file already exists")
+            paste0("../Data/", filepath, "-county-land-use.csv"))
 }
 
-# create three variables:
-# 1. residential indicator
-# 2. category
-# 3. category_detail
+```
 
-# recode variables
+##### Create variables using `ifelse()` and `case_when()`
+```{r classify}
 res_codes <- 
   c("AFFORDABLE DWELLING UNIT",
     "APARTMENT - GARDEN",
@@ -248,22 +275,34 @@ currentjur_cat <- currentjur %>%
            countylandusedescription %in%
              c("RESIDENTIAL COST-VAL - VAC/SF & TW") ~ "vacant sf")
          )
+```
 
-# check for missing values
+#### These checks make sure that all county land use codes recieved new classifications, and shows the distribution of properties 
+
+#### {.tabset .tabset.fade}
+##### residential
+```{r res-check}
 count(currentjur_cat, residential)
 count(currentjur_cat, is.na(residential))
+```
+
+##### category
+```{r cat-check}
 count(currentjur_cat, category)
 count(currentjur_cat, is.na(category))
+```
+##### category_detail
+```{r catd-check}
 count(currentjur_cat, category_detail)
 count(currentjur_cat, is.na(category_detail))
+```
 
+## Collapsing properties
+##### Next, we have to ensure that there is only one observation per address in the dataset. 
 
-# collapse properties -----------------------------------------------------
+##### There are a number of properties that have numbers or symbols in their house numbers that prevent a collapse. This next step removes those characters so the collapse is clean.
 
-# goal- one observation per property, based on street address
-# functions for this section found in "Macros/collapse-properties.R"
-
-# identify properties with letters in address- remove for collapse
+```{r letters}
 currentjur_cat2 <- currentjur_cat %>% 
   mutate(house_letter = ifelse(str_detect(prophouseno, "[:alpha:]") == 1, 1, 0),
          oldadd = propaddress,
@@ -276,10 +315,19 @@ currentjur_cat2 <- currentjur_cat %>%
                                     sep = " "),
                               propaddress),
          propaddress = ifelse(is.na(propaddress), oldadd, propaddress))
+```
 
-currentjur_cat2 %>% filter(house_letter == 1) %>% select(oldadd, propaddress) %>% head(20)
+##### Compare the first 20 addresses to check
+```{r letters-check}
+currentjur_cat2 %>% 
+  filter(house_letter == 1) %>% 
+  select(oldadd, propaddress) %>% 
+  head(20)
 
-# test to make sure we did not introduce any NAs
+```
+
+##### An additional check to make sure no new NAs in the address were introduced
+```{r letters-check2}
 if (sum(is.na(currentjur_cat2$propaddress)) > 
     sum(is.na(currentjur_cat$propaddress))) {
   warning("additional NAs are introduced") 
@@ -290,30 +338,71 @@ if (sum(is.na(currentjur_cat2$propaddress)) >
                sum(is.na(currentjur_cat$propaddress))) {
       print("no additional NAs")
     }
+```
 
-    
-# identify properties with more than one observation, those with missing
-# addresses or house numbers
+##### In order to do the collapse, we first identify addresses with more than one observation, and filter out those with a missing house number or address to avoid an improper collapse. Then, run a quick check to make sure all the records are still accounted for.
+
+```{r sep}
 singles <- get_single_properties(currentjur_cat2)
 multiples <- get_multiple_properties(currentjur_cat2)
 missing_address <- get_missing_address(currentjur_cat2)
 check_classification(currentjur_cat2)
+```
 
-# first- fill in missing zoning
+##### For addresses that have some records with missing zoning, but others that have a zoning designation: we need to fill the NAs with the appropriate zoning code. `group_by()` means that zoning codes will not be passed on to observations with a different address, and using `fill()` in both directions means that the NAs will be filled regardless of their position.
+
+```{r fill}
 multiples <- multiples %>% 
   group_by(propaddress) %>% 
   fill(zoning) %>% 
   fill(zoning, .direction = "up") %>% 
   ungroup()
+```
 
-# check
-mult_grouped <- multiples %>% 
-  group_by(propaddress) %>% 
-  count()
+##### Next, we summarize the data using nested lists, which allow us to preserve all the details from each record and apply the right function to each. The table below describes each variable, which function to use, and what to do in the case of a tie. Lot size is a unique case, detail provided in the next section.
+
+```{r var-table, echo=FALSE, results = 'asis', eval=TRUE}
+
+v <- tibble::tibble(variable = c("zoning", 
+                         "lotsizeorarea", 
+                         "lotsizesquarefeet",
+                         "buildingarea", 
+                         "countylandusedescription",
+                         "residential", 
+                         "category", 
+                         "category_detail",
+                         "yearbuilt", 
+                         "long", 
+                         "lat"),
+            operation = c("mode", 
+                          "conditional based on values",
+                          "conditional based on values",
+                          "sum",
+                          "mode",
+                          "max",
+                          "mode",
+                          "mode",
+                          "max",
+                          "median",
+                          "median"),
+            `in case of tie` = c("take most dense zoning code (?)",
+                                 "",
+                                 "",
+                                 "",
+                                 "case-by-case basis",
+                                 "residential",
+                                 "case-by-case basis",
+                                 "case-by-case basis",
+                                 "take maxiumum year- accounts for renovation",
+                                 "median longitude and latitude ensures this is a correct pairing, falls within the address",
+                                 "median longitude and latitude ensures this is a correct pairing, falls within the address"))
+
+knitr::kable(v)
+
+```
 
 
-# take most common zoning variable, categorization
-# sum building areas and 
+``` {r nest}
 nested <- multiples %>% 
   group_by(propaddress) %>%
   summarise_at(vars(zoning, lotsizeorarea, lotsizesquarefeet,
@@ -333,71 +422,4 @@ nested <- multiples %>%
          yearbuilt = map(yearbuilt_list, max),
          long = map(long_list, median),
          lat = map(lat_list, median))
-
-# figure out if every lot size is the same (should be averaged and not summed)
-nested <- nested %>% 
-  mutate(unqlotsize = map(lotsizesquarefeet_list, 
-                            function(x) length(unique(x))),
-         lotsizesquarefeet = ifelse(lotsizesquarefeet == 0,
-                                    NA, 0)) 
-
-
-
-
-ties <- nested %>% 
-  mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
-  filter(ties_z == 1) %>% 
-  mutate(z1 = map(zoning, function(x) x[1]),
-         z2 = map(zoning, function(x) x[2]),
-         z3 = map(zoning, function(x) x[3]),
-         cl1 = map(countylandusedescription, function(x) x[1]),
-         cl2 = map(countylandusedescription, function(x) x[2]),
-         cl3 = map(countylandusedescription, function(x) x[3])) %>% 
-  select(propaddress, nprops,
-         z1, z2, z3,
-         cl1, cl2, cl3) %>% 
-  unnest()
-
-if (!file.exists(paste0("Data/", filepath, "-zoning-ties.csv"))) { 
-    write_csv(ties,
-          paste0("Data/", filepath, "-zoning-ties.csv"))
-  } else {
-  stop("ties file already exists")
-}
-
-
-# test if there are condos that need to be re-labeled
-singles %>% count(category_detail)
-singles <- singles %>% 
-  mutate(category = ifelse(category_detail == "condo",
-                           "sf",
-                           category),
-         category_detail = ifelse(category_detail == "condo",
-                                  "sf attached",
-                                  category_detail))
-
-dup <- singles %>% filter(category_detail == "duplex")
-
-multiples %>% count(category_detail)
-msf <- multiples %>% filter(category_detail == "sf detached")
-a <- multiples %>% filter(propaddress == "1006 N QUINTANA ST")
-
-check <- multiples %>% group_by(propaddress) %>% count()
-
-# filling values ----------------------------------------------------------
-
-boom <- tibble(a = c("a", "a", "a", "b", "b", "b"), 
-       b = c(1, NA, 1, NA, 2, 2))
-  fill(boom, b)
-
-boom %>%
-  group_by(a) %>%
-  fill(b) %>%
-  fill(b, .direction = "up")
-  
-  
-count(mult_grouped, nn)
-
-
-
-
+```
