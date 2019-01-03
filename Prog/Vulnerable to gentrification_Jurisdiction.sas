@@ -117,6 +117,34 @@ percentcollege_2016= pop25andoverwcollege_&_years./pop25andoveryears_&_years.;
 avghhinc_2016= agghshldincome_&_years./(numhshlds_&_years. );
 run;
 
+%let juris = 1;
+
+proc sql noprint;
+select percentrenter_2016 
+into :rentherthresh separated by " "
+from vulnerablethreshold (where = (Jurisdiction = &juris.));
+quit;
+
+proc sql noprint;
+select percentwhite_2016 
+into :whitethresh separated by " "
+from vulnerablethreshold (where = (Jurisdiction = &juris.));
+quit;
+
+proc sql noprint;
+select percentcollege_2016 
+into :collegethresh separated by " "
+from vulnerablethreshold (where = (Jurisdiction = &juris.));
+quit;
+
+proc sql noprint;
+select avghhinc_2016 
+into :hhincthresh separated by " "
+from vulnerablethreshold (where = (Jurisdiction = &juris.));
+quit;
+
+%put &rentherthresh. &whitethresh. &collegethresh. &hhincthresh.;
+
 /* identify tracts with higher than average population with characteristics that make resisting displacement more difficult:
 renters, POC, lack college degree, lower income*/
 /*median for 2016: percentwhite:0.437 percentrenter: 0.383 percentcollege 0.514 averageincome 123451.1*/
