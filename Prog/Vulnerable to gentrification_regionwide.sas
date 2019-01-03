@@ -1,5 +1,5 @@
 /**************************************************************************
- Program:  Gentrification and displacement risk.sas
+ Program:  Vulnerable to gentrification_regionwide.sas
  Library:  RegHsg
  Project:  NeighborhoodInfo DC
  Author:   Yipeng Su 
@@ -81,8 +81,7 @@ run;
 
 data changeintime;
 set merged;
-deltarenter = numrenteroccupiedhu_&_years.- sprntoc0;
-deltarenterdenom= (numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.)- (sprntoc0+spownoc0);
+deltarenter = numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.)- sprntoc0/(sprntoc0+spownoc0);
 deltawhite= percentwhite_2016- percentwhite_00;
 deltacollege= percentcollege_2016- percentcollege_00;
 deltahhinc= (avghhinc_2016-avghhinc_00a)/avghhinc_00a;
@@ -110,24 +109,24 @@ run;
 
 /* identify tracts with higher than average population with characteristics that make resisting displacement more difficult:
 renters, POC, lack college degree, lower income*/
-/*median for 2016: percentwhite:0.44 percentrenter: 0.38 percentcollege 0.51 averageincome 123451*/
+/*median for 2016: percentwhite:0.437 percentrenter: 0.383 percentcollege 0.514 averageincome 123451.1*/
 
 data risk_displacement;
 set changeintime;
-		if percentrenter_2016 >= 0.38 then vulnerable_renter =1;
-	    else if percentrenter_2016< 0.38 then vulnerable_renter =0;
+		if percentrenter_2016 >= 0.383 then vulnerable_renter =1;
+	    else if percentrenter_2016< 0.383 then vulnerable_renter =0;
 		else if percentrenter_2016=. then vulnerable_renter =.;
 
-if percentwhite_2016<= 0.44 then vulnerable_POC=1;
-else if percentwhite_2016> 0.44 then vulnerable_POC=0;
+if percentwhite_2016<= 0.437 then vulnerable_POC=1;
+else if percentwhite_2016> 0.437 then vulnerable_POC=0;
 else if percentwhite_2016=. then vulnerable_POC=.;
 
-if percentcollege_2016<=0.51 then vulnerable_college=1;
-else if percentcollege_2016 >0.51 then vulnerable_college=0;
+if percentcollege_2016<=0.514 then vulnerable_college=1;
+else if percentcollege_2016 >0.514 then vulnerable_college=0;
 else if percentcollege_2016=. then vulnerable_college=.;
 
-if avghhinc_2016 <= 123451 then vulnerable_inc=1;
-else if avghhinc_2016> 123451 then vulnerable_inc=0;
+if avghhinc_2016 <= 123451.1 then vulnerable_inc=1;
+else if avghhinc_2016> 123451.1 then vulnerable_inc=0;
 else if avghhinc_2016=. then vulnerable_inc=.;
 
 vulnerablesum= vulnerable_renter + vulnerable_POC + vulnerable_college + vulnerable_inc;
@@ -159,16 +158,16 @@ set risk_displacement;
 	    else if deltarenter> 0.027 then vulnerable_renter =0;
 		else if deltarenter=. then vulnerable_renter =.;
 
-if deltawhite>= -0.13 then gentrifier_white=1;
-else if deltawhite< -0.13 then gentrifier_white=0;
+if deltawhite>= -0.131 then gentrifier_white=1;
+else if deltawhite< -0.131 then gentrifier_white=0;
 else if deltawhite=. then gentrifier_white=.;
 
-if deltacollege>=0.072 then gentrifier_college=1;
-else if deltacollege <0.072 then gentrifier_college=0;
+if deltacollege>=0.073 then gentrifier_college=1;
+else if deltacollege <0.073 then gentrifier_college=0;
 else if deltacollege=. then gentrifier_college=.;
 
-if deltahhinc >= -0.99 then gentrifier_inc=1;
-else if deltahhinc < -0.99 then gentrifier_inc=0;
+if deltahhinc >= -1 then gentrifier_inc=1;
+else if deltahhinc < -1 then gentrifier_inc=0;
 else if deltahhinc=. then gentrifier_inc=.;
 
 gentrifier= gentrifier_owner + gentrifier_white + gentrifier_college + gentrifier_inc;
@@ -197,21 +196,23 @@ run;
 
 data housing1990(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
 set NCDB.Ncdb_master_update;
-keep geo2010 county mdvalhs9 mdvalhs0;
+keep geo2010 county mdvalhs9 mdvalhs0 mdvalhs0_a mdvalhs9_a;
 county= substr(geo2010,1,5);
+%dollar_convert( mdvalhs0, mdvalhs0_a, 1999, 2016, series=CUUR0000SA0L2 )
+%dollar_convert( mdvalhs9, mdvalhs9_a, 1989, 2016, series=CUUR0000SA0L2 )
 run;
 
 data housingmarket;
 merge merged housing1990;
-keep geo2010 geoid county mdvalhs9 mdvalhs0 medianhomevalue_2012_16 appre90_16 appre00_16;
+keep geo2010 geoid county mdvalhs9_a mdvalhs0_a medianhomevalue_2012_16 appre90_16 appre00_16;
 by geo2010;
-appre90_16 = (medianhomevalue_2012_16- mdvalhs9)/ mdvalhs9;
-appre00_16 = (medianhomevalue_2012_16-mdvalhs0)/mdvalhs0;
+appre90_16 = (medianhomevalue_2012_16- mdvalhs9_a)/ mdvalhs9_a;
+appre00_16 = (medianhomevalue_2012_16-mdvalhs0_a)/mdvalhs0_a;
 geoid=geo2010;
 run;
 
 proc rank data=housingmarket out=valuehousing groups=5;
- var mdvalhs9 mdvalhs0 medianhomevalue_2012_16 appre90_16 appre00_16;
+ var mdvalhs9_a mdvalhs0_a medianhomevalue_2012_16 appre90_16 appre00_16;
  ranks rank90 rank2000 rank2016 rank90_16 rank00_16 ;
 run;
 

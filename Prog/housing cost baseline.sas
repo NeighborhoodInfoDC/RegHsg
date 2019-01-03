@@ -83,23 +83,23 @@ proc univariate data= Housing_cost_baseline;
 class hud_inc;
 var Costratio ;
 weight hhwt;
-output out=costall;
+output out=costall mean=costratiomean median= costratiomedian min=costratiomin max=costratiomax P1=percentile_1 P5=percentile_5 P10=percentile_10 P90=percentile_90;
 run;
 
 
-proc univariate data= Housing_cost_baseline (where=(tenure=1));
+proc univariate data= Housing_cost_baseline (where=(ownershp=1));
 class hud_inc;
 var Costratio;
 weight hhwt;
-output out=costrenter;
+output out=costall mean=costratiomean median= costratiomedian min=costratiomin max=costratiomax P1=percentile_1 P5=percentile_5 P10=percentile_10 P90=percentile_90;
 run;
 
 
-proc univariate data= Housing_cost_baseline (where=(tenure=2));
+proc univariate data= Housing_cost_baseline (where=(ownershp=2));
 class hud_inc;
 var Costratio;
 weight hhwt;
-output out=costowner;
+output out=costall mean=costratiomean median= costratiomedian min=costratiomin max=costratiomax P1=percentile_1 P5=percentile_5 P10=percentile_10 P90=percentile_90;
 run;
 
 
