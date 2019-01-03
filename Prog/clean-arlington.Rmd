@@ -16,22 +16,28 @@ output:
 
 <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
 
-#### Library: RegHsg
-#### Project: Regional Housing Framework
-#### Author: Sarah Strochak
-#### Version: R 3.5.1, RStudio 1.1.423
-#### Last updated `r format(Sys.time(), '%B %d, %Y')`
-#### Environment: Local Windows session (desktop)
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
 
 ```{r rmarkdown-setup, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE)
 knitr::opts_chunk$set(message = FALSE)
-# knitr::opts_chunk$set(eval = FALSE)
+ knitr::opts_chunk$set(eval = FALSE)
 ```
 
 ## Description
 
-##### There are three main goals of the jurisdiction level cleaning process:
+There are three main goals of the jurisdiction level cleaning process:
 1. Recategorize the county land use codes into more general codes
 2. Collapse observations at the address level
 3. Clean the variables needed to provide density estimates
@@ -70,12 +76,13 @@ currentjur <- region %>%
 
 ```
 ## Recatagorize county land use codes
-##### In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates three variables:
+In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates three variables:
+
 1. residential: 1 for residential, 0 for other
 2. category: categories are sf, mf, commercial, office, and vacant.
 3. category_detail: this will vary by jurisdiction, but  includes the most detail possible to generalize from the county land use codes.
 
-#### Export county land use codes for manual classification
+Export county land use codes for manual classification
 ```{r export-landuse}
 currentjur_county <- currentjur %>% 
   group_by(countylandusedescription) %>% 
@@ -88,7 +95,10 @@ if (!file.exists(paste0("../Data/", filepath, "-county-land-use.csv"))) {
 
 ```
 
-##### Create variables using `ifelse()` and `case_when()`
+### Create variables 
+
+We use `ifelse()` and `case_when()` to create the three new variables based on the county land use codes.
+
 ```{r classify}
 res_codes <- 
   c("AFFORDABLE DWELLING UNIT",
@@ -277,7 +287,8 @@ currentjur_cat <- currentjur %>%
          )
 ```
 
-#### These checks make sure that all county land use codes recieved new classifications, and shows the distribution of properties 
+### Check variable classifications
+These checks make sure that all county land use codes recieved new classifications, and shows the distribution of properties 
 
 #### {.tabset .tabset.fade}
 ##### residential
@@ -298,9 +309,9 @@ count(currentjur_cat, is.na(category_detail))
 ```
 
 ## Collapsing properties
-##### Next, we have to ensure that there is only one observation per address in the dataset. 
+Next, we have to ensure that there is only one observation per address in the dataset. 
 
-##### There are a number of properties that have numbers or symbols in their house numbers that prevent a collapse. This next step removes those characters so the collapse is clean.
+There are a number of properties that have numbers or symbols in their house numbers that prevent a collapse. This next step removes those characters so the collapse is clean.
 
 ```{r letters}
 currentjur_cat2 <- currentjur_cat %>% 
@@ -317,7 +328,7 @@ currentjur_cat2 <- currentjur_cat %>%
          propaddress = ifelse(is.na(propaddress), oldadd, propaddress))
 ```
 
-##### Compare the first 20 addresses to check
+ Compare the first 20 addresses to check
 ```{r letters-check}
 currentjur_cat2 %>% 
   filter(house_letter == 1) %>% 
@@ -326,7 +337,7 @@ currentjur_cat2 %>%
 
 ```
 
-##### An additional check to make sure no new NAs in the address were introduced
+An additional check to make sure no new NAs in the address were introduced
 ```{r letters-check2}
 if (sum(is.na(currentjur_cat2$propaddress)) > 
     sum(is.na(currentjur_cat$propaddress))) {
@@ -340,7 +351,7 @@ if (sum(is.na(currentjur_cat2$propaddress)) >
     }
 ```
 
-##### In order to do the collapse, we first identify addresses with more than one observation, and filter out those with a missing house number or address to avoid an improper collapse. Then, run a quick check to make sure all the records are still accounted for.
+In order to do the collapse, we first identify addresses with more than one observation, and filter out those with a missing house number or address to avoid an improper collapse. Then, run a quick check to make sure all the records are still accounted for.
 
 ```{r sep}
 singles <- get_single_properties(currentjur_cat2)
@@ -349,7 +360,7 @@ missing_address <- get_missing_address(currentjur_cat2)
 check_classification(currentjur_cat2)
 ```
 
-##### For addresses that have some records with missing zoning, but others that have a zoning designation: we need to fill the NAs with the appropriate zoning code. `group_by()` means that zoning codes will not be passed on to observations with a different address, and using `fill()` in both directions means that the NAs will be filled regardless of their position.
+For addresses that have some records with missing zoning, but others that have a zoning designation: we need to fill the NAs with the appropriate zoning code. `group_by()` means that zoning codes will not be passed on to observations with a different address, and using `fill()` in both directions means that the NAs will be filled regardless of their position.
 
 ```{r fill}
 multiples <- multiples %>% 
@@ -359,7 +370,7 @@ multiples <- multiples %>%
   ungroup()
 ```
 
-##### Next, we summarize the data using nested lists, which allow us to preserve all the details from each record and apply the right function to each. The table below describes each variable, which function to use, and what to do in the case of a tie. Lot size is a unique case, detail provided in the next section.
+Next, we summarize the data using nested lists, which allow us to preserve all the details from each record and apply the right function to each. The table below describes each variable, which function to use, and what to do in the case of a tie. Lot size is a unique case, detail provided in the next section.
 
 ```{r var-table, echo=FALSE, results = 'asis', eval=TRUE}
 
@@ -423,3 +434,87 @@ nested <- multiples %>%
          long = map(long_list, median),
          lat = map(lat_list, median))
 ```
+
+### Lot size
+
+Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show three cases that we attempt to solve for with the `get_lot_size()` function
+
+``` {r lot-ex, echo=FALSE}
+weird <- tibble(propaddress = c( "1330 S FAIR ST", "1633 N COLONIAL TER", "1117 N VERMONT ST", "1134 N STUART ST", "1300 N MEADE ST"),
+                instance = 1:5)
+
+weird1 <- nested %>% 
+  filter(propaddress %in% weird$propaddress) %>%
+  left_join(weird, by = "propaddress") %>% 
+  select(instance, propaddress, nprops, lotsizesquarefeet_list, lotsizesquarefeet) %>% 
+  arrange(instance)
+
+knitr::kable(weird1)
+
+```
+
+- In the first instance, the lot size is repeated- the number of unique lot sizes is 1, so mode is the right function.
+- In the second instance, the sum of the lot size is the incorrect lot size, and the mode is a better function- but there is more than one unique value.
+- In the third example, the mode would give is a lot size of 0, which is also incorrect- but again, every value is not unique. 
+- In the fourth instance, there are the same number of unique values as there are properties- sum is the correct function. 
+- In the fifth instance, we need to replace the lot size of 0 with `NA`, so future operations will also return `NA`. 
+
+We can use the difference between the number of unique elements in the `lotsizesquarefeet_list` vector to determine which operation to use. 
+
+``` {r lot-fun}
+get_lot_size <- function(dataset = nested) {
+  
+  newvars <- nested %>% 
+    select(propaddress, nprops, lotsizesquarefeet_list, 
+           buildingarea_list, buildingarea) %>% 
+    mutate(nprops = as.integer(nprops),
+           unqlotsize = as.integer(map(lotsizesquarefeet_list, 
+                            function(x) length(unique(x)))),
+           unqbuildingarea = map(buildingarea_list, 
+                            function(x) length(unique(x))),
+           lot_mode = map(lotsizesquarefeet_list, Mode),
+           lot_sum = as.integer(map(lotsizesquarefeet_list, sum)),
+           ba_mode = map(buildingarea_list, Mode),
+           ba_sum = map(buildingarea_list, sum),
+           lot_alwayssum = ifelse(unqlotsize == nprops, 1, 0),
+           ba_alwayssum = ifelse(unqbuildingarea == nprops, 1, 0))
+    
+}
+
+```
+
+
+### Ties
+
+There are 62 instances where there is a tie in the zoning code- examples below.
+``` {r ties}
+ties <- nested %>% 
+  mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
+  filter(ties_z == 1) %>% 
+  mutate(z1 = map(zoning, function(x) x[1]),
+         z2 = map(zoning, function(x) x[2]),
+         z3 = map(zoning, function(x) x[3]),
+         cl1 = map(countylandusedescription, function(x) x[1]),
+         cl2 = map(countylandusedescription, function(x) x[2]),
+         cl3 = map(countylandusedescription, function(x) x[3])) %>% 
+  select(propaddress, nprops,
+         z1, z2, z3,
+         cl1, cl2, cl3) %>% 
+  unnest()
+
+ties %>%
+  select(propaddress, z1, z2) %>% 
+  head(5)
+```
+These will likely have to be figured out manually. Write out the file to determine how to break the ties.
+
+``` {r write-ties}
+if (!file.exists(paste0("../Data/", filepath, "-zoning-ties.csv"))) { 
+    write_csv(ties,
+          paste0("../Data/", filepath, "-zoning-ties.csv"))
+  } else {
+  warning("ties file already exists")
+}
+
+```
+

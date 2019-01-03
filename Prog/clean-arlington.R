@@ -342,6 +342,13 @@ nested <- nested %>%
                                     NA, 0)) 
 
 
+finalvar <- newvars %>% 
+  mutate(lotsize_final = case_when(
+    unqlotsize == 1 ~ lot_mode,
+    lot_alwayssum == 1 ~ lot_sum,
+    lot_sum == 0 ~ NA
+  ))
+
 
 
 ties <- nested %>% 
@@ -383,6 +390,17 @@ msf <- multiples %>% filter(category_detail == "sf detached")
 a <- multiples %>% filter(propaddress == "1006 N QUINTANA ST")
 
 check <- multiples %>% group_by(propaddress) %>% count()
+
+sapt <- singles %>% 
+  group_by(category_detail) %>% 
+  summarize(maxlot = max(lotsizesquarefeet),
+            avglot = mean(lotsizesquarefeet))
+
+sapt1 <- singles %>% 
+  filter(category_detail == "apartment") %>% 
+  select(propaddress, numberofunits, 
+         lotsizeorarea, lotsizesquarefeet)
+
 
 # filling values ----------------------------------------------------------
 
