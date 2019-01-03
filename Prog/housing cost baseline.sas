@@ -80,13 +80,15 @@ format hud_inc hudinc. Jurisdiction Jurisdiction. ownershp tenure.;
 run;
 
 proc univariate data= Housing_cost_baseline;
-var Costratio;
+class hud_inc;
+var Costratio ;
 weight hhwt;
 output out=costall;
 run;
 
 
 proc univariate data= Housing_cost_baseline (where=(tenure=1));
+class hud_inc;
 var Costratio;
 weight hhwt;
 output out=costrenter;
@@ -94,6 +96,7 @@ run;
 
 
 proc univariate data= Housing_cost_baseline (where=(tenure=2));
+class hud_inc;
 var Costratio;
 weight hhwt;
 output out=costowner;
