@@ -32,15 +32,19 @@ Environment: Local Windows session (desktop)
 ```{r rmarkdown-setup, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE)
 knitr::opts_chunk$set(message = FALSE)
- knitr::opts_chunk$set(eval = FALSE)
+knitr::opts_chunk$set(eval = FALSE)
 ```
 
 ## Description
 
 There are three main goals of the jurisdiction level cleaning process:
+
 1. Recategorize the county land use codes into more general codes
+
 2. Collapse observations at the address level
+
 3. Clean the variables needed to provide density estimates
+
 
 ## Set-up
 ### Load libraries and functions
@@ -75,10 +79,10 @@ currentjur <- region %>%
   select_vars()
 
 ```
-## Recatagorize county land use codes
-In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates three variables:
+## Recatagorize county land use
+In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates four variables:
 
-1. residential: 1 for residential, 0 for other
+1. residential: 1 for residential, 0 for other.
 2. category: categories are sf, mf, commercial, office, and vacant.
 3. category_detail: this will vary by jurisdiction, but  includes the most detail possible to generalize from the county land use codes.
 4. building_type: this indicates the building type for multifamily parcels (condos and apartments)
@@ -96,7 +100,7 @@ if (!file.exists(paste0("../Data/", filepath, "-county-land-use.csv"))) {
 
 ```
 
-Note: Condos that have their own inidividual addresses are considered single-family. Once we determine which properties have unique addresses, the `category` and `category_detail` will be adjusted to "SF" and "SF attached" respectively. 
+**Note:** Condos that have their own inidividual addresses are considered single-family. Once we determine which properties have unique addresses, the `category` and `category_detail` will be adjusted to "SF" and "SF attached" respectively. 
 
 ### Create categorization variables
 
@@ -364,8 +368,17 @@ Next, we have to ensure that there is only one observation per address in the da
 ### Preserving parcel numbers
 Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.
 
+First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address.
 ```{r parcel}
-currentjur_cat <- currentjur_cat %>% 
+parcels <- currentjur_cat %>% 
+  group_by(propaddress) %>% 
+  summarize(parcel = list(assessorsparcelnumberapnpin)) %>% 
+  mutate(mult_parcel = ifelse(map(parcel, length) > 1,
+                              1,
+                              0)) %>% 
+  filter(mult_parcel == 1)
+
+
   mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6))
 
 ```
@@ -509,7 +522,7 @@ nested <- multiples %>%
 
 #### Lot size
 
-Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show three cases that we attempt to solve for with the `get_lot_size()` function
+Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show five cases that we have to reconcile.
 
 ``` {r lot-ex, echo=FALSE}
 weird <- tibble(propaddress = c( "1330 S FAIR ST", "1633 N COLONIAL TER", "1117 N VERMONT ST", "1134 N STUART ST", "1300 N MEADE ST"),
@@ -531,6 +544,26 @@ knitr::kable(weird1)
 - In the fourth instance, there are the same number of unique values as there are properties- sum is the correct function. 
 - In the fifth instance, we need to replace the lot size of 0 with `NA`, so future operations will also return `NA`. 
 
+
+First- look at the distribution of lot sizes. We are looking for two things: outliers that indicate that `sum()` was not the right operation- and if there is any obvious cut off point where we can stop using `sum()` and switch to `Mode()`
+
+```{r lot-hist}
+
+ggplot(data = currentjur_cat2, mapping = aes(x = lotsize_sf)) +
+  geom_histogram()
+
+```
+
+There are big variations by property type.
+```{r lot-facet}
+
+ggplot(data = currentjur_cat2, mapping = aes(x = lotsize_sf)) +
+  geom_histogram() +
+  facet_grid(~category)
+
+```
+
+Based on the values in the distributions, and trends observed from apartment building lot sizes (which are recorded with one observation per building), we create the following framework as a cut of for the switch from `sum()` to `Mode()`.
 We can use the difference between the number of unique elements in the `lotsizesquarefeet_list` vector to determine which operation to use. 
 
 ``` {r lot-fun}
@@ -596,6 +629,9 @@ For single addresses, we have to reclassify condos that have a unique observatio
 
 ```{r singles-count}
 count(singles, category_detail)
+```
+
+```{r singles-redo}
 
 singles <- singles %>% 
   mutate(category = ifelse(category_detail == "condo",
