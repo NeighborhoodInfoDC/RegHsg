@@ -368,18 +368,25 @@ Next, we have to ensure that there is only one observation per address in the da
 ### Preserving parcel numbers
 Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.
 
-First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address.
+First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace `parcel_address` with `NA`.  
 ```{r parcel}
-parcels <- currentjur_cat %>% 
+currentjur_cat <- currentjur_cat %>% 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6)) 
+
+bad_parcels <- currentjur_cat %>% 
   group_by(propaddress) %>% 
-  summarize(parcel = list(assessorsparcelnumberapnpin)) %>% 
-  mutate(mult_parcel = ifelse(map(parcel, length) > 1,
-                              1,
-                              0)) %>% 
-  filter(mult_parcel == 1)
+  summarize(parcel = list(parcel_address)) %>% 
+  mutate(unq_parcels = as.integer(map(parcel, 
+                                  function(x) length(unique(x))))) %>% 
+  filter(unq_parcels > 1)
 
+bad_addresses <- bad_parcels %>% 
+  pull(propaddress)
 
-  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6))
+currentjur_cat <- currentjur_cat %>% 
+  mutate(parcel_address = ifelse(propaddress %in% bad_addresses,
+                                 NA,
+                                 parcel_address))
 
 ```
 
@@ -500,24 +507,25 @@ knitr::kable(v)
 
 ``` {r nest}
 nested <- multiples %>% 
-  group_by(propaddress) %>%
-  summarise_at(vars(zoning, lotsizeorarea, lotsizesquarefeet,
+  group_by(propaddress, parcel_address) %>%
+  summarise_at(vars(zoning, lotsize_acres, lotsize_sf,
                     buildingarea, countylandusedescription,
                     residential, category, category_detail,
                     yearbuilt, long, lat), list) %>% 
   rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
-         lotsizeorarea = map(lotsizeorarea_list, sum),
-         lotsizesquarefeet = map(lotsizesquarefeet_list, sum),
-         buildingarea = map(buildingarea_list, sum),
+         lotsize_sf_sum = map(lotsize_sf_list, function(x) sum(x, na.rm = TRUE)),
+         buildingarea = map(buildingarea_list, function(x) sum(x, na.rm = TRUE)),
          countylandusedescription = map(countylandusedescription_list, Mode),
          residential = map(residential_list, max),
          category = map(category_list, Mode),
          category_detail = map(category_detail_list, Mode),
-         yearbuilt = map(yearbuilt_list, max),
+         yearbuilt = map(yearbuilt_list, function(x) max(x, na.rm = TRUE)),
          long = map(long_list, median),
          lat = map(lat_list, median))
+
+
 ```
 
 #### Lot size
@@ -531,7 +539,7 @@ weird <- tibble(propaddress = c( "1330 S FAIR ST", "1633 N COLONIAL TER", "1117 
 weird1 <- nested %>% 
   filter(propaddress %in% weird$propaddress) %>%
   left_join(weird, by = "propaddress") %>% 
-  select(instance, propaddress, nprops, lotsizesquarefeet_list, lotsizesquarefeet) %>% 
+  select(instance, propaddress, nprops, lotsize_sf_list, lotsize_sf) %>% 
   arrange(instance)
 
 knitr::kable(weird1)
@@ -545,47 +553,28 @@ knitr::kable(weird1)
 - In the fifth instance, we need to replace the lot size of 0 with `NA`, so future operations will also return `NA`. 
 
 
-First- look at the distribution of lot sizes. We are looking for two things: outliers that indicate that `sum()` was not the right operation- and if there is any obvious cut off point where we can stop using `sum()` and switch to `Mode()`
-
-```{r lot-hist}
-
-ggplot(data = currentjur_cat2, mapping = aes(x = lotsize_sf)) +
-  geom_histogram()
-
-```
-
-There are big variations by property type.
-```{r lot-facet}
-
-ggplot(data = currentjur_cat2, mapping = aes(x = lotsize_sf)) +
-  geom_histogram() +
-  facet_grid(~category)
-
-```
-
-Based on the values in the distributions, and trends observed from apartment building lot sizes (which are recorded with one observation per building), we create the following framework as a cut of for the switch from `sum()` to `Mode()`.
-We can use the difference between the number of unique elements in the `lotsizesquarefeet_list` vector to determine which operation to use. 
+First, filter out all the observations where the function is known. Then, re-examine the remaining observations.
+There are a few variables needed:
+1. The number of unique observations in the `lotsize_sf_list` nested list
+2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)
 
 ``` {r lot-fun}
-get_lot_size <- function(dataset = nested) {
-  
-  newvars <- nested %>% 
-    select(propaddress, nprops, lotsizesquarefeet_list, 
-           buildingarea_list, buildingarea) %>% 
-    mutate(nprops = as.integer(nprops),
-           unqlotsize = as.integer(map(lotsizesquarefeet_list, 
-                            function(x) length(unique(x)))),
-           unqbuildingarea = map(buildingarea_list, 
-                            function(x) length(unique(x))),
-           lot_mode = map(lotsizesquarefeet_list, Mode),
-           lot_sum = as.integer(map(lotsizesquarefeet_list, sum)),
-           ba_mode = map(buildingarea_list, Mode),
-           ba_sum = map(buildingarea_list, sum),
-           lot_alwayssum = ifelse(unqlotsize == nprops, 1, 0),
-           ba_alwayssum = ifelse(unqbuildingarea == nprops, 1, 0))
-    
-}
+nested1 <- nested %>% 
+  mutate(nprops = as.integer(nprops),
+         lotsize_sf_sum = as.integer(lotsize_sf_sum),
+         unique_lots = map(lotsize_sf_list, function(x) length(unique(x))),
+         lsfirst = map(lotsize_sf_list, function(x) x[1])) %>% 
+  filter(lotsize_sf_sum != 0)
 
+always_sum <- nested1 %>% 
+  filter(nprops == unique_lots)
+
+always_first <- nested1 %>% 
+  filter(unique_lots == 1)
+
+everything_else <- nested1 %>% 
+  filter(!propaddress %in% always_sum$propaddress,
+         !propaddress %in% always_first$propaddress)
 ```
 
 
