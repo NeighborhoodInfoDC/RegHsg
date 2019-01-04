@@ -399,7 +399,9 @@ sapt <- singles %>%
 sapt1 <- singles %>% 
   filter(category_detail == "apartment") %>% 
   select(propaddress, numberofunits, 
-         lotsizeorarea, lotsizesquarefeet)
+         lotsizeorarea, lotsizesquarefeet,
+         category, category_detail, countylandusedescription)
+
 
 
 # filling values ----------------------------------------------------------

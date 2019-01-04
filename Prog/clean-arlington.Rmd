@@ -81,6 +81,7 @@ In order to complete the vacant land and soft site analysis, we will need to bre
 1. residential: 1 for residential, 0 for other
 2. category: categories are sf, mf, commercial, office, and vacant.
 3. category_detail: this will vary by jurisdiction, but  includes the most detail possible to generalize from the county land use codes.
+4. building_type: this indicates the building type for multifamily parcels (condos and apartments)
 
 Export county land use codes for manual classification
 ```{r export-landuse}
@@ -95,7 +96,9 @@ if (!file.exists(paste0("../Data/", filepath, "-county-land-use.csv"))) {
 
 ```
 
-### Create variables 
+Note: Condos that have their own inidividual addresses are considered single-family. Once we determine which properties have unique addresses, the `category` and `category_detail` will be adjusted to "SF" and "SF attached" respectively. 
+
+### Create categorization variables
 
 We use `ifelse()` and `case_when()` to create the three new variables based on the county land use codes.
 
@@ -283,7 +286,33 @@ currentjur_cat <- currentjur %>%
            countylandusedescription %in%
              c("VACANT RESIDENTIAL") ~ "vacant residential",
            countylandusedescription %in%
-             c("RESIDENTIAL COST-VAL - VAC/SF & TW") ~ "vacant sf")
+             c("RESIDENTIAL COST-VAL - VAC/SF & TW") ~ "vacant sf"),
+         building_type = case_when(
+           countylandusedescription %in%
+             c("APARTMENT - GARDEN",
+               "SALES APPR CONDO/GARDEN") ~ "garden",
+           countylandusedescription %in%
+             c("APARTMENT - HIGH-RISE",
+               "SALES APPR CONDO/HIGH RISE") ~ "high-rise",
+           countylandusedescription %in%
+             c("SALES APPR CONDO/MID RISE",
+               "APARTMENT - MID-RISE") ~ "mid-rise",
+           countylandusedescription %in%
+             c("APARTMENT - PARKING") ~ "parking",
+           countylandusedescription %in%
+             c("SALES APPR CONDO/STACKED") ~ "stacked",
+           countylandusedescription %in%
+             c("SALES APPR CONDO/CO-OP") ~ "co-op",
+           countylandusedescription %in%
+             c("RESIDENTIAL COST-VAL - DUPLEX") ~ "duplex",
+           countylandusedescription %in%
+             c("AFFORDABLE DWELLING UNIT",
+               "COMMUNITY BENEFIT UNIT",
+               "MULTI-FAM IMPR/NO SITE PLAN",
+               "MULTI-FAM IMPR/SITE PLAN",
+               "NOT VALUED CONDO HOA",
+               "SFD - APT ZONED/NO SITE PLAN",
+               "SFD - APT ZONED/SITE PLAN") ~ "other")
          )
 ```
 
@@ -307,11 +336,60 @@ count(currentjur_cat, is.na(category))
 count(currentjur_cat, category_detail)
 count(currentjur_cat, is.na(category_detail))
 ```
+##### building_type
+Here, we expect NAs since `building_type` is only for MF properties- but we should have the same number of non-missing values as we do MF observations
+```{r bt-check}
+sum(!is.na(currentjur_cat$building_type))
+nrow(filter(currentjur_cat, category == "mf"))
+```
+
+### Recreate lot size
+There are errors in the different Black Knight lot size variables that make it impossible to compare lot size when reported in acres and square feet. Here, we create two new variables, `lotsize_acres` and `lotsize_sf` that standardize the unit of measurement. These variables will also convert values of 0 to `NA`, which will simplify calculations down the line.
+```{r count}
+count(currentjur_cat, lotsizeareaunit)
+```
+
+```{r lot}
+currentjur_cat <- currentjur_cat %>% 
+  mutate(lotsize_acres = case_when(lotsizeareaunit == "AC" ~ lotsizeorarea ,
+                                   lotsizeareaunit == "SF" ~ lotsizeorarea / 43560),
+         lotsize_sf = lotsize_acres * 43560) %>% 
+  mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA))
+
+```
 
 ## Collapsing properties
 Next, we have to ensure that there is only one observation per address in the dataset. 
 
+### Preserving parcel numbers
+Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.
+
+```{r parcel}
+currentjur_cat <- currentjur_cat %>% 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6))
+
+```
+
+We can do a quick check to make sure that there are no properties that have the same address but different parcel IDs by seeing if the number of rows are the same when we group by address and parcel ID, vs. just grouping by address.
+
+```{r check-parcel}
+currentjur_cat %>% 
+  filter(residential == 1) %>% 
+  group_by(propaddress) %>% 
+  count() %>% 
+  nrow()
+
+currentjur_cat %>% 
+  filter(residential == 1) %>% 
+  group_by(propaddress, parcel_address) %>% 
+  count() %>% 
+  nrow()
+
+```
+
+### House number cleaning 
 There are a number of properties that have numbers or symbols in their house numbers that prevent a collapse. This next step removes those characters so the collapse is clean.
+This will also recategorize properties that have a missing house number as properties that have a missing address. This is important for the collapse because it could cause us to combine two observations that would otherwise be seperate.
 
 ```{r letters}
 currentjur_cat2 <- currentjur_cat %>% 
@@ -324,8 +402,7 @@ currentjur_cat2 <- currentjur_cat %>%
                                     propstreetname, 
                                     propstreetsuffix,
                                     sep = " "),
-                              propaddress),
-         propaddress = ifelse(is.na(propaddress), oldadd, propaddress))
+                              propaddress))
 ```
 
  Compare the first 20 addresses to check
@@ -337,20 +414,14 @@ currentjur_cat2 %>%
 
 ```
 
-An additional check to make sure no new NAs in the address were introduced
+After this change, the number of NAs in the address variable should be the same as the number of observations that previously had either a missing address, missing house number, or both.
 ```{r letters-check2}
-if (sum(is.na(currentjur_cat2$propaddress)) > 
-    sum(is.na(currentjur_cat$propaddress))) {
-  warning("additional NAs are introduced") 
-  } else if (sum(is.na(currentjur_cat2$propaddress)) < 
-             sum(is.na(currentjur_cat$propaddress))) {
-  warning("less NAs than original")
-    } else if (sum(is.na(currentjur_cat2$propaddress)) == 
-               sum(is.na(currentjur_cat$propaddress))) {
-      print("no additional NAs")
-    }
+sum(is.na(currentjur_cat2$propaddress))
+nrow(filter(currentjur_cat, 
+            is.na(propaddress) | is.na(prophouseno)))
 ```
 
+### Address break out
 In order to do the collapse, we first identify addresses with more than one observation, and filter out those with a missing house number or address to avoid an improper collapse. Then, run a quick check to make sure all the records are still accounted for.
 
 ```{r sep}
@@ -362,6 +433,7 @@ check_classification(currentjur_cat2)
 
 For addresses that have some records with missing zoning, but others that have a zoning designation: we need to fill the NAs with the appropriate zoning code. `group_by()` means that zoning codes will not be passed on to observations with a different address, and using `fill()` in both directions means that the NAs will be filled regardless of their position.
 
+### Multiple addresses
 ```{r fill}
 multiples <- multiples %>% 
   group_by(propaddress) %>% 
@@ -435,7 +507,7 @@ nested <- multiples %>%
          lat = map(lat_list, median))
 ```
 
-### Lot size
+#### Lot size
 
 Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show three cases that we attempt to solve for with the `get_lot_size()` function
 
@@ -484,7 +556,7 @@ get_lot_size <- function(dataset = nested) {
 ```
 
 
-### Ties
+#### Ties
 
 There are 62 instances where there is a tie in the zoning code- examples below.
 ``` {r ties}
@@ -518,3 +590,24 @@ if (!file.exists(paste0("../Data/", filepath, "-zoning-ties.csv"))) {
 
 ```
 
+### Single addresses
+
+For single addresses, we have to reclassify condos that have a unique observation as single-family structures, since condos are listed seperately for each unit
+
+```{r singles-count}
+count(singles, category_detail)
+
+singles <- singles %>% 
+  mutate(category = ifelse(category_detail == "condo",
+                           "sf",
+                           category),
+         category_detail = ifelse(category_detail == "condo",
+                                  "sf attached",
+                                  category_detail))
+```
+
+## Recombine and save data
+
+```{r combine}
+
+```
