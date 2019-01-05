@@ -33,8 +33,11 @@
 %DCData_lib( RegHsg)
 %DCData_lib( Ipums)
 
-data COGS (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
-set Ipums.Acs_2012_16_dc Ipums.Acs_2012_16_md Ipums.Acs_2012_16_va;
+%macro popbyrace(year);
+
+
+data COGS_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
+set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
@@ -48,8 +51,6 @@ set Ipums.Acs_2012_16_dc Ipums.Acs_2012_16_md Ipums.Acs_2012_16_va;
   if upuma in ("5151255") then Jurisdiction =10; 
 run;
 
-proc contents data=COGSarea;
-run;
 
 proc format;
   value race
@@ -83,11 +84,11 @@ proc format;
     18= "85+ years old";
 run;
 
-data Race;
 
-  set COGS
-    (keep= race hispan age hhincome pernum gq Jurisdiction hhwt year serial numprec race0 hispan0 age0
-     where=(pernum=1 and gq in (1,2) ));
+data Race_&year.;
+
+set COGS_&year.(where=(gq in (1,2) ));
+keep race hispan age hhincome pernum gq Jurisdiction hhwt perwt year serial numprec race0 hispan0 age0 totpop_&year.;
 
  %Hud_inc_RegHsg( hhinc=hhincome, hhsize=numprec )
   label
@@ -119,23 +120,43 @@ else if 75<=age<80 then age0=16;
 else if 80<=age<85 then age0=17;
 else if age>=85 then age0=18;
 
-
-tothh = 1;
+totpop_&year. = 1;
 run;
 
-proc freq data=Race;
+proc freq data=Race_&year.;
   tables race0* hispan0 * age0  / list missing;
 run;
-proc summary data = Race ;
+
+
+proc summary data = Race_&year. ;
 	class age0 race0 hispan0;
-	var tothh;
-	weight hhwt;
-	output out = agegroup_race_ethnicity sum=;
+	var totpop_&year.;
+	weight perwt;
+	output out = agegroup_race_&year.(where=(_TYPE_=7)) sum=;
 	format race0 race. hispan0 hispan. age0 agegroup.;
 run;
 
-proc export data = agegroup_race_ethnicity
-   outfile="&_dcdata_default_path\RegHsg\Prog\owner_by_race_age_1216.csv"
+%mend popbyrace;
+
+%popbyrace(2008);
+%popbyrace(2009);
+%popbyrace(2010);
+%popbyrace(2011);
+%popbyrace(2012);
+%popbyrace(2013);
+%popbyrace(2014);
+%popbyrace(2015);
+%popbyrace(2016);
+%popbyrace(2017);
+
+data pop_race_ethnicity;
+merge agegroup_race_2008 agegroup_race_2009 agegroup_race_2010 agegroup_race_2011 agegroup_race_2012 agegroup_race_2013 agegroup_race_2014 agegroup_race_2015 agegroup_race_2016 agegroup_race_2017;
+by age0 race0 hispan0;
+keep age0 race0 hispan0 totpop_2008 totpop_2009 totpop_2010 totpop_2011 totpop_2012 totpop_2013 totpop_2014 totpop_2015 totpop_2016 totpop_2017;
+run;
+
+proc export data = pop_race_ethnicity
+   outfile="&_dcdata_default_path\RegHsg\Prog\pop_race_ethnicity_0816.csv"
    dbms=csv
    replace;
 run;
