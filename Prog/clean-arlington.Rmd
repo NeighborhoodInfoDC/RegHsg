@@ -32,7 +32,7 @@ Environment: Local Windows session (desktop)
 ```{r rmarkdown-setup, echo = FALSE}
 knitr::opts_chunk$set(warning = FALSE)
 knitr::opts_chunk$set(message = FALSE)
-knitr::opts_chunk$set(eval = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
 ```
 
 ## Description
@@ -100,7 +100,7 @@ if (!file.exists(paste0("../Data/", filepath, "-county-land-use.csv"))) {
 
 ```
 
-**Note:** Condos that have their own inidividual addresses are considered single-family. Once we determine which properties have unique addresses, the `category` and `category_detail` will be adjusted to "SF" and "SF attached" respectively. 
+**Note:** Condos that have their own individual addresses are considered single-family. Once we determine which properties have unique addresses, the `category` and `category_detail` will be adjusted to "SF" and "SF attached" respectively. 
 
 ### Create categorization variables
 
@@ -512,7 +512,7 @@ nested <- multiples %>%
                     buildingarea, countylandusedescription,
                     residential, category, category_detail,
                     yearbuilt, long, lat), list) %>% 
-  rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
+  rename_at(vars(-propaddress, -parcel_address), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
          lotsize_sf_sum = map(lotsize_sf_list, function(x) sum(x, na.rm = TRUE)),
@@ -539,7 +539,7 @@ weird <- tibble(propaddress = c( "1330 S FAIR ST", "1633 N COLONIAL TER", "1117 
 weird1 <- nested %>% 
   filter(propaddress %in% weird$propaddress) %>%
   left_join(weird, by = "propaddress") %>% 
-  select(instance, propaddress, nprops, lotsize_sf_list, lotsize_sf) %>% 
+  select(instance, propaddress, nprops, lotsize_sf_list, lotsize_sf_sum) %>% 
   arrange(instance)
 
 knitr::kable(weird1)
@@ -558,31 +558,78 @@ There are a few variables needed:
 1. The number of unique observations in the `lotsize_sf_list` nested list
 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)
 
-``` {r lot-fun}
+``` {r lot-vars}
 nested1 <- nested %>% 
   mutate(nprops = as.integer(nprops),
          lotsize_sf_sum = as.integer(lotsize_sf_sum),
          unique_lots = map(lotsize_sf_list, function(x) length(unique(x))),
-         lsfirst = map(lotsize_sf_list, function(x) x[1])) %>% 
-  filter(lotsize_sf_sum != 0)
-
-always_sum <- nested1 %>% 
-  filter(nprops == unique_lots)
-
-always_first <- nested1 %>% 
-  filter(unique_lots == 1)
-
-everything_else <- nested1 %>% 
-  filter(!propaddress %in% always_sum$propaddress,
-         !propaddress %in% always_first$propaddress)
+         lsfirst = map(lotsize_sf_list, function(x) x[1]),
+         lsmode = map(lotsize_sf_list, Mode)) %>% 
+  ungroup()
 ```
 
+Based on these variables, we can identify when`sum()` is definitely the right function (when the number of unique values in `lotsize_sf_list` is the same as `nprops`), and when we want to take the first argument is definitely the right function (there is only one unique value in `lotsize_sf_list`).
+
+``` {r fx-choice}
+nested1 <- nested1 %>% 
+  mutate(fxn = case_when(
+    lotsize_sf_sum < 1 ~ "missing",
+    nprops == unique_lots ~ "sum",
+    unique_lots == 1 ~ "first",
+    TRUE ~ "other"
+  ))
+
+nested1 %>% count(fxn)
+
+nested_done <- nested1 %>% 
+  filter(fxn != "other")
+
+```
+
+Based on examining the 77 addressess with different criteria, we develop these assumptions:
+1. Properties with more than 500 units are majority missing, and should be marked missing.
+2. If the mode is > 8,000 SF, we will use the mode.
+3. For all others, we use the sum.
+
+First, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
+
+``` {r fx-choice2}
+nested_other <- nested1 %>% 
+  filter(fxn == "other") %>% 
+  mutate(lsmode_num = ifelse(map(lsmode, length) > 1, NA, lsmode),
+         lsmode_num = as.integer(lsmode_num),
+         fxn = case_when(
+            nprops > 500 ~ "missing",
+            lsmode_num > 8000 ~ "mode",
+            TRUE ~ "sum"
+  ))
+
+count(nested_other, fxn)
+```
+
+Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot side.
+
+```{r combine}
+
+nested_all <- bind_rows(nested_done, nested_other) %>% 
+  mutate_at(vars(lotsize_sf_sum, lsfirst, lsmode_num), as.double) %>% 
+  mutate(lotsize_sf_final = 
+           case_when(fxn == "first" ~ lsfirst,
+                     fxn == "sum" ~ lotsize_sf_sum,
+                     fxn == "mode" ~ lsmode_num))
+```
+
+The number of NAs should be the same as the number of those with the designation "missing"
+```{r ls-check}
+count(nested_all, fxn == "missing")
+count(nested_all, is.na(lotsize_sf_final))
+```
 
 #### Ties
 
 There are 62 instances where there is a tie in the zoning code- examples below.
 ``` {r ties}
-ties <- nested %>% 
+ties <- nested_all %>% 
   mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
   filter(ties_z == 1) %>% 
   mutate(z1 = map(zoning, function(x) x[1]),
@@ -600,7 +647,7 @@ ties %>%
   select(propaddress, z1, z2) %>% 
   head(5)
 ```
-These will likely have to be figured out manually. Write out the file to determine how to break the ties.
+These will likely have to be figured out manually. Write out the file to determine how to break the ties. For now, we exclude these 62 properties from the final dataset.
 
 ``` {r write-ties}
 if (!file.exists(paste0("../Data/", filepath, "-zoning-ties.csv"))) { 
@@ -610,6 +657,12 @@ if (!file.exists(paste0("../Data/", filepath, "-zoning-ties.csv"))) {
   warning("ties file already exists")
 }
 
+
+nested_final <- nested_all %>% 
+  mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
+  filter(ties_z != 1) %>% 
+  select(-ties_z)
+  
 ```
 
 ### Single addresses
@@ -633,6 +686,35 @@ singles <- singles %>%
 
 ## Recombine and save data
 
-```{r combine}
+The final outputted dataset should not contain nested lists, but should capture all other relevant information from single and multiple address properties.
+First, select approptiate variables from the singles file. Then, re-introduce rename and transform variables from multiple addressess and bind dataframes.
+
+```{r final}
+singles_f <- singles %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin, 
+         propaddress, propcity, propstate, propzip,
+         propunitno, prophouseno, propstreetname, propstreetsuffix,
+         lat, long, tract, owneroccupiedresidential,
+         countylandusedescription, zoning, buildingarea, noofbuildings,
+         noofstories, numberofunits, yearbuilt,
+         lotsize_acres, lotsize_sf, address_type,
+         category, category_detail, residential, building_type)
+
+multiples_f <- nested_final %>% 
+  select(-ends_with("_list"), -lsmode, -lsfirst, -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %>% 
+  mutate_at(vars(countylandusedescription, zoning,
+                 category, category_detail, yearbuilt),
+            as.character) %>% 
+  mutate_at(vars(buildingarea, lat, long, residential), as.double) %>% 
+  rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops) %>% 
+  mutate(lotsize_acres = lotsize_sf / 43560)
+
+finaljur <- bind_rows(singles_f, multiples_f) %>% 
+  fill(county_fips) %>% 
+  fill(county_name)
+
+write_csv(finaljur, 
+          paste0("../Data/", filepath, "cleaned-data.csv"))
 
 ```
