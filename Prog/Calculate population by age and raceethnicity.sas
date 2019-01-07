@@ -1,13 +1,13 @@
 /**************************************************************************
- Program:  Housing_needs_baseline.sas
+ Program:  Calculate population by age and raceethnicity.sas
  Library:  RegHsg
  Project:  NeighborhoodInfo DC
- Author:   Yipeng Su adapted from P. Tatian 
+ Author:   Yipeng Su
  Created:  11/03/14
  Version:  SAS 9.2
  Environment:  Local Windows session (desktop)
  
- Description:  Produce numbers for housing needs analysis from 2016
+ Description:  Produce detailed popualtion by age group, race ethnicity and jurisciation from 2008-2017
  ACS IPUMS data for the COGS region:
  DC (11001)
  Charles Couty(24017)
@@ -32,25 +32,6 @@
 ** Define libraries **;
 %DCData_lib( RegHsg)
 %DCData_lib( Ipums)
-
-%macro popbyrace(year);
-
-
-data COGS_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
-set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
-
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
-  if upuma in ("2401600") then Jurisdiction =2;
-  if upuma in ("2400301", "2400302") then Jurisdiction =3;
-  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
-  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
-  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
-  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
-  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
-  if upuma in ("5151255") then Jurisdiction =10; 
-run;
-
 
 proc format;
   value race
@@ -82,12 +63,42 @@ proc format;
     16= "75-79 years old" 
     17 = "80-84 years old"
     18= "85+ years old";
+
+	value Jurisdiction
+    1= "DC"
+	2= "Charles County"
+	3= "Frederick County "
+	4="Montgomery County"
+	5="Prince Georges "
+	6="Arlington"
+	7="Fairfax, Fairfax city and Falls Church"
+	8="Loudoun"
+	9="Prince William, Manassas and Manassas Park"
+    10="Alexandria";
+run;
+
+%macro popbyrace(year);
+
+
+data COGS_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
+set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
+
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400301", "2400302") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
+  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
+  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
+  if upuma in ("5151255") then Jurisdiction =10; 
 run;
 
 
 data Race_&year.;
 
-set COGS_&year.(where=(gq in (1,2) ));
+set COGS_&year.;
 keep race hispan age hhincome pernum gq Jurisdiction hhwt perwt year serial numprec race0 hispan0 age0 totpop_&year.;
 
  %Hud_inc_RegHsg( hhinc=hhincome, hhsize=numprec )
@@ -129,11 +140,11 @@ run;
 
 
 proc summary data = Race_&year. ;
-	class age0 race0 hispan0;
+	class Jurisdiction age0 race0 hispan0;
 	var totpop_&year.;
 	weight perwt;
-	output out = agegroup_race_&year.(where=(_TYPE_=7)) sum=;
-	format race0 race. hispan0 hispan. age0 agegroup.;
+	output out = agegroup_race_&year. (where=(_TYPE_=15)) sum=;
+	format race0 race. hispan0 hispan. age0 agegroup. Jurisdiction Jurisdiction.;
 run;
 
 %mend popbyrace;
@@ -156,7 +167,7 @@ keep age0 race0 hispan0 totpop_2008 totpop_2009 totpop_2010 totpop_2011 totpop_2
 run;
 
 proc export data = pop_race_ethnicity
-   outfile="&_dcdata_default_path\RegHsg\Prog\pop_race_ethnicity_0816.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\pop_race_ethnicity_0817.csv"
    dbms=csv
    replace;
 run;
