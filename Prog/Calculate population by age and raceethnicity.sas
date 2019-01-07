@@ -43,6 +43,12 @@ proc format;
      .n = 'Not available'
     0 = 'Not Hispanic'
     1 = 'Hispanic';
+ value race1
+   .n = 'Not available'
+    1 = 'White non-Hispanic'
+    2 = 'Black non-Hispanic'
+    3 = "Hispanic ";
+	4 = "All other non-Hispanic ";
   value agegroup
      .n = 'Not available'
     1= "0-5 years old"
@@ -99,18 +105,29 @@ run;
 data Race_&year.;
 
 set COGS_&year.;
-keep race hispan age hhincome pernum gq Jurisdiction hhwt perwt year serial numprec race0 hispan0 age0 totpop_&year.;
+keep race hispan age hhincome pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_&year.;
 
  %Hud_inc_RegHsg( hhinc=hhincome, hhsize=numprec )
   label
   hud_inc = 'HUD income category for household'; 
 
+  /*
 if race= 1 then race0=1; 
 else if race=2 then race0=2;
 else race0=3;
 
 if hispan=0 then hispan0=0;
 else hispan0=1;
+*/
+if hispan=0 then do;
+
+ if race=1 then race1=1;
+ if race=2 then race1=2;
+ else race1=4;
+end;
+
+if hispan=1 then race1=3;
+
 
 if 0<=age<5 then age0=1;
 else if 5<=age<10 then age0=2;
@@ -135,20 +152,21 @@ totpop_&year. = 1;
 run;
 
 proc freq data=Race_&year.;
-  tables race0* hispan0 * age0  / list missing;
+  tables race1 * age0  / list missing;
 run;
 
-
 proc summary data = Race_&year. ;
-	class Jurisdiction age0 race0 hispan0;
+	class Jurisdiction age0 race1;
 	var totpop_&year.;
 	weight perwt;
-	output out = agegroup_race_&year. (where=(_TYPE_=15)) sum=;
-	format race0 race. hispan0 hispan. age0 agegroup. Jurisdiction Jurisdiction.;
+	output out = agegroup_race_&year. (where=(_TYPE_=7)) sum=;
+	format race1 race1. age0 agegroup. Jurisdiction Jurisdiction.;
 run;
 
 %mend popbyrace;
-
+proc univariate data=race_2008;
+var race1;
+run;
 %popbyrace(2008);
 %popbyrace(2009);
 %popbyrace(2010);
@@ -159,11 +177,13 @@ run;
 %popbyrace(2015);
 %popbyrace(2016);
 %popbyrace(2017);
-
+proc sort data=Race_&year.;
+by Jurisdiction age0 race1;
+run;
 data pop_race_ethnicity;
 merge agegroup_race_2008 agegroup_race_2009 agegroup_race_2010 agegroup_race_2011 agegroup_race_2012 agegroup_race_2013 agegroup_race_2014 agegroup_race_2015 agegroup_race_2016 agegroup_race_2017;
-by age0 race0 hispan0;
-keep age0 race0 hispan0 totpop_2008 totpop_2009 totpop_2010 totpop_2011 totpop_2012 totpop_2013 totpop_2014 totpop_2015 totpop_2016 totpop_2017;
+by Jurisdiction age0 race1;
+keep Jurisdiction age0 race1 totpop_2008 totpop_2009 totpop_2010 totpop_2011 totpop_2012 totpop_2013 totpop_2014 totpop_2015 totpop_2016 totpop_2017;
 run;
 
 proc export data = pop_race_ethnicity
