@@ -264,6 +264,17 @@ read_bk <- function(datafile) {
       left_join(county_names, by = "county_fips") %>% 
       select(county_fips, county_name, everything())
     
+  # add land use codes
+    codes <- read_csv(
+      "Doc/assessment_landuse.csv",
+      col_names = c("standardizedlandusecode", "codedescription"),
+      col_types = cols(standardizedlandusecode = col_character(),
+                       codedescription = col_character())
+      )
+    
+    cog_assessment <- cog_assessment %>% 
+      left_join(codes, by = "standardizedlandusecode")
+
   # return dataset  
     cog_assessment
 }
@@ -532,6 +543,17 @@ read_bk_rmd <- function(datafile) {
     rename(county_fips = fipscodestatecounty) %>% 
     left_join(county_names, by = "county_fips") %>% 
     select(county_fips, county_name, everything())
+  
+  # add land use codes
+  codes <- read_csv(
+    "../Doc/assessment_landuse.csv",
+    col_names = c("standardizedlandusecode", "codedescription"),
+    col_types = cols(standardizedlandusecode = col_character(),
+                     codedescription = col_character())
+  )
+  
+  cog_assessment <- cog_assessment %>% 
+    left_join(codes, by = "standardizedlandusecode")
   
   # return dataset  
   cog_assessment

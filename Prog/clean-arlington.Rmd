@@ -416,7 +416,8 @@ currentjur_cat2 <- currentjur_cat %>%
   mutate(house_letter = ifelse(str_detect(prophouseno, "[:alpha:]") == 1, 1, 0),
          oldadd = propaddress,
          new_houseno = ifelse(house_letter == 1,
-                              str_replace(prophouseno, "[:alpha:]", ""), prophouseno),
+                              str_replace(prophouseno, "[:alpha:]", ""), 
+                              prophouseno),
          propaddress = ifelse(house_letter == 1, 
                               paste(str_replace_all(new_houseno, "-", ""),
                                     propstreetname, 
@@ -702,7 +703,8 @@ singles_f <- singles %>%
          category, category_detail, residential, building_type)
 
 multiples_f <- nested_final %>% 
-  select(-ends_with("_list"), -lsmode, -lsfirst, -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %>% 
+  select(-ends_with("_list"), -lsmode, -lsfirst, 
+         -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %>% 
   mutate_at(vars(countylandusedescription, zoning,
                  category, category_detail, yearbuilt),
             as.character) %>% 

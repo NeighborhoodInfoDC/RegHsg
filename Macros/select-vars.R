@@ -2,7 +2,7 @@
 select_vars <- function(dataset) {
 
   dataset %>% select(county_fips, county_name,
-         standardizedlandusecode, codedescription,
+         standardizedlandusecode,
          bkfsinternalpid,
          assessorsparcelnumberapnpin,
          duplicateapn,
