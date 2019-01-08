@@ -279,4 +279,14 @@ proc export data = pop_race_ethnicity
    replace;
 run;
 
+proc summary data=pop_race_ethnicity;
+class Jurisdiction age0;
+var totpop_2008 totpop_2009 totpop_2010 totpop_2011 totpop_2012 totpop_2013 totpop_2014 totpop_2015 totpop_2016 totpop_2017;
+output out = totalpop sum=;
+run;
 
+proc export data = totalpop
+   outfile="&_dcdata_default_path\RegHsg\Prog\pop_race_ethnicity_total_0817.csv"
+   dbms=csv
+   replace;
+run;
