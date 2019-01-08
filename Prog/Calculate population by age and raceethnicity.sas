@@ -273,6 +273,10 @@ by Jurisdiction age0 race1;
 keep Jurisdiction age0 race1 totpop_2008 totpop_2009 totpop_2010 totpop_2011 totpop_2012 totpop_2013 totpop_2014 totpop_2015 totpop_2016 totpop_2017;
 run;
 
+proc sort data=pop_race_ethnicity;
+by Jurisdiction race1 age0;
+run;
+
 proc export data = pop_race_ethnicity
    outfile="&_dcdata_default_path\RegHsg\Prog\pop_race_ethnicity_jurisdiction_0817.csv"
    dbms=csv
