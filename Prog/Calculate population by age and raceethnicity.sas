@@ -71,16 +71,16 @@ proc format;
     18= "85+ years old";
 
 	value Jurisdiction
-    1= "DC"
+    1= "District of Columbia"
 	2= "Charles County"
 	3= "Frederick County "
 	4="Montgomery County"
-	5="Prince Georges "
-	6="Arlington"
-	7="Fairfax, Fairfax city and Falls Church"
-	8="Loudoun"
-	9="Prince William, Manassas and Manassas Park"
-    10="Alexandria";
+	5="Prince George's County"
+	6="Arlington County"
+	7="Fairfax, Fairfax City, and Falls Church"
+	8="Loudoun County"
+	9="Prince William, Manassas, and Manassas Park"
+    10="City of Alexandria";
 run;
 
 %macro popbyrace(year);
