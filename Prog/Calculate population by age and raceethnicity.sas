@@ -126,7 +126,7 @@ if hispan=0 then do;
  else race1=4;
 end;
 
-if hispan=2 or hispan=3 or hispan=3 or hispan=4 then race1=3;
+if hispan in(1 2 3 4) then race1=3;
 
 
 if 0<=age<5 then age0=1;
@@ -220,7 +220,7 @@ if hispan=0 then do;
  else race1=4;
 end;
 
-if hispan=2 or hispan=3 or hispan=3 or hispan=4 then race1=3;
+if hispan in(1 2 3 4) then race1=3;
 
 
 if 0<=age<5 then age0=1;
