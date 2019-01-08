@@ -3,7 +3,7 @@
  Library:  RegHsg
  Project:  NeighborhoodInfo DC
  Author:   Yipeng Su
- Created:  11/03/14
+ Created:  1/1/19
  Version:  SAS 9.2
  Environment:  Local Windows session (desktop)
  
@@ -272,6 +272,13 @@ merge agegroup_race_2008 agegroup_race_2009 agegroup_race_2010 agegroup_race_201
 by Jurisdiction age0 race1;
 keep Jurisdiction age0 race1 totpop_2008 totpop_2009 totpop_2010 totpop_2011 totpop_2012 totpop_2013 totpop_2014 totpop_2015 totpop_2016 totpop_2017;
 run;
+data pop_race_ethnicity;
+set pop_race_ethnicity;
+if Jurisdiction=8 then totpop_2008=.n;
+if Jurisdiction=8 then totpop_2009=.n;
+if Jurisdiction=8 then totpop_2010=.n;
+if Jurisdiction=8 then totpop_2011=.n;
+run; 
 
 proc sort data=pop_race_ethnicity;
 by Jurisdiction race1 age0;
