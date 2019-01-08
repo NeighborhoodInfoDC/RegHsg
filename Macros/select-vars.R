@@ -1,4 +1,14 @@
 
+#' Select Black Knight variables
+#'
+#' @description This function selects a subset of variables that will be used
+#' in the Regional Housing Framework analyses.
+#' 
+#' @param dataset dataframe of Black Knight data
+#'
+#' @return dataframe with select variables
+#' @export
+#'
 select_vars <- function(dataset) {
 
   dataset %>% select(county_fips, county_name,
