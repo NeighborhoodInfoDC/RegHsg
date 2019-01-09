@@ -149,7 +149,7 @@ else if 25<=age<45 then agegroup=2;
 else if 45<=age<65 then agegroup=3;
 else if age>=65 then agegroup=4;
 
-totpop_&year. = 1;
+totpop_&year. = 0.2;
 run;
 
 proc freq data=Householddetail_&year.;
@@ -170,26 +170,26 @@ run;
 
 data fiveyeartotal;
 set Householddetail_2013 Householddetail_2014 Householddetail_2015 Householddetail_2016 Householddetail_2017;
-totalpop=1;
+totalpop=0.2;
 run;
 /*total COG*/
 proc sort data=fiveyeartotal;
-by year agegroup race1 incomecat;
+by agegroup race1 incomecat;
 run;
 
 proc summary data=fiveyeartotal;
-class year agegroup race1 incomecat;
+class agegroup race1 incomecat;
 	var totalpop;
 	weight hhwt;
 	output out = Householderbreakdown(where=(_TYPE_=7)) sum=;
 	format race1 racenew. agegroup agegroupnew. ;
 run;
 proc sort data=Householderbreakdown;
-by year agegroup race1;
+by agegroup race1;
 run;
 
 proc transpose data=Householderbreakdown out=distribution;
-by year agegroup race1;
+by agegroup race1;
 id incomecat;
 var totalpop;
 run;
@@ -212,22 +212,22 @@ proc export data = distribution_2
    replace;
 run;
 proc sort data=fiveyeartotal;
-by Jurisdiction year agegroup race1 incomecat;
+by Jurisdiction agegroup race1 incomecat;
 run;
 /*by jurisdiction*/
 proc summary data=fiveyeartotal;
-class Jurisdiction year agegroup race1 incomecat;
+class Jurisdiction agegroup race1 incomecat;
 	var totalpop;
 	weight perwt;
 	output out = Householderbreakdown_COG(where=(_TYPE_=15)) sum=;
 	format race1 racenew. agegroup agegroupnew.;
 run;
 proc sort data=Householderbreakdown_COG;
-by Jurisdiction year agegroup race1 ;
+by Jurisdiction agegroup race1 ;
 run;
 
 proc transpose data=Householderbreakdown_COG out=COGdistribution;
-by Jurisdiction year agegroup race1 ;
+by Jurisdiction agegroup race1 ;
 id incomecat;
 var totalpop;
 run;
@@ -246,7 +246,7 @@ incomecat6=_6/denom ;
 incomecat7=_7/denom ;
 run;
 proc sort data= COGdistribution_3;
-by Jurisdiction year race1 agegroup;
+by Jurisdiction race1 agegroup;
 run;
 
 proc export data = COGdistribution_3
