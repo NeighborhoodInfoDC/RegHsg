@@ -149,7 +149,7 @@ else if 25<=age<45 then agegroup=2;
 else if 45<=age<65 then agegroup=3;
 else if age>=65 then agegroup=4;
 
-totpop_&year. = 0.2;
+totpop_&year. = 1;
 run;
 
 proc freq data=Householddetail_&year.;
@@ -220,7 +220,7 @@ class Jurisdiction agegroup race1 incomecat;
 	var totalpop;
 	weight perwt;
 	output out = Householderbreakdown_COG(where=(_TYPE_=15)) sum=;
-	format race1 racenew. agegroup agegroupnew.;
+	format race1 racenew. agegroup agegroupnew. Jurisdiction Jurisdiction.;
 run;
 proc sort data=Householderbreakdown_COG;
 by Jurisdiction agegroup race1 ;
