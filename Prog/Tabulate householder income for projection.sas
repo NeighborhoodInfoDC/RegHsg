@@ -1,5 +1,5 @@
 /**************************************************************************
- Program:  tabulate householder population for projection.sas
+ Program:  tabulate householder income for projection.sas
  Library:  RegHsg
  Project:  NeighborhoodInfo DC
  Author:   Yipeng Su
@@ -7,7 +7,7 @@
  Version:  SAS 9.2
  Environment:  Local Windows session (desktop)
  
- Description:  Produce detailed popualtion by age group, race ethnicity and jurisciation from 2008-2017
+ Description:  Produce detailed tabulation of household income distribution by holders' age group, race ethnicity and jurisciation from 2013-2017
  ACS IPUMS data for the COGS region:
  DC (11001)
  Charles Couty(24017)
@@ -127,13 +127,13 @@ keep race hispan age hhincome pernum relate gq Jurisdiction hhwt perwt year seri
   label
   hud_inc = 'HUD income category for household'; 
 
-if 0=<HHINCOME<=32600 then incomecat=1;
-else if 32600<HHINCOME<=54300 then incomecat=2;
-else if 54300<HHINCOME<=86880 then incomecat=3;
-else if 86880<HHINCOME<=108600 then incomecat=4;
-else if 108600<HHINCOME<=130320 then incomecat=5;
-else if 130320<HHINCOME<=217200 then incomecat=6;
-else if HHINCOME>217200 then incomecat=7;
+if 0=<HHINCOME<32600 then incomecat=1;
+else if 32600=<HHINCOME<54300 then incomecat=2;
+else if 54300=<HHINCOME<86880 then incomecat=3;
+else if 86880=<HHINCOME<108600 then incomecat=4;
+else if 108600=<HHINCOME<130320 then incomecat=5;
+else if 130320=<HHINCOME<217200 then incomecat=6;
+else if HHINCOME>=217200 then incomecat=7;
 
 if hispan=0 then do;
 
