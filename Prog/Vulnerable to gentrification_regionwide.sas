@@ -181,14 +181,14 @@ proc format;
   value signofrisk
    .n = 'No complete data'
     1 = 'Yes'
-    0 = 'No'
+    0 = 'No';
 run;
 
 /*signofrisk: 1: gentrifying and vulnerable now 2: gentrifying but not vulnerable now 3; not gentrified but vulnerable 3: not gentrified and not vulnerable*/
 data flag_population;
 set risk_gentrification;
 keep geo2010 county vulnerable demographicchange percentrenter_2016 percentwhite_2016 percentcollege_2016 avghhinc_2016 popwhitenonhispbridge_&_years. popwithrace_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. agghshldincome_&_years.  numhshlds_&_years. medianhomevalue_&_years. ;
-format vulnerable demographicchange signofrisk. ;
+format vulnerable signofrisk. demographicchange signofrisk. ;
 run;
 
 
@@ -233,7 +233,6 @@ proc export data = appreciationtracts
    replace;
 run;
 
-
 data completetypology;
 merge flag_population appreciationtracts;
 by geo2010;
@@ -244,3 +243,6 @@ proc export data = completetypology
    dbms=csv
    replace;
 run;
+
+/* need to import appreciated and accelerating tract flag to ArcGIS to finish the housing market change typoloy*/
+/* Then with the complete typology flag, we can either import the data back to SAS or just use excel to assign tracts to the 6 different categories*/
