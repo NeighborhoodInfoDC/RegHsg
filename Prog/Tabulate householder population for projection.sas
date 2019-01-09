@@ -112,7 +112,7 @@ run;
 
 data Householddetail_&year.;
 set Household_&year.;
-keep race hispan age hhincome pernum relate gq Jurisdiction hhwt perwt year serial numprec race1 age0 agegroup totpop_&year.;
+keep race hispan age hhincome pernum relate gq Jurisdiction hhwt perwt year serial numprec race1 agegroup totpop_&year.;
 
  %Hud_inc_RegHsg( hhinc=hhincome, hhsize=numprec )
   label
@@ -162,19 +162,28 @@ run;
 
 data fiveyeartotal;
 set Householddetail_2013 Householddetail_2014 Householddetail_2015 Householddetail_2016 Householddetail_2017;
-totalpop=0.2;
+totalpop=1;
 run;
 /*total COG*/
+
+proc sort data=fiveyeartotal;
+by year agegroup race1 relate;
+run;
+
 proc summary data=fiveyeartotal;
-class agegroup race1 relate;
+class year agegroup race1 relate;
 	var totalpop;
 	weight perwt;
-	output out = Householdbreakdown(where=(_TYPE_=7)) sum=;
+	output out = Householdbreakdown(where=(_TYPE_=15)) sum=;
 	format race1 racenew. agegroup agegroupnew.;
 run;
 
+proc sort data=Householdbreakdown;
+by year agegroup race1;
+run;
+
 proc transpose data=Householdbreakdown out=distribution;
-by agegroup race1;
+by year agegroup race1;
 id relate;
 var totalpop;
 run;
@@ -188,22 +197,29 @@ percenthouseholder=Head_Householder/denom ;
 run;
 
 proc export data = distribution_3
-   outfile="&_dcdata_default_path\RegHsg\Prog\Householdertab_total.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Householderratio_COG.csv"
    dbms=csv
    replace;
 run;
 
 /*by jurisdiction*/
+
+proc sort data=fiveyeartotal;
+by Jurisdiction year agegroup race1 relate;
+run;
 proc summary data=fiveyeartotal;
-class Jurisdiction agegroup race1 relate;
+class Jurisdiction year agegroup race1 relate;
 	var totalpop;
 	weight perwt;
 	output out = Householdbreakdown_COG(where=(_TYPE_=15)) sum=;
-	format race1 racenew. agegroup agegroupnew.;
+	format race1 racenew. agegroup agegroupnew. Jurisdiction Jurisdiction.;
+run;
+proc sort data=Householdbreakdown_COG;
+by year agegroup race1 Jurisdiction;
 run;
 
 proc transpose data=Householdbreakdown_COG out=COGdistribution;
-by agegroup race1 Jurisdiction;
+by year agegroup race1 Jurisdiction;
 id relate;
 var totalpop;
 run;
@@ -216,11 +232,11 @@ denom= Head_Householder + Spouse + Child+ Child_in_law+ Sibling + Sibling_in_Law
 percenthouseholder=Head_Householder/denom ;
 run;
 proc sort data= COGdistribution_3;
-by Jurisdiction race1 agegroup;
+by Jurisdiction year race1 agegroup;
 run;
 
 proc export data = COGdistribution_3
-   outfile="&_dcdata_default_path\RegHsg\Prog\Householdertab_total_Jurisdiction.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Householderratio_Jurisdiction.csv"
    dbms=csv
    replace;
 run;
