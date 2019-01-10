@@ -181,9 +181,7 @@ commercial <- c("COMMERCIAL CONDO",
                 "HOTEL - LODGING",
                 "HOTEL - SELECT DRIVE",
                 "HOTEL RESIDENCE SUITES",
-                "MIXED USE",
-                "SFD - COMM ZONED/NO SITE PLAN",
-                "SFD - COMM ZONED/SITE PLAN")
+                "MIXED USE")
 
 mf <- c("AFFORDABLE DWELLING UNIT",
         "APARTMENT - GARDEN",
@@ -213,7 +211,9 @@ sf <- c("NOT VALUED COSTED - HOA/SITE PLAN",
         "RESIDENTIAL COST-VAL - TOWNHOUSE/CO",
         "RESIDENTIAL COST-VAL - TOWNHOUSE/FSO",
         "SFD - APT ZONED/NO SITE PLAN",
-        "SFD - APT ZONED/SITE PLAN")
+        "SFD - APT ZONED/SITE PLAN",
+        "SFD - COMM ZONED/NO SITE PLAN",
+        "SFD - COMM ZONED/SITE PLAN")
 
 vacant <- c("MULTI-FAM VACANT/NO SITE PLAN",
             "MULTI-FAM VACANT/SITE PLAN",

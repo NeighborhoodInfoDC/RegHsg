@@ -1,0 +1,74 @@
+
+#' Read in cleaned Black Knight data for jurisdiction
+#'
+#'
+#'
+#' @param name name of county or jurisdiction 
+#' @param rmd indicates whether or not function is being called from an 
+#' Rmd document or not. Default is set to TRUE.
+#'
+#' @return dataframe of black knight data for select jurisdiction
+#' @export
+#'
+#' @examples jur <- read_jurisdiction("arlington", rmd = TRUE)
+read_jurisdiction <- function(name, rmd = TRUE) {
+  
+  if (rmd == TRUE) {
+    filename <- paste0("../Data/", 
+                       name, 
+                       "-cleaned-data.csv")
+  } else if (rmd == FALSE) {
+    
+    filename <- paste0("Data/", 
+                       name, 
+                       "-cleaned-data.csv")
+    
+  }
+  
+  if (!file.exists(filename)) {
+    stop("cleaned data not found in Data directory")
+  } else {
+    
+    read_csv(filename,
+             col_types = cols(county_fips = col_character(),
+                              county_name = col_character(),
+                              assessorsparcelnumberapnpin = col_character(),
+                              propaddress = col_character(),
+                              propcity = col_character(),
+                              propstate = col_character(),
+                              propzip = col_character(),
+                              propunitno = col_character(),
+                              prophouseno = col_character(),
+                              propstreetname = col_character(),
+                              propstreetsuffix = col_character(),
+                              lat = col_double(),
+                              long = col_double(),
+                              tract = col_character(),
+                              owneroccupiedresidential = col_character(),
+                              countylandusedescription = col_character(),
+                              zoning = col_character(),
+                              buildingarea = col_double(),
+                              noofbuildings = col_character(),
+                              noofstories = col_character(),
+                              numberofunits = col_integer(),
+                              yearbuilt = col_integer(),
+                              lotsize_acres = col_double(),
+                              lotsize_sf = col_double(),
+                              address_type = col_character(),
+                              category = col_character(),
+                              category_detail = col_character(),
+                              residential = col_integer(),
+                              building_type = col_character(),
+                              parcel_address = col_character(),
+                              vacant_flag = col_integer()))
+  }
+}
+
+
+
+
+
+
+
+
+
