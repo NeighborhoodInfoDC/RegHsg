@@ -35,8 +35,13 @@ Prog/Temp/
 *.sas7bcat
 *.log
 *.lst
+
+# Stata files
+*.dta
+
 # Web
 *.htm
+
 # MS Office
 *.doc
 *.docx
