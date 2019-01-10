@@ -15,14 +15,15 @@
 sample_properties <- function(dataset, condition, number) {
   
   len <- nrow(filter(dataset,
-                     countylandusedescription == condition)) < number
+                     countylandusedescription == condition))
   
   if (len < number) {
-    stop("Only", len, "obervations: chose a smaller number")
+    stop("Only ", len, " obervations: chose a smaller number")
   } else if (len == number) {
     dataset %>% 
       filter(countylandusedescription == condition) %>% 
       sample_n(number, replace = TRUE)
+    warning("all observations sampled")
   } else {
     dataset %>% 
       filter(countylandusedescription == condition) %>% 
