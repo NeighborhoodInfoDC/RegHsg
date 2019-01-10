@@ -103,62 +103,54 @@ run;
 %macro householdinfo(year);
 
 
-data Household_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
-set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
+	data Household_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
+		set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
 
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
-  if upuma in ("2401600") then Jurisdiction =2;
-  if upuma in ("2400301", "2400302") then Jurisdiction =3;
-  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
-  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
-  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
-  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
-  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
-  if upuma in ("5151255") then Jurisdiction =10; 
-run;
+	  %assign_jurisdiction;
+
+	run;
 
 
-data Householddetail_&year.;
-set Household_&year. (where=(relate=1));
-keep race hispan age hhincome pernum relate gq Jurisdiction hhwt perwt year serial numprec race1 agegroup incomecat totpop_&year.;
+	data Householddetail_&year.;
+		set Household_&year. (where=(relate=1));
+		keep race hispan age hhincome pernum relate gq Jurisdiction hhwt perwt year serial numprec race1 agegroup incomecat totpop_&year.;
 
- %Hud_inc_RegHsg( hhinc=hhincome, hhsize=numprec )
-  label
-  hud_inc = 'HUD income category for household'; 
+		 %Hud_inc_RegHsg( hhinc=hhincome, hhsize=numprec )
+		  label
+		  hud_inc = 'HUD income category for household'; 
 
-if 0=<HHINCOME<32600 then incomecat=1;
-else if 32600=<HHINCOME<54300 then incomecat=2;
-else if 54300=<HHINCOME<86880 then incomecat=3;
-else if 86880=<HHINCOME<108600 then incomecat=4;
-else if 108600=<HHINCOME<130320 then incomecat=5;
-else if 130320=<HHINCOME<217200 then incomecat=6;
-else if HHINCOME>=217200 then incomecat=7;
+		if 0=<HHINCOME<32600 then incomecat=1;
+		else if 32600=<HHINCOME<54300 then incomecat=2;
+		else if 54300=<HHINCOME<86880 then incomecat=3;
+		else if 86880=<HHINCOME<108600 then incomecat=4;
+		else if 108600=<HHINCOME<130320 then incomecat=5;
+		else if 130320=<HHINCOME<217200 then incomecat=6;
+		else if HHINCOME>=217200 then incomecat=7;
 
-if hispan=0 then do;
+		if hispan=0 then do;
 
- if race=1 then race1=1;
- else if race=2 then race1=2;
- else race1=4;
-end;
+		 if race=1 then race1=1;
+		 else if race=2 then race1=2;
+		 else race1=4;
+		end;
 
-if hispan in(1 2 3 4) then race1=3;
+		if hispan in(1 2 3 4) then race1=3;
 
-if 0<=age<25 then agegroup=1;
-else if 25<=age<45 then agegroup=2;
-else if 45<=age<65 then agegroup=3;
-else if age>=65 then agegroup=4;
+		if 0<=age<25 then agegroup=1;
+		else if 25<=age<45 then agegroup=2;
+		else if 45<=age<65 then agegroup=3;
+		else if age>=65 then agegroup=4;
 
-totpop_&year. = 1;
-run;
+		totpop_&year. = 1;
+	run;
 
-proc freq data=Householddetail_&year.;
-  tables race1 * agegroup  / list missing;
-run;
+	proc freq data=Householddetail_&year.;
+	  tables race1 * agegroup  / list missing;
+	run;
 
-proc sort data=Householddetail_&year.;
-by Jurisdiction agegroup race1 relate incomecat;
-run;
+	proc sort data=Householddetail_&year.;
+	by Jurisdiction agegroup race1 relate incomecat;
+	run;
 
 %mend householdinfo;
 
@@ -196,14 +188,14 @@ run;
 
 data distribution_2;
 set distribution;
-denom= _1+_2+_3 +_4 +_5 +_6 +_7 ;
-incomecat1=_1/denom ;
-incomecat2=_2/denom ;
-incomecat3=_3/denom ;
-incomecat4=_4/denom ;
-incomecat5=_5/denom ;
-incomecat6=_6/denom ;
-incomecat7=_7/denom ;
+	denom= _1+_2+_3 +_4 +_5 +_6 +_7 ;
+	incomecat1=_1/denom ;
+	incomecat2=_2/denom ;
+	incomecat3=_3/denom ;
+	incomecat4=_4/denom ;
+	incomecat5=_5/denom ;
+	incomecat6=_6/denom ;
+	incomecat7=_7/denom ;
 run;
 
 proc export data = distribution_2
@@ -211,10 +203,10 @@ proc export data = distribution_2
    dbms=csv
    replace;
 run;
+
+/****by jurisdiction****/
 proc sort data=fiveyeartotal;
 by Jurisdiction agegroup race1 incomecat;
-run;
-/*by jurisdiction*/
 proc summary data=fiveyeartotal;
 class Jurisdiction agegroup race1 incomecat;
 	var totalpop;
@@ -235,15 +227,15 @@ proc stdize data=COGdistribution out=COGdistribution_2 reponly missing=0;
    var _1 _2 _3 _4 _5 _6 _7;
 run;
 data COGdistribution_3;
-set COGdistribution_2;
-denom= _1+_2+_3 +_4 +_5 +_6 +_7 ;
-incomecat1=_1/denom ;
-incomecat2=_2/denom ;
-incomecat3=_3/denom ;
-incomecat4=_4/denom ;
-incomecat5=_5/denom ;
-incomecat6=_6/denom ;
-incomecat7=_7/denom ;
+	set COGdistribution_2;
+	denom= _1+_2+_3 +_4 +_5 +_6 +_7 ;
+	incomecat1=_1/denom ;
+	incomecat2=_2/denom ;
+	incomecat3=_3/denom ;
+	incomecat4=_4/denom ;
+	incomecat5=_5/denom ;
+	incomecat6=_6/denom ;
+	incomecat7=_7/denom ;
 run;
 proc sort data= COGdistribution_3;
 by Jurisdiction race1 agegroup;
