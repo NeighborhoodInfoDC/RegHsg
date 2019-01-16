@@ -370,6 +370,159 @@ filepath &lt;- &quot;arlington&quot;</code></pre>
 </tbody>
 </table>
 </div>
+<div id="clean-zoning-code-information" class="section level2">
+<h2>Clean zoning code information</h2>
+<div id="move-file" class="section level3">
+<h3>Move file</h3>
+<p>First- <strong>manually</strong> move file from Box to the <code>zoning-codes</code> directory in the <code>Doc</code> folder on the L drive. Name file accordingly: “jursidiction-zoning-code.csv”</p>
+</div>
+<div id="read-file" class="section level3">
+<h3>Read file</h3>
+<p>Read in zoning code, rename variables so that they are machine readable</p>
+<pre class="r"><code>if (!file.exists(paste0(&quot;L:/Libraries/RegHsg/Doc/zoning-codes/&quot;,
+                              filepath,
+                              &quot;-zoning-code.csv&quot;))) {
+  
+  stop(&quot;Move zoning file for jurisdiction to L:/Libraries/RegHsg/Doc/zoning-codes directory&quot;)
+}</code></pre>
+<pre class="r"><code>z &lt;- cols(
+  Code = col_character(),
+  `District Type` = col_character(),
+  `Type of Dwelling` = col_character(),
+  `Site Area` = col_number(),
+  `Lot area` = col_number(),
+  `Lot area per dwelling unit (sq. ft.) (minimum)` = col_number(),
+  `Lot Width (average minimum, ft)` = col_character(),
+  `Height (ft)` = col_double(),
+  `Height (stories)` = col_double(),
+  `Lot coverage maximum` = col_number(),
+  `Floor area minimum` = col_double(),
+  `Maximum Density of Floor-Area-Ratio (FAR)` = col_character(),
+  `Setbacks (centerline)` = col_character(),
+  `Setbacks (right of way line)` = col_double(),
+  `Front/Side yard (ft)` = col_double(),
+  `Side yard (both sides: minimum percent of required width)` = col_number(),
+  Frontage = col_double(),
+  Comments = col_character()
+)
+
+zoningcode &lt;- read_csv(paste0(&quot;L:/Libraries/RegHsg/Doc/zoning-codes/&quot;,
+                              filepath,
+                              &quot;-zoning-code.csv&quot;),
+                       col_types = z)
+
+names(zoningcode) &lt;- 
+  c(&quot;zoning&quot;, &quot;district_type&quot;, &quot;dwelling_type&quot;,
+    &quot;site_area&quot;, &quot;lot_area&quot;, &quot;lotarea_per_unit&quot;,
+    &quot;lot_width&quot;, &quot;height_ft&quot;, &quot;height_stories&quot;,
+    &quot;lot_coverage_max&quot;, &quot;floor_area_min&quot;, &quot;far_max&quot;,
+    &quot;setbacks_center&quot;, &quot;setbacks_row&quot;,
+    &quot;front_side_yard&quot;, &quot;side_yard&quot;, &quot;frontage&quot;, &quot;comments&quot;)
+
+# fix variables read in as whole numbers (should be percent)
+zoningcode &lt;- zoningcode %&gt;% 
+  mutate_at(vars(lot_coverage_max, side_yard),
+            ~ . / 100)
+rm(z)</code></pre>
+</div>
+<div id="creating-dwelling_type-hierarchy" class="section level3">
+<h3>Creating dwelling_type hierarchy</h3>
+<p>For the vacant lots analysis, we want to determine the <code>dwelling_type</code> that allows for the most dense construction for that zone.</p>
+<p>First, we look at all the options, and filter out all the observations marked as “other”, since we cannot be sure what property type that refers to. We will also filter out categories that are dependent on adjacent lot lines.</p>
+<pre class="r"><code>zoningcode %&gt;% 
+  count(dwelling_type) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">dwelling_type</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">All</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">All Other</td>
+<td align="right">32</td>
+</tr>
+<tr class="odd">
+<td align="left">Duplex</td>
+<td align="right">7</td>
+</tr>
+<tr class="even">
+<td align="left">Duplex; share a lot line with RA, C, or M</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">Multiple-family</td>
+<td align="right">9</td>
+</tr>
+<tr class="even">
+<td align="left">One Family Dwelling</td>
+<td align="right">30</td>
+</tr>
+<tr class="odd">
+<td align="left">Other Residential</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">Semi-detached</td>
+<td align="right">7</td>
+</tr>
+<tr class="odd">
+<td align="left">Semi-detatched; share a lot line with RA, C, or M</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">Townhouse</td>
+<td align="right">7</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>zoningcode &lt;- zoningcode %&gt;% 
+  filter(!dwelling_type %in% c(&quot;All&quot;,
+                               &quot;All Other&quot;,
+                               &quot;Duplex; share a lot line with RA, C, or M&quot;,
+                               &quot;Semi-detatched; share a lot line with RA, C, or M&quot;))</code></pre>
+<p>Since the variables are not always comparable, the following order, from most to least dense, applies:</p>
+<ol style="list-style-type: decimal">
+<li>Multiple-family</li>
+<li>Townhouse</li>
+<li>Duplex</li>
+<li>Semi-detached</li>
+<li>Other Residential</li>
+<li>One Family Dwelling</li>
+</ol>
+</div>
+<div id="select-most-dense-code" class="section level3">
+<h3>Select most dense code</h3>
+<p>To use this hierarchy, we transform the <code>dwelling_type</code> variable into a factor, assign the factors to the appropriate level, (1-6, as listed above), and take the minimum for each zoning code.</p>
+<pre class="r"><code>zoningcode &lt;- zoningcode %&gt;% 
+  mutate(dwelling_type = factor(dwelling_type,
+                                levels = c(&quot;Multiple-family&quot;,
+                                           &quot;Townhouse&quot;,
+                                           &quot;Duplex&quot;,
+                                           &quot;Semi-detached&quot;,
+                                           &quot;Other Residential&quot;,
+                                           &quot;One Family Dwelling&quot;)))
+
+vacant_zoning &lt;- zoningcode %&gt;% 
+  group_by(zoning) %&gt;% 
+  slice(which.min(dwelling_type))</code></pre>
+<p>Check that there is only one observation per district, and all districts are still represented</p>
+<pre class="r"><code>stopifnot(
+  length(unique(zoningcode$zoning)) == length(unique(vacant_zoning$zoning))
+  )
+
+stopifnot(nrow(vacant_zoning) == nrow(count(vacant_zoning, zoning)))</code></pre>
+</div>
+</div>
+<div id="merge-with-property-records-data" class="section level2">
+<h2>Merge with property records data</h2>
+</div>
 
 
 

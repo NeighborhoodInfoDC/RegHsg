@@ -100,3 +100,143 @@ vacant %>%
   knitr::kable(caption = "Number and percent of missing values")
 
 ```
+
+
+## Clean zoning code information
+
+### Move file 
+
+First- **manually** move file from Box to the `zoning-codes` directory in the `Doc` folder on the L drive. Name file accordingly:
+"jursidiction-zoning-code.csv"
+
+### Read file
+
+Read in zoning code, rename variables so that they are machine readable
+
+```{r file-check}
+
+if (!file.exists(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              filepath,
+                              "-zoning-code.csv"))) {
+  
+  stop("Move zoning file for jurisdiction to L:/Libraries/RegHsg/Doc/zoning-codes directory")
+}
+
+```
+
+```{r read-zoning}
+z <- cols(
+  Code = col_character(),
+  `District Type` = col_character(),
+  `Type of Dwelling` = col_character(),
+  `Site Area` = col_number(),
+  `Lot area` = col_number(),
+  `Lot area per dwelling unit (sq. ft.) (minimum)` = col_number(),
+  `Lot Width (average minimum, ft)` = col_character(),
+  `Height (ft)` = col_double(),
+  `Height (stories)` = col_double(),
+  `Lot coverage maximum` = col_number(),
+  `Floor area minimum` = col_double(),
+  `Maximum Density of Floor-Area-Ratio (FAR)` = col_character(),
+  `Setbacks (centerline)` = col_character(),
+  `Setbacks (right of way line)` = col_double(),
+  `Front/Side yard (ft)` = col_double(),
+  `Side yard (both sides: minimum percent of required width)` = col_number(),
+  Frontage = col_double(),
+  Comments = col_character()
+)
+
+zoningcode <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              filepath,
+                              "-zoning-code.csv"),
+                       col_types = z)
+
+names(zoningcode) <- 
+  c("zoning_code", "district_type", "dwelling_type",
+    "site_area", "lot_area", "lotarea_per_unit",
+    "lot_width", "height_ft", "height_stories",
+    "lot_coverage_max", "floor_area_min", "far_max",
+    "setbacks_center", "setbacks_row",
+    "front_side_yard", "side_yard", "frontage", "comments")
+
+# fix variables read in as whole numbers (should be percent)
+zoningcode <- zoningcode %>% 
+  mutate_at(vars(lot_coverage_max, side_yard),
+            ~ . / 100)
+rm(z)
+
+```
+
+### Creating dwelling_type hierarchy
+
+For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most dense construction for that zone. 
+
+First, we look at all the options, and filter out all the observations marked as "other", since we cannot be sure what property type that refers to. We will also filter out categories that are dependent on adjacent lot lines.
+
+```{r tab-dwellings}
+
+zoningcode %>% 
+  count(dwelling_type) %>% 
+  knitr::kable()
+
+zoningcode <- zoningcode %>% 
+  filter(!dwelling_type %in% c("All",
+                               "All Other",
+                               "Duplex; share a lot line with RA, C, or M",
+                               "Semi-detatched; share a lot line with RA, C, or M"))
+
+```
+Since the variables are not always comparable, the following order, from most to least dense, applies:
+
+1. Multiple-family
+2. Townhouse
+3. Duplex
+4. Semi-detached
+5. Other Residential
+6. One Family Dwelling
+
+### Select most dense code 
+To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above), and take the minimum for each zoning code.
+
+```{r dwelling-factor}
+
+zoningcode <- zoningcode %>% 
+  mutate(dwelling_type = factor(dwelling_type,
+                                levels = c("Multiple-family",
+                                           "Townhouse",
+                                           "Duplex",
+                                           "Semi-detached",
+                                           "Other Residential",
+                                           "One Family Dwelling")))
+
+vacant_zoning <- zoningcode %>% 
+  group_by(zoning_code) %>% 
+  slice(which.min(dwelling_type))
+
+```
+
+Check that there is only one observation per district, and all districts are still represented
+```{r factor-checks}
+
+stopifnot(
+  length(unique(zoningcode$zoning_code)) == length(unique(vacant_zoning$zoning_code))
+  )
+
+stopifnot(nrow(vacant_zoning) == nrow(count(vacant_zoning, zoning_code)))
+
+```
+
+## Merge with cleaned data
+
+Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation.
+
+```{r bk-clean}
+vacant <- vacant %>% 
+  mutate(zoning_code = ifelse(str_detect(zoning, "/") == TRUE,
+                              NA,
+                              zoning),
+         zoning_code = ifelse(zoning_code == "RC",
+                              "R-C",
+                              zoning_code))
+```
+
