@@ -24,7 +24,7 @@
  Manassas City (51683)
  Manassas Park City (51685)
 
- Modifications:
+ Modifications: 01/16/19 LH Update incomecat for capped 80% of AMI. Add date for output. 
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -32,6 +32,8 @@
 ** Define libraries **;
 %DCData_lib( RegHsg)
 %DCData_lib( Ipums)
+
+%let date=01162019;
 
 proc format;
 
@@ -110,14 +112,16 @@ run;
 		  label
 		  hud_inc = 'HUD income category for household'; 
 
-		if hhinc=. then incomecat=.n;
-		else if 0=<hhinc<32600 then incomecat=1;
-		else if 32600=<hhinc<54300 then incomecat=2;
-		else if 54300=<hhinc<86880 then incomecat=3;
-		else if 86880=<hhinc<108600 then incomecat=4;
-		else if 108600=<hhinc<130320 then incomecat=5;
-		else if 130320=<hhinc<217200 then incomecat=6;
-		else if hhinc>=217200 then incomecat=7;
+		if HHINCOME in ( 9999999, .n , . ) then incomecat=.;
+		else do; 
+		    if HHINCOME<=32600 then incomecat=1;
+			else if 32600<HHINCOME<=54300 then incomecat=2;
+			else if 54300<HHINCOME<=70150 then incomecat=3;
+			else if 70150<HHINCOME<=108600 then incomecat=4;
+			else if 108600<HHINCOME<=130320 then incomecat=5;
+			else if 130320<HHINCOME<=217200 then incomecat=6;
+			else if 217200 < HHINCOME then incomecat=7;
+		end;
 
 		if hispan=0 then do;
 
@@ -189,7 +193,7 @@ data distribution_3;
 run;
 
 proc export data = distribution_3
-   outfile="&_dcdata_default_path\RegHsg\Prog\Householderratio_COG.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Householderratio_COG_&date..csv"
    dbms=csv
    replace;
 run;
@@ -228,7 +232,7 @@ proc sort data= COGdistribution_3;
 run;
 
 proc export data = COGdistribution_3
-   outfile="&_dcdata_default_path\RegHsg\Prog\Householderratio_Jurisdiction.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Householderratio_Jurisdiction_&date..csv"
    dbms=csv
    replace;
 run;

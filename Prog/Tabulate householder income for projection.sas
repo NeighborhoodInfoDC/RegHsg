@@ -24,7 +24,7 @@
  Manassas City (51683)
  Manassas Park City (51685)
 
- Modifications:
+ Modifications: LH revise 80% AMI category to HUD capped and date in output
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -32,6 +32,8 @@
 ** Define libraries **;
 %DCData_lib( RegHsg)
 %DCData_lib( Ipums)
+
+%let date=01162019; 
 
 proc format;
 
@@ -118,14 +120,17 @@ run;
 		 %Hud_inc_RegHsg( hhinc=hhincome, hhsize=numprec )
 		  label
 		  hud_inc = 'HUD income category for household'; 
-
-		if 0=<HHINCOME<32600 then incomecat=1;
-		else if 32600=<HHINCOME<54300 then incomecat=2;
-		else if 54300=<HHINCOME<86880 then incomecat=3;
-		else if 86880=<HHINCOME<108600 then incomecat=4;
-		else if 108600=<HHINCOME<130320 then incomecat=5;
-		else if 130320=<HHINCOME<217200 then incomecat=6;
-		else if HHINCOME>=217200 then incomecat=7;
+		
+		if HHINCOME in ( 9999999, .n , . ) then incomecat=.;
+		else do; 
+		    if HHINCOME<=32600 then incomecat=1;
+			else if 32600<HHINCOME<=54300 then incomecat=2;
+			else if 54300<HHINCOME<=70150 then incomecat=3;
+			else if 70150<HHINCOME<=108600 then incomecat=4;
+			else if 108600<HHINCOME<=130320 then incomecat=5;
+			else if 130320<HHINCOME<=217200 then incomecat=6;
+			else if 217200 < HHINCOME then incomecat=7;
+		end;
 
 		if hispan=0 then do;
 
@@ -146,6 +151,10 @@ run;
 
 	proc freq data=Householddetail_&year.;
 	  tables race1 * agegroup  / list missing;
+	run;
+
+	proc freq data=Householddetail_&year.;
+	tables incomecat/missing; 
 	run;
 
 	proc sort data=Householddetail_&year.;
@@ -173,7 +182,7 @@ proc summary data=fiveyeartotal;
 class agegroup race1 incomecat;
 	var totalpop;
 	weight hhwt;
-	output out = Householderbreakdown(where=(_TYPE_=7)) sum=;
+	output out = Householderbreakdown (where=(_TYPE_=7)) sum=;
 	format race1 racenew. agegroup agegroupnew. ;
 run;
 proc sort data=Householderbreakdown;
@@ -189,6 +198,7 @@ run;
 data distribution_2;
 set distribution;
 	denom= _1+_2+_3 +_4 +_5 +_6 +_7 ;
+	
 	incomecat1=_1/denom ;
 	incomecat2=_2/denom ;
 	incomecat3=_3/denom ;
@@ -199,7 +209,7 @@ set distribution;
 run;
 
 proc export data = distribution_2
-   outfile="&_dcdata_default_path\RegHsg\Prog\Householderincometab_COG.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Householderincometab_COG_&date..csv"
    dbms=csv
    replace;
 run;
@@ -210,7 +220,7 @@ by Jurisdiction agegroup race1 incomecat;
 proc summary data=fiveyeartotal;
 class Jurisdiction agegroup race1 incomecat;
 	var totalpop;
-	weight perwt;
+	weight hhwt;
 	output out = Householderbreakdown_COG(where=(_TYPE_=15)) sum=;
 	format race1 racenew. agegroup agegroupnew. Jurisdiction Jurisdiction.;
 run;
@@ -242,8 +252,7 @@ by Jurisdiction race1 agegroup;
 run;
 
 proc export data = COGdistribution_3
-   outfile="&_dcdata_default_path\RegHsg\Prog\Householderincometab_Jurisdiction.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Householderincometab_Jurisdiction_&date..csv"
    dbms=csv
    replace;
 run;
-
