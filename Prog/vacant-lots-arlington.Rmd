@@ -228,15 +228,74 @@ stopifnot(nrow(vacant_zoning) == nrow(count(vacant_zoning, zoning_code)))
 
 ## Merge with cleaned data
 
-Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation.
+Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original `zoning` variable.
 
 ```{r bk-clean}
 vacant <- vacant %>% 
   mutate(zoning_code = ifelse(str_detect(zoning, "/") == TRUE,
                               NA,
                               zoning),
+         zoning_code = ifelse(zoning_code == "character(0)",
+                              NA,
+                              zoning_code),
          zoning_code = ifelse(zoning_code == "RC",
                               "R-C",
+                              zoning_code),
+         zoning_code = ifelse(zoning_code == "C-O-ROSSLYN",
+                              "C-O Rosslyn",
                               zoning_code))
 ```
 
+
+Merge on zoning code variable. Test that all variables merged.
+
+```{r zoning-merge}
+
+zoningdata <- left_join(vacant, vacant_zoning, by = "zoning_code")
+
+```
+
+There are `r nrow(anti_join(vacant, vacant_zoning, by = "zoning_code"))` observations that did not have a match in the zoning code. Below, we see which zoning codes were int he Black Knight data but NOT in the zoning code data.
+
+```{r antijoin}
+
+anti_join(vacant, vacant_zoning, by = "zoning_code") %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
+```
+Aside from those with missing zoning information, these zoning codes do not allow for residential properties, so they could not be found in the zoning code data.
+
+Next, we can take a closer look at properties that have missing zoning information and see if we can figure out why.
+
+```{r miss-zoning}
+missing_zoning <- vacant %>% 
+  filter(is.na(zoning_code))
+
+missing_zoning %>% 
+  summarize(missing_addreess = sum(is.na(propaddress)),
+            zoning_tie = sum(str_detect(zoning, "/") == TRUE, na.rm = TRUE))
+
+```
+
+Many of the missing zoning designations can be explained by either a missing address or multiple zoning codes indicated in the Black Knight data.
+
+```{r other-missing}
+missing_zoning %>% 
+  filter(!is.na(propaddress),
+         str_detect(zoning, "/") == FALSE) %>% 
+  nrow()
+
+```
+This leaves only two observations.
+
+## Calculate missing units
+
+### Select only observations with viable zoning information
+
+First, we want to deal with only properties with viable zoning information.
+
+```{r filter}
+
+
+```

@@ -247,7 +247,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated January 16, 2019</p>
+<p>Last updated January 17, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -412,7 +412,7 @@ zoningcode &lt;- read_csv(paste0(&quot;L:/Libraries/RegHsg/Doc/zoning-codes/&quo
                        col_types = z)
 
 names(zoningcode) &lt;- 
-  c(&quot;zoning&quot;, &quot;district_type&quot;, &quot;dwelling_type&quot;,
+  c(&quot;zoning_code&quot;, &quot;district_type&quot;, &quot;dwelling_type&quot;,
     &quot;site_area&quot;, &quot;lot_area&quot;, &quot;lotarea_per_unit&quot;,
     &quot;lot_width&quot;, &quot;height_ft&quot;, &quot;height_stories&quot;,
     &quot;lot_coverage_max&quot;, &quot;floor_area_min&quot;, &quot;far_max&quot;,
@@ -510,18 +510,97 @@ rm(z)</code></pre>
                                            &quot;One Family Dwelling&quot;)))
 
 vacant_zoning &lt;- zoningcode %&gt;% 
-  group_by(zoning) %&gt;% 
+  group_by(zoning_code) %&gt;% 
   slice(which.min(dwelling_type))</code></pre>
 <p>Check that there is only one observation per district, and all districts are still represented</p>
 <pre class="r"><code>stopifnot(
-  length(unique(zoningcode$zoning)) == length(unique(vacant_zoning$zoning))
+  length(unique(zoningcode$zoning_code)) == length(unique(vacant_zoning$zoning_code))
   )
 
-stopifnot(nrow(vacant_zoning) == nrow(count(vacant_zoning, zoning)))</code></pre>
+stopifnot(nrow(vacant_zoning) == nrow(count(vacant_zoning, zoning_code)))</code></pre>
 </div>
 </div>
-<div id="merge-with-property-records-data" class="section level2">
-<h2>Merge with property records data</h2>
+<div id="merge-with-cleaned-data" class="section level2">
+<h2>Merge with cleaned data</h2>
+<p>Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original <code>zoning</code> variable.</p>
+<pre class="r"><code>vacant &lt;- vacant %&gt;% 
+  mutate(zoning_code = ifelse(str_detect(zoning, &quot;/&quot;) == TRUE,
+                              NA,
+                              zoning),
+         zoning_code = ifelse(zoning_code == &quot;character(0)&quot;,
+                              NA,
+                              zoning_code),
+         zoning_code = ifelse(zoning_code == &quot;RC&quot;,
+                              &quot;R-C&quot;,
+                              zoning_code),
+         zoning_code = ifelse(zoning_code == &quot;C-O-ROSSLYN&quot;,
+                              &quot;C-O Rosslyn&quot;,
+                              zoning_code))</code></pre>
+<p>Merge on zoning code variable. Test that all variables merged.</p>
+<pre class="r"><code>zoningdata &lt;- left_join(vacant, vacant_zoning, by = &quot;zoning_code&quot;)</code></pre>
+<p>There are 330 observations that did not have a match in the zoning code. Below, we see which zoning codes were int he Black Knight data but NOT in the zoning code data.</p>
+<pre class="r"><code>anti_join(vacant, vacant_zoning, by = &quot;zoning_code&quot;) %&gt;% 
+  count(zoning_code) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">zoning_code</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">CM</td>
+<td align="right">19</td>
+</tr>
+<tr class="even">
+<td align="left">CP-FBC</td>
+<td align="right">3</td>
+</tr>
+<tr class="odd">
+<td align="left">M-1</td>
+<td align="right">29</td>
+</tr>
+<tr class="even">
+<td align="left">M-2</td>
+<td align="right">3</td>
+</tr>
+<tr class="odd">
+<td align="left">RA-H-3.2</td>
+<td align="right">13</td>
+</tr>
+<tr class="even">
+<td align="left">NA</td>
+<td align="right">263</td>
+</tr>
+<tr class="odd">
+<td align="left">Aside from tho</td>
+<td align="right">se with missing zoning information, these zoning codes do not allow for residential properties, so they could not be found in the zoning code data.</td>
+</tr>
+</tbody>
+</table>
+<p>Next, we can take a closer look at properties that have missing zoning information and see if we can figure out why.</p>
+<pre class="r"><code>missing_zoning &lt;- vacant %&gt;% 
+  filter(is.na(zoning_code))
+
+missing_zoning %&gt;% 
+  summarize(missing_addreess = sum(is.na(propaddress)),
+            zoning_tie = sum(str_detect(zoning, &quot;/&quot;) == TRUE, na.rm = TRUE))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   missing_addreess zoning_tie
+##              &lt;int&gt;      &lt;int&gt;
+## 1              202        132</code></pre>
+<p>Many of the missing zoning designations can be explained by either a missing address or multiple zoning codes indicated in the Black Knight data.</p>
+<pre class="r"><code>missing_zoning %&gt;% 
+  filter(!is.na(propaddress),
+         str_detect(zoning, &quot;/&quot;) == FALSE) %&gt;% 
+  nrow()</code></pre>
+<pre><code>## [1] 2</code></pre>
+<p>This leaves only two observations.</p>
+</div>
+<div id="calculate-missing-units" class="section level2">
+<h2>Calculate missing units</h2>
 </div>
 
 
