@@ -490,6 +490,11 @@ proc export data=region
    run;
 /*region affordable/desired*/
 proc freq data=fiveyeartotal;
+tables incomecat*mallcostlevel /nopercent norow nocol out=region_desire_byinc;
+weight hhwt_5;
+
+run;
+proc freq data=fiveyeartotal;
 tables mallcostlevel /nopercent norow nocol out=region_desire;
 weight hhwt_5;
 
