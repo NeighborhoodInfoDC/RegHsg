@@ -56,9 +56,9 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format TotalInconclusiveSubsidies best12. ;
    format TotalInactiveSubsidies best12. ;
    format TotalUnits best12. ;
-   format EarliestStartDate mmddyy10. ;
-   format EarliestEndDate mmddyy10. ;
-   format LatestEndDate mmddyy10. ;
+   informat EarliestStartDate mmddyy10. ;
+   informat EarliestEndDate mmddyy10. ;
+   informat LatestEndDate mmddyy10. ;
    format Owner $34. ;
    format OwnerType $13. ;
    format ManagerName $38. ;
@@ -560,4 +560,70 @@ if NHPDPropertyID = "95fadb37-c2ff-e611-8115-74d435edc0c2" then do;
 	End;
 run;
 
+proc contents data=test;
+run;
 
+/*create labels for variables*/
+
+proc format;
+	value COG
+    1= "COG county"
+    0="Non COG county";
+
+	value subsidies
+	1=""
+	2="";
+	
+run;
+
+/*create COG region flag*/
+data all;
+set test;
+  if CountyCode in ("11001", "24017", "24021") then COGregion =1;
+  else COGregion=0;
+  format COGregion COG. ActiveSubsidies subsidies. ;
+run;
+
+/*assign label to variables*/
+data all;
+set all;
+  format ActiveSubsidies subsidies. ;
+run;
+
+/*finalize dataset*/
+
+%Finalize_data_set(
+/** Finalize data set parameters **/
+data=all,
+out=all_finalize,
+outlib=RegHsg,
+label="Compile preservation data for region with COG flag",
+sortby=,
+
+/** Metadata parameters **/
+revisions=%str("create new file"),
+
+printobs=5,
+freqvars=,
+);
+
+/*where properties are located,
+how many units are subsidized (at what level if known), subsidy programs involved, 
+and any expiration dates for the subsidies.*/
+
+/*where properties are located*/
+
+proc summary data= all_finalize (where=(PropertyStatus="Active"));
+	class COGregion CountyCode ;
+	var TotalUnits;
+	output out = properties_sum  sum=;
+run;
+
+/*how many units are subsidized (at what level if known)*/
+proc summary data= all_finalize (where=(PropertyStatus="Active"));
+	class COGregion OwnerType;
+	var NumberActiveSection8 NumberActiveSection202 NumberActiveSection236 NumberActiveHUDInsured NumberActiveLihtc;
+	output out = Units_subsidiestype  sum=;
+run;
+
+/*expiration dates for the subsidies*/
