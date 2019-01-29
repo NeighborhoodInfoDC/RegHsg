@@ -101,6 +101,8 @@ vacant %>%
 
 ```
 
+### Missing zoning variables
+
 
 ## Clean zoning code information
 
@@ -153,7 +155,7 @@ zoningcode <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
 
 names(zoningcode) <- 
   c("zoning_code", "district_type", "dwelling_type",
-    "site_area", "lot_area", "lotarea_per_unit",
+    "site_area", "lot_area_min", "lotarea_per_unit",
     "lot_width", "height_ft", "height_stories",
     "lot_coverage_max", "floor_area_min", "far_max",
     "setbacks_center", "setbacks_row",
@@ -195,8 +197,8 @@ Since the variables are not always comparable, the following order, from most to
 5. Other Residential
 6. One Family Dwelling
 
-### Select most dense code 
-To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above), and take the minimum for each zoning code.
+### Create factor variable
+To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
 
 ```{r dwelling-factor}
 
@@ -211,17 +213,7 @@ zoningcode <- zoningcode %>%
 
 # vacant_zoning <- zoningcode %>% 
 #   group_by(zoning_code) %>% 
-#   slice(which.min(dwelling_type))
-
-```
-
-Check that there is only one observation per district, and all districts are still represented
-```{r factor-checks}
-# stopifnot(
-#   length(unique(zoningcode$zoning_code)) == length(unique(vacant_zoning$zoning_code))
-#   )
-# 
-# stopifnot(nrow(vacant_zoning) == nrow(count(vacant_zoning, zoning_code)))
+#   slice(which.min(dwelling_type)) 
 
 ```
 
@@ -257,13 +249,14 @@ zoningdata <- left_join(vacant, zoningcode, by = "zoning_code")
 
 ```
 
-There are `r nrow(anti_join(vacant, vacant_zoning, by = "zoning_code"))` observations that did not have a match in the zoning code. Below, we see which zoning codes were int he Black Knight data but NOT in the zoning code data.
+There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were int he Black Knight data but NOT in the zoning code data.
 
 ```{r antijoin}
-
-anti_join(vacant, vacant_zoning, by = "zoning_code") %>% 
-  count(zoning_code) %>% 
-  knitr::kable()
+#
+#nrow(anti_join(vacant, vacant_zoning, by = "zoning_code"))
+#anti_join(vacant, vacant_zoning, by = "zoning_code") %>% 
+#  count(zoning_code) %>% 
+#  knitr::kable()
 
 ```
 Aside from those with missing zoning information, these zoning codes do not allow for residential properties, so they could not be found in the zoning code data.

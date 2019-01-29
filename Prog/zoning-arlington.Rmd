@@ -1,0 +1,151 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Vacant lots analysis for Arlington County"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The purpose of this step is to test the zoning designations in the Black Knight data against the Arlington zoning code shapefile from the 
+
+1. Merge cleaned vacant lots data with zoning code data.
+2. Calculate how many units are allowed one each vacant lot.
+
+## Set-up
+
+### Black Knight
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(sf)
+
+source("../Macros/read-jurisdiction.R")
+
+```
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+
+```
+
+
+Set FIPS code and filepath name
+```{r fips}
+currentfips <- "51013"
+filepath <- "arlington"
+```
+
+Load in Black Knight data for the region, select jurisdiction and standard variables
+```{r read}
+if (!exists("jur")) {
+  jur <- read_jurisdiction(filepath)
+} else {
+  warning(filepath, " data already read in")
+}
+
+```
+
+### Zoning Map
+
+First, download file if not already downloaded. Use "jurisdiction-zoning-map.kml" for consistency.
+
+```{r download-map}
+zzip <- paste0("L:/Libraries/RegHsg/Maps/",
+                     filepath,
+                     "-zoning-map.zip")
+zdir <- paste0("L:/Libraries/RegHsg/Maps/",
+               filepath,
+               "-zoning-map")
+
+zurl <- "https://gisdata-arlgis.opendata.arcgis.com/datasets/28efb25252b54f1180b703fbcdd2209b_0"
+
+if (!file.exists(zzip)) {
+  
+  download.file(zurl,
+                destfile = zzip)
+  
+  dir.create(zdir)
+  
+  unzip(zzip, exdir = zdir)
+  
+}
+
+zfile <- str_sub(list.files(zdir), end = -5) %>% unique()
+```
+
+Read in zoning file as an `sf` object. Quick map to make sure it looks alright.
+
+```{r read-map}
+
+zon <- read_sf(dsn = zdir,
+               layer = zfile)
+
+ggplot(zon) +
+  geom_sf(mapping = aes(fill = ZN_DESIG))
+
+rm(zurl, zzip, zfile, zdir)
+```
+
+
+## Map vacant parcels
+
+First, check CRS of zoning map.
+```{r crs}
+st_geometry(zon)
+```
+
+Filter out only the parcels that are vacant
+```{r get-vac}
+
+vacant <- jur %>% 
+  filter(category == "vacant") %>% 
+  filter(!is.na(long), !is.na(lat))
+
+vacantsf <- vacant %>% 
+  filter(!is.na(long), !is.na(lat)) %>% 
+  st_as_sf(coords = c("long", "lat")) %>% 
+  st_set_crs(st_crs(zon))
+
+zon <- st_transform(zon, crs = 4326)
+
+ggplot() +
+  geom_sf(data = zon, mapping = aes(),
+          fill = "grey", color = NA) +
+  geom_sf(data = vacantsf, mapping = aes())
+
+```
+
