@@ -175,45 +175,51 @@ rm(res_codes)
 ```{r cr-cat}
 
 
-mf <- c("AFFORDABLE DWELLING UNIT",
-        "APARTMENT - GARDEN",
-        "APARTMENT - HIGH-RISE",
-        "APARTMENT - MID-RISE",
-        "APARTMENT - PARKING",
-        "COMMUNITY BENEFIT UNIT",
-        "MULTI-FAM IMPR/NO SITE PLAN",
-        "MULTI-FAM IMPR/SITE PLAN",
-        "NOT VALUED CONDO HOA",
-        "RESIDENTIAL COST-VAL - DUPLEX",
-        "SALES APPR CONDO/CO-OP",
-        "SALES APPR CONDO/GARDEN",
-        "SALES APPR CONDO/HIGH RISE",
-        "SALES APPR CONDO/MID RISE",
-        "SALES APPR CONDO/STACKED")
+mf <- c("APARTMENT",
+        "APARTMENTS",
+        "COMMERCIAL/RESIDENTIAL",
+        "COMMERICIAL/RESIDENTIAL-END UNIT",
+        "CONDO",
+        "CONDO-CENTER UNIT",
+        "CONDO-END UNIT",
+        "CONDO HI RISE",
+        "CONDO TH",
+        "DORMITORY",
+        "FRATERNAL BUILDING",
+        "FRATERNITY HOUSE",
+        "GARDEN CONDO",
+        "GROUP HOME",
+        "HOME FOR THE ELDERLY",
+        "LOFT",
+        "MARINA CONDOMINIUM SLIP",
+        "MIXED RESIDENTIAL / RETAIL",
+        "MULTIPLE RESIDENCE",
+        "OFFICE CONDOMINIUM",
+        "ONE BEDROOMS",
+        "RESIDENTIAL-CONDOMINIUM",
+        "RESIDENTIAL APARTMENT UNITS",
+        "RETAIL CONDOMINIUM",
+        "WAREHOUSE CONDOMINIUM")
 
-sf <- c("NOT VALUED COSTED - HOA/SITE PLAN",
-        "RESIDENTIAL COST-VAL - IMPR/SF & TW",
-        "RESIDENTIAL COST-VAL - SIDE BY SIDE",
-        "RESIDENTIAL COST-VAL - SINGLE-FAM DET",
-        "RESIDENTIAL COST-VAL - TOWNHOUSE/CO",
-        "RESIDENTIAL COST-VAL - TOWNHOUSE/FSO",
-        "SFD - APT ZONED/NO SITE PLAN",
-        "SFD - APT ZONED/SITE PLAN",
-        "SFD - COMM ZONED/NO SITE PLAN",
-        "SFD - COMM ZONED/SITE PLAN")
+sf <- c("RECTORY",
+        "RESIDENTIAL",
+        "RESIDENTIAL-COMMERCIAL",
+        "RESIDENTIAL-TOWNHOUSE CENTER UNIT",
+        "RESIDENTIAL-TOWNHOUSE END UNIT",
+        "RURAL RESIDENCE",
+        "TOWN HOUSE",
+        "RESIDENTIAL MOBILE HOME",
+        "RESIDENTIAL SPLIT FOYER",
+        "RESIDENTIAL SPLIT LEVEL",
+        "RESIDENTIAL STANDARD UNIT")
 
-vacant <- c("MULTI-FAM VACANT/NO SITE PLAN",
-            "MULTI-FAM VACANT/SITE PLAN",
-            "RESIDENTIAL COST-VAL - VAC/SF & TW",
-            "VACANT RESIDENTIAL",
-            "GEN COMM VAC-LAND/NO SITE PLAN",
-            "GEN COMM VAC-LAND/SITE PLAN",
-            "OFFICE BLDG VAC-LAND/NO SITE PLAN",
-            "OFFICE BLDG VAC-LAND/SITE PLAN",
-            "VACANT COMMERCIAL",
-            "VACANT EXEMPT",
-            "VACANT LIGHT INDUSTRIAL",
-            "VACANT OFFICE")
+vacant <- c("APARTMENTS-VACANT",
+            "COMMERCIAL/RESIDENTIAL-VACANT",
+            "CONDO HI RISE-VACANT",
+            "GARDEN CONDO-VACANT",
+            "RESIDENTIAL-CONDOMINIUM-VACANT",
+            "RESIDENTIAL-VACANT",
+            "VACANT RESIDENTIAL")
 
  
 jur <- jur %>% 
@@ -223,155 +229,101 @@ jur <- jur %>%
            countylandusedescription %in% vacant ~ "vacant",
            TRUE ~ "undesignated"))
 
-rm(commercial, office, mf, sf, vacant)
+rm(mf, sf, vacant)
 ```
 
 ##### `category_detail`
 ```{r cr-catd}
-apartment <- c("AFFORDABLE DWELLING UNIT",
-               "APARTMENT - GARDEN",
-               "APARTMENT - HIGH-RISE",
-               "APARTMENT - MID-RISE",
-               "APARTMENT - PARKING",
-               "COMMUNITY BENEFIT UNIT",
-               "MULTI-FAM IMPR/NO SITE PLAN",
-               "MULTI-FAM IMPR/SITE PLAN")
+apartment <- c("APARTMENT",
+               "APARTMENTS",
+               "DORMITORY",
+               "LOFT",
+               "ONE BEDROOMS",
+               "RESIDENTIAL APARTMENT UNITS",
+               "HOME FOR THE ELDERLY")
 
-commercial <- c("COMMERCIAL CONDO",
-                "GEN COMM-IND - AUTO DEALERSHIP",
-                "GEN COMM-IND - SELF-STORAGE",
-                "GEN COMM-IND - SERVICE STATION",
-                "GEN COMM-IND - WAREHOUSE",
-                "GEN COMM - BANK",
-                "GEN COMM - FAST FOOD",
-                "GEN COMM - HEALTH CARE FACILITY",
-                "GEN COMM - MIXED OFFICE/COMM",
-                "GEN COMM - NEIGHBORHOOD CTR",
-                "GEN COMM - OTHER",
-                "GEN COMM - REST/EATING FACILITY",
-                "GEN COMM - RETAIL/STRIP",
-                "GEN COMM - SMALL OFFICE",
-                "GEN COMM IMPR-LAND/NO SITE PLAN",
-                "GEN COMM IMPR-LAND/SITE PLAN",
-                "GEN COMM/PARKING",
-                "HOTEL - FULL SERVICE",
-                "HOTEL - LAND/OTHER",
-                "HOTEL - LIMITED SERVICE",
-                "HOTEL - LODGING",
-                "HOTEL - SELECT DRIVE",
-                "HOTEL RESIDENCE SUITES",
-                "MIXED USE")
+condo <- c("CONDO",
+           "CONDO-CENTER UNIT",
+           "CONDO-END UNIT",
+           "CONDO HI RISE",
+           "CONDO TH",
+           "GARDEN CONDO",
+           "MARINA CONDOMINIUM SLIP",
+           "OFFICE CONDOMINIUM",
+           "RESIDENTIAL-CONDOMINIUM",
+           "RETAIL CONDOMINIUM",
+           "WAREHOUSE CONDOMINIUM")
 
-condo <- c("NOT VALUED CONDO HOA",
-           "SALES APPR CONDO/CO-OP",
-           "SALES APPR CONDO/GARDEN",
-           "SALES APPR CONDO/HIGH RISE",
-           "SALES APPR CONDO/MID RISE",
-           "SALES APPR CONDO/STACKED")
 
-duplex <- c("RESIDENTIAL COST-VAL - DUPLEX")
+mfother <- c("MULTIPLE RESIDENCE")
 
-office <- c("OFFICE BLDG IMPR-LAND/SITE PLAN",
-            "OFFICE BLDG/7 OR MORE STORIES",
-            "OFFICE BLDG/PARKING",
-            "OFFICE BLDG/UNDER 7 STORIES")
+sfdetached <- c("FRATERNAL BUILDING",
+                "FRATERNITY HOUSE",
+                "GROUP HOME",
+                "RECTORY",
+                "RESIDENTIAL MOBILE HOME",
+                "RESIDENTIAL SPLIT FOYER",
+                "RESIDENTIAL SPLIT LEVEL",
+                "RESIDENTIAL STANDARD UNIT",
+                "RURAL RESIDENCE")
 
-sfattached <- c("RESIDENTIAL COST-VAL - SIDE BY SIDE")
+townhouse <-  c("RESIDENTIAL-TOWNHOUSE CENTER UNIT",
+                "RESIDENTIAL-TOWNHOUSE END UNIT",
+                "TOWN HOUSE") 
 
-sfdetached <- c("NOT VALUED COSTED - HOA/SITE PLAN",
-                "RESIDENTIAL COST-VAL - IMPR/SF & TW",
-                "RESIDENTIAL COST-VAL - SINGLE-FAM DET",
-                "SFD - APT ZONED/NO SITE PLAN",
-                "SFD - APT ZONED/SITE PLAN",
-                "SFD - COMM ZONED/NO SITE PLAN",
-                "SFD - COMM ZONED/SITE PLAN")
+mixeduse <- c("COMMERCIAL/RESIDENTIAL",
+              "COMMERICIAL/RESIDENTIAL-END UNIT",
+              "MIXED RESIDENTIAL / RETAIL",
+              "RESIDENTIAL-COMMERCIAL")
 
-townhouse <-  c("RESIDENTIAL COST-VAL - TOWNHOUSE/CO",
-                "RESIDENTIAL COST-VAL - TOWNHOUSE/FSO") 
+vacantmf <- c("APARTMENTS-VACANT",
+              "CONDO HI RISE-VACANT",
+              "RESIDENTIAL-CONDOMINIUM-VACANT",
+              "GARDEN CONDO-VACANT") 
 
-vacantcom <- c("GEN COMM VAC-LAND/NO SITE PLAN",
-               "GEN COMM VAC-LAND/SITE PLAN",
-               "VACANT COMMERCIAL") 
+vacantres <- c("RESIDENTIAL-VACANT",
+               "VACANT RESIDENTIAL")
 
-vacantexempt <- c("VACANT EXEMPT")
-
-vacantlight <- c("VACANT LIGHT INDUSTRIAL")
-
-vacantmf <- c("MULTI-FAM VACANT/NO SITE PLAN",
-              "MULTI-FAM VACANT/SITE PLAN")
-
-vacantoffice <- c("OFFICE BLDG VAC-LAND/NO SITE PLAN",
-                  "OFFICE BLDG VAC-LAND/SITE PLAN",
-                  "VACANT OFFICE")
-
-vacantres <- c("VACANT RESIDENTIAL")
-
-vacantsf <- c("RESIDENTIAL COST-VAL - VAC/SF & TW")
+vacantmixeduse <- c("COMMERCIAL/RESIDENTIAL-VACANT")
 
 
 jur <- jur %>% 
   mutate(category_detail = case_when(
            countylandusedescription %in% apartment ~ "apartment",
-           countylandusedescription %in% commercial ~ "commercial",
            countylandusedescription %in% condo ~ "condo",
-           countylandusedescription %in% duplex ~ "duplex",
-           countylandusedescription %in% office ~ "office",
-           countylandusedescription %in% sfattached ~ "sf attached",
+           countylandusedescription %in% mfother ~ "mf other",
            countylandusedescription %in% sfdetached ~ "sf detached",
            countylandusedescription %in% townhouse ~ "townhouse",
-           countylandusedescription %in% vacantcom ~ "vacant commercial",
-           countylandusedescription %in% vacantexempt ~ "vacant exempt",
-           countylandusedescription %in% vacantlight ~ "vacant light industrial",
+           countylandusedescription %in% mixeduse ~ "vacant mixeduse",
            countylandusedescription %in% vacantmf ~ "vacant mf",
-           countylandusedescription %in% vacantoffice ~ "vacant office",
            countylandusedescription %in% vacantres ~ "vacant residential",
-           countylandusedescription %in% vacantsf ~ "vacant sf"))
+           countylandusedescription %in% vacantmixeduse ~ "vacant mixed use"))
 
-rm(apartment, commercial, condo, duplex,
-   office, sfattached, sfdetached, townhouse,
-   vacantcom, vacantexempt, vacantlight, vacantmf,
-   vacantoffice, vacantres, vacantsf)
+rm(apartment, condo, mfother, sfdetached, townhouse,
+   mixeduse, vacantmf, vacantres, vacantmixeduse)
 
 ```
 
 ##### `building_type`
 ```{r cr-bt}
 
-garden <- c("APARTMENT - GARDEN",
-            "SALES APPR CONDO/GARDEN")
+garden <- c("GARDEN CONDO")
                
-highrise <- c("APARTMENT - HIGH-RISE",
-              "SALES APPR CONDO/HIGH RISE")
+highrise <- c("CONDO HI RISE")
                
-midrise <- c("SALES APPR CONDO/MID RISE",
-             "APARTMENT - MID-RISE")
-               
-parking <- c("APARTMENT - PARKING")
 
-stacked <- c("SALES APPR CONDO/STACKED")
-
-coop <- c("SALES APPR CONDO/CO-OP")
-
-duplex <- c("RESIDENTIAL COST-VAL - DUPLEX")
-
-other <- c("AFFORDABLE DWELLING UNIT",
-           "COMMUNITY BENEFIT UNIT",
-           "MULTI-FAM IMPR/NO SITE PLAN",
-           "MULTI-FAM IMPR/SITE PLAN",
-           "NOT VALUED CONDO HOA")
+other <- c("FRATERNAL BUILDING",
+           "FRATERNITY HOUSE",
+           "GROUP HOME",
+           "RECTORY")
                
 jur <- jur %>% 
   mutate(building_type = case_when(
            countylandusedescription %in% garden ~ "garden",
            countylandusedescription %in% highrise  ~ "high-rise",
-           countylandusedescription %in% midrise ~ "mid-rise",
-           countylandusedescription %in% parking ~ "parking",
-           countylandusedescription %in% stacked ~ "stacked",
-           countylandusedescription %in% coop ~ "co-op",
-           countylandusedescription %in% duplex ~ "duplex",
            countylandusedescription %in% other ~ "other"))
 
-rm(garden, highrise, midrise, parking, stacked, coop, duplex, other)           
+rm(garden, highrise, other)           
 ```
 
 ### Check variable classifications
