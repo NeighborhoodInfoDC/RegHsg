@@ -126,6 +126,8 @@ rm(zurl, zzip, zfile, zdir)
 First, check CRS of zoning map.
 ```{r crs}
 st_geometry(zon)
+
+zon <- st_transform(zon, crs = 4326)
 ```
 
 Filter out only the parcels that are vacant
@@ -140,12 +142,53 @@ vacantsf <- vacant %>%
   st_as_sf(coords = c("long", "lat")) %>% 
   st_set_crs(st_crs(zon))
 
-zon <- st_transform(zon, crs = 4326)
+
+
 
 ggplot() +
   geom_sf(data = zon, mapping = aes(),
           fill = "grey", color = NA) +
   geom_sf(data = vacantsf, mapping = aes())
 
+```
+
+Spatial join
+```{r join}
+
+x <- st_join(vacantsf, zon)
+
+count(x, is.na(ZN_DESIG))
+
+count(x, ZN_DESIG == zoning)
+
+test_zoning <- x %>% 
+  mutate(zflag = ifelse(ZN_DESIG == zoning,
+                        0,
+                        1)) %>% 
+  filter(zflag == 1) %>% 
+  select(propaddress, zoning, ZN_DESIG,
+         category_detail, geometry)
+```
+
+
+Test with more than just vacant properties
+```{r test-all}
+
+jursf <- jur %>% 
+  filter(!is.na(long), !is.na(lat)) %>% 
+  st_as_sf(coords = c("long", "lat")) %>% 
+  st_set_crs(st_crs(zon))
+
+y <- st_join(jursf, zon)
+
+count(y, is.na(ZN_DESIG))
+
+test_all <- y %>% 
+  mutate(zflag = ifelse(ZN_DESIG == zoning,
+                        0,
+                        1)) %>% 
+  filter(zflag == 1) %>% 
+  select(propaddress, zoning, ZN_DESIG,
+         category_detail, geometry)
 ```
 
