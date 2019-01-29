@@ -53,16 +53,13 @@ library(tidyverse)
 library(DescTools)
 library(purrr)
 
-source("../Macros/read-bk.R")
-source("../Macros/filter-bk.R")
-source("../Macros/select-vars.R")
 source("../Macros/sample-properties.R")
 source("../Macros/classify-addresses.R")
 ```
 #### Create directory for data exports
 ```{r dir}
-if (!dir.exists("Data")) {
-  dir.create("Data")
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
 }
 
 ```
