@@ -642,13 +642,9 @@ data=all,
 out=all_finalize,
 outlib=RegHsg,
 label="Compile preservation data for region with COG flag",
-sortby=,
-
+sortby=EarliestStartDate,
 /** Metadata parameters **/
 revisions=%str(Preservation_data_COG),
+printobs=5
+)
 
-printobs=5,
-freqvars=,
-);
-
-run;
