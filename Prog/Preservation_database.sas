@@ -102,9 +102,9 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format S8_1_AssistedUnits best12. ;
    format S8_1_RentToFMR $1. ;
    format S8_1_InacStatusDesc $1. ;
-   format S8_2_ID $1. ;
-   format S8_2_Status $1. ;
-   format S8_2_ProgramName $1. ;
+   format S8_2_ID $15. ;
+   format S8_2_Status $15. ;
+   format S8_2_ProgramName $15. ;
    format S8_2_RenewalStatus $1. ;
    informat S8_2_StartDate mmddyy10. ;
    format S8_2_StartDate mmddyy10. ;
@@ -139,9 +139,9 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format NumberActiveSection236 best12. ;
    format NumberInconclusiveSection236 best12. ;
    format NumberInactiveSection236 best12. ;
-   format S236_1_ID $1. ;
-   format S236_1_Status $1. ;
-   format S236_1_ProgramName $1. ;
+   format S236_1_ID $15. ;
+   format S236_1_Status $15. ;
+   format S236_1_ProgramName $15. ;
    informat S236_1_StartDate mmddyy10. ;
    format S236_1_StartDate mmddyy10. ;
    informat S236_1_EndDate mmddyy10. ;
@@ -155,8 +155,8 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format S236_2_StartDate mmddyy10. ;
    informat S236_2_EndDate mmddyy10. ;
    format S236_2_EndDate mmddyy10. ;
-   format S236_2_AssistedUnits $1. ;
-   format S236_2_InacStatusDesc $1. ;
+   format S236_2_AssistedUnits $15. ;
+   format S236_2_InacStatusDesc $15. ;
    format NumberActiveHUDInsured best12. ;
    format NumberInconclusiveHUDInsured best12. ;
    format NumberInactiveHud best12. ;
@@ -191,24 +191,24 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    informat LIHTC_1_EndDate mmddyy10. ;
    format LIHTC_1_EndDate mmddyy10. ;
    format LIHTC_1_AssistedUnits best12. ;
-   format LIHTC_1_ConstructionType $16. ;
+   format LIHTC_1_ConstructionType $25. ;
    format LIHTC_1_InacStatusDesc $1. ;
    format LIHTC_2_ID $10. ;
    format LIHTC_2_Status $6. ;
-   format LIHTC_2_ProgramName $13. ;
+   format LIHTC_2_ProgramName $15. ;
    informat LIHTC_2_StartDate mmddyy10. ;
    format LIHTC_2_StartDate mmddyy10. ;
    informat LIHTC_2_EndDate mmddyy10. ;
    format LIHTC_2_EndDate mmddyy10. ;
    format LIHTC_2_AssistedUnits best12. ;
-   format LIHTC_2_ConstructionType $16. ;
+   format LIHTC_2_ConstructionType $25. ;
    format LIHTC_2_InacStatusDesc $1. ;
    format NumberActiveSection515 best12. ;
    format NumberInconclusiveSection515 best12. ;
    format NumberInactiveSection515 best12. ;
    format RHS515_1_ID best12. ;
    format RHS515_1_Status $6. ;
-   format RHS515_1_ProgramName $12. ;
+   format RHS515_1_ProgramName $15. ;
    informat RHS515_1_StartDate mmddyy10. ;
    format RHS515_1_StartDate mmddyy10. ;
    informat RHS515_1_EndDate mmddyy10. ;
@@ -218,7 +218,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format RHS515_1_InacStatusDesc $1. ;
    format RHS515_2_ID best12. ;
    format RHS515_2_Status $6. ;
-   format RHS515_2_ProgramName $12. ;
+   format RHS515_2_ProgramName $15. ;
    informat RHS515_2_StartDate mmddyy10. ;
    format RHS515_2_StartDate mmddyy10. ;
    informat RHS515_2_EndDate mmddyy10. ;
@@ -229,9 +229,9 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format NumberActiveSection538 best12. ;
    format NumberInconclusiveSection538 best12. ;
    format NumberInactiveSection538 best12. ;
-   format RHS538_1_ID $1. ;
-   format RHS538_1_Status $1. ;
-   format RHS538_1_ProgramName $1. ;
+   format RHS538_1_ID $15. ;
+   format RHS538_1_Status $15. ;
+   format RHS538_1_ProgramName $15. ;
    informat RHS538_1_StartDate mmddyy10. ;
    format RHS538_1_StartDate mmddyy10. ;
    informat RHS538_1_EndDate mmddyy10. ;
@@ -239,9 +239,9 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format RHS538_1_AssistedUnits $1. ;
    format RHS538_1_PrincipalBalance $1. ;
    format RHS538_1_InacStatusDesc $1. ;
-   format RHS538_2_ID $1. ;
-   format RHS538_2_Status $1. ;
-   format RHS538_2_ProgramName $1. ;
+   format RHS538_2_ID $15. ;
+   format RHS538_2_Status $15. ;
+   format RHS538_2_ProgramName $15. ;
    informat RHS538_2_StartDate mmddyy10. ;
    format RHS538_2_StartDate mmddyy10. ;
    informat RHS538_2_EndDate mmddyy10. ;
@@ -254,7 +254,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format NumberInactiveHome best12. ;
    format HOME_1_ID best12. ;
    format HOME_1_Status $6. ;
-   format HOME_1_ProgramName $4. ;
+   format HOME_1_ProgramName $15. ;
    informat HOME_1_StartDate mmddyy10. ;
    format HOME_1_StartDate mmddyy10. ;
    informat HOME_1_EndDate mmddyy10. ;
@@ -264,7 +264,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format HOME_1_InacStatusDesc $1. ;
    format HOME_2_ID $1. ;
    format HOME_2_Status $1. ;
-   format HOME_2_ProgramName $1. ;
+   format HOME_2_ProgramName $15. ;
    informat HOME_2_StartDate mmddyy10. ;
    format HOME_2_StartDate mmddyy10. ;
    informat HOME_2_EndDate mmddyy10. ;
@@ -283,8 +283,8 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    informat PH_1_EndDate mmddyy10. ;
    format PH_1_EndDate mmddyy10. ;
    format PH_1_AssistedUnits best12. ;
-   format PH_1_InacStatusDesc $1. ;
-   format PH_1_PhaCode $1. ;
+   format PH_1_InacStatusDesc $15. ;
+   format PH_1_PhaCode $15. ;
    format PH_2_ID $15. ;
    format PH_2_Status $15. ;
    format PH_2_ProgramName $15. ;
@@ -293,13 +293,13 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    informat PH_2_EndDate mmddyy10. ;
    format PH_2_EndDate mmddyy10. ;
    format PH_2_AssistedUnits $1. ;
-   format PH_2_InacStatusDesc $1. ;
-   format PH_2_PhaCode $1. ;
+   format PH_2_InacStatusDesc $15. ;
+   format PH_2_PhaCode $15. ;
    format NumberActiveState best12. ;
    format NumberInconclusiveState best12. ;
    format NumberInactiveState best12. ;
-   format State_1_ID $6. ;
-   format State_1_Status $6. ;
+   format State_1_ID $15. ;
+   format State_1_Status $15. ;
    format State_1_ProgramName $16. ;
    informat State_1_StartDate mmddyy10. ;
    format State_1_StartDate mmddyy10. ;
@@ -606,7 +606,6 @@ if NHPDPropertyID = "95fadb37-c2ff-e611-8115-74d435edc0c2" then do;
 	CountyCode = 24009;
 	County = 'Calvert';
 	End;
-*if County = 'Montgomery' then CountyCode = 24031;
 run;
 
 proc contents data=test;
@@ -646,29 +645,10 @@ label="Compile preservation data for region with COG flag",
 sortby=,
 
 /** Metadata parameters **/
-revisions=%str("create new file"),
+revisions=%str(Preservation_data_COG),
 
 printobs=5,
 freqvars=,
 );
 
-/*where properties are located,
-how many units are subsidized (at what level if known), subsidy programs involved, 
-and any expiration dates for the subsidies.*/
-
-/*where properties are located*/
-
-proc summary data=all_finalize (where=(PropertyStatus="Active"));
-	class COGregion CountyCode ;
-	var TotalUnits;
-	output out = properties_sum  sum=;
 run;
-
-/*how many units are subsidized (at what level if known)*/
-proc summary data=all_finalize (where=(PropertyStatus="Active"));
-	class COGregion OwnerType;
-	var NumberActiveSection8 NumberActiveSection202 NumberActiveSection236 NumberActiveHUDInsured NumberActiveLihtc;
-	output out = Units_subsidiestype  sum=;
-run;
-
-/*expiration dates for the subsidies*/
