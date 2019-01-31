@@ -51,7 +51,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format CongressionalDistrict $10. ;
    format Latitude best12. ;
    format Longitude best12. ;
-   format PropertyStatus $6. ;
+   format PropertyStatus $15. ;
    format ActiveSubsidies best12. ;
    format TotalInconclusiveSubsidies best12. ;
    format TotalInactiveSubsidies best12. ;
@@ -79,15 +79,15 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format ZeroOneBedroomUnits best12. ;
    format TwoBedroomUnits best12. ;
    format ThreePlusBedroomUnits best12. ;
-   format PercentofELIHouseholds $1. ;
+   format PercentofELIHouseholds $15. ;
    format TargetTenantType $8. ;
    format FairMarketRent_2BR best12. ;
    informat EarliestConstructionDate mmddyy10. ;
    format EarliestConstructionDate mmddyy10. ;
    informat LatestConstructionDate mmddyy10. ;
    format LatestConstructionDate mmddyy10. ;
-   format OccupancyRate $1. ;
-   format AverageMonthsOfTenancy $1. ;
+   format OccupancyRate $15. ;
+   format AverageMonthsOfTenancy $15. ;
    format NumberActiveSection8 best12. ;
    format NumberInconclusiveSection8 best12. ;
    format NumberInactiveSection8 best12. ;
@@ -100,19 +100,19 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    informat S8_1_EndDate mmddyy10. ;
    format S8_1_EndDate mmddyy10. ;
    format S8_1_AssistedUnits best12. ;
-   format S8_1_RentToFMR $1. ;
-   format S8_1_InacStatusDesc $1. ;
+   format S8_1_RentToFMR $15. ;
+   format S8_1_InacStatusDesc $15. ;
    format S8_2_ID $15. ;
    format S8_2_Status $15. ;
    format S8_2_ProgramName $15. ;
-   format S8_2_RenewalStatus $1. ;
+   format S8_2_RenewalStatus $15. ;
    informat S8_2_StartDate mmddyy10. ;
    format S8_2_StartDate mmddyy10. ;
    informat S8_2_EndDate mmddyy10.;
    format S8_2_EndDate mmddyy10.;
    format S8_2_AssistedUnits best12. ;
-   format S8_2_RentToFMR $1. ;
-   format S8_2_InacStatusDesc $1. ;
+   format S8_2_RentToFMR $15. ;
+   format S8_2_InacStatusDesc $15. ;
    format NumberActiveSection202 best12. ;
    format NumberInconclusiveSection202 best12. ;
    format NumberInactiveSection202 best12. ;
@@ -124,8 +124,8 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    informat S202_1_EndDate mmddyy10.;
    format S202_1_EndDate mmddyy10.;
    format S202_1_AssistedUnits best12. ;
-   format S202_1_PrincipalBalance $1. ;
-   format S202_1_InacStatusDesc $1. ;
+   format S202_1_PrincipalBalance $15. ;
+   format S202_1_InacStatusDesc $15. ;
    format S202_2_ID $15. ;
    format S202_2_Status $15. ;
    format S202_2_ProgramName $15. ;
@@ -134,8 +134,8 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    informat S202_2_EndDate mmddyy10.;
    format S202_2_EndDate mmddyy10.;
    format S202_2_AssistedUnits best12. ;
-   format S202_2_PrincipalBalance $1. ;
-   format S202_2_InacStatusDesc $1. ;
+   format S202_2_PrincipalBalance $15. ;
+   format S202_2_InacStatusDesc $15. ;
    format NumberActiveSection236 best12. ;
    format NumberInconclusiveSection236 best12. ;
    format NumberInactiveSection236 best12. ;
@@ -169,9 +169,9 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format FHA_1_EndDate mmddyy10. ;
    format FHA_1_AssistedUnits best12. ;
    format FHA_1_PrincipalBalance best12. ;
-   format FHA_1_InacStatusDesc $1. ;
+   format FHA_1_InacStatusDesc $15. ;
    format FHA_2_ID $15. ;
-   format FHA_2_Status $6. ;
+   format FHA_2_Status $15. ;
    format FHA_2_ProgramName $26. ;
    informat FHA_2_StartDate mmddyy10. ;
    format FHA_2_StartDate mmddyy10. ;
@@ -179,20 +179,20 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format FHA_2_EndDate mmddyy10. ;
    format FHA_2_AssistedUnits best12. ;
    format FHA_2_PrincipalBalance best12. ;
-   format FHA_2_InacStatusDesc $1. ;
+   format FHA_2_InacStatusDesc $15. ;
    format NumberActiveLihtc best12. ;
    format NumberInconclusiveLihtc best12. ;
    format NumberInactiveLihtc best12. ;
    format LIHTC_1_ID $15. ;
    format LIHTC_1_Status $15. ;
-   format LIHTC_1_ProgramName $13. ;
+   format LIHTC_1_ProgramName $15. ;
    informat LIHTC_1_StartDate mmddyy10. ;
    format LIHTC_1_StartDate mmddyy10. ;
    informat LIHTC_1_EndDate mmddyy10. ;
    format LIHTC_1_EndDate mmddyy10. ;
    format LIHTC_1_AssistedUnits best12. ;
    format LIHTC_1_ConstructionType $25. ;
-   format LIHTC_1_InacStatusDesc $1. ;
+   format LIHTC_1_InacStatusDesc $15. ;
    format LIHTC_2_ID $10. ;
    format LIHTC_2_Status $6. ;
    format LIHTC_2_ProgramName $15. ;
@@ -202,7 +202,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format LIHTC_2_EndDate mmddyy10. ;
    format LIHTC_2_AssistedUnits best12. ;
    format LIHTC_2_ConstructionType $25. ;
-   format LIHTC_2_InacStatusDesc $1. ;
+   format LIHTC_2_InacStatusDesc $15. ;
    format NumberActiveSection515 best12. ;
    format NumberInconclusiveSection515 best12. ;
    format NumberInactiveSection515 best12. ;
@@ -238,7 +238,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format RHS538_1_EndDate mmddyy10. ;
    format RHS538_1_AssistedUnits $1. ;
    format RHS538_1_PrincipalBalance $1. ;
-   format RHS538_1_InacStatusDesc $1. ;
+   format RHS538_1_InacStatusDesc $15. ;
    format RHS538_2_ID $15. ;
    format RHS538_2_Status $15. ;
    format RHS538_2_ProgramName $15. ;
@@ -248,7 +248,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format RHS538_2_EndDate mmddyy10. ;
    format RHS538_2_AssistedUnits $1. ;
    format RHS538_2_PrincipalBalance $1. ;
-   format RHS538_2_InacStatusDesc $1. ;
+   format RHS538_2_InacStatusDesc $15. ;
    format NumberActiveHome best12. ;
    format NumberInconclusiveHome best12. ;
    format NumberInactiveHome best12. ;
@@ -261,17 +261,17 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format HOME_1_EndDate mmddyy10. ;
    format HOME_1_AssistedUnits best12. ;
    format HOME_1_ConstructionType $16. ;
-   format HOME_1_InacStatusDesc $1. ;
-   format HOME_2_ID $1. ;
-   format HOME_2_Status $1. ;
+   format HOME_1_InacStatusDesc $15. ;
+   format HOME_2_ID $15. ;
+   format HOME_2_Status $15. ;
    format HOME_2_ProgramName $15. ;
    informat HOME_2_StartDate mmddyy10. ;
    format HOME_2_StartDate mmddyy10. ;
    informat HOME_2_EndDate mmddyy10. ;
    format HOME_2_EndDate mmddyy10. ;
-   format HOME_2_AssistedUnits $1. ;
-   format HOME_2_ConstructionType $1. ;
-   format HOME_2_InacStatusDesc $1. ;
+   format HOME_2_AssistedUnits $15. ;
+   format HOME_2_ConstructionType $15. ;
+   format HOME_2_InacStatusDesc $15. ;
    format NumberActivePublicHousing best12. ;
    format NumberInconclusivePublicHousing best12. ;
    format NumberInactivePublicHousing best12. ;
@@ -627,21 +627,299 @@ set test;
   else COGregion=0;
   format COGregion COG. ;
 run;
+/*label variables*/
+data all;
+set all;
+label NHPDPropertyID="Unique ID assigned to each property by NHPD staff";
+label PropertyName="Name of the property ";
+label PropertyAddress="Physical street address of property";
+label City="Property city";
+label State="Property state";
+label Zip="Property zip code";
+label PropertyStatus="Status of property";
+label CBSAType="Type of CBSA";
+label County="Name of county";
+label CountyCode="Census designated county code";
+label CongressionalDistrict="Congressional district";
+label Latitude="Property latitute";
+label Longitude="Property longitude";
+label ActiveSubsidies="Total number of subsidies attached to a property
+that have not yet expired";
+label TotalInconclusiveSubsidies="Total number of subsidies attached to a property
+that is classified as inconclusive";
+label TotalInactiveSubsidies="Total number of subsidies attached to a property
+that have expired";
+label TotalUnits="Total number of units in the property";
+label EarliestStartDate="Earliest date that any of a property’s subsidies
+went into effect";
+label EarliestEndDate="Earliest date that any of a property’s subsidies is
+set to expire";
+label LatestEndDate="Latest date that any of a property’s subsidies is set
+to expire";
+label Owner="Name of property owner";
+label OwnerType="Organization type of owner";
+label ManagerName="Name of property manager";
+label ManagerType="Organization type of manager";
+label HUDPropertyID="HUD property ID";
+label REACScore1="Score received on most recent REAC inspection";
+label REACScore1Date="Date of most recent REAC inspection";
+label ReacScore2="Score received on previous REAC inspection*"; 
+label ReacScore2Date="Date of previous REAC inspection";
+label ReacScore3="Score received on REAC inspection two
+inspections ago";
+label ReacScore3Date="Date of REAC inspection two inspections ago";
+label ZeroOneBedroomUnits="Number of studio or one bedroom units at the
+property";
+label TwoBedroomUnits="Number of two bedrooms units at the property";
+label ThreePlusBedroomUnits="Number of units at the property with three or more
+bedrooms";
+label PercentofELIHouseholds="Percent of extremely low-income residents living at
+the property";  
+label TargetTenantType="Target tenant population served by the property";  
+label FairMarketRent_2BR="Ratio of average rent of units to the local FMR";
+label EarliestConstructionDate="The
+construction date of the oldest building at the
+property";
+label LatestConstructionDate="The
+construction date of the newest building at the
+property";
+label OccupancyRate="Percent of units at the property that are occupied";  
+label AverageMonthsOfTenancy="Average amount of months tenants have lived at
+property";  
+label NumberActiveSection8="Total number of active HUD Project-based
+(Section 8) contracts attached to a property";
+label NumberInconclusiveSection8="Total number of inconclusive Section 8 subsidies
+attached to the property";
+label NumberInactiveSection8="Total number of inactive Section 8 subsidies
+attached to the property";
+label S8_1_ID="Contract ID assigned to subsidy";
+label S8_1_Status="Current status of contract";  
+label S8_1_ProgramName="Specific program name";  
+label S8_1_RenewalStatus="Current status of renewal or non-renewal of
+contract";  
+label S8_1_StartDate="Start date of contract";  
+label S8_1_EndDate="Expiration date of contract";  
+label S8_1_AssistedUnits="Number of units covered by contract";  
+label S8_1_RentToFMR="Ratio of average rent of units to the local FMR";  
+label S8_1_InacStatusDesc="Subsidy status description";  
+label S8_2_ID="Contract ID assigned to subsidy";  
+label S8_2_Status="Current status of contract";  
+label S8_2_ProgramName="Specific program name";  
+label S8_2_RenewalStatus="Current status of renewal or non-renewal of contract";  
+label S8_2_StartDate="Start date of contract";  
+label S8_2_EndDate="Expiration date of contract";  
+label S8_2_AssistedUnits="Number of units covered by contract";  
+label S8_2_RentToFMR="Ratio of average rent of units to the local FMR";  
+label S8_2_InacStatusDesc="Subsidy status description";  
+label NumberActiveSection202="Total number of active Section 202 subsidies
+attached to the property";
+label NumberInconclusiveSection202="Total number of inconclusive Section 202
+subsidies attached to the property";
+label NumberInactiveSection202="Total number of inactive Section 202 subsidies attached to the property";
+label S202_1_ID="HUD REMS Property ID";  
+label S202_1_Status="Current status of S.202 subsidy";  
+label S202_1_ProgramName="Specific program name";  
+label S202_1_StartDate="Start date of subsidy";  
+label S202_1_EndDate="Expiration date of subsidy";  
+label S202_1_AssistedUnits="Total number of units covered by subsidy";  
+label S202_1_PrincipalBalance="Balance remaining on loan";  
+label S202_1_InacStatusDesc="Subsidy status description";  
+label S202_2_ID="HUD REMS Property ID";  
+label S202_2_Status="Current status of S.202 subsidy";  
+label S202_2_ProgramName="Specific program name";  
+label S202_2_StartDate="Start date of subsidy";  
+label S202_2_EndDate="Expiration date of subsidy";  
+label S202_2_AssistedUnits="Total number of units covered by subsidy";  
+label S202_2_PrincipalBalance="Balance remaining on loan";  
+label S202_2_InacStatusDesc="Subsidy status description";  
+label NumberActiveSection236="Total number of active State HFA financed Section
+236 subsidies attached to property";
+label NumberInconclusiveSection236="Total number of inconclusive State HFA financed
+Section 236 subsidies attached to property";
+label NumberInactiveSection236="Total number of inactive State HFA financed
+Section 236 subsidies attached to property";
+label S236_1_ID="Section 236 program property ID";  
+label S236_1_Status="Current status of S236 subsidy";  
+label S236_1_ProgramName="Name of S236 sub-program ";  
+label S236_1_StartDate="Start date of subsidy";  
+label S236_1_EndDate="Expiration date of subsidy";  
+label S236_1_AssistedUnits="Total number of units covered by subsidy";  
+label S236_1_InacStatusDesc="Subsidy status description";  
+label S236_2_ID="Section 236 program property ID";  
+label S236_2_Status="Current status of S236 subsidy";  
+label S236_2_ProgramName="Name of S236 sub-program ";  
+label S236_2_StartDate="Start date of subsidy";  
+label S236_2_EndDate="Expiration date of subsidy";  
+label S236_2_AssistedUnits="Section 236 program property ID";  
+label S236_2_InacStatusDesc="Subsidy status description";  
+label NumberActiveHUDInsured="Total Number active of FHA subsidies";
+label NumberInconclusiveHUDInsured="Total Number inconclusive of FHA subsidies";
+label NumberInactiveHud="Total Number inactive of FHA subsidies";
+label FHA_1_ID="FHA property ID";
+label FHA_1_Status="Current status of FHA subsidy";  
+label FHA_1_ProgramName="Specific name of FHA sub-program";  
+label FHA_1_StartDate="Start date of subsidy";
+label FHA_1_EndDate="Expiration date of subsidy";
+label FHA_1_AssistedUnits="Total number of units covered by subsidy";
+label FHA_1_PrincipalBalance="Balance remaining on loan";
+label FHA_1_InacStatusDesc="Subsidy status description";  
+label FHA_2_ID="FHA property ID";
+label FHA_2_Status="Current status of FHA subsidy";  
+label FHA_2_ProgramName="Specific name of FHA sub-program";  
+label FHA_2_StartDate="Start date of subsidy";
+label FHA_2_EndDate="Expiration date of subsidy";
+label FHA_2_AssistedUnits="Total number of units covered by subsidy";
+label FHA_2_PrincipalBalance="Balance remaining on loan";
+label FHA_2_InacStatusDesc="Subsidy status description";  
+label NumberActiveLihtc="Total number of active LIHTC subsidies attached
+to property";
+label NumberInconclusiveLihtc="Total number of inconclusive LIHTC subsidies
+attached to property";
+label NumberInactiveLihtc="Total number of inactive LIHTC subsidies attached
+to property";
+label LIHTC_1_ID="LIHTC property ID";  
+label LIHTC_1_Status="Current status of LIHTC subsidy";  
+label LIHTC_1_ProgramName="Name of program";  
+label LIHTC_1_StartDate="Start date of subsidy";
+label LIHTC_1_EndDate="Expiration date of subsidy";
+label LIHTC_1_AssistedUnits="Total number of units covered by subsidy";
+label LIHTC_1_ConstructionType="LIHTC construction type";  
+label LIHTC_1_InacStatusDesc="Current status of LIHTC subsidy";  
+label LIHTC_2_ID="LIHTC property ID";  
+label LIHTC_2_Status="Current status of LIHTC subsidy";  
+label LIHTC_2_ProgramName="Name of program";  
+label LIHTC_2_StartDate="Start date of subsidy";
+label LIHTC_2_EndDate="Expiration date of subsidy";
+label LIHTC_2_AssistedUnits="Total number of units covered by subsidy";
+label LIHTC_2_ConstructionType="LIHTC construction type";  
+label LIHTC_2_InacStatusDesc="Subsidy status description";  
+label NumberActiveSection515="Total number of active RHS 515 subsidies attached
+to property";
+label NumberInconclusiveSection515="Total number of inconclusive RHS 515 subsidies
+attached to property";
+label NumberInactiveSection515="Total number of inactive RHS 515 subsidies
+attached to property";
+label RHS515_1_ID="RHS515 Property ID";
+label RHS515_1_Status="Current status of RHS515 subsidy";  
+label RHS515_1_ProgramName="Name of program";  
+label RHS515_1_StartDate="Start date of subsidy";
+label RHS515_1_EndDate="Expiration date of subsidy";
+label RHS515_1_AssistedUnits="Total number of units covered by subsidy";
+label RHS515_1_PrincipalBalance="Balance remaining on loan";  
+label RHS515_1_InacStatusDesc="Subsidy status description";  
+label RHS515_2_ID="RHS515 Property ID";
+label RHS515_2_Status="Current status of RHS515 subsidy";  
+label RHS515_2_ProgramName="Name of program";  
+label RHS515_2_StartDate="Start date of subsidy";
+label RHS515_2_EndDate="Expiration date of subsidy";
+label RHS515_2_AssistedUnits="Total number of units covered by subsidy";
+label RHS515_2_PrincipalBalance="Balance remaining on loan";  
+label RHS515_2_InacStatusDesc="Subsidy status description";  
+label NumberActiveSection538="Total number of active RHS538 subsidies attached to property";
+label NumberInconclusiveSection538="Total number of inconclusive RHS538 subsidies
+attached to property";
+label NumberInactiveSection538="Total number of inactive RHS538 subsidies
+attached to property";
+label RHS538_1_ID="Unique RHS538 ID created by NHPD ";  
+label RHS538_1_Status="Current status of RHS538 subsidy";  
+label RHS538_1_ProgramName="Name of program";  
+label RHS538_1_StartDate="Start date of subsidy";  
+label RHS538_1_EndDate="Expiration date of subsidy";  
+label RHS538_1_AssistedUnits="Total number of units covered by subsidy";  
+label RHS538_1_PrincipalBalance="Balance remaining on loan";  
+label RHS538_1_InacStatusDesc="Subsidy status description";  
+label RHS538_2_ID="Unique RHS538 ID created by NHPD";  
+label RHS538_2_Status="Current status of RHS538 subsidy";  
+label RHS538_2_ProgramName="Name of program";  
+label RHS538_2_StartDate="Start date of subsidy";  
+label RHS538_2_EndDate="Expiration date of subsidy";  
+label RHS538_2_AssistedUnits="Total number of units covered by subsidy";  
+label RHS538_2_PrincipalBalance="Balance remaining on loan";  
+label RHS538_2_InacStatusDesc="Subsidy status description";  
+label NumberActiveHome="Total number of active HOME subsidies attached
+to property";
+label NumberInconclusiveHome="Total number of HOME inconclusive subsidies
+attached to property";
+label NumberInactiveHome="Total number of inactive HOME subsidies attached
+to property";
+label HOME_1_ID="HOME subsidy ID";
+label HOME_1_Status="Current status of HOME subsidy";  
+label HOME_1_ProgramName="Name of program";  
+label HOME_1_StartDate="Start date of subsidy";
+label HOME_1_EndDate="Expiration date of subsidy";
+label HOME_1_AssistedUnits="Total number of units covered by subsidy";
+label HOME_1_ConstructionType="HOME construction type";  
+label HOME_1_InacStatusDesc="Subsidy status description";  
+label HOME_2_ID="HOME subsidy ID";  
+label HOME_2_Status="Current status of HOME subsidy";  
+label HOME_2_ProgramName="Name of program";  
+label HOME_2_StartDate="Start date of subsidy";  
+label HOME_2_EndDate="Expiration date of subsidy";  
+label HOME_2_AssistedUnits="Total number of units covered by subsidy";  
+label HOME_2_ConstructionType="HOME construction type";  
+label HOME_2_InacStatusDesc="Subsidy status description";  
+label NumberActivePublicHousing="Total number of active Public Housing subsidies attached
+to property";
+label NumberInconclusivePublicHousing="Total number of inconclusive Public Housing subsidies
+attached to property";
+label NumberInactivePublicHousing="Total number of inactive Public Housing subsidies
+attached to property";
+label PH_1_ID="HUD assigned AMP number";  
+label PH_1_Status="Current status of Public Housing subsidy";  
+label PH_1_ProgramName="Name of program";  
+label PH_1_StartDate="Public housing subsidy start date";  
+label PH_1_EndDate="Expiration date of subsidy";  
+label PH_1_AssistedUnits="Total number of ACC units at property";  
+label PH_1_InacStatusDesc="Subsidy status description";  
+label PH_1_PhaCode="Subsidy code";  
+label PH_2_ID="HUD assigned AMP number";  
+label PH_2_Status="Current status of Public Housing subsidy";  
+label PH_2_ProgramName="Name of program";  
+label	PH_2_StartDate="Public housing subsidy start date";  
+label	PH_2_EndDate="Expiration date of subsidy";  
+label	PH_2_AssistedUnits="Total number of ACC units at property";  
+label	PH_2_InacStatusDesc="Subsidy status description";  
+label	PH_2_PhaCode="Subsidy code";  
+label	NumberActiveState="Total number of active state subsidies attached to
+property";
+label	NumberInconclusiveState="Total number of inconclusive state subsidies
+attached to property";
+label	NumberInactiveState="Total number of inactive state subsidies attached
+to property";
+label	State_1_ID="Unique state provided subsidy ID";  
+label	State_1_Status="Current status of State subsidy";  
+label	State_1_ProgramName="Name of program";  
+label	State_1_StartDate="Start date of subsidy";
+label	State_1_EndDate="Expiration date of subsidy";
+label	State_1_AssistedUnits="Total number of units covered by subsidy";
+label	State_1_InacStatusDesc="Subsidy status description";  
+label	State_1_ConstructionType="State construction type";  
+label	State_2_ID="Unique state provided subsidy ID";  
+label	State_2_Status="Current status of State subsidy";  
+label	State_2_ProgramName="Name of program";  
+label	State_2_StartDate="Start date of subsidy";
+label	State_2_EndDate="Expiration date of subsidy";
+label	State_2_AssistedUnits="Total number of units covered by subsidy";
+label	State_2_InacStatusDesc="Subsidy status description";  
+label	State_2_ConstructionType="State construction type";  
+label   COGregion="COG county";
 
-/*assign label to variables*/
+run;
+
+/*assign label to variables
 data all;
 set all;
   format  ;
-run;
+run;*/
 
 /*finalize dataset*/
 
 %Finalize_data_set(
 /** Finalize data set parameters **/
 data=all,
-out=all_finalize,
+out=natlpres_ActiveandInc_prop,
 outlib=RegHsg,
-label="Compile preservation data for region with COG flag",
+label="National Preservation Database Active and Inconclusive Properties 1/2019",
 sortby=EarliestStartDate,
 /** Metadata parameters **/
 revisions=%str(Preservation_data_COG),
