@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Clean Arlington County public records data"
+subtitle: "Clean Loudoun County public records data"
 author: ""
 output:
   html_document:
@@ -70,8 +70,8 @@ if (!dir.exists("Data")) {
 
 #### Set FIPS code and filepath name
 ```{r fips}
-currentfips <- "51013"
-filepath <- "arlington"
+currentfips <- "51107"
+filepath <- "loudoun"
 ```
 
 #### Load in Black Knight data for the region, select jurisdiction and standard variables
