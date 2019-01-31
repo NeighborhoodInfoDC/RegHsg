@@ -49,13 +49,7 @@ source("../Macros/filter-bk.R")
 source("../Macros/select-vars.R")
 
 ```
-Create directory for data exports
-```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
-}
 
-```
 
 Set FIPS code, filepath name, and directory for data storage (on L drive)
 
@@ -63,7 +57,21 @@ Set FIPS code, filepath name, and directory for data storage (on L drive)
 currentfips <- "51013"
 filepath <- "arlington"
 jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
 
+
+```
+
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+
+if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
+  dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))
+}
 
 ```
 
@@ -87,14 +95,8 @@ Arlington has several files of use
 - Property file, can account for missing address/other geographic information
 
 ```{r download-data}
-pafile <- paste0(jdir, filepath, "-parcel-file.csv")
-prfile <- paste0(jdir, filepath, "-property-file.csv")
-
-if (!dir.exists(jdir)) {
-  
-  dir.create(jdir)
-
-}
+pafile <- paste0(rdir, filepath, "-parcel-file.csv")
+prfile <- paste0(rdir, filepath, "-property-file.csv")
 
 # parcel file
 if (!file.exists(pafile)) {

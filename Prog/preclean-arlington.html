@@ -261,14 +261,19 @@ div.tocify {
 source(&quot;../Macros/read-bk.R&quot;)
 source(&quot;../Macros/filter-bk.R&quot;)
 source(&quot;../Macros/select-vars.R&quot;)</code></pre>
-<p>Create directory for data exports</p>
-<pre class="r"><code>if (!dir.exists(&quot;../Data&quot;)) {
-  dir.create(&quot;../Data&quot;)
-}</code></pre>
 <p>Set FIPS code, filepath name, and directory for data storage (on L drive)</p>
 <pre class="r"><code>currentfips &lt;- &quot;51013&quot;
 filepath &lt;- &quot;arlington&quot;
-jdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Data/&quot;, filepath, &quot;/&quot;)</code></pre>
+jdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Data/&quot;, filepath, &quot;/&quot;)
+rdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath, &quot;/&quot;)</code></pre>
+<p>Create directory for data exports</p>
+<pre class="r"><code>if (!dir.exists(&quot;../Data&quot;)) {
+  dir.create(&quot;../Data&quot;)
+}
+
+if (!dir.exists(paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath))) {
+  dir.create(paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath))
+}</code></pre>
 <p>Load in Black Knight data for the region, select jurisdiction and standard variables</p>
 <pre class="r"><code>if (!exists(&quot;region&quot;)) {
   region &lt;- read_bk(&quot;dc-cog-assessment_20181228.csv&quot;)
@@ -283,14 +288,8 @@ jur &lt;- region %&gt;%
 <div id="download-files" class="section level2">
 <h2>Download files</h2>
 <p>Arlington has several files of use - Parcel-level file, could provide alternative lot area metric - Property file, can account for missing address/other geographic information</p>
-<pre class="r"><code>pafile &lt;- paste0(jdir, filepath, &quot;-parcel-file.csv&quot;)
-prfile &lt;- paste0(jdir, filepath, &quot;-property-file.csv&quot;)
-
-if (!dir.exists(jdir)) {
-  
-  dir.create(jdir)
-
-}
+<pre class="r"><code>pafile &lt;- paste0(rdir, filepath, &quot;-parcel-file.csv&quot;)
+prfile &lt;- paste0(rdir, filepath, &quot;-property-file.csv&quot;)
 
 # parcel file
 if (!file.exists(pafile)) {
