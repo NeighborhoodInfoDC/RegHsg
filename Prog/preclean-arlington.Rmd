@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Clean Arlington County public records data"
+subtitle: "Pre-clean Arlington County public records data"
 author: ""
 output:
   html_document:
@@ -37,7 +37,7 @@ knitr::opts_chunk$set(message = FALSE)
 
 ## Description
 
-THe purpose of this program is to obtain additional data from the county itself to supplement the Black Knight data when possible.
+The purpose of this program is to obtain additional data from the county to supplement the Black Knight data when possible.
 
 ## Set-up
 Load libraries and functions
@@ -57,11 +57,14 @@ if (!dir.exists("../Data")) {
 
 ```
 
+Set FIPS code, filepath name, and directory for data storage (on L drive)
 
-Set FIPS code and filepath name
 ```{r fips}
 currentfips <- "51013"
 filepath <- "arlington"
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+
+
 ```
 
 Load in Black Knight data for the region, select jurisdiction and standard variables
@@ -84,9 +87,8 @@ Arlington has several files of use
 - Property file, can account for missing address/other geographic information
 
 ```{r download-data}
-jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath)
-pafile <- paste0(jdir, "/", filepath, "-parcel-file.csv")
-prfile <- paste0(jdir, "/", filepath, "-property-file.csv")
+pafile <- paste0(jdir, filepath, "-parcel-file.csv")
+prfile <- paste0(jdir, filepath, "-property-file.csv")
 
 if (!dir.exists(jdir)) {
   
@@ -109,7 +111,7 @@ if (!file.exists(prfile)) {
 ```
 ## Read files
 
-```{r read}
+```{r read-files}
 
 parcel <- read_csv(pafile) %>% 
   select(-`-`, -`-_1`)
@@ -179,6 +181,8 @@ property <- read_csv(prfile,
 )
 )
 
+rm(pafile, prfile)
+
 ```
 
 ## Clean and merge
@@ -203,7 +207,7 @@ parcel <- parcel %>%
 ```
 
 
-There are `r parcel %>% group_by(parcel_id) %>% filter(n()>1)` parcels that show up more than once on the parcel file. If the parcels have an identical area, we combine them by taking the average area and width. 
+There are `r parcel %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once on the parcel file. We combine these by taking the average area and width. 
 
 ```{r dups-parcel}
 
@@ -238,9 +242,24 @@ Merge
 
 ```{r merge}
 
-newjur <- left_join(jur, parcel, by = c("assessorsparcelnumberapnpin" = "parcel_id"))
-x <- anti_join(jur, parcel, by = c("assessorsparcelnumberapnpin" = "parcel_id"))
+jur <- left_join(jur, parcel_clean, 
+                 by = c("assessorsparcelnumberapnpin" = "parcel_id"))
+
+jur <- left_join(jur, property, 
+                 by = c("assessorsparcelnumberapnpin" = "parcel_id"))
 
 ```
 
 ## Save
+
+Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.
+
+```{r save}
+
+saveRDS(jur,
+        paste0(jdir, 
+               "precleaned-",
+               filepath,
+               "-data.Rdata"))
+
+```
