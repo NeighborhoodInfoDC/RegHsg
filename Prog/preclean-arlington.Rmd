@@ -37,21 +37,12 @@ knitr::opts_chunk$set(message = FALSE)
 
 ## Description
 
-There are three main goals of the jurisdiction level cleaning process:
-
-1. Recategorize the county land use codes into more general codes
-
-2. Collapse observations at the address level
-
-3. Clean the variables needed to provide density estimates
-
+THe purpose of this program is to obtain additional data from the county itself to supplement the Black Knight data when possible.
 
 ## Set-up
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
-library(DescTools)
-library(purrr)
 
 source("../Macros/read-bk.R")
 source("../Macros/filter-bk.R")
@@ -206,9 +197,24 @@ parcel <- parcel %>%
                             "-",
                             substr(raw_parcelid_par, 3, 5),
                             "-", 
-                            substr(raw_parcelid_par, 6, 8)))
+                            substr(raw_parcelid_par, 6, 8))) %>% 
+  filter(!is.na(raw_parcelid_par))
 
 ```
+
+
+There are `r parcel %>% group_by(parcel_id) %>% filter(n()>1)` parcels that show up more than once on the parcel file. If the parcels have an identical area, we combine them by taking the average area and width. 
+
+```{r dups-parcel}
+
+parcel_clean <- parcel %>% 
+  group_by(parcel_id, raw_parcelid_par) %>% 
+  summarize(parcel_area = mean(parcel_area),
+            parcel_length = mean(parcel_area)) %>% 
+  ungroup()
+
+```
+
 
 From the property file, we will save the address, the number of units, and the latitude and longitude.
 ```{r select-prop}
@@ -228,7 +234,13 @@ property <- property %>%
 ```
 
 
-
 Merge
+
+```{r merge}
+
+newjur <- left_join(jur, parcel, by = c("assessorsparcelnumberapnpin" = "parcel_id"))
+x <- anti_join(jur, parcel, by = c("assessorsparcelnumberapnpin" = "parcel_id"))
+
+```
 
 ## Save
