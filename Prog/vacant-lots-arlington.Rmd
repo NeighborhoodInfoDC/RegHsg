@@ -1,0 +1,310 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Vacant lots analysis for Arlington County"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The goal of this analysis is to determine how many units could be added by filling vacant lots with the most-dense developments allowed under the current zoning codes.
+The two steps are:
+
+1. Merge cleaned vacant lots data with zoning code data.
+2. Calculate how many units are allowed one each vacant lot.
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+
+source("../Macros/read-jurisdiction.R")
+
+```
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+
+```
+
+
+Set FIPS code and filepath name
+```{r fips}
+currentfips <- "51013"
+filepath <- "arlington"
+```
+
+Load in Black Knight data for the region, select jurisdiction and standard variables
+```{r read}
+if (!exists("jur")) {
+  jur <- read_jurisdiction(filepath)
+} else {
+  warning(filepath, " data already read in")
+}
+
+```
+
+Select only vacant lots
+
+```{r res}
+vacant <- jur %>% 
+  filter(category == "vacant")
+  
+```
+
+## Detailed look at vacant lots
+
+See how many lots have missing key variables
+
+```{r missing}
+
+vacant %>% 
+  group_by(category_detail) %>% 
+  summarize_at(vars(propaddress, lotsize_sf, zoning),
+               ~ sum(is.na(.))) %>% 
+  mutate_at(vars(propaddress, lotsize_sf, zoning),
+            .funs = funs(percent = scales::percent(. / nrow(vacant)))) %>% 
+  knitr::kable(caption = "Number and percent of missing values")
+
+```
+
+### Missing zoning variables
+
+
+## Clean zoning code information
+
+### Move file 
+
+First- **manually** move file from Box to the `zoning-codes` directory in the `Doc` folder on the L drive. Name file accordingly:
+"jursidiction-zoning-code.csv"
+
+### Read file
+
+Read in zoning code, rename variables so that they are machine readable
+
+```{r file-check}
+
+if (!file.exists(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              filepath,
+                              "-zoning-code.csv"))) {
+  
+  stop("Move zoning file for jurisdiction to L:/Libraries/RegHsg/Doc/zoning-codes directory")
+}
+
+```
+
+```{r read-zoning}
+z <- cols(
+  Code = col_character(),
+  `District Type` = col_character(),
+  `Type of Dwelling` = col_character(),
+  `Site Area` = col_number(),
+  `Lot area` = col_number(),
+  `Lot area per dwelling unit (sq. ft.) (minimum)` = col_number(),
+  `Lot Width (average minimum, ft)` = col_character(),
+  `Height (ft)` = col_double(),
+  `Height (stories)` = col_double(),
+  `Lot coverage maximum` = col_number(),
+  `Floor area minimum` = col_double(),
+  `Maximum Density of Floor-Area-Ratio (FAR)` = col_character(),
+  `Setbacks (centerline)` = col_character(),
+  `Setbacks (right of way line)` = col_double(),
+  `Front/Side yard (ft)` = col_double(),
+  `Side yard (both sides: minimum percent of required width)` = col_number(),
+  Frontage = col_double(),
+  Comments = col_character()
+)
+
+zoningcode <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              filepath,
+                              "-zoning-code.csv"),
+                       col_types = z)
+
+names(zoningcode) <- 
+  c("zoning_code", "district_type", "dwelling_type",
+    "site_area", "lot_area_min", "lotarea_per_unit",
+    "lot_width", "height_ft", "height_stories",
+    "lot_coverage_max", "floor_area_min", "far_max",
+    "setbacks_center", "setbacks_row",
+    "front_side_yard", "side_yard", "frontage", "comments")
+
+# fix variables read in as whole numbers (should be percent)
+zoningcode <- zoningcode %>% 
+  mutate_at(vars(lot_coverage_max, side_yard),
+            ~ . / 100)
+rm(z)
+
+```
+
+### Creating dwelling_type hierarchy
+
+For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most dense construction for that zone. 
+
+First, we look at all the options, and filter out all the observations marked as "other", since we cannot be sure what property type that refers to. We will also filter out categories that are dependent on adjacent lot lines.
+
+```{r tab-dwellings}
+
+zoningcode %>% 
+  count(dwelling_type) %>% 
+  knitr::kable()
+
+zoningcode <- zoningcode %>% 
+  filter(!dwelling_type %in% c("All",
+                               "All Other",
+                               "Duplex; share a lot line with RA, C, or M",
+                               "Semi-detatched; share a lot line with RA, C, or M"))
+
+```
+Since the variables are not always comparable, the following order, from most to least dense, applies:
+
+1. Multiple-family
+2. Duplex
+3. Townhouse
+4. Semi-detached
+5. Other Residential
+6. One Family Dwelling
+
+### Create factor variable
+To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
+
+```{r dwelling-factor}
+
+zoningcode <- zoningcode %>% 
+  mutate(dwelling_type = factor(dwelling_type,
+                                levels = c("Multiple-family",
+                                           "Duplex",
+                                           "Townhouse",
+                                           "Semi-detached",
+                                           "Other Residential",
+                                           "One Family Dwelling")))
+
+# vacant_zoning <- zoningcode %>% 
+#   group_by(zoning_code) %>% 
+#   slice(which.min(dwelling_type)) 
+
+```
+
+## Merge with cleaned data
+
+Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original `zoning` variable.
+
+```{r bk-clean}
+vacant <- vacant %>% 
+  mutate(zoning_code = ifelse(str_detect(zoning, "/") == TRUE,
+                              NA,
+                              zoning),
+         zoning_code = ifelse(zoning_code == "character(0)",
+                              NA,
+                              zoning_code),
+         zoning_code = ifelse(zoning_code == "RC",
+                              "R-C",
+                              zoning_code),
+         zoning_code = ifelse(zoning_code == "C-O-ROSSLYN",
+                              "C-O Rosslyn",
+                              zoning_code),
+         zoning_code = ifelse(zoning_code == "RA-H-3.2",
+                              "RA-H 3.2",
+                              zoning_code))
+```
+
+
+Merge on zoning code variable. Test that all variables merged.
+
+```{r zoning-merge}
+
+zoningdata <- left_join(vacant, zoningcode, by = "zoning_code")
+
+```
+
+There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were int he Black Knight data but NOT in the zoning code data.
+
+```{r antijoin}
+#
+#nrow(anti_join(vacant, vacant_zoning, by = "zoning_code"))
+#anti_join(vacant, vacant_zoning, by = "zoning_code") %>% 
+#  count(zoning_code) %>% 
+#  knitr::kable()
+
+```
+Aside from those with missing zoning information, these zoning codes do not allow for residential properties, so they could not be found in the zoning code data.
+
+Next, we can take a closer look at properties that have missing zoning information and see if we can figure out why.
+
+```{r miss-zoning}
+missing_zoning <- vacant %>% 
+  filter(is.na(zoning_code))
+
+missing_zoning %>% 
+  summarize(missing_address = sum(is.na(propaddress)),
+            zoning_tie = sum(str_detect(zoning, "/") == TRUE, na.rm = TRUE))
+
+```
+
+Many of the missing zoning designations can be explained by either a missing address or multiple zoning codes indicated in the Black Knight data.
+
+```{r other-missing}
+missing_zoning %>% 
+  filter(!is.na(propaddress),
+         str_detect(zoning, "/") == FALSE) %>% 
+  nrow()
+
+```
+This leaves only two observations.
+
+Filter out lots that are too small to build on, select most dense zoning code for those that are big enough
+```{r }
+
+zoningdata1 <- zoningdata %>% 
+  filter(!is.na(lot_area),
+         lotsize_sf >= lot_area) %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(dwelling_type))
+
+zoningdata1 %>% group_by(propaddress) %>% count()
+
+```
+
+
+## Calculate missing units
+
+### Select only observations with viable zoning information
+
+First, we want to deal with only properties with viable zoning information.
+
+```{r filter}
+
+
+```
