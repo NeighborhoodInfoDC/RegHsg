@@ -626,10 +626,6 @@ set test;
   if CountyCode in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600", "51610", "51683", "51685") then COGregion =1;
   else COGregion=0;
   format COGregion COG. ;
-run;
-/*label variables*/
-data all;
-set all;
 label NHPDPropertyID="Unique ID assigned to each property by NHPD staff";
 label PropertyName="Name of the property ";
 label PropertyAddress="Physical street address of property";
@@ -637,9 +633,11 @@ label City="Property city";
 label State="Property state";
 label Zip="Property zip code";
 label PropertyStatus="Status of property";
+label CBSACode="CBSA code";
 label CBSAType="Type of CBSA";
 label County="Name of county";
 label CountyCode="Census designated county code";
+label CensusTract="Census designated census tract code";
 label CongressionalDistrict="Congressional district";
 label Latitude="Property latitute";
 label Longitude="Property longitude";
@@ -903,7 +901,6 @@ label	State_2_AssistedUnits="Total number of units covered by subsidy";
 label	State_2_InacStatusDesc="Subsidy status description";  
 label	State_2_ConstructionType="State construction type";  
 label   COGregion="COG county";
-
 run;
 
 /*assign label to variables
@@ -922,7 +919,7 @@ outlib=RegHsg,
 label="National Preservation Database Active and Inconclusive Properties 1/2019",
 sortby=EarliestStartDate,
 /** Metadata parameters **/
-revisions=%str(Preservation_data_COG),
+revisions=%str("New file"),
 printobs=5
 )
 
