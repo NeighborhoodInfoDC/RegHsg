@@ -13,17 +13,8 @@
 #' @examples jur <- read_jurisdiction("arlington", rmd = TRUE)
 read_jurisdiction <- function(name, rmd = TRUE) {
   
-  if (rmd == TRUE) {
-    filename <- paste0("../Data/", 
-                       name, 
-                       "-cleaned-data.csv")
-  } else if (rmd == FALSE) {
-    
-    filename <- paste0("Data/", 
-                       name, 
-                       "-cleaned-data.csv")
-    
-  }
+  filename <- paste0("L:/Libraries/RegHsg/Data/", filepath,
+                     "/", filepath, "-cleaned-data.csv")
   
   if (!file.exists(filename)) {
     stop("cleaned data not found in Data directory")
@@ -59,6 +50,15 @@ read_jurisdiction <- function(name, rmd = TRUE) {
                               category_detail = col_character(),
                               residential = col_integer(),
                               building_type = col_character(),
+                              raw_parcelid_prop = col_character(),
+                              lotsize_prop = col_double(),
+                              propaddress_prop = col_character(),
+                              numberofunits_prop = col_character(),
+                              lat_prop = col_double(),
+                              long_prop = col_double(),
+                              parcel_area = col_double(),
+                              parcel_length = col_double(),
+                              raw_parcelid_par = col_character(),
                               parcel_address = col_character(),
                               vacant_flag = col_integer()))
   }

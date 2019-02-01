@@ -37,10 +37,7 @@ knitr::opts_chunk$set(message = FALSE)
 
 ## Description
 
-The purpose of this step is to test the zoning designations in the Black Knight data against the Arlington zoning code shapefile from the 
-
-1. Merge cleaned vacant lots data with zoning code data.
-2. Calculate how many units are allowed one each vacant lot.
+The purpose of this step is to test the zoning designations in the Black Knight data against the Arlington zoning code shapefile, and determine which variable should be used for analysis.
 
 ## Set-up
 
@@ -134,8 +131,7 @@ Filter out only the parcels that are vacant
 ```{r get-vac}
 
 vacant <- jur %>% 
-  filter(category == "vacant") %>% 
-  filter(!is.na(long), !is.na(lat))
+  filter(category == "vacant")
 
 vacantsf <- vacant %>% 
   filter(!is.na(long), !is.na(lat)) %>% 
@@ -143,11 +139,9 @@ vacantsf <- vacant %>%
   st_set_crs(st_crs(zon))
 
 
-
-
 ggplot() +
   geom_sf(data = zon, mapping = aes(),
-          fill = "grey", color = NA) +
+          fill = "grey", color = "black") +
   geom_sf(data = vacantsf, mapping = aes())
 
 ```
