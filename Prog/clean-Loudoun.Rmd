@@ -87,6 +87,7 @@ jur <- region %>%
   select_vars()
 
 ```
+
 ## Recategorize county land use
 In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates four variables:
 
@@ -119,35 +120,21 @@ We use `ifelse()` and `case_when()` to create the three new variables based on t
 ##### `residential`
 ```{r classify}
 res_codes <- 
-  c("AFFORDABLE DWELLING UNIT",
-    "APARTMENT - GARDEN",
-    "APARTMENT - HIGH-RISE",
-    "APARTMENT - MID-RISE",
-    "APARTMENT - PARKING",
-    "COMMUNITY BENEFIT UNIT",
-    "MULTI-FAM IMPR/NO SITE PLAN",
-    "MULTI-FAM IMPR/SITE PLAN",
-    "MULTI-FAM VACANT/NO SITE PLAN",
-    "MULTI-FAM VACANT/SITE PLAN",
-    "NOT VALUED CONDO HOA",
-    "NOT VALUED COSTED - HOA/SITE PLAN",
-    "RESIDENTIAL COST-VAL - DUPLEX",
-    "RESIDENTIAL COST-VAL - IMPR/SF & TW",
-    "RESIDENTIAL COST-VAL - SIDE BY SIDE",
-    "RESIDENTIAL COST-VAL - SINGLE-FAM DET",
-    "RESIDENTIAL COST-VAL - TOWNHOUSE/CO",
-    "RESIDENTIAL COST-VAL - TOWNHOUSE/FSO",
-    "RESIDENTIAL COST-VAL - VAC/SF & TW",
-    "SALES APPR CONDO/CO-OP",
-    "SALES APPR CONDO/GARDEN",
-    "SALES APPR CONDO/HIGH RISE",
-    "SALES APPR CONDO/MID RISE",
-    "SALES APPR CONDO/STACKED",
-    "SFD - APT ZONED/NO SITE PLAN",
-    "SFD - APT ZONED/SITE PLAN",
-    "VACANT RESIDENTIAL",
-    "SFD - COMM ZONED/NO SITE PLAN",
-    "SFD - COMM ZONED/SITE PLAN")
+  c("CONDOMINIUM (RESIDENTIAL)",
+    "DUPLEX",
+    "MOBILE/MANUFACTURED HOMES",
+    "MULTI-FAMILY",
+    "MULTI-FAMILY - VACANT",
+    "RES CONDO GARAGE UNIT",
+    "RESIDENTIAL CONDOS",
+    "RURAL RESIDENCE (AGRICULTURAL)",
+    "RURAL RESIDENCE AGRICULTURAL",
+    "SINGLE FAMILY",
+    "SINGLE FAMILY - VACANT",
+    "TOWN HOUSES",
+    "TOWN HOUSES - VACANT",
+    "TRAILER PARK",
+    "TRAILER PARK - VACANT")
 
 jur <- jur %>% 
   mutate(residential =
