@@ -120,35 +120,31 @@ We use `ifelse()` and `case_when()` to create the three new variables based on t
 ```{r classify}
 res_codes <- 
   c("CONDO - VERTICAL",
-"CONDO GARAGE",
-"CONDO HORIZONTAL",
-"CONDO HORIZONTAL COMBINED",
-"CONDO VERTICAL",
-"CONDO VERTICAL COMBINED",
-"CONDO, INVESTMENT, HORIZONTAL",
-"CONDO, INVESTMENT, VERTICAL",
-"COOPERATIVE - HORIZONTAL - MIXED USE",
-"COOPERATIVE - VERTICAL - MIXED USE",
-"ELEVATOR APT",
-"FALSE VACANT",
-"FALSE VACANT ABUTTING LOT (RES)",
-"IMPROVED-USE NOT SPECIFIED",
-"RES - CONVERSIONS - MORE THAN 5 UNITS",
-"RES - COOPERATIVE - VERTICAL",
-"RES CONVERSIONS - 5 UNITS",
-"RES CONVERSIONS - LESS THAN 5 UNITS",
-"RES COOPERATIVE - HORIZONTAL",
-"RES FLATS - LESS THAN 5 UNITS",
-"RES MIXED USE",
-"RES SINGLE FAMILY DETACHED",
-"RES SINGLE FAMILY GARAGE",
-"RES SINGLE FAMILY MISC",
-"RES SINGLE FAMILY ROW",
-"RES SINGLE FAMILY SEMI-DETACHED",
-"RESIDENTIAL - MULTIFAMILY MISC",
-"RESIDENTIAL TRANSIENT MISC",
-"SINGLE FAMILY - RES - NON CONFORMING",
-"WALK UP APT"
+      "CONDO HORIZONTAL",
+      "CONDO HORIZONTAL COMBINED",
+      "CONDO VERTICAL",
+      "CONDO VERTICAL COMBINED",
+      "CONDO, INVESTMENT, HORIZONTAL",
+      "CONDO, INVESTMENT, VERTICAL",
+      "COOPERATIVE - HORIZONTAL - MIXED USE",
+      "COOPERATIVE - VERTICAL - MIXED USE",
+      "ELEVATOR APT",
+      "RES - CONVERSIONS - MORE THAN 5 UNITS",
+      "RES - COOPERATIVE - VERTICAL",
+      "RES CONVERSIONS - 5 UNITS",
+      "RES CONVERSIONS - LESS THAN 5 UNITS",
+      "RES COOPERATIVE - HORIZONTAL",
+      "RES FLATS - LESS THAN 5 UNITS",
+      "RES MIXED USE",
+      "RES SINGLE FAMILY DETACHED",
+      "RES SINGLE FAMILY GARAGE",
+      "RES SINGLE FAMILY MISC",
+      "RES SINGLE FAMILY ROW",
+      "RES SINGLE FAMILY SEMI-DETACHED",
+      "RESIDENTIAL - MULTIFAMILY MISC",
+      "RESIDENTIAL TRANSIENT MISC",
+      "SINGLE FAMILY - RES - NON CONFORMING",
+      "WALK UP APT"
  )
 
 jur <- jur %>% 
@@ -160,45 +156,8 @@ rm(res_codes)
 
 ##### `category`
 ```{r cr-cat}
-commercial <- c("BANKS/FINANCIAL",
-        "CLUB PRIVATE",
-        "COMMERCIAL - OFFICE CONDOMINIUM",
-        "COMMERCIAL - OFFICE MISC",
-        "COMMERCIAL - RETAIL - CONDOMINIUM",
-        "COMMERCIAL - RETAIL - MISC",
-        "COMMERCIAL USE",
-        "FAST FOOD RESTAURANTS",
-        "GARAGE/VEHICLE SALES",
-        "HEALTH CARE FACILITY",
-        "HOTEL LARGE",
-        "HOTEL SMALL",
-        "IMPROVED W/ PERMIT COMMERCIAL",
-        "INDUSTRIAL - MISC",
-        "INN",
-        "LIGHT INDUSTRIAL",
-        "MEDICAL",
-        "MOTEL",
-        "PARKING GARAGE",
-        "PARKING LOT",
-        "PLANNED COMMERCIAL DEVELOPMENT",
-        "RECREATIONAL",
-        "RESTAURANTS",
-        "STORE - BARBER/BEAUTY SHOP",
-        "STORE - DEPARTMENT",
-        "STORE - MISC",
-        "STORE - RESTAURANT",
-        "STORE - SHOPPING CENTER/MALL",
-        "STORE - SMALL/1 STORY",
-        "STORE - SUPER MARKET",
-        "THEATERS/ENTERTAINMENT",
-        "TOURIST HOMES",
-        "WAREHOUSE - CONDOMINIUM",
-        "WAREHOUSING - 1 STORY",
-        "WAREHOUSING - MULTI-STORY"
-)
 
 mf <- c("CONDO - VERTICAL",
-        "CONDO GARAGE",
         "CONDO HORIZONTAL",
         "CONDO HORIZONTAL COMBINED",
         "CONDO VERTICAL",
@@ -208,8 +167,6 @@ mf <- c("CONDO - VERTICAL",
         "COOPERATIVE - HORIZONTAL - MIXED USE",
         "COOPERATIVE - VERTICAL - MIXED USE",
         "ELEVATOR APT",
-        "FALSE VACANT ABUTTING LOT (RES)",
-        "GARAGE, MULTIFAMILY",
         "RES - CONVERSIONS - MORE THAN 5 UNITS",
         "RES - COOPERATIVE - VERTICAL",
         "RES CONVERSIONS - 5 UNITS",
@@ -218,22 +175,19 @@ mf <- c("CONDO - VERTICAL",
         "RES FLATS - LESS THAN 5 UNITS",
         "RES MIXED USE",
         "RESIDENTIAL - MULTIFAMILY MISC",
-        "WALK UP APT"
-)
-
-office <- c("OFFICE - CONDOMINIUM HORIZONTAL",
-            "OFFICE - CONDOMINIUM VERTICAL",
-            "OFFICE - LARGE",
-            "OFFICE - SMALL")
+        "WALK UP APT")
 
 sf <- c("RES SINGLE FAMILY DETACHED",
-        "RES SINGLE FAMILY GARAGE",
         "RES SINGLE FAMILY MISC",
         "RES SINGLE FAMILY ROW",
         "RES SINGLE FAMILY SEMI-DETACHED",
         "SINGLE FAMILY - RES - NON CONFORMING")
 
-vacant <- c("TRUE VACANT",
+vacant <- c("FALSE VACANT",
+            "FALSE VACANT ABUTTING LOT (RES)",
+            "IMPROVED-USE NOT SPECIFIED",
+            "IMPROVED W/ PERMIT COMMERCIAL",
+            "TRUE VACANT",
             "VACANT - UNIMPROVED PARKING",
             "VACANT COMM USE, MISC COMM IMPRS",
             "VACANT COMM W/ ZONING LIMITATIONS",
@@ -242,161 +196,246 @@ vacant <- c("TRUE VACANT",
             "VACANT W/PERMIT",
             "VACANT W/ZONING LIMITS")
 
+allother <- c("BANKS/FINANCIAL",
+                "CLUB PRIVATE",
+                "COMMERCIAL - OFFICE CONDOMINIUM",
+                "COMMERCIAL - OFFICE MISC",
+                "COMMERCIAL - RETAIL - CONDOMINIUM",
+                "COMMERCIAL - RETAIL - MISC",
+                "COMMERCIAL USE",
+                "CONDO GARAGE",
+                "DORMITORY",
+                "EDUCATIONAL",
+                "EMBASSIES/CHANCERIES/ETC",
+                "FAST FOOD RESTAURANTS",
+                "FRATERNITY/SORORITY HOUSE",
+                "GARAGE, MULTIFAMILY",
+                "GARAGE/VEHICLE SALES",
+                "HEALTH CARE FACILITY",
+                "HOTEL LARGE",
+                "HOTEL SMALL",
+                "INDUSTRIAL - MISC",
+                "INN",
+                "LIGHT INDUSTRIAL",
+                "MEDICAL",
+                "MOTEL",
+                "MUSEUMS/LIBRARIES/GALLERIES",
+                "OFFICE - CONDOMINIUM HORIZONTAL",
+                "OFFICE - CONDOMINIUM VERTICAL",
+                "OFFICE - LARGE",
+                "OFFICE - SMALL",
+                "PARKING GARAGE",
+                "PARKING LOT",
+                "PLANNED COMMERCIAL DEVELOPMENT",
+                "PUBLIC SERVICE",
+                "RAW MATERIAL HANDLING",
+                "RECREATIONAL",
+                "RELIGIOUS",
+                "RES SINGLE FAMILY GARAGE",
+                "RESIDENTIAL TRANSIENT MISC",
+                "RESTAURANTS",
+                "SPECIAL PURPOSE - MISC",
+                "SPECIAL PURPOSE MEMORIAL",
+                "STORE - BARBER/BEAUTY SHOP",
+                "STORE - DEPARTMENT",
+                "STORE - MISC",
+                "STORE - RESTAURANT",
+                "STORE - SHOPPING CENTER/MALL",
+                "STORE - SMALL/1 STORY",
+                "STORE - SUPER MARKET",
+                "THEATERS/ENTERTAINMENT",
+                "TOURIST HOMES",
+                "TRUCK TERMINAL",
+                "TRUE VACANT COMMERCIAL",
+                "UNIMPROVED-USE NOT SPECIFIED",
+                "UNIMPROVED PARKING LOT",
+                "VEHICLE SERVICE STATION - KIOSK",
+                "VEHICLE SERVICE STATION - KIOSK/OTHER",
+                "VEHICLE SERVICE STATION - MARKET/OTHER",
+                "VEHICLE SERVICE STATION - VINTAGE",
+                "VEHICLE SERVICE STATION, MARKET",
+                "WAREHOUSE - CONDOMINIUM",
+                "WAREHOUSING - 1 STORY",
+                "WAREHOUSING - MULTI-STORY"
+                )
+
 
 jur <- jur %>% 
   mutate(category = case_when(
-           countylandusedescription %in% commercial ~ "commercial",
            countylandusedescription %in% mf ~ "mf",
-           countylandusedescription %in% office ~ "office",
+           countylandusedescription %in% allother ~ "all other category",
            countylandusedescription %in% sf ~ "sf",
            countylandusedescription %in% vacant ~ "vacant"))
 
-rm(commercial, office, mf, sf, vacant)
+rm(mf, sf, vacant, allother)
 ```
 
 ##### `category_detail`
 ```{r cr-catd}
-sfd <- c("RES SINGLE FAMILY DETACHED")
+sfd <- c("RES SINGLE FAMILY DETACHED",
+         "RES SINGLE FAMILY SEMI-DETACHED")
 
-sfa <- c("RES SINGLE FAMILY MISC",
-"RES SINGLE FAMILY ROW",
-"RES SINGLE FAMILY SEMI-DETACHED")
+sfa <- c("RES SINGLE FAMILY ROW")
 
 condo <- c("CONDO - VERTICAL",
-"CONDO GARAGE",
-"CONDO HORIZONTAL",
-"CONDO HORIZONTAL COMBINED",
-"CONDO VERTICAL",
-"CONDO VERTICAL COMBINED",
-"CONDO, INVESTMENT, HORIZONTAL",
-"CONDO, INVESTMENT, VERTICAL")
+          "CONDO GARAGE",
+          "CONDO HORIZONTAL",
+          "CONDO HORIZONTAL COMBINED",
+          "CONDO VERTICAL",
+          "CONDO VERTICAL COMBINED",
+          "CONDO, INVESTMENT, HORIZONTAL",
+          "CONDO, INVESTMENT, VERTICAL",
+          "COOPERATIVE - HORIZONTAL - MIXED USE",
+          "COOPERATIVE - VERTICAL - MIXED USE",
+          "RES - CONVERSIONS - MORE THAN 5 UNITS",
+          "RES - COOPERATIVE - VERTICAL",
+          "RES CONVERSIONS - 5 UNITS",
+          "RES CONVERSIONS - LESS THAN 5 UNITS",
+          "RES COOPERATIVE - HORIZONTAL")
 
-resconvert <- c("RES - CONVERSIONS - MORE THAN 5 UNITS",
-"RES CONVERSIONS - 5 UNITS",
-"RES CONVERSIONS - LESS THAN 5 UNITS")
+apt <- c("ELEVATOR APT",
+        "RES FLATS - LESS THAN 5 UNITS",
+        "WALK UP APT")
 
-coop <- c("COOPERATIVE - HORIZONTAL - MIXED USE",
-"COOPERATIVE - VERTICAL - MIXED USE",
-"RES - COOPERATIVE - VERTICAL",
-"RES COOPERATIVE - HORIZONTAL")
+com <- c("BANKS/FINANCIAL",
+          "CLUB PRIVATE",
+          "COMMERCIAL - OFFICE CONDOMINIUM",
+          "COMMERCIAL - OFFICE MISC",
+          "COMMERCIAL - RETAIL - CONDOMINIUM",
+          "COMMERCIAL - RETAIL - MISC",
+          "COMMERCIAL USE",
+          "FAST FOOD RESTAURANTS",
+          "GARAGE/VEHICLE SALES",
+          "HEALTH CARE FACILITY",
+          "HOTEL LARGE",
+          "HOTEL SMALL",
+          "IMPROVED W/ PERMIT COMMERCIAL",
+          "INDUSTRIAL - MISC",
+          "INN",
+          "LIGHT INDUSTRIAL",
+          "MEDICAL",
+          "MOTEL",
+          "PARKING GARAGE",
+          "PARKING LOT",
+          "PLANNED COMMERCIAL DEVELOPMENT",
+          "RAW MATERIAL HANDLING",
+          "RECREATIONAL",
+          "RESTAURANTS",
+          "STORE - BARBER/BEAUTY SHOP",
+          "STORE - DEPARTMENT",
+          "STORE - MISC",
+          "STORE - RESTAURANT",
+          "STORE - SHOPPING CENTER/MALL",
+          "STORE - SMALL/1 STORY",
+          "STORE - SUPER MARKET",
+          "THEATERS/ENTERTAINMENT",
+          "TOURIST HOMES",
+          "VEHICLE SERVICE STATION - MARKET/OTHER",
+          "VEHICLE SERVICE STATION - VINTAGE",
+          "VEHICLE SERVICE STATION, MARKET",
+          "WAREHOUSE - CONDOMINIUM",
+          "WAREHOUSING - 1 STORY",
+          "WAREHOUSING - MULTI-STORY")
 
-apartment <- c("RES FLATS - LESS THAN 5 UNITS",
-"WALK UP APT")
-
- resother<- c("FALSE VACANT ABUTTING LOT (RES)",
-"RES MIXED USE",
-"RESIDENTIAL - MULTIFAMILY MISC",
-"RESIDENTIAL TRANSIENT MISC",
-"SINGLE FAMILY - RES - NON CONFORMING")
-
- commercial<- c("BANKS/FINANCIAL",
-"CLUB PRIVATE",
-"COMMERCIAL - OFFICE CONDOMINIUM",
-"COMMERCIAL - OFFICE MISC",
-"COMMERCIAL - RETAIL - CONDOMINIUM",
-"COMMERCIAL - RETAIL - MISC",
-"COMMERCIAL USE",
-"FAST FOOD RESTAURANTS",
-"GARAGE/VEHICLE SALES",
-"HEALTH CARE FACILITY",
-"HOTEL LARGE",
-"HOTEL SMALL",
-"IMPROVED W/ PERMIT COMMERCIAL",
-"INDUSTRIAL - MISC",
-"INN",
-"LIGHT INDUSTRIAL",
-"MEDICAL",
-"MOTEL",
-"PARKING GARAGE",
-"PARKING LOT",
-"PLANNED COMMERCIAL DEVELOPMENT",
-"RECREATIONAL",
-"RESTAURANTS",
-"STORE - BARBER/BEAUTY SHOP",
-"STORE - DEPARTMENT",
-"STORE - MISC",
-"STORE - RESTAURANT",
-"STORE - SHOPPING CENTER/MALL",
-"STORE - SMALL/1 STORY",
-"STORE - SUPER MARKET",
-"THEATERS/ENTERTAINMENT",
-"TOURIST HOMES",
-"WAREHOUSE - CONDOMINIUM",
-"WAREHOUSING - 1 STORY",
-"WAREHOUSING - MULTI-STORY")
-
-office <-  c("OFFICE - CONDOMINIUM HORIZONTAL",
-"OFFICE - CONDOMINIUM VERTICAL",
-"OFFICE - LARGE",
-"OFFICE - SMALL") 
-
-truevacant <- c("TRUE VACANT") 
+office <- c("OFFICE - CONDOMINIUM HORIZONTAL",
+          "OFFICE - CONDOMINIUM VERTICAL",
+          "OFFICE - LARGE",
+          "OFFICE - SMALL")
 
 vacantcom <- c("TRUE VACANT COMMERCIAL",
-"VACANT COMM USE, MISC COMM IMPRS",
-"VACANT COMM W/ ZONING LIMITATIONS",
-"VACANT W/ PERMIT COMMERCIAL",
-"VACANT W/COMMERCIAL USE")
+              "VACANT COMM USE, MISC COMM IMPRS",
+              "VACANT COMM W/ ZONING LIMITATIONS",
+              "VACANT W/ PERMIT COMMERCIAL",
+              "VACANT W/COMMERCIAL USE")
 
-vacantother <- c("VACANT - UNIMPROVED PARKING",
-"VACANT W/PERMIT",
-"VACANT W/ZONING LIMITS")
+vacantother <- c("FALSE VACANT",
+              "FALSE VACANT ABUTTING LOT (RES)",
+              "IMPROVED-USE NOT SPECIFIED",
+              "TRUE VACANT",
+              "VACANT - UNIMPROVED PARKING",
+              "VACANT W/PERMIT",
+              "VACANT W/ZONING LIMITS")
 
+otherres <-  c("RES MIXED USE",
+              "RES SINGLE FAMILY GARAGE",
+              "RES SINGLE FAMILY MISC",
+              "RESIDENTIAL - MULTIFAMILY MISC",
+              "RESIDENTIAL TRANSIENT MISC",
+              "SINGLE FAMILY - RES - NON CONFORMING") 
+
+othernonres <- c("DORMITORY",
+                "EDUCATIONAL",
+                "EMBASSIES/CHANCERIES/ETC",
+                "FRATERNITY/SORORITY HOUSE",
+                "GARAGE, MULTIFAMILY",
+                "MUSEUMS/LIBRARIES/GALLERIES",
+                "PUBLIC SERVICE",
+                "RELIGIOUS",
+                "SPECIAL PURPOSE - MISC",
+                "SPECIAL PURPOSE MEMORIAL",
+                "TRUCK TERMINAL",
+                "UNIMPROVED-USE NOT SPECIFIED",
+                "UNIMPROVED PARKING LOT",
+                "VEHICLE SERVICE STATION - KIOSK",
+                "VEHICLE SERVICE STATION - KIOSK/OTHER") 
 
 jur <- jur %>% 
   mutate(category_detail = case_when(
            countylandusedescription %in% sfd ~ "single family detached",
            countylandusedescription %in% sfa ~ "single family attached",
            countylandusedescription %in% condo ~ "condo",
-           countylandusedescription %in% resconvert ~ "residential conversion",
-           countylandusedescription %in% coop ~ "cooperatives",
-           countylandusedescription %in% apartment ~ "rental apartment",
-           countylandusedescription %in% resother ~ "misc residential",
-           countylandusedescription %in% commercial ~ "commerical",
+           countylandusedescription %in% apt ~ "rental apartment",
+           countylandusedescription %in% com ~ "commerical",
            countylandusedescription %in% office ~ "office",
-           countylandusedescription %in% truevacant ~ "true vacant",
            countylandusedescription %in% vacantcom ~ "vacant commercial",
-           countylandusedescription %in% vacantother ~ "vacant other"))
+           countylandusedescription %in% vacantother ~ "vacant all other",
+           countylandusedescription %in% otherres ~ "all other residential",
+           countylandusedescription %in% othernonres ~ "all other non residential"))
 
-rm(sfd, sfa, condo,resconvert,coop,apartment,resother,commercial,office,truevacant,vacantcom,vacantother)
+rm(sfd, sfa, condo,apt,com,office,vacantcom,vacantother,otherres,othernonres)
 
 ```
 
 ##### `building_type`
 ```{r cr-bt}
-
-garage <- c("CONDO GARAGE",
-"RES SINGLE FAMILY GARAGE")
                
 vertical <- c("CONDO - VERTICAL",
-"CONDO VERTICAL",
-"CONDO VERTICAL COMBINED",
-"CONDO, INVESTMENT, VERTICAL",
-"COOPERATIVE - VERTICAL - MIXED USE",
-"ELEVATOR APT",
-"RES - COOPERATIVE - VERTICAL")
+              "CONDO VERTICAL COMBINED",
+              "CONDO, INVESTMENT, VERTICAL",
+              "COOPERATIVE - VERTICAL - MIXED USE",
+              "ELEVATOR APT",
+              "RES - CONVERSIONS - MORE THAN 5 UNITS",
+              "RES - COOPERATIVE - VERTICAL")
                
 horizontal <- c("CONDO HORIZONTAL",
-"CONDO HORIZONTAL COMBINED",
-"CONDO, INVESTMENT, HORIZONTAL",
-"COOPERATIVE - HORIZONTAL - MIXED USE",
-"RES - CONVERSIONS - MORE THAN 5 UNITS",
-"RES CONVERSIONS - 5 UNITS",
-"RES CONVERSIONS - LESS THAN 5 UNITS",
-"RES COOPERATIVE - HORIZONTAL",
-"RES FLATS - LESS THAN 5 UNITS",
-"WALK UP APT")
+                "CONDO HORIZONTAL COMBINED",
+                "CONDO VERTICAL",
+                "CONDO, INVESTMENT, HORIZONTAL",
+                "COOPERATIVE - HORIZONTAL - MIXED USE",
+                "WALK UP APT")
 
-other <- c("RESIDENTIAL - MULTIFAMILY MISC",
-"RESIDENTIAL TRANSIENT MISC")
-               
+othermf <- c("RES CONVERSIONS - 5 UNITS",
+            "RES CONVERSIONS - LESS THAN 5 UNITS",
+            "RES COOPERATIVE - HORIZONTAL",
+            "RES FLATS - LESS THAN 5 UNITS",
+            "RES MIXED USE",
+            "RESIDENTIAL - MULTIFAMILY MISC")
+
 jur <- jur %>% 
-  mutate(building_type = case_when( countylandusedescription %in% garage ~ "garage",
-           countylandusedescription %in% vertical  ~ "vertical",
+  mutate(building_type = case_when(
+           countylandusedescription %in% vertical ~ "vertical",
            countylandusedescription %in% horizontal ~ "horizontal",
-           countylandusedescription %in% other ~ "other"))
+           countylandusedescription %in% othermf ~ "other multi family structure"))
+                           
+rm(vertical, horizontal, othermf )           
+```
 
-rm(garage,vertical, horizontal, other )           
+I used this code to check some of the confusing ones in the parcel base data to assign the right category
+```{r}
+jur %>% 
+ filter(countylandusedescription == "FALSE VACANT") %>% 
+  select(assessorsparcelnumberapnpin, propstreetname, owneroccupiedresidential) %>% 
+  head(20)
 ```
 
 ### Check variable classifications
@@ -574,7 +613,7 @@ For townhouses and other forms of attached housing, we do not want a collapse, s
 ```{r th}
 
 jur <- jur %>% 
-  mutate(address_type = ifelse(category_detail %in% c("townhouse", "sf attached"),
+  mutate(address_type = ifelse(category_detail %in% c("single family attached" ),
                                   "single",
                                   address_type))
 
@@ -652,15 +691,17 @@ rm(v)
 **Note:** there are some instances where there are no non-`NA` values, so this next step will throw some warning messages.
 
 ``` {r nest}
+
 nested <- multiples %>% 
   group_by(propaddress, parcel_address) %>%
   summarize_at(vars(zoning,lotsize_sf,
+                    
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
                     yearbuilt, long, lat), list) %>% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
-         zoning = map(zoning_list, Mode),
+                  zoning = map(zoning_list, Mode),
          lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
          buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
          countylandusedescription = map(countylandusedescription_list, Mode),
@@ -680,6 +721,7 @@ nested <- multiples %>%
                       map(yearbuilt_list, max, na.rm = TRUE),
                       NA))
 
+
 ```
 
 #### Lot size
@@ -687,8 +729,8 @@ nested <- multiples %>%
 Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show five cases that we have to reconcile.
 
 ``` {r lot-ex, echo=FALSE}
-weird <- tibble(propaddress = c( "1330 S FAIR ST", "1633 N COLONIAL TER", "1117 N VERMONT ST", "1134 N STUART ST", "1300 N MEADE ST"),
-                instance = 1:5)
+weird <- tibble(propaddress = c( "1 SCOTT CIR NW", "10 G ST NE", "100 FLORIDA AVE NE", "1000 CONSTITUTION AVE NW",  "1007 OTIS PL NW", "1003 50TH ST NE"),
+                instance = 1:6)
 
 weird1 <- nested %>% 
   filter(propaddress %in% weird$propaddress) %>%
@@ -706,6 +748,7 @@ rm(weird, weird1)
 - In the third example, the mode would give is a lot size of 0, which is also incorrect- but again, every value is not unique. 
 - In the fourth instance, there are the same number of unique values as there are properties- sum is the correct function. 
 - In the fifth instance, we need to replace the lot size of 0 with `NA`, so future operations will also return `NA`. 
+(This part need to be adapter to DC, cases are already changed to DC)
 
 
 First, filter out all the observations where the function is known. Then, re-examine the remaining observations.
@@ -744,28 +787,42 @@ nested_done <- nested %>%
 
 ```
 
-Based on examining the 77 addressess with different criteria, we develop these assumptions:
-1. Properties with more than 500 units are majority missing, and should be marked missing.
-2. If the mode is > 8,000 SF, we will use the mode.
-3. For all others, we use the sum.
+There are a total of 3225 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah's logic, but had some with the nprops one. 
 
-First, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
+1. The lotsize seems reasonable, but the nprop is double the actual value. Not sure how to deal with this
+2. In addition, I found a case (also presented in the table above) where one lotzie equals the sum of all other lotsize in the same address. I'm not sure how to programmatically detect all cases like this. 
+
+Other than the two issues, following sarah's instruction, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
 
 ``` {r fx-choice2}
+nested_other <- nested %>% 
+  filter(fxn == "other") %>% 
+  mutate(lsmode_num = ifelse(map(lsmode, length) > 1, NA,lsmode), 
+         lsmode_num = as.integer(lsmode_num))
+
+summary(nested_other$lotsize_sf_sum)
+summary(nested_other$lsmode_num)
+summary(nested_other$nprops)
+
+
 nested_other <- nested %>% 
   filter(fxn == "other") %>% 
   mutate(lsmode_num = ifelse(map(lsmode, length) > 1, NA, lsmode),
          lsmode_num = as.integer(lsmode_num),
          fxn = case_when(
-            nprops > 500 ~ "missing",
+            nprops> 1000 ~ "missing",
             lsmode_num > 8000 ~ "mode",
+            (nprops-1)*lsmode_num*2 == lotsize_sf_sum ~ "max",
             TRUE ~ "sum"
   ))
+
+
+nested_other %>% count(fxn)
 
 count(nested_other, fxn)
 ```
 
-Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot side.
+Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot size.
 
 ```{r combine}
 
@@ -774,7 +831,9 @@ nested_all <- bind_rows(nested_done, nested_other) %>%
   mutate(lotsize_sf_final = 
            case_when(fxn == "first" ~ lsfirst,
                      fxn == "sum" ~ lotsize_sf_sum,
-                     fxn == "mode" ~ lsmode_num))
+                     fxn == "mode" ~ lsmode_num,
+                     fxn == "max" ~ (nprops-1)*lsmode_num 
+                   ))
 ```
 
 The number of NAs should be the same as the number of those with the designation "missing"
@@ -792,9 +851,15 @@ rm(nested, nested_done, nested_other)
 #### Ties
 
 ##### Zoning
-There are 62 instances where there is a tie in the zoning code- examples below.
+There are 154 instances where there is a tie in the zoning code- examples below.
 
 ``` {r ties}
+
+tiescount <- nested_all %>% 
+  mutate(ties_z = ifelse(map(zoning, length) > 1, "tie", "not tie")) 
+
+tiescount %>% count(ties_z)
+
 ties <- nested_all %>% 
   mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
   filter(ties_z == 1) %>% 
@@ -812,6 +877,8 @@ ties <- nested_all %>%
 ties %>%
   select(propaddress, z1, z2) %>% 
   head(5)
+
+
 ```
 
 Since there is no definitive way to break these ties, we replace the `zoning` variable with `NA`.
@@ -962,6 +1029,7 @@ For single addresses, we have to reclassify condos that have a unique observatio
 
 ```{r singles-count}
 count(singles, category_detail)
+count(singles, category)
 ```
 
 ```{r singles-redo}
@@ -971,7 +1039,7 @@ singles <- singles %>%
                            "sf",
                            category),
          category_detail = ifelse(category_detail == "condo",
-                                  "sf attached",
+                                  "single family attached",
                                   category_detail))
 ```
 
