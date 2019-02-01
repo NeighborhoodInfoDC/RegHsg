@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Pre-clean Arlington County public records data"
+subtitle: "Pre-clean Loudoun County public records data"
 author: ""
 output:
   html_document:
@@ -54,8 +54,8 @@ source("../Macros/select-vars.R")
 Set FIPS code, filepath name, and directory for data storage (on L drive)
 
 ```{r fips}
-currentfips <- "51013"
-filepath <- "arlington"
+currentfips <- "51107"
+filepath <- "loudoun"
 jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
 rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
 
@@ -90,9 +90,7 @@ jur <- region %>%
 ```
 ## Download files
 
-Arlington has several files of use
-- Parcel-level file, could provide alternative lot area metric
-- Property file, can account for missing address/other geographic information
+Loudoun has files on Loudoun's parcels and landuse existing parcels, among others, but I selected these two. 
 
 ```{r download-data}
 pafile <- paste0(rdir, filepath, "-parcel-file.csv")
@@ -100,90 +98,44 @@ prfile <- paste0(rdir, filepath, "-property-file.csv")
 
 # parcel file
 if (!file.exists(pafile)) {
-  download.file("https://data.arlingtonva.us/rest/datastreams/258223/data.csv",
+  download.file("file:///L:/Libraries/RegHsg/Raw/loudoun/loudoun-parcel-file.csv",
                 destfile = pafile)
 }
 
 # property file
 if (!file.exists(prfile)) {
-  download.file("https://data.arlingtonva.us/rest/datastreams/255011/data.csv",
+  download.file("file:///L:/Libraries/RegHsg/Raw/loudoun/loudoun-property-file.csv",
                 destfile = prfile)
 }
 
 ```
+##check to see if variables prfile and pafile exist
+```{r}
+ls()
+```
 ## Read files
-
 ```{r read-files}
-
-parcel <- read_csv(pafile) %>% 
-  select(-`-`, -`-_1`)
 
 property <- read_csv(prfile,
                      col_types = cols(
-  provalLrsnId = col_double(),
-  hubEffectiveDtm = col_datetime(format = ""),
-  hubExpirationDtm = col_logical(),
-  realEstatePropertyCode = col_character(),
-  reasPropertyStatusCode = col_character(),
-  propertyClassTypeCode = col_double(),
-  propertyClassTypeDsc = col_character(),
-  legalDsc = col_character(),
-  lotSizeQty = col_double(),
-  mapBookPageNbr = col_character(),
-  neighborhoodNbr = col_double(),
-  polygonId = col_character(),
-  propertyStreetNbrNameText = col_character(),
-  propertyStreetNbr = col_double(),
-  propertyStreetNbrSuffixCode = col_character(),
-  propertyStreetDirectionPrefixCode = col_character(),
-  propertyStreetName = col_character(),
-  propertyStreetTypeCode = col_character(),
-  propertyStreetDirectionSuffixCode = col_character(),
-  propertyUnitNbr = col_character(),
-  propertyCityName = col_character(),
-  propertyZipCode = col_double(),
-  gisStreetCode = col_character(),
-  physicalAddressPrimeInd = col_logical(),
-  zoningDescListText = col_character(),
-  tradeName = col_character(),
-  ownerStreetText = col_character(),
-  ownerCityName = col_character(),
-  ownerStateCode = col_character(),
-  ownerZipCode = col_character(),
-  propertyYearBuilt = col_double(),
-  grossFloorAreaSquareFeetQty = col_double(),
-  effectiveAgeYearDate = col_double(),
-  numberOfUnitsCnt = col_integer(),
-  storyHeightCnt = col_double(),
-  valuationYearDate = col_double(),
-  commercialPropertyTypeDsc = col_character(),
-  economicUnitNbr = col_character(),
-  condoModelName = col_character(),
-  condoStyleName = col_character(),
-  finishedStorageAreaSquareFeetQty = col_integer(),
-  storageAreaSquareFeetQty = col_integer(),
-  unitNbr = col_character(),
-  propertyKey = col_double(),
-  reasPropertyOwnerKey = col_double(),
-  arlingtonStreetKey = col_double(),
-  propertyExpiredInd = col_logical(),
-  mixedUseInd = col_logical(),
-  commercialInd = col_logical(),
-  districtNbr = col_character(),
-  taxExemptionTypeDsc = col_character(),
-  condominiumProjectName = col_character(),
-  masterRealEstatePropertyCode = col_character(),
-  streetNbrOrder = col_double(),
-  resourceProtectionAreaInd = col_logical(),
-  statePlaneXCrd = col_double(),
-  statePlaneYCrd = col_double(),
-  latitudeCrd = col_double(),
-  longitudeCrd = col_double(),
-  physicalAddressKey = col_double()
+  OBJECTID = col_double(),
+  LU_PIN = col_double(),
+  LU_USE = col_character(),
+  LU_MULTI_USE_SUBCD1 = col_character(),
+  LU_AGE_RESTRICT = col_character(),
+  LU_HUNITS_EXIST = col_double(),
+  LU_GIS_ACRE = col_double(),
+  LU_LEGAL_ACRE = col_double(),
+  LU_DEVELOPABLE_PCT = col_double(),
+  LU_NON_RES_SQ_FT = col_double(),
+  LU_AS_OF_DATE = col_character(),
+  LU_DISPLAY = col_character(),
+  LU_TYPE = col_character(),
+  LU_USE_CONSOLIDATED = col_character()
 )
 )
 
-rm(pafile, prfile)
+rm(prfile)
 
 ```
 

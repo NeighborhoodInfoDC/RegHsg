@@ -87,7 +87,7 @@ jur <- region %>%
   select_vars()
 
 ```
-## Recatagorize county land use
+## Recategorize county land use
 In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates four variables:
 
 1. residential: 1 for residential, 0 for other.
