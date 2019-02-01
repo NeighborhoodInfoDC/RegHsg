@@ -221,15 +221,114 @@ vacant <- c("APARTMENTS-VACANT",
             "RESIDENTIAL-VACANT",
             "VACANT RESIDENTIAL")
 
- 
+other <- c("AGRICULTURAL",
+           "ARMORY",
+           "AUDITORIUM",
+           "AUTO CENTER",
+           "AUTO SHOWROOM",
+           "BEAUTY/BARBER SHOP",
+           "BOWLING ALLEY",
+           "BRANCH BANK",
+           "BRANCH POST OFFICE",
+           "BUILDING PER SQUARE FOOT",
+           "BUILDING PER UNIT",
+           "CHURCH",
+           "CINEMA",
+           "CITY CLUB",
+           "CLASSROOM",
+           "CLUB HOUSE",
+           "COMMERCIAL",
+           "COMMERCIAL-VACANT",
+           "COMMERCIAL CONDO",
+           "COMPLETE AUTOMOBILE DEALERSHIP",
+           "CONVALESCENT HOSPITAL",
+           "CONVENIENCE STORE",
+           "COUNTRY CLUB",
+           "DAY CARE CENTER",
+           "DENTAL CLINIC",
+           "DEPARTMENT STORE",
+           "DISCOUNT STORE",
+           "DISCOUNT WAREHOUSE",
+           "DISPENSARY",
+           "DISTRIBUTION WAREHOUSE",
+           "ELEMENTARY SCHOOL",
+           "EXEMPT",
+           "EXEMPT-COMMERCIAL",
+           "EXEMPT STANDARD UNIT",
+           "FAST FOOD",
+           "FINISH INDUSTRIAL",
+           "FINISH NEIGHBORHOOD SHOPPING CENTER",
+           "FIRE STATION",
+           "GENERAL HOSPITAL",
+           "GOVERNMENT BUILDING",
+           "GYMNASIUM",
+           "HANDBALL / RACQUETBALL COURTS",
+           "HANGAR",
+           "HEALTH CLUB",
+           "HEAVY INDUSTRIAL",
+           "HIGH SCHOOL",
+           "HOTEL",
+           "IMPROVED GENERAL",
+           "INDOOR TENNIS FACILITY",
+           "INDUSTRIAL",
+           "INDUSTRIAL - ENGINEERING & RESEARCH",
+           "INDUSTRIAL FLEX SPACE",
+           "JAIL",
+           "LABORATORY BUILDING",
+           "LAUNDROMAT",
+           "LIBRARY",
+           "LIGHT MANUFACTURING",
+           "MAIN BANK",
+           "MAIN POST OFFICE",
+           "MALL - ENCLOSED",
+           "MANUAL ARTS BUILDING",
+           "MARKET",
+           "MEDICAL OFFICE BUILDING",
+           "MEGA WAREHOUSE",
+           "MINI BANK",
+           "MINI LUBE",
+           "MINI STORAGE WAREHOUSE",
+           "MISCELLANEOUS GENERAL",
+           "MORTUARY",
+           "MOTEL",
+           "MULTI-PURPOSE SCHOOL BUILDING",
+           "OFFICE BUILDING",
+           "PARKING SPACE",
+           "PARKING SPACE-VACANT",
+           "PARKING STRUCTURE",
+           "RESTAURANT",
+           "RETAIL STORE",
+           "SERVICE GARAGE",
+           "SERVICE STATION",
+           "SHELL INDUSTRIAL",
+           "SHELL REGIONAL SHOPPING CENTER",
+           "SHOPPING CENTER / COMMUNITY",
+           "SHOPPING CENTER / NEIGHBORHOOD",
+           "SHOPPING CENTER / REGIONAL",
+           "SKATING RINK",
+           "STORAGE GARAGE",
+           "STORAGE HANGAR",
+           "STORAGE UNIT",
+           "STORAGE WAREHOUSE",
+           "SURGICAL CENTER",
+           "THEATER",
+           "TRANSIT WAREHOUSE",
+           "VACANT COMMERCIAL",
+           "VETERNARIAN HOSPITAL",
+           "VOLUNTEER FIRE STATION",
+           "WAREHOUSE MINI STORAGE MULTI STORY"
+           )
+           
+            
 jur <- jur %>% 
   mutate(category = case_when(
            countylandusedescription %in% mf ~ "mf",
            countylandusedescription %in% sf ~ "sf",
            countylandusedescription %in% vacant ~ "vacant",
-           TRUE ~ "undesignated"))
+           countylandusedescription %in% other ~ "other"
+           ))
 
-rm(mf, sf, vacant)
+rm(mf, sf, vacant, other)
 ```
 
 ##### `category_detail`
@@ -286,6 +385,104 @@ vacantres <- c("RESIDENTIAL-VACANT",
 
 vacantmixeduse <- c("COMMERCIAL/RESIDENTIAL-VACANT")
 
+other <- c("AGRICULTURAL",
+           "ARMORY",
+           "AUDITORIUM",
+           "AUTO CENTER",
+           "AUTO SHOWROOM",
+           "BEAUTY/BARBER SHOP",
+           "BOWLING ALLEY",
+           "BRANCH BANK",
+           "BRANCH POST OFFICE",
+           "BUILDING PER SQUARE FOOT",
+           "BUILDING PER UNIT",
+           "CHURCH",
+           "CINEMA",
+           "CITY CLUB",
+           "CLASSROOM",
+           "CLUB HOUSE",
+           "COMMERCIAL",
+           "COMMERCIAL-VACANT",
+           "COMMERCIAL CONDO",
+           "COMPLETE AUTOMOBILE DEALERSHIP",
+           "CONVALESCENT HOSPITAL",
+           "CONVENIENCE STORE",
+           "COUNTRY CLUB",
+           "DAY CARE CENTER",
+           "DENTAL CLINIC",
+           "DEPARTMENT STORE",
+           "DISCOUNT STORE",
+           "DISCOUNT WAREHOUSE",
+           "DISPENSARY",
+           "DISTRIBUTION WAREHOUSE",
+           "ELEMENTARY SCHOOL",
+           "EXEMPT",
+           "EXEMPT-COMMERCIAL",
+           "EXEMPT STANDARD UNIT",
+           "FAST FOOD",
+           "FINISH INDUSTRIAL",
+           "FINISH NEIGHBORHOOD SHOPPING CENTER",
+           "FIRE STATION",
+           "GENERAL HOSPITAL",
+           "GOVERNMENT BUILDING",
+           "GYMNASIUM",
+           "HANDBALL / RACQUETBALL COURTS",
+           "HANGAR",
+           "HEALTH CLUB",
+           "HEAVY INDUSTRIAL",
+           "HIGH SCHOOL",
+           "HOTEL",
+           "IMPROVED GENERAL",
+           "INDOOR TENNIS FACILITY",
+           "INDUSTRIAL",
+           "INDUSTRIAL - ENGINEERING & RESEARCH",
+           "INDUSTRIAL FLEX SPACE",
+           "JAIL",
+           "LABORATORY BUILDING",
+           "LAUNDROMAT",
+           "LIBRARY",
+           "LIGHT MANUFACTURING",
+           "MAIN BANK",
+           "MAIN POST OFFICE",
+           "MALL - ENCLOSED",
+           "MANUAL ARTS BUILDING",
+           "MARKET",
+           "MEDICAL OFFICE BUILDING",
+           "MEGA WAREHOUSE",
+           "MINI BANK",
+           "MINI LUBE",
+           "MINI STORAGE WAREHOUSE",
+           "MISCELLANEOUS GENERAL",
+           "MORTUARY",
+           "MOTEL",
+           "MULTI-PURPOSE SCHOOL BUILDING",
+           "OFFICE BUILDING",
+           "PARKING SPACE",
+           "PARKING SPACE-VACANT",
+           "PARKING STRUCTURE",
+           "RESTAURANT",
+           "RETAIL STORE",
+           "SERVICE GARAGE",
+           "SERVICE STATION",
+           "SHELL INDUSTRIAL",
+           "SHELL REGIONAL SHOPPING CENTER",
+           "SHOPPING CENTER / COMMUNITY",
+           "SHOPPING CENTER / NEIGHBORHOOD",
+           "SHOPPING CENTER / REGIONAL",
+           "SKATING RINK",
+           "STORAGE GARAGE",
+           "STORAGE HANGAR",
+           "STORAGE UNIT",
+           "STORAGE WAREHOUSE",
+           "SURGICAL CENTER",
+           "THEATER",
+           "TRANSIT WAREHOUSE",
+           "VACANT COMMERCIAL",
+           "VETERNARIAN HOSPITAL",
+           "VOLUNTEER FIRE STATION",
+           "WAREHOUSE MINI STORAGE MULTI STORY"
+           )
+
 
 jur <- jur %>% 
   mutate(category_detail = case_when(
@@ -294,10 +491,11 @@ jur <- jur %>%
            countylandusedescription %in% mfother ~ "mf other",
            countylandusedescription %in% sfdetached ~ "sf detached",
            countylandusedescription %in% townhouse ~ "townhouse",
-           countylandusedescription %in% mixeduse ~ "vacant mixeduse",
+           countylandusedescription %in% mixeduse ~ "mixeduse",
            countylandusedescription %in% vacantmf ~ "vacant mf",
            countylandusedescription %in% vacantres ~ "vacant residential",
-           countylandusedescription %in% vacantmixeduse ~ "vacant mixed use"))
+           countylandusedescription %in% vacantmixeduse ~ "vacant mixed use",
+           countylandusedescription %in% other ~ "other"))
 
 rm(apartment, condo, mfother, sfdetached, townhouse,
    mixeduse, vacantmf, vacantres, vacantmixeduse)
@@ -310,20 +508,59 @@ rm(apartment, condo, mfother, sfdetached, townhouse,
 garden <- c("GARDEN CONDO")
                
 highrise <- c("CONDO HI RISE")
-               
 
-other <- c("FRATERNAL BUILDING",
-           "FRATERNITY HOUSE",
-           "GROUP HOME",
-           "RECTORY")
+condo <- c("CONDO",
+           "CONDO-CENTER UNIT",
+           "CONDO-END UNIT",
+           "CONDO HI RISE",
+           "CONDO TH",
+           "GARDEN CONDO",
+           "MARINA CONDOMINIUM SLIP",
+           "OFFICE CONDOMINIUM",
+           "RESIDENTIAL-CONDOMINIUM",
+           "RETAIL CONDOMINIUM",
+           "WAREHOUSE CONDOMINIUM")
+
+mixeduse <- c("COMMERCIAL/RESIDENTIAL",
+              "COMMERICIAL/RESIDENTIAL-END UNIT",
+              "MIXED RESIDENTIAL / RETAIL",
+              "RESIDENTIAL-COMMERCIAL")
+
+townhouse <-  c("RESIDENTIAL-TOWNHOUSE CENTER UNIT",
+                "RESIDENTIAL-TOWNHOUSE END UNIT",
+                "TOWN HOUSE") 
+               
+apartment <- c("APARTMENT",
+               "APARTMENTS",
+               "DORMITORY",
+               "LOFT",
+               "ONE BEDROOMS",
+               "RESIDENTIAL APARTMENT UNITS",
+               "HOME FOR THE ELDERLY")
+
+
+vacant <- c("APARTMENTS-VACANT",
+            "CONDO HI RISE-VACANT",
+            "RESIDENTIAL-CONDOMINIUM-VACANT",
+            "GARDEN CONDO-VACANT",
+            "RESIDENTIAL-VACANT",
+            "VACANT RESIDENTIAL",
+            "COMMERCIAL/RESIDENTIAL-VACANT")
+
+other <- c("MULTIPLE RESIDENCE")
                
 jur <- jur %>% 
   mutate(building_type = case_when(
            countylandusedescription %in% garden ~ "garden",
            countylandusedescription %in% highrise  ~ "high-rise",
+           countylandusedescription %in% condo ~ "condo",
+           countylandusedescription %in% mixeduse ~ "mixed use",
+           countylandusedescription %in% apartment ~ "apartment",
+           countylandusedescription %in% townhouse ~ "townhouse",
+           countylandusedescription %in% vacant ~ "vacant",
            countylandusedescription %in% other ~ "other"))
 
-rm(garden, highrise, other)           
+rm(garden, highrise, other, condo, mixeduse, apartment, townhouse, vacant)           
 ```
 
 ### Check variable classifications
