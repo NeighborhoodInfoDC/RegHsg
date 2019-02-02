@@ -69,10 +69,11 @@ run;
 
 data demographics00(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
 	set NCDB.Ncdb_master_update;
-	keep geo2010 county Jurisdiction percentrenter_00 percentwhite_00 percentcollege_00 avghhinc_00 sprntoc0 spownoc0 shr0d minwht0n educpp0 educ160 avhhin0 avghhinc_00a numhhs0 percentinclt75000_00 thy0100 thy0150 thy0200 thy0250 thy0300 thy0350 thy0400 thy0450 thy0500 thy0600 thy0750;
+	keep geo2010 county Jurisdiction percentrenter_00 percentwhite_00 percentcollege_00 avghhinc_00 sprntoc0 spownoc0 shr0d SHRNHW0N educpp0 educ160 avhhin0 avghhinc_00a 
+		 numhhs0 percentinclt75000_00 thy0100 thy0150 thy0200 thy0250 thy0300 thy0350 thy0400 thy0450 thy0500 thy0600 thy0750;
 	county= substr(geo2010,1,5);
 	percentrenter_00= sprntoc0/(sprntoc0+spownoc0);
-	percentwhite_00= minwht0n/shr0d;
+	percentwhite_00= SHRNHW0N/shr0d;
 	percentcollege_00= educ160/educpp0;
 	avghhinc_00= avhhin0;
 	percentinclt75000_00= (thy0100+thy0150+thy0200+thy0250+thy0300+thy0350+thy0400+thy0450+thy0500+thy0600+thy0750)/numhhs0;
@@ -84,14 +85,11 @@ proc sort data=demographics00;
 by geo2010;
 run;
 
-data merged;
+data changeintime;
 merge demographics16 demographics00;
 by geo2010;
 COG=1;
-run;
 
-data changeintime;
-set merged;
 deltarenter = numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.)- sprntoc0/(sprntoc0+spownoc0);
 deltawhite= percentwhite_2016- percentwhite_00;
 deltacollege= percentcollege_2016- percentcollege_00;
@@ -101,59 +99,45 @@ run;
 
 proc means data=changeintime median;
 run;
-
+proc sort data=changeintime;
+by jurisdiction;
 proc summary data= changeintime;
-	class COG Jurisdiction;
-	var numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. popwhitenonhispbridge_&_years. popwithrace_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. agghshldincome_&_years. numhshlds_&_years. avghhinc_00a sprntoc0 spownoc0 minwht0n shr0d educ160 educpp0 numhhs0 hshldincunder15000_&_years.  hshldinc15000to34999_&_years.  hshldinc35000to49999_&_years.  hshldinc50000to74999_&_years. thy0100 thy0150 thy0200 thy0250 thy0300 thy0350 thy0400 thy0450 thy0500 thy0600 thy0750;
+	by Jurisdiction;
+	var numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. popwhitenonhispbridge_&_years. popwithrace_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years.
+		agghshldincome_&_years. numhshlds_&_years. avghhinc_00a sprntoc0 spownoc0 SHRNHW0N shr0d educ160 educpp0 numhhs0 hshldincunder15000_&_years.  hshldinc15000to34999_&_years.
+		hshldinc35000to49999_&_years.  hshldinc50000to74999_&_years. thy0100 thy0150 thy0200 thy0250 thy0300 thy0350 thy0400 thy0450 thy0500 thy0600 thy0750;
 	output out = vulnerable_2016  sum=;
 run;
 
 /*calculate vulnerability threshold based on Jurisdiction total*/
-data vulnerablethreshold;
-set vulnerable_2016(where=(COG = 1));
-keep  Jurisdiction threshold_renter_2016 threshold_white_2016 threshold_hhinc_2016 threshold_college_2016 threshold_75000_2016 percentrenter_2016 percentwhite_2016 percentcollege_2016 percentinclt75000 avghhinc_2016 popwhitenonhispbridge_&_years. popwithrace_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. agghshldincome_&_years.  numhshlds_&_years. medianhomevalue_&_years. ;
-	county= substr(geo2010,1,5);
+data vulnerablethreshold (keep = Jurisdiction threshold_renter_2016 threshold_white_2016 threshold_hhinc_2016 threshold_college_2016 threshold_75000_2016 
+								 threshold_deltarenter threshold_deltawhite threshold_deltacollege /*threshold_deltahhinc*/ threshold_delta75000)
+						  ;
+	set vulnerable_2016 (drop=_type_ _freq_) ;
+
 	percentrenter_2016= numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.);
 	percentwhite_2016= popwhitenonhispbridge_&_years./popwithrace_&_years.;
 	percentcollege_2016= pop25andoverwcollege_&_years./pop25andoveryears_&_years.;
 	avghhinc_2016= agghshldincome_&_years./(numhshlds_&_years. );
 	percentinclt75000= (hshldincunder15000_&_years. + hshldinc15000to34999_&_years.+ hshldinc35000to49999_&_years.+ hshldinc50000to74999_&_years.)/(numhshlds_&_years. );
-	rename percentrenter_2016=threshold_renter_2016;
-	rename percentwhite_2016=threshold_white_2016;
-	rename avghhinc_2016=threshold_hhinc_2016;
-	rename percentcollege_2016=threshold_college_2016;
-	rename percentinclt75000=threshold_75000_2016;
-run;
 
-data vulnerablethreshold (where=(Jurisdiction !=.));
-set vulnerablethreshold;
-keep Jurisdiction threshold_renter_2016 threshold_white_2016 threshold_hhinc_2016 threshold_college_2016 threshold_75000_2016;
-run;
-
-proc summary data= changeintime;
-class COG Jurisdiction;
-var numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. popwhitenonhispbridge_&_years. popwithrace_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. agghshldincome_&_years. numhshlds_&_years. avghhinc_00a sprntoc0 spownoc0 minwht0n shr0d educ160 educpp0 numhhs0 hshldincunder15000_&_years.  hshldinc15000to34999_&_years.  hshldinc35000to49999_&_years.  hshldinc50000to74999_&_years. thy0100 thy0150 thy0200 thy0250 thy0300 thy0350 thy0400 thy0450 thy0500 thy0600 thy0750;
-output out = demographicschange_2016  sum=;
-run;
-
-data demographic_threshold;
-set demographicschange_2016 (where=(COG=1));
 	deltarenter = numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years. +numowneroccupiedhu_&_years.)- sprntoc0/(sprntoc0+spownoc0);
-	deltawhite= popwhitenonhispbridge_&_years./popwithrace_&_years.- minwht0n/shr0d;
+	deltawhite= popwhitenonhispbridge_&_years./popwithrace_&_years.- SHRNHW0N/shr0d;
 	deltacollege= pop25andoverwcollege_&_years./pop25andoveryears_&_years. - educ160/educpp0;
-	deltahhinc= ((agghshldincome_&_years. /numhshlds_&_years.)-avghhinc_00a)/avghhinc_00a;
+	/*this is incorrect - should not sum average in proc summary 
+		deltahhinc= ((agghshldincome_&_years. /numhshlds_&_years.)-avghhinc_00a)/avghhinc_00a;*/
 	deltahhinc75000= (hshldincunder15000_&_years. + hshldinc15000to34999_&_years.+ hshldinc35000to49999_&_years.+ hshldinc50000to74999_&_years.)/(numhshlds_&_years. )- (thy0100+thy0150+thy0200+thy0250+thy0300+thy0350+thy0400+thy0450+thy0500+thy0600+thy0750)/numhhs0;
     
-    rename deltarenter=threshold_deltarenter;
-	rename deltawhite=threshold_deltawhite;
-	rename deltacollege= threshold_deltacollege;
-	rename deltahhinc=threshold_deltacollege;
-	rename deltahhinc75000=threshold_delta75000;
-run;
-
-data demographic_threshold;
-set demographic_threshold;
-keep Jurisdiction threshold_deltarenter threshold_deltawhite threshold_deltacollege threshold_deltacollege threshold_delta75000;
+	rename 							percentrenter_2016=threshold_renter_2016 
+									percentwhite_2016=threshold_white_2016
+									avghhinc_2016=threshold_hhinc_2016
+									percentcollege_2016=threshold_college_2016
+									percentinclt75000=threshold_75000_2016
+									deltarenter=threshold_deltarenter 
+									deltawhite=threshold_deltawhite
+									deltacollege= threshold_deltacollege
+									/*deltahhinc=threshold_deltahhinc*/
+									deltahhinc75000=threshold_delta75000;
 run;
 
 /*compile county level median 2000 and 2016 to calculate Jurisdiction level median income change threshold*/
@@ -172,15 +156,19 @@ keep Jurisdiction county medfamincm_2012_16;
 	if county in ("51153", "51683","51685") then Jurisdiction=9;
 	if county in ("51510") then Jurisdiction=10;
 run;
-
+proc sort data=countylevelmedian_16;
+by jurisdiction;
 proc summary data=countylevelmedian_16;
-class Jurisdiction ;
+by Jurisdiction ;
+var medfamincm_2012_16;
 output out=jurisdictionmedian_16 mean=medfamincm_2012_16;
 run;
 
-data countylevelmedian_00(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685")));
+data countylevelmedian_00(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685"))
+						  keep = county Jurisdiction mdfamy0);
 set NCDB.Ncdb_master_update;
-	keep county Jurisdiction mdfamy0;
+	
+	county= substr(geo2010,1,5); 
 	if county in ("11001") then Jurisdiction=1;
 	if county in ("24017") then Jurisdiction=2;
 	if county in ("24021") then Jurisdiction=3;
@@ -192,50 +180,36 @@ set NCDB.Ncdb_master_update;
 	if county in ("51153", "51683","51685") then Jurisdiction=9;
 	if county in ("51510") then Jurisdiction=10;
 run;
-
+proc sort data=countylevelmedian_00;
+by jurisdiction;
 proc summary data=countylevelmedian_00;
-class Jurisdiction ;
+by Jurisdiction ;
+var mdfamy0;
 output out=jurisdictionmedian_00 mean=mdfamy0;
-run;
-
-proc sort data=jurisdictionmedian_16;
-by Jurisdiction;
-run;
-proc sort data=jurisdictionmedian_00;
-by Jurisdiction;
 run;
 
 data medianincomechange;
 merge jurisdictionmedian_16 jurisdictionmedian_00;
 by Jurisdiction;
-run;
 
-data deltamedianthreshold;
-set medianincomechange;
-threshold_deltamedian= medfamincm_2012_16- mdfamy0;
+	%dollar_convert( mdfamy0, mdfamy0a, 1999, 2016, series=CUUR0000SA0 )
+
+threshold_deltamedian= (medfamincm_2012_16- mdfamy0a)/mdfamy0a;
 run;
 
 proc sort data=changeintime;
 by Jurisdiction;
-run;
-
 data masterdata_1;
-merge changeintime vulnerablethreshold;
-by Jurisdiction;
-run;
-
-data masterdata_2;
-merge masterdata_1 demographic_threshold;
+merge changeintime vulnerablethreshold medianincomechange;
 by Jurisdiction;
 run;
 
 
 /* identify tracts with higher than average population with characteristics that make resisting displacement more difficult:
 renters, POC, lack college degree, lower income*/
-/*median for 2016: percentwhite:0.437 percentrenter: 0.383 percentcollege 0.514 averageincome 123451.1*/
 
 data risk_displacement;
-set masterdata_2;
+set masterdata_1;
 		if percentrenter_2016 >= threshold_renter_2016 then vulnerable_renter =1;
 	    else if percentrenter_2016< threshold_renter_2016 then vulnerable_renter =0;
 		else if percentrenter_2016=. then vulnerable_renter =.;
@@ -256,19 +230,15 @@ set masterdata_2;
 
 		if vulnerablesum>=3 then vulnerable=1; else vulnerable=0;
 
-run;
-
 /* identify change of tract demographics that are signalling gentrification:
 change in renters, more white people, more college degree, higher income*/
-/*means for deltarenter:-0.026516813   deltawhite: -0.13102085 deltacollege: 0.0725301253 deltainc: -0.999144121*/
+
 
 /*calculate demographic change threshold based on region total*/
 
-data risk_gentrification;
-set risk_displacement;
 		if deltarenter <= threshold_deltarenter then gentrifier_owner =1;
-	    else if deltarenter> threshold_deltarenter then vulnerable_renter =0;
-		else if deltarenter=. then vulnerable_renter =.;
+	    else if deltarenter> threshold_deltarenter then gentrifier_owner =0;
+		else if deltarenter=. then gentrifier_owner =.;
 
 		if deltawhite>= threshold_deltawhite then gentrifier_white=1;
 		else if deltawhite< threshold_deltawhite then gentrifier_white=0;
@@ -298,9 +268,11 @@ run;
 
 /*signofrisk: 1: gentrifying and vulnerable now 2: gentrifying but not vulnerable now 3; not gentrified but vulnerable 3: not gentrified and not vulnerable*/
 data flag_population;
-set risk_gentrification;
+set risk_displacement;
 keep geo2010 county Jurisdiction vulnerable demographicchange percentrenter_2016 percentwhite_2016 percentcollege_2016 avghhinc_2016 popwhitenonhispbridge_&_years. popwithrace_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. agghshldincome_&_years.  numhshlds_&_years. medianhomevalue_&_years. ;
 format vulnerable signofrisk. demographicchange signofrisk. ;
+
+if numhshlds_&_years. < 100 then do; vulnerable =.n; demographicchange=.n; end;
 run;
 
 
@@ -323,9 +295,10 @@ county= substr(geo2010,1,5);
 	if county in ("51153", "51683","51685") then Jurisdiction=9;
 	if county in ("51510") then Jurisdiction=10;
 run;
-
+proc sort data=changeintime;
+by geo2010;
 data housingmarket;
-merge merged housing1990;
+merge changeintime housing1990;
 keep geo2010 geoid county Jurisdiction mdvalhs9_a mdvalhs0_a medianhomevalue_2012_16 appre90_16 appre00_16;
 by geo2010;
 	appre90_16 = (medianhomevalue_2012_16- mdvalhs9_a)/ mdvalhs9_a;
@@ -335,8 +308,10 @@ run;
 
 
 /*need to rank the tracts by Jurisdiction*/
+proc sort data=housingmarket;
+by jurisdiction;
 proc rank data=housingmarket out=valuehousing groups=5;
- by geo2010;
+ by jurisdiction;
  var mdvalhs9_a mdvalhs0_a medianhomevalue_2012_16 appre90_16 appre00_16;
  ranks rank90 rank2000 rank2016 rank90_16 rank00_16 ;
 run;

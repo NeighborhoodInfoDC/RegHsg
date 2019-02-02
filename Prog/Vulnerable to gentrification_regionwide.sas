@@ -58,10 +58,10 @@ run;
 
 data demographics00(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
 set NCDB.Ncdb_master_update;
-keep geo2010 county percentrenter_00 percentwhite_00 percentcollege_00 avghhinc_00 sprntoc0 spownoc0 shr0d minwht0n educpp0 educ160 avhhin0 avghhinc_00a numhhs0;
+keep geo2010 county percentrenter_00 percentwhite_00 percentcollege_00 avghhinc_00 sprntoc0 spownoc0 shr0d SHRNHW0N educpp0 educ160 avhhin0 avghhinc_00a numhhs0;
 county= substr(geo2010,1,5);
 percentrenter_00= sprntoc0/(sprntoc0+spownoc0);
-percentwhite_00= minwht0n/shr0d;
+percentwhite_00= SHRNHW0N/shr0d;
 percentcollege_00= educ160/educpp0;
 avghhinc_00= avhhin0;
 
@@ -73,14 +73,11 @@ proc sort data=demographics00;
 by geo2010;
 run;
 
-data merged;
+data changeintime;
 merge demographics16 demographics00;
 by geo2010;
 COG=1;
-run;
 
-data changeintime;
-set merged;
 deltarenter = numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.)- sprntoc0/(sprntoc0+spownoc0);
 deltawhite= percentwhite_2016- percentwhite_00;
 deltacollege= percentcollege_2016- percentcollege_00;
@@ -220,7 +217,9 @@ data appreciationtracts;
 set valuehousing;
 
 if rank90 <= 2 &  rank2016 >=3 & rank90_16 >= 3 then appreciated =1;else appreciated =0;
+	if rank90 = . or rank2016=. then appreciated=.; 
 if rank2016<=2 & rank00_16 >=3 then accelerating=1;else accelerating=0;
+	if rank2016=. or rank00_16=. then accelerating=.; 
 
 run;
 
