@@ -59,19 +59,24 @@ source("../Macros/select-vars.R")
 source("../Macros/sample-properties.R")
 source("../Macros/classify-addresses.R")
 ```
-#### Create directory for data exports
-```{r dir}
-if (!dir.exists("Data")) {
-  dir.create("Data")
-}
-
-```
-
 
 #### Set FIPS code and filepath name
 ```{r fips}
 currentfips <- "24031"
 filepath <- "montgomery"
+
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
+```
+
+####Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
+  dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))
+}
 ```
 
 #### Load in Black Knight data for the region, select jurisdiction and standard variables
@@ -87,6 +92,54 @@ jur <- region %>%
   select_vars()
 
 ```
+
+## Download files
+
+Montgomery has one files of use
+- Parcel-level file, could provide alternative lot area metric
+
+```{r download-data}
+pafile <- paste0(rdir, filepath, "-parcel-file.zip")
+zdir <- paste0(rdir, filepath, "-parcel-file")
+zurl <- "https://mcatlas.org/tiles/00_Shapefiles/Zoning_parcels_March2018.zip"
+
+
+# parcel file
+if (!file.exists(pafile)) {
+  download.file(zurl,
+                destfile = pafile)
+  dir.create(zdir)
+  unzip(pafile, exdir = zdir)
+}
+
+pfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels'), end = -5) %>% unique()
+parcel_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
+                     layer = pfile[1])
+
+
+```
+
+## Read files
+
+```{r read-files}
+parcel <- read_csv(pafile) %>% 
+  select(-`-`, -`-_1`)
+
+rm(pafile)
+
+```
+
+
+#### Create local directory for data exports
+```{r dir}
+if (!dir.exists("Data")) {
+  dir.create("Data")
+}
+
+```
+
+
+
 ## Recatagorize county land use
 In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates four variables:
 
@@ -114,6 +167,8 @@ rm(currentjur_county)
 ### Create categorization variables
 
 We use `ifelse()` and `case_when()` to create the three new variables based on the county land use codes.
+
+*Patrick's notes* - eliminated office and commercial categories - now all office and commercial county land use codes are under "other". Eliminated category_detail "sf attached". There were no sf attached land use codes that were different from the existing townhouse code. Limited information available for building type. I carried down category_detail in these instances.
 
 #### {.tabset .tabset.fade}
 ##### `residential`
@@ -364,6 +419,7 @@ sfdetached <- c("FRATERNAL BUILDING",
                 "RESIDENTIAL SPLIT FOYER",
                 "RESIDENTIAL SPLIT LEVEL",
                 "RESIDENTIAL STANDARD UNIT",
+                "RESIDENTIAL",
                 "RURAL RESIDENCE")
 
 townhouse <-  c("RESIDENTIAL-TOWNHOUSE CENTER UNIT",
@@ -510,44 +566,35 @@ garden <- c("GARDEN CONDO")
 highrise <- c("CONDO HI RISE")
 
 condo <- c("CONDO",
-           "CONDO-CENTER UNIT",
-           "CONDO-END UNIT",
-           "CONDO HI RISE",
-           "CONDO TH",
-           "GARDEN CONDO",
-           "MARINA CONDOMINIUM SLIP",
-           "OFFICE CONDOMINIUM",
-           "RESIDENTIAL-CONDOMINIUM",
-           "RETAIL CONDOMINIUM",
-           "WAREHOUSE CONDOMINIUM")
+        "CONDO-CENTER UNIT",
+        "CONDO-END UNIT",
+        "CONDO TH",
+        "MARINA CONDOMINIUM SLIP",
+        "OFFICE CONDOMINIUM",
+        "RESIDENTIAL-CONDOMINIUM",
+        "RETAIL CONDOMINIUM",
+        "WAREHOUSE CONDOMINIUM")
 
-mixeduse <- c("COMMERCIAL/RESIDENTIAL",
-              "COMMERICIAL/RESIDENTIAL-END UNIT",
-              "MIXED RESIDENTIAL / RETAIL",
-              "RESIDENTIAL-COMMERCIAL")
+mixeduse <- c("MIXED RESIDENTIAL / RETAIL",
+              "COMMERCIAL/RESIDENTIAL",
+              "COMMERICIAL/RESIDENTIAL-END UNIT")
 
-townhouse <-  c("RESIDENTIAL-TOWNHOUSE CENTER UNIT",
-                "RESIDENTIAL-TOWNHOUSE END UNIT",
-                "TOWN HOUSE") 
-               
+
 apartment <- c("APARTMENT",
-               "APARTMENTS",
-               "DORMITORY",
-               "LOFT",
-               "ONE BEDROOMS",
-               "RESIDENTIAL APARTMENT UNITS",
-               "HOME FOR THE ELDERLY")
+        "APARTMENTS",
+        "LOFT",
+        "ONE BEDROOMS",
+        "RESIDENTIAL APARTMENT UNITS",
+        "DORMITORY")
+
+other <- c("FRATERNAL BUILDING",
+        "FRATERNITY HOUSE","GROUP HOME",
+        "HOME FOR THE ELDERLY",
+        "MULTIPLE RESIDENCE")
 
 
-vacant <- c("APARTMENTS-VACANT",
-            "CONDO HI RISE-VACANT",
-            "RESIDENTIAL-CONDOMINIUM-VACANT",
-            "GARDEN CONDO-VACANT",
-            "RESIDENTIAL-VACANT",
-            "VACANT RESIDENTIAL",
-            "COMMERCIAL/RESIDENTIAL-VACANT")
 
-other <- c("MULTIPLE RESIDENCE")
+ 
                
 jur <- jur %>% 
   mutate(building_type = case_when(
@@ -556,11 +603,9 @@ jur <- jur %>%
            countylandusedescription %in% condo ~ "condo",
            countylandusedescription %in% mixeduse ~ "mixed use",
            countylandusedescription %in% apartment ~ "apartment",
-           countylandusedescription %in% townhouse ~ "townhouse",
-           countylandusedescription %in% vacant ~ "vacant",
            countylandusedescription %in% other ~ "other"))
 
-rm(garden, highrise, other, condo, mixeduse, apartment, townhouse, vacant)           
+rm(garden, highrise, other, condo, mixeduse, apartment)           
 ```
 
 ### Check variable classifications
@@ -622,9 +667,16 @@ count(jur, lotsizeareaunit)
 ```{r lot}
 jur <- jur %>% 
   mutate(lotsize_acres = case_when(lotsizeareaunit == "AC" ~ lotsizeorarea ,
-                                   lotsizeareaunit == "SF" ~ lotsizeorarea / 43560),
+                                   lotsizeareaunit == "SF" ~ lotsizeorarea / 43560,
+                                   is.na(lotsizeareaunit) ~ 0),
+         lotsize_acres = ifelse(lotsize_acres==0, NA, lotsize_acres),
          lotsize_sf = lotsize_acres * 43560) %>% 
   mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA))
+
+count(jur, category)
+
+filter(jur, is.na(lotsize_acres)) %>% 
+  count(category)
 
 ```
 
