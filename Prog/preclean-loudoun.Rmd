@@ -1,17 +1,19 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Pre-clean Loudoun County public records data"
-author: ""
+author: ''
+subtitle: Pre-clean Loudoun County public records data
 output:
+  pdf_document:
+    toc: yes
   html_document:
-    number_sections: FALSE
-    self_contained: TRUE
     code_folding: show
-    toc: TRUE
-    toc_float: TRUE
     css: ../www/web_report.css
     editor_options:
       chunk_output_type: console
+    number_sections: no
+    self_contained: yes
+    toc: yes
+    toc_float: yes
 ---
 
 <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />

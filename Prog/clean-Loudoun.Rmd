@@ -237,7 +237,7 @@ rm(other, mf, sf, vacant, missing)
 
 ##### `category_detail`
 ```{r cr-catd}
-apartment <- c("MULTI_FAMILY",
+apartment <- c("MULTI-FAMILY",
                "MULTIPLE OCCUPANCIES")
 
 commercial <- c("AUTO SALES",
@@ -251,6 +251,7 @@ commercial <- c("AUTO SALES",
                 "CONDO-FLEX WAREHOUSE",
                 "CONDO-WAREHOUSE",
                 "DATA CENTER",
+                "FARM > 20 ACRES",
                 "FAST FOOD RESTAURANT",
                 "FLEX WAREHOUSE",
                 "GAS AND GO",
@@ -278,11 +279,32 @@ duplex <- c("DUPLEX")
 office <- c("OFFICE BUILDING",
             "OFFICE/RETAIL")
 
+mfattached <- c("MULTI-FAMILY",
+                "MULTIPLE OCCUPANCIES")
+
 sfdetached <- c("SINGLE FAMILY",
                 "RURAL RESIDENCE (AGRICULTURAL)",
                 "RURAL RESIDENCE AGRICULTURAL")
 
+trailer <- c("MOBILE/MANUFACTURED HOMES",
+             "TRAILER PARK")
+
 townhouse <-  c("TOWN HOUSES")
+
+educational <- c("EDUCATIONAL")
+
+firedepartment <- c("FIRE DEPT")
+
+recreational <- c("RECREATIONAL")
+
+govt <- c("GOVERNMENT PROPERTY",
+          "GOVT PROP")
+
+otheruse <- c("HANGER",
+              "IMPROVED, USED NOT SPECIFIED",
+              "LEASEHOLD RIGHTS (MISC)",
+              "MISC IMPROVEMENTS",
+              "MISCELLANEOUS (GENERAL)")
 
 vacantcom <- c("AUTOMOTIVE BUILDINGS - VACANT",
             "COMMERCIAL CONDOS - VACANT",
@@ -298,15 +320,20 @@ vacantcom <- c("AUTOMOTIVE BUILDINGS - VACANT",
             "WINERY - VACANT")
 
 vacantother <- c("VACANT LAND",
-                 "MISC IMPROVEMENTS - VACANT")
+                 "MISC IMPROVEMENTS - VACANT",
+                 "RECREATIONAL - VACANT")
 
-vacantmf <- c("MULTI-FAM VACANT/NO SITE PLAN")
+vacantmf <- c("MULTI-FAMILY VACANT")
 
 vacantoffice <- c("OFFICE BUILDING - VACANT")
 
 vacantsf <- c("SINGLE FAMILY - VACANT")
 
-missing <- c("NA")
+vacanttownhouse <- ("TOWNHOUSES - VACANT")
+
+vacanttrailer <- ("TRAILER PARK - VACANT")
+
+missingdetail <- c("NA")
 
 jur <- jur %>% 
   mutate(category_detail = case_when(
@@ -315,19 +342,37 @@ jur <- jur %>%
            countylandusedescription %in% condo ~ "condo",
            countylandusedescription %in% duplex ~ "duplex",
            countylandusedescription %in% office ~ "office",
+           countylandusedescription %in% mfattached ~
+"mf attached",
            countylandusedescription %in% sfdetached ~ "sf detached",
+           countylandusedescription %in% trailer ~
+"trailer",
            countylandusedescription %in% townhouse ~ "townhouse",
+           countylandusedescription %in% educational ~
+"educational",
+           countylandusedescription %in% firedepartment ~ 
+"fire department",
+           countylandusedescription %in% recreational ~
+"recreational",
+           countylandusedescription %in% govt ~
+"government",
+           countylandusedescription %in% otheruse ~
+"other use",
            countylandusedescription %in% vacantcom ~ "vacant commercial",
            countylandusedescription %in% vacantother ~ "vacant other",
            countylandusedescription %in% vacantmf ~ "vacant mf",
            countylandusedescription %in% vacantoffice ~ "vacant office",
            countylandusedescription %in% vacantsf ~ "vacant sf",
-           is.na(countylandusedescription) ~ "missing"))
+           countylandusedescription %in% vacanttownhouse ~
+"vacant townhouse",
+           countylandusedescription %in% vacanttrailer ~
+"vacant trailer",
+           is.na(countylandusedescription) ~ "missingdetail"))
 
 rm(apartment, commercial, condo, duplex,
-   office, sfdetached, townhouse,
-   vacantcom, vacantother, vacantmf,
-   vacantoffice, vacantsf)
+   office, mfattached, sfdetached, trailer, townhouse,
+   educational, firedepartment, recreational, govt, otheruse, vacantcom, vacantother, vacantmf,
+   vacantoffice, vacantsf, vacanttownhouse, vacanttrailer, missingdetail)
 
 ```
 
@@ -362,10 +407,6 @@ if (TRUE %in% is.na(jur$category)) {
   warning("NAs introduced")
 }
 
-```
-```{r}
-Missing <- jur %>% filter(is.na(category_detail))
-View(Missing)
 ```
 
 ##### `category_detail`

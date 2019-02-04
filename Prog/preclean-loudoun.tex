@@ -1,0 +1,287 @@
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\hypersetup{unicode=true,
+            pdftitle={Regional Housing Framework},
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+%%% Use protect on footnotes to avoid problems with footnotes in titles
+\let\rmarkdownfootnote\footnote%
+\def\footnote{\protect\rmarkdownfootnote}
+
+%%% Change title format to be more compact
+\usepackage{titling}
+
+% Create subtitle command for use in maketitle
+\newcommand{\subtitle}[1]{
+  \posttitle{
+    \begin{center}\large#1\end{center}
+    }
+}
+
+\setlength{\droptitle}{-2em}
+
+  \title{Regional Housing Framework}
+    \pretitle{\vspace{\droptitle}\centering\huge}
+  \posttitle{\par}
+  \subtitle{Pre-clean Loudoun County public records data}
+  \author{}
+    \preauthor{}\postauthor{}
+    \date{}
+    \predate{}\postdate{}
+  
+
+\begin{document}
+\maketitle
+
+{
+\setcounter{tocdepth}{2}
+\tableofcontents
+}
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated February 04, 2019
+
+Environment: Local Windows session (desktop)
+
+\subsection{Description}\label{description}
+
+The purpose of this program is to obtain additional data from the county
+to supplement the Black Knight data when possible.
+
+\subsection{Set-up}\label{set-up}
+
+Load libraries and functions
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{library}\NormalTok{(tidyverse)}
+
+\KeywordTok{source}\NormalTok{(}\StringTok{"../Macros/read-bk.R"}\NormalTok{)}
+\KeywordTok{source}\NormalTok{(}\StringTok{"../Macros/filter-bk.R"}\NormalTok{)}
+\KeywordTok{source}\NormalTok{(}\StringTok{"../Macros/select-vars.R"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Set FIPS code, filepath name, and directory for data storage (on L
+drive)
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{currentfips <-}\StringTok{ "51107"}
+\NormalTok{filepath <-}\StringTok{ "loudoun"}
+\NormalTok{jdir <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}\StringTok{"L:/Libraries/RegHsg/Data/"}\NormalTok{, filepath, }\StringTok{"/"}\NormalTok{)}
+\NormalTok{rdir <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(}\StringTok{"L:/Libraries/RegHsg/Raw/"}\NormalTok{, filepath, }\StringTok{"/"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Create directory for data exports
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{dir.exists}\NormalTok{(}\StringTok{"../Data"}\NormalTok{)) \{}
+  \KeywordTok{dir.create}\NormalTok{(}\StringTok{"../Data"}\NormalTok{)}
+\NormalTok{\}}
+
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{dir.exists}\NormalTok{(}\KeywordTok{paste0}\NormalTok{(}\StringTok{"L:/Libraries/RegHsg/Raw/"}\NormalTok{, filepath))) \{}
+  \KeywordTok{dir.create}\NormalTok{(}\KeywordTok{paste0}\NormalTok{(}\StringTok{"L:/Libraries/RegHsg/Raw/"}\NormalTok{, filepath))}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Load in Black Knight data for the region, select jurisdiction and
+standard variables
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{exists}\NormalTok{(}\StringTok{"region"}\NormalTok{)) \{}
+\NormalTok{  region <-}\StringTok{ }\KeywordTok{read_bk}\NormalTok{(}\StringTok{"dc-cog-assessment_20181228.csv"}\NormalTok{)}
+\NormalTok{\} }\ControlFlowTok{else}\NormalTok{ \{}
+  \KeywordTok{warning}\NormalTok{(}\StringTok{"region data already read in"}\NormalTok{)}
+\NormalTok{\}}
+
+\NormalTok{jur <-}\StringTok{ }\NormalTok{region }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{filter_bk}\NormalTok{(}\DataTypeTok{fips =}\NormalTok{ currentfips) }\OperatorTok{%>%}\StringTok{ }
+\StringTok{  }\KeywordTok{select_vars}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Download files}\label{download-files}
+
+Loudoun has files on Loudoun's parcels and landuse existing parcels,
+among others, but I selected these two.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{pafile <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(rdir, filepath, }\StringTok{"-parcel-file.csv"}\NormalTok{)}
+\NormalTok{prfile <-}\StringTok{ }\KeywordTok{paste0}\NormalTok{(rdir, filepath, }\StringTok{"-property-file.csv"}\NormalTok{)}
+
+\CommentTok{# parcel file}
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(pafile)) \{}
+  \KeywordTok{download.file}\NormalTok{(}\StringTok{"file:///L:/Libraries/RegHsg/Raw/loudoun/loudoun-parcel-file.csv"}\NormalTok{,}
+                \DataTypeTok{destfile =}\NormalTok{ pafile)}
+\NormalTok{\}}
+
+\CommentTok{# property file}
+\ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\KeywordTok{file.exists}\NormalTok{(prfile)) \{}
+  \KeywordTok{download.file}\NormalTok{(}\StringTok{"file:///L:/Libraries/RegHsg/Raw/loudoun/loudoun-property-file.csv"}\NormalTok{,}
+                \DataTypeTok{destfile =}\NormalTok{ prfile)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{check to see if variables prfile and pafile
+exist}\label{check-to-see-if-variables-prfile-and-pafile-exist}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{ls}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  [1] "currentfips" "filepath"    "filter_bk"   "jdir"        "jur"        
+##  [6] "pafile"      "prfile"      "rdir"        "read_bk"     "region"     
+## [11] "select_vars"
+\end{verbatim}
+
+\subsection{Read files}\label{read-files}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{property <-}\StringTok{ }\KeywordTok{read_csv}\NormalTok{(prfile,}
+                     \DataTypeTok{col_types =} \KeywordTok{cols}\NormalTok{(}
+  \DataTypeTok{OBJECTID =} \KeywordTok{col_double}\NormalTok{(),}
+  \DataTypeTok{LU_PIN =} \KeywordTok{col_double}\NormalTok{(),}
+  \DataTypeTok{LU_USE =} \KeywordTok{col_character}\NormalTok{(),}
+  \DataTypeTok{LU_MULTI_USE_SUBCD1 =} \KeywordTok{col_character}\NormalTok{(),}
+  \DataTypeTok{LU_AGE_RESTRICT =} \KeywordTok{col_character}\NormalTok{(),}
+  \DataTypeTok{LU_HUNITS_EXIST =} \KeywordTok{col_double}\NormalTok{(),}
+  \DataTypeTok{LU_GIS_ACRE =} \KeywordTok{col_double}\NormalTok{(),}
+  \DataTypeTok{LU_LEGAL_ACRE =} \KeywordTok{col_double}\NormalTok{(),}
+  \DataTypeTok{LU_DEVELOPABLE_PCT =} \KeywordTok{col_double}\NormalTok{(),}
+  \DataTypeTok{LU_NON_RES_SQ_FT =} \KeywordTok{col_double}\NormalTok{(),}
+  \DataTypeTok{LU_AS_OF_DATE =} \KeywordTok{col_character}\NormalTok{(),}
+  \DataTypeTok{LU_DISPLAY =} \KeywordTok{col_character}\NormalTok{(),}
+  \DataTypeTok{LU_TYPE =} \KeywordTok{col_character}\NormalTok{(),}
+  \DataTypeTok{LU_USE_CONSOLIDATED =} \KeywordTok{col_character}\NormalTok{()}
+\NormalTok{)}
+\NormalTok{)}
+
+\KeywordTok{rm}\NormalTok{(prfile)}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Clean and merge}\label{clean-and-merge}
+
+Select variables from each dataset that we want to keep.
+
+From the parcel file, we will keep the area of the parcel shapefile to
+use in the event that the Black Knight lot size is unavailable or
+incorrect. We also archive the raw parcel ID and create a new version
+that will merge with the Black Knight data.
+
+While Sarah says to complete this step, I skip it for now. I can always
+go back and do this later, but I don't think it will serve me well to
+get rid of variables until I know what I need.
+
+
+\end{document}
