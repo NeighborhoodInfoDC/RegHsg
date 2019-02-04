@@ -666,6 +666,7 @@ nested <- multiples %>%
 
 ```
 
+
 #### Lot size
 
 Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show five cases that we have to reconcile.
@@ -697,10 +698,10 @@ There are a few variables needed:
 1. The number of unique observations in the `lotsize_sf_list` nested list
 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)
 
-``` {r lot-vars}
+e``` {r lot-vars}
 nested <- nested %>% 
   mutate(nprops = as.integer(nprops),
-         lotsize_sf_sum = as.integer(lotsize_sf_sum),
+         lotsiz_sf_sum = as.integer(lotsize_sf_sum),
          unique_lots = map(lotsize_sf_list, function(x) length(unique(x))),
          lsfirst = map(lotsize_sf_list, function(x) x[1]),
          lsmode = ifelse(lotsize_sf_sum == 0,
