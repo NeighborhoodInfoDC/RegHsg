@@ -239,7 +239,6 @@ apartment <- c("MULTI_FAMILY",
 
 commercial <- c("AUTO SALES",
                 "AUTOMOTIVE BUILDINGS",
-                "AUTOMOTIVE BUILDINGS",
                 "BANK",
                 "CEMETERY",
                 "CHURCH",
@@ -276,38 +275,33 @@ duplex <- c("DUPLEX")
 office <- c("OFFICE BUILDING",
             "OFFICE/RETAIL")
 
-sfattached <- c("RESIDENTIAL COST-VAL - SIDE BY SIDE")
+sfdetached <- c("SINGLE FAMILY",
+                "RURAL RESIDENCE (AGRICULTURAL)",
+                "RURAL RESIDENCE AGRICULTURAL")
 
-sfdetached <- c("NOT VALUED COSTED - HOA/SITE PLAN",
-                "RESIDENTIAL COST-VAL - IMPR/SF & TW",
-                "RESIDENTIAL COST-VAL - SINGLE-FAM DET",
-                "SFD - APT ZONED/NO SITE PLAN",
-                "SFD - APT ZONED/SITE PLAN",
-                "SFD - COMM ZONED/NO SITE PLAN",
-                "SFD - COMM ZONED/SITE PLAN")
+townhouse <-  c("TOWN HOUSES")
 
-townhouse <-  c("RESIDENTIAL COST-VAL - TOWNHOUSE/CO",
-                "RESIDENTIAL COST-VAL - TOWNHOUSE/FSO") 
+vacantcom <- c("AUTOMOTIVE BUILDINGS - VACANT",
+            "COMMERCIAL CONDOS - VACANT",
+            "FLEX WAREHOUSE - VACANT",
+            "GROCERY STORE - VACANT",
+            "MINI WAREHOUSE - VACANT",
+            "MISC COMM STRUCTURE - VACANT",
+            "MISC COMMERCIAL STRUCTURE - VACANT",
+            "OFFICE BUILDING - VACANT",
+            "RETAIL STORE - VACANT",
+            "SHOPPING CENTER - VACANT",
+            "WAREHOUSE - VACANT",
+            "WINERY - VACANT")
 
-vacantcom <- c("GEN COMM VAC-LAND/NO SITE PLAN",
-               "GEN COMM VAC-LAND/SITE PLAN",
-               "VACANT COMMERCIAL") 
+vacantother <- c("VACANT LAND",
+                 "MISC IMPROVEMENTS - VACANT")
 
-vacantexempt <- c("VACANT EXEMPT")
+vacantmf <- c("MULTI-FAM VACANT/NO SITE PLAN")
 
-vacantlight <- c("VACANT LIGHT INDUSTRIAL")
+vacantoffice <- c("OFFICE BUILDING - VACANT")
 
-vacantmf <- c("MULTI-FAM VACANT/NO SITE PLAN",
-              "MULTI-FAM VACANT/SITE PLAN")
-
-vacantoffice <- c("OFFICE BLDG VAC-LAND/NO SITE PLAN",
-                  "OFFICE BLDG VAC-LAND/SITE PLAN",
-                  "VACANT OFFICE")
-
-vacantres <- c("VACANT RESIDENTIAL")
-
-vacantsf <- c("RESIDENTIAL COST-VAL - VAC/SF & TW")
-
+vacantsf <- c("SINGLE FAMILY - VACANT")
 
 jur <- jur %>% 
   mutate(category_detail = case_when(
@@ -316,66 +310,30 @@ jur <- jur %>%
            countylandusedescription %in% condo ~ "condo",
            countylandusedescription %in% duplex ~ "duplex",
            countylandusedescription %in% office ~ "office",
-           countylandusedescription %in% sfattached ~ "sf attached",
            countylandusedescription %in% sfdetached ~ "sf detached",
            countylandusedescription %in% townhouse ~ "townhouse",
            countylandusedescription %in% vacantcom ~ "vacant commercial",
-           countylandusedescription %in% vacantexempt ~ "vacant exempt",
-           countylandusedescription %in% vacantlight ~ "vacant light industrial",
+           countylandusedescription %in% vacantother ~ "vacant other",
            countylandusedescription %in% vacantmf ~ "vacant mf",
            countylandusedescription %in% vacantoffice ~ "vacant office",
-           countylandusedescription %in% vacantres ~ "vacant residential",
            countylandusedescription %in% vacantsf ~ "vacant sf"))
 
 rm(apartment, commercial, condo, duplex,
-   office, sfattached, sfdetached, townhouse,
-   vacantcom, vacantexempt, vacantlight, vacantmf,
-   vacantoffice, vacantres, vacantsf)
+   office, sfdetached, townhouse,
+   vacantcom, vacantother, vacantmf,
+   vacantoffice, vacantsf)
 
 ```
 
 ##### `building_type`
+##### For Loudoun county, we do not create a building type variable because this level of specification is not available in the Black Knight data. However, we leave 'building type' as a blank / existing variable to avoid running into errors later in the code. 
 ```{r cr-bt}
-
-garden <- c("APARTMENT - GARDEN",
-            "SALES APPR CONDO/GARDEN")
-               
-highrise <- c("APARTMENT - HIGH-RISE",
-              "SALES APPR CONDO/HIGH RISE")
-               
-midrise <- c("SALES APPR CONDO/MID RISE",
-             "APARTMENT - MID-RISE")
-               
-parking <- c("APARTMENT - PARKING")
-
-stacked <- c("SALES APPR CONDO/STACKED")
-
-coop <- c("SALES APPR CONDO/CO-OP")
-
-duplex <- c("RESIDENTIAL COST-VAL - DUPLEX")
-
-other <- c("AFFORDABLE DWELLING UNIT",
-           "COMMUNITY BENEFIT UNIT",
-           "MULTI-FAM IMPR/NO SITE PLAN",
-           "MULTI-FAM IMPR/SITE PLAN",
-           "NOT VALUED CONDO HOA")
-               
 jur <- jur %>% 
-  mutate(building_type = case_when(
-           countylandusedescription %in% garden ~ "garden",
-           countylandusedescription %in% highrise  ~ "high-rise",
-           countylandusedescription %in% midrise ~ "mid-rise",
-           countylandusedescription %in% parking ~ "parking",
-           countylandusedescription %in% stacked ~ "stacked",
-           countylandusedescription %in% coop ~ "co-op",
-           countylandusedescription %in% duplex ~ "duplex",
-           countylandusedescription %in% other ~ "other"))
-
-rm(garden, highrise, midrise, parking, stacked, coop, duplex, other)           
+  mutate(building_type = "")
 ```
 
 ### Check variable classifications
-These checks make sure that all county land use codes recieved new classifications, and shows the distribution of properties 
+##These checks make sure that all county land use codes recieved new classifications, and shows the distribution of properties 
 
 #### {.tabset .tabset.fade}
 ##### `residential`
