@@ -148,7 +148,6 @@ rm(res_codes)
 ```{r cr-cat}
 other <- c("AUTO SALES",
                 "AUTOMOTIVE BUILDINGS",
-                "AUTOMOTIVE BUILDINGS",
                 "BANK",
                 "CEMETERY",
                 "CHURCH",
@@ -173,7 +172,7 @@ other <- c("AUTO SALES",
                 "LEASEHOLD RIGHTS (MISC)",
                 "LIGHT INDUSTRIAL",
                 "MEDICAL BUILDING",
-                "MEDIUM/HEAVY INDUST ",
+                "MEDIUM/HEAVY INDUST",
                 "MINI WAREHOUSE",
                 "MISC COMM STRUCTURE",
                 "MISC COMMERCIAL STRUCTURE",
@@ -193,10 +192,11 @@ mf <- c("DUPLEX",
         "MULTI-FAMILY",
         "MULTIPLE OCCUPANCIES",
         "RESIDENTIAL CONDOS",
-        "CONDOMINIMUM (RESIDENTIAL)",
+        "CONDOMINIUM (RESIDENTIAL)",
         "RES CONDO GARAGE UNIT")
 
 sf <- c("RURAL RESIDENCE (AGRICULTURAL)",
+        "RURAL RESIDENCE AGRICULTURAL",
         "SINGLE FAMILY",
         "MOBILE/MANUFACTURED HOMES",
         "TOWN HOUSES",
@@ -222,14 +222,17 @@ vacant <- c("AUTOMOTIVE BUILDINGS - VACANT",
             "WAREHOUSE - VACANT",
             "WINERY - VACANT")
 
+missing <- c("NA")
+
 jur <- jur %>% 
   mutate(category = case_when(
            countylandusedescription %in% other ~ "other",
            countylandusedescription %in% mf ~ "mf",
            countylandusedescription %in% sf ~ "sf",
-           countylandusedescription %in% vacant ~ "vacant"))
+           countylandusedescription %in% vacant ~ "vacant",
+           is.na(countylandusedescription) ~ "missing"))
 
-rm(other, mf, sf, vacant)
+rm(other, mf, sf, vacant, missing)
 ```
 
 ##### `category_detail`
@@ -255,7 +258,7 @@ commercial <- c("AUTO SALES",
                 "HOTEL LUXURY",
                 "LIGHT INDUSTRIAL",
                 "MEDICAL BUILDING",
-                "MEDIUM/HEAVY INDUST ",
+                "MEDIUM/HEAVY INDUST",
                 "MINI WAREHOUSE",
                 "MISC COMM STRUCTURE",
                 "MISC COMMERCIAL STRUCTURE",
@@ -267,7 +270,7 @@ commercial <- c("AUTO SALES",
                 "WINERY")
 
 condo <- c("RESIDENTIAL CONDOS",
-        "CONDOMINIMUM (RESIDENTIAL)",
+        "CONDOMINIUM (RESIDENTIAL)",
         "RES CONDO GARAGE UNIT")
 
 duplex <- c("DUPLEX")
@@ -303,6 +306,8 @@ vacantoffice <- c("OFFICE BUILDING - VACANT")
 
 vacantsf <- c("SINGLE FAMILY - VACANT")
 
+missing <- c("NA")
+
 jur <- jur %>% 
   mutate(category_detail = case_when(
            countylandusedescription %in% apartment ~ "apartment",
@@ -316,7 +321,8 @@ jur <- jur %>%
            countylandusedescription %in% vacantother ~ "vacant other",
            countylandusedescription %in% vacantmf ~ "vacant mf",
            countylandusedescription %in% vacantoffice ~ "vacant office",
-           countylandusedescription %in% vacantsf ~ "vacant sf"))
+           countylandusedescription %in% vacantsf ~ "vacant sf",
+           is.na(countylandusedescription) ~ "missing"))
 
 rm(apartment, commercial, condo, duplex,
    office, sfdetached, townhouse,
@@ -356,6 +362,10 @@ if (TRUE %in% is.na(jur$category)) {
   warning("NAs introduced")
 }
 
+```
+```{r}
+Missing <- jur %>% filter(is.na(category_detail))
+View(Missing)
 ```
 
 ##### `category_detail`
