@@ -59,7 +59,6 @@ filepath <- "arlington"
 jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
 rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
 
-
 ```
 
 

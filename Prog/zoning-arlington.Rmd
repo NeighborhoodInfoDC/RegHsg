@@ -173,6 +173,7 @@ jursf <- jur %>%
   st_as_sf(coords = c("long", "lat")) %>% 
   st_set_crs(st_crs(zon))
 
+
 y <- st_join(jursf, zon)
 
 count(y, is.na(ZN_DESIG))
@@ -186,3 +187,40 @@ test_all <- y %>%
          category_detail, geometry)
 ```
 
+Go back to parcel file and fix coordinates.
+```{r read-parcel}
+
+pdir <- paste0("L:/Libraries/RegHsg/Maps/",
+               filepath,
+               "-parcel-map")
+pzip <- paste0("L:/Libraries/RegHsg/Maps/",
+               filepath,
+               "-parcel-map.zip")
+
+
+download.file("https://opendata.arcgis.com/datasets/b70198178ff44462b00c5b5c0012668d_0.zip?outSR=%7B%22wkid%22%3A102746%2C%22latestWkid%22%3A2283%7D", destfile = pzip)
+
+unzip(pzip, exdir = pdir)
+
+pfile <- str_sub(list.files(pdir), end = -5) %>% unique()
+
+parcel_sf <- read_sf(dsn = pdir,
+                     layer = pfile)
+
+```
+
+
+Test parcel geometry
+```{r test-geo}
+
+st_geometry(parcel_sf)
+
+parcel_sf <- st_transform(parcel_sf, crs = 4326)
+
+parcel_sf <- parcel_sf %>% 
+  mutate(area = st_area(geometry))
+
+ggplot() +
+  geom_sf(parcel_sf, mapping = aes())
+
+```
