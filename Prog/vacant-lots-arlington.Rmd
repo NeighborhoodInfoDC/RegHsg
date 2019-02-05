@@ -47,6 +47,9 @@ The two steps are:
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
+library(urbnthemes)
+
+set_urbn_defaults("print")
 
 source("../Macros/read-jurisdiction.R")
 
@@ -259,6 +262,7 @@ There are `r ` observations that did not have a match in the zoning code. Below,
 #  knitr::kable()
 
 ```
+
 Aside from those with missing zoning information, these zoning codes do not allow for residential properties, so they could not be found in the zoning code data.
 
 Next, we can take a closer look at properties that have missing zoning information and see if we can figure out why.
@@ -288,23 +292,66 @@ Filter out lots that are too small to build on, select most dense zoning code fo
 ```{r }
 
 zoningdata1 <- zoningdata %>% 
-  filter(!is.na(lot_area),
-         lotsize_sf >= lot_area) %>% 
+  filter(!is.na(lot_area_min),
+         lotsize_sf >= lot_area_min) %>% 
   group_by(propaddress) %>% 
-  slice(which.min(dwelling_type))
-
-zoningdata1 %>% group_by(propaddress) %>% count()
+  slice(which.min(dwelling_type)) %>% 
+  ungroup()
 
 ```
 
 
 ## Calculate missing units
 
-### Select only observations with viable zoning information
+There are several variables we will use to calculate how many units we can put on each vacant lot.
 
-First, we want to deal with only properties with viable zoning information.
+1. Buildable area: this is `lotsize_sf` x the coverage ratio (`lot_coverage_max`)
+2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
+3. Units per floor: this is the living area divided by the average unit size. We use 900 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
+4. Units allowed based on height limits: This is the units per floor x the number of stories.
+3. Units allowed based on lot size: this is the lot area divided by `lotarea_per_unit`
+
 
 ```{r filter}
+zoningdata_vars <- zoningdata1 %>% 
+  mutate(buildable_area = lotsize_sf * lot_coverage_max,
+         living_area_70 = buildable_area * .7,
+         living_area_85 = buildable_area * .85,
+         units_per_floor_70 = ifelse(dwelling_type == "One Family Dwelling",
+                                     1,
+                                     floor(living_area_70 / 900)),
+         units_per_floor_85 = ifelse(dwelling_type == "One Family Dwelling",
+                                     1,
+                                     floor(living_area_85 / 900)),
+         floors = floor(height_ft / 10),
+         units_height_70 = units_per_floor_70 * floors,
+         units_height_85 = units_per_floor_85 * floors,
+         units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
+  mutate(total_units_70 = case_when(
+    dwelling_type == "One Family Dwelling" ~ 1,
+    units_height_70 > units_lotsize ~ units_lotsize,
+    TRUE ~ units_height_70)) %>% 
+  mutate(total_units_85 = case_when(
+    dwelling_type == "One Family Dwelling" ~ 1,
+    units_height_85 > units_lotsize ~ units_lotsize,
+    TRUE ~ units_height_85))
 
+```
+
+Get summary statistics for the whole county
+
+```{r sum}
+
+zoningdata_vars %>% 
+  summarize_at(vars(units_height_70, units_height_85,
+                      units_lotsize, total_units_70, total_units_85),
+               sum, na.rm = TRUE) %>% 
+  knitr::kable()
+
+zoningdata_vars %>% 
+  filter(total_units_70 > 1) %>% 
+  ggplot() +
+  geom_point(mapping = aes(lotsize_sf, total_units_70)) +
+  scale_x_continuous(labels = scales::comma)
 
 ```

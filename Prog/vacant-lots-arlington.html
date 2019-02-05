@@ -247,7 +247,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated January 29, 2019</p>
+<p>Last updated February 04, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -261,6 +261,9 @@ div.tocify {
 <h2>Set-up</h2>
 <p>Load libraries and functions</p>
 <pre class="r"><code>library(tidyverse)
+library(urbnthemes)
+
+set_urbn_defaults(&quot;print&quot;)
 
 source(&quot;../Macros/read-jurisdiction.R&quot;)</code></pre>
 <p>Create directory for data exports</p>
@@ -353,10 +356,10 @@ filepath &lt;- &quot;arlington&quot;</code></pre>
 <td align="left">vacant residential</td>
 <td align="right">285</td>
 <td align="right">69</td>
-<td align="right">78</td>
+<td align="right">80</td>
 <td align="left">12.5%</td>
 <td align="left">3.03%</td>
-<td align="left">3.43%</td>
+<td align="left">3.52%</td>
 </tr>
 <tr class="odd">
 <td align="left">vacant sf</td>
@@ -369,6 +372,9 @@ filepath &lt;- &quot;arlington&quot;</code></pre>
 </tr>
 </tbody>
 </table>
+<div id="missing-zoning-variables" class="section level3">
+<h3>Missing zoning variables</h3>
+</div>
 </div>
 <div id="clean-zoning-code-information" class="section level2">
 <h2>Clean zoning code information</h2>
@@ -413,7 +419,7 @@ zoningcode &lt;- read_csv(paste0(&quot;L:/Libraries/RegHsg/Doc/zoning-codes/&quo
 
 names(zoningcode) &lt;- 
   c(&quot;zoning_code&quot;, &quot;district_type&quot;, &quot;dwelling_type&quot;,
-    &quot;site_area&quot;, &quot;lot_area&quot;, &quot;lotarea_per_unit&quot;,
+    &quot;site_area&quot;, &quot;lot_area_min&quot;, &quot;lotarea_per_unit&quot;,
     &quot;lot_width&quot;, &quot;height_ft&quot;, &quot;height_stories&quot;,
     &quot;lot_coverage_max&quot;, &quot;floor_area_min&quot;, &quot;far_max&quot;,
     &quot;setbacks_center&quot;, &quot;setbacks_row&quot;,
@@ -497,8 +503,8 @@ rm(z)</code></pre>
 <li>One Family Dwelling</li>
 </ol>
 </div>
-<div id="select-most-dense-code" class="section level3">
-<h3>Select most dense code</h3>
+<div id="create-factor-variable" class="section level3">
+<h3>Create factor variable</h3>
 <p>To use this hierarchy, we transform the <code>dwelling_type</code> variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).</p>
 <pre class="r"><code>zoningcode &lt;- zoningcode %&gt;% 
   mutate(dwelling_type = factor(dwelling_type,
@@ -558,38 +564,80 @@ missing_zoning %&gt;%
   filter(!is.na(propaddress),
          str_detect(zoning, &quot;/&quot;) == FALSE) %&gt;% 
   nrow()</code></pre>
-<pre><code>## [1] 2</code></pre>
+<pre><code>## [1] 0</code></pre>
 <p>This leaves only two observations.</p>
 <p>Filter out lots that are too small to build on, select most dense zoning code for those that are big enough</p>
 <pre class="r"><code>zoningdata1 &lt;- zoningdata %&gt;% 
-  filter(!is.na(lot_area),
-         lotsize_sf &gt;= lot_area) %&gt;% 
+  filter(!is.na(lot_area_min),
+         lotsize_sf &gt;= lot_area_min) %&gt;% 
   group_by(propaddress) %&gt;% 
-  slice(which.min(dwelling_type))
-
-zoningdata1 %&gt;% group_by(propaddress) %&gt;% count()</code></pre>
-<pre><code>## # A tibble: 414 x 2
-## # Groups:   propaddress [414]
-##    propaddress                n
-##    &lt;chr&gt;                  &lt;int&gt;
-##  1 1001 N KENNEBEC ST         1
-##  2 1005 N EDGEWOOD ST         1
-##  3 1011 22ND ST S             1
-##  4 1018 N EDISON ST           1
-##  5 1021 N QUINCY ST           1
-##  6 1025 N IRVING ST           1
-##  7 1026 N GEORGE MASON DR     1
-##  8 1034 N CLEVELAND ST        1
-##  9 1050 STAFFORD ST           1
-## 10 1106 N JOHNSON ST          1
-## # ... with 404 more rows</code></pre>
+  slice(which.min(dwelling_type)) %&gt;% 
+  ungroup()</code></pre>
 </div>
 <div id="calculate-missing-units" class="section level2">
 <h2>Calculate missing units</h2>
-<div id="select-only-observations-with-viable-zoning-information" class="section level3">
-<h3>Select only observations with viable zoning information</h3>
-<p>First, we want to deal with only properties with viable zoning information.</p>
-</div>
+<p>There are several variables we will use to calculate how many units we can put on each vacant lot.</p>
+<ol style="list-style-type: decimal">
+<li>Buildable area: this is <code>lotsize_sf</code> x the coverage ratio (<code>lot_coverage_max</code>)</li>
+<li>Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.</li>
+<li>Units per floor: this is the living area divided by the average unit size. We use 900 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.</li>
+<li>Units allowed based on height limits: This is the units per floor x the number of stories.</li>
+<li>Units allowed based on lot size: this is the lot area divided by <code>lotarea_per_unit</code></li>
+</ol>
+<pre class="r"><code>zoningdata_vars &lt;- zoningdata1 %&gt;% 
+  mutate(buildable_area = lotsize_sf * lot_coverage_max,
+         living_area_70 = buildable_area * .7,
+         living_area_85 = buildable_area * .85,
+         units_per_floor_70 = ifelse(dwelling_type == &quot;One Family Dwelling&quot;,
+                                     1,
+                                     floor(living_area_70 / 900)),
+         units_per_floor_85 = ifelse(dwelling_type == &quot;One Family Dwelling&quot;,
+                                     1,
+                                     floor(living_area_85 / 900)),
+         floors = floor(height_ft / 10),
+         units_height_70 = units_per_floor_70 * floors,
+         units_height_85 = units_per_floor_85 * floors,
+         units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %&gt;% 
+  mutate(total_units_70 = case_when(
+    dwelling_type == &quot;One Family Dwelling&quot; ~ 1,
+    units_height_70 &gt; units_lotsize ~ units_lotsize,
+    TRUE ~ units_height_70)) %&gt;% 
+  mutate(total_units_85 = case_when(
+    dwelling_type == &quot;One Family Dwelling&quot; ~ 1,
+    units_height_85 &gt; units_lotsize ~ units_lotsize,
+    TRUE ~ units_height_85))</code></pre>
+<p>Get summary statistics for the whole county</p>
+<pre class="r"><code>zoningdata_vars %&gt;% 
+  summarize_at(vars(units_height_70, units_height_85,
+                      units_lotsize, total_units_70, total_units_85),
+               sum, na.rm = TRUE) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">units_height_70</th>
+<th align="right">units_height_85</th>
+<th align="right">units_lotsize</th>
+<th align="right">total_units_70</th>
+<th align="right">total_units_85</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">6796</td>
+<td align="right">8079</td>
+<td align="right">3691</td>
+<td align="right">2828</td>
+<td align="right">2828</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>zoningdata_vars %&gt;% 
+  filter(total_units_70 &gt; 1) %&gt;% 
+  ggplot() +
+  geom_point(mapping = aes(lotsize_sf, total_units_70)) +
+  scale_x_continuous(labels = scales::comma)</code></pre>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAAZlBMVEUAAAAAADoAAGYAOpAAZrYWltI6AAA6ADo6AGY6OpA6kNtmAABmkNtmtv+QOgCQZpCQkGaQkLaQ2/+2ZgC2tv+225C2///bkDrbkJDb2//b/9vb///e3d3/tmb/25D//7b//9v///8LTQhoAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAdA0lEQVR4nO3d6XqjynqAUXqQk7TTzkkraSXpY9l9/zcZjbYGkOATQxW11h8bS5bR5ul3A1Wg6i8AIdXUKwCQKwEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAoO4Bfa02fhwWlpvvv/6uWwCYu64BfX+pdnahXD/tF3Y5PVsAmL+uAV1W3z++bGK6reX66cuviwWAAnQM6Nvz/hh9/fTtz+ZgfhfT/dezBYACdAzo+mmfx21IN/ucPw8LX36dLfS6hgCJCo7Cb/dAj3uj2wP6n2cL/awaQNpiAd3tb+4O43eW1Y+zhZNn/hMgVwME9O25qraH6a/VsZmr6vvZgoACczBQQLeH6a0CCjCxxdYgrxw7hF8/bY7TBRRI3+JogNcODiJtx9pbnQMFmNDiVO+vHgzodhTJKDyQuMVi0IJ2nQf6L/tJntuAmgcKJC6tgB5PcO4yeVzYfT1bAEjA4lLPr9/5Us7djuZmf9O18EDqEgvo/mZ2G7shI3djAhJ21c++C9p5EGl/P7vjOJH7gQLJSi+gAJkQUIAgAQUIElCAqNRG4QGyIaAAUcP2U0CBGRNQgKhB+ymgwLwNl08BBWZvqHwKKECYgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIBCvhZbU69EyQQUcrU4mnpFyiWgkKfFqalXplQCCllaLBR0egIKWRLQFAgo5GhxaeoVKpOAQo4ENAkCChm66qeCTkJAIUMCmgYBhQwJaBoEFDIkoGkQUMiQgKZBQCFH+pkEAYUcCWgSBBSypJ8pEFDIkoCmQEAhT/qZAAGFXMnn5AQU8iWfExNQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUICg7gFdVRs/DwvLzfdff9ctAMxd14C+PVc737cL66f9wo+rBYD56xjQ95ddIDcZ/fmxsH768utiAaAAHQO6fvr2Z/v1dbsL+rrfD61ZAChAx4CuDkfo25Bu9jn3p0Lfnr/8OlvodQ0BEhUchX+tvv15ez6OGC2rn2cL/awaQNqCAV1uDtSPh/PbpR9nCydP/CdAroYJ6G6oaLsXul9cVd/PFgQUmINBArofcW8VUIDZigR0089tLQUUKFskoMt9LFudAwWYrUBAl4frNY3CA2XrHtBj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" width="672" /></p>
 </div>
 
 
