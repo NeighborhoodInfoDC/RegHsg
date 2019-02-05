@@ -919,7 +919,7 @@ outlib=RegHsg,
 label="National Preservation Database Active and Inconclusive Properties 1/2019",
 sortby=EarliestStartDate,
 /** Metadata parameters **/
-revisions=%str("New file"),
+revisions=%str(New file),
 printobs=5
 )
 
