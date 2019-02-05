@@ -997,9 +997,7 @@ rm(mult, other, nunits, cdties)
 
 ```
 
-Write out clean data.
+Write out clean data if you want using the code below. I do not use this code here because it prevented the Rmarkdown file from knitting. 
 
-```{r write}
 write_csv(finaljur, 
           paste0("../Data/", filepath, "-cleaned-data.csv"))
-```
