@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Pre-clean Arlington County public records data"
+subtitle: "Pre-clean DC parcel base data"
 author: ""
 output:
   html_document:
@@ -102,15 +102,14 @@ parcelbase <- haven::read_sas("L:/Libraries/realprop/data/parcel_base.sas7bdat")
 
 ## Clean and merge
 
-Select variables from each dataset that we want to keep.
+Select variables from each dataset that we want to keep: parcel id, UI property type for categorization crosscheck, address from the parcelbase data, property area, and XY coordinates
 
-From the parcel file, we will keep the area of the parcel shapefile to use in the event that the Black Knight lot size is unavailable or incorrect.
 We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.
 
 ```{r select-parcel}
 parcelbaseDC <- parcelbase %>% 
+  filter(in_last_ownerpt==1) %>% 
   select(parcelbase_parcelID = SSL,
-         parcelbase_lot = LOT, 
          parcelbase_UIproptype = ui_proptype,
          parcelbase_address=PREMISEADD,
          parcelbase_proparea=LANDAREA,
@@ -131,16 +130,40 @@ parcelbaseDC %>% group_by(parcelbase_parcelID) %>% filter(n()>1) %>% nrow()
 
 
 ```
+Clean up ID variable to remove spaces for join
+``` {r cleanid}
+
+jurid <- jur %>% 
+          mutate(parcelnumber = paste0(substr(assessorsparcelnumberapnpin, 1, 4),
+                            "-",
+                            substr(assessorsparcelnumberapnpin, 11, 16)))
+
+parcelbaseDC <- parcelbaseDC %>%
+            mutate(parcelbase_SSL = paste0(substr(parcelbase_parcelID, 1, 4),
+                            "-",
+                            substr(parcelbase_parcelID, 9, 12)))
+
+
+
+
+```
 
 
 Merge
 
 ```{r merge}
 
-jur <- left_join(jur, parcelbaseDC, 
-                 by = c("assessorsparcelnumberapnpin" = "parcelbase_parcelID"))
+jur <- left_join(jurid, parcelbaseDC, 
+                 by = c("parcelnumber" = "parcelbase_SSL"))
+
+
+jur %>% filter(is.na(parcelbase_x)) %>% nrow()
+
 
 ```
+
+
+
 
 ## Save
 

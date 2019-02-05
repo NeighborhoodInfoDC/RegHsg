@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Clean DC County public records data"
+subtitle: "Clean DC Black Knight data"
 author: ""
 output:
   html_document:
@@ -190,7 +190,8 @@ vacant <- c("FALSE VACANT",
             "VACANT W/ PERMIT COMMERCIAL",
             "VACANT W/COMMERCIAL USE",
             "VACANT W/PERMIT",
-            "VACANT W/ZONING LIMITS")
+            "VACANT W/ZONING LIMITS",
+            "UNIMPROVED-USE NOT SPECIFIED")
 
 allother <- c("BANKS/FINANCIAL",
                 "CLUB PRIVATE",
@@ -243,7 +244,6 @@ allother <- c("BANKS/FINANCIAL",
                 "TOURIST HOMES",
                 "TRUCK TERMINAL",
                 "TRUE VACANT COMMERCIAL",
-                "UNIMPROVED-USE NOT SPECIFIED",
                 "UNIMPROVED PARKING LOT",
                 "VEHICLE SERVICE STATION - KIOSK",
                 "VEHICLE SERVICE STATION - KIOSK/OTHER",
@@ -281,8 +281,6 @@ condo <- c("CONDO - VERTICAL",
           "CONDO VERTICAL COMBINED",
           "CONDO, INVESTMENT, HORIZONTAL",
           "CONDO, INVESTMENT, VERTICAL",
-          "COOPERATIVE - HORIZONTAL - MIXED USE",
-          "COOPERATIVE - VERTICAL - MIXED USE",
           "RES - CONVERSIONS - MORE THAN 5 UNITS",
           "RES - COOPERATIVE - VERTICAL",
           "RES CONVERSIONS - 5 UNITS",
@@ -291,7 +289,9 @@ condo <- c("CONDO - VERTICAL",
 
 apt <- c("ELEVATOR APT",
         "RES FLATS - LESS THAN 5 UNITS",
-        "WALK UP APT")
+        "WALK UP APT",
+        "COOPERATIVE - HORIZONTAL - MIXED USE",
+        "COOPERATIVE - VERTICAL - MIXED USE")
 
 com <- c("BANKS/FINANCIAL",
           "CLUB PRIVATE",
@@ -347,13 +347,13 @@ vacantcom <- c("TRUE VACANT COMMERCIAL",
 vacantother <- c("FALSE VACANT",
               "FALSE VACANT ABUTTING LOT (RES)",
               "IMPROVED-USE NOT SPECIFIED",
+              "UNIMPROVED-USE NOT SPECIFIED",
               "TRUE VACANT",
               "VACANT - UNIMPROVED PARKING",
               "VACANT W/PERMIT",
               "VACANT W/ZONING LIMITS")
 
 otherres <-  c("RES MIXED USE",
-              "RES SINGLE FAMILY GARAGE",
               "RES SINGLE FAMILY MISC",
               "RESIDENTIAL - MULTIFAMILY MISC",
               "RESIDENTIAL TRANSIENT MISC",
@@ -370,10 +370,10 @@ othernonres <- c("DORMITORY",
                 "SPECIAL PURPOSE - MISC",
                 "SPECIAL PURPOSE MEMORIAL",
                 "TRUCK TERMINAL",
-                "UNIMPROVED-USE NOT SPECIFIED",
                 "UNIMPROVED PARKING LOT",
                 "VEHICLE SERVICE STATION - KIOSK",
-                "VEHICLE SERVICE STATION - KIOSK/OTHER") 
+                "VEHICLE SERVICE STATION - KIOSK/OTHER",
+                "RES SINGLE FAMILY GARAGE") 
 
 jur <- jur %>% 
   mutate(category_detail = case_when(
@@ -407,12 +407,12 @@ horizontal <- c("CONDO HORIZONTAL",
                 "CONDO HORIZONTAL COMBINED",
                 "CONDO VERTICAL",
                 "CONDO, INVESTMENT, HORIZONTAL",
+                "RES COOPERATIVE - HORIZONTAL",
                 "COOPERATIVE - HORIZONTAL - MIXED USE",
                 "WALK UP APT")
 
 othermf <- c("RES CONVERSIONS - 5 UNITS",
             "RES CONVERSIONS - LESS THAN 5 UNITS",
-            "RES COOPERATIVE - HORIZONTAL",
             "RES FLATS - LESS THAN 5 UNITS",
             "RES MIXED USE",
             "RESIDENTIAL - MULTIFAMILY MISC")
@@ -704,10 +704,10 @@ nested <- multiples %>%
          lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
          buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
          countylandusedescription = map(countylandusedescription_list, Mode),
-         residential = map(residential_list, max, na.rm = FALSE),
+         residential = map(residential_list, max, na.rm = TRUE),
          category = map(category_list, Mode),
          category_detail = map(category_detail_list, Mode),
-         building_type = ifelse(category == "MF",
+         building_type = ifelse(category == "mf",
                                 map(building_type_list, Mode),
                                 NA),
          long = map(long_list, median),
@@ -719,6 +719,9 @@ nested <- multiples %>%
          yearbuilt = ifelse(!is.na(yearbuilt_list),
                       map(yearbuilt_list, max, na.rm = TRUE),
                       NA))
+
+
+sum(is.na(multiples$long_list))
 
 
 ```
