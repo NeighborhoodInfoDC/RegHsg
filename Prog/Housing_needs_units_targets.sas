@@ -156,7 +156,6 @@ data Housing_needs_baseline_&year.;
   %Hud_inc_RegHsg( hhinc=hhincome_a, hhsize=numprec )
   
 
-
 	if hhincome_a in ( 9999999, .n , . ) then incomecat=.;
 		else do; 
 		    if hhincome_a<=32600 then incomecat=1;
@@ -168,37 +167,28 @@ data Housing_needs_baseline_&year.;
 			else if 217200 < hhincome_a then incomecat=7;
 		end;
 
-	  label hud_inc = 'HUD income category for household'
-			incomecat='Income Categories based on 2016 HUD Limit for Family of 4';
+	  label hud_inc = 'HUD Income Limits category for household (2016)'
+		    incomecat='Income Categories based on 2016 HUD Limit for Family of 4';
 
-** Rent burdened flag **;
+** Cost-burden flag **;
 
   %dollar_convert( rentgrs, rentgrs_a, &year., 2016, series=CUUR0000SA0L2 )
   %dollar_convert( owncost, owncost_a, &year., 2016, series=CUUR0000SA0L2 )
   %dollar_convert( valueh, valueh_a, &year., 2016, series=CUUR0000SA0L2 )
 
     if ownershp = 2 then do;
-		if rentgrs_a*12>= HHINCOME_a*0.3 then rentburdened=1;
-	    else if HHIncome_a~=. then rentburdened=0;
+
+		Costratio= (rentgrs_a*12)/hhincome_a;
 	end;
 
     if ownershp = 1 then do;
-		if owncost_a*12>= HHINCOME_a*0.3 then ownerburdened=1;
-	    else if HHINCOME_a~=. then ownerburdened=0;
+		Costratio= (owncost_a*12)/hhincome_a;
 	end;
-
-** Severely rent burdened flag **;
-
-    if ownershp = 2 then do;
-		if rentgrs_a*12>= HHINCOME_a*0.5 then severerentburden=1;
-	    else if HHINCOME_a~=. then severerentburden=0;
-	end;
-
-    if ownershp = 1 then do;
-		if owncost_a*12>= HHINCOME_a*0.5 then severeownerburden=1;
-	    else if HHINCOME_a~=. then severeownerburden=0;
-	end;
-
+    
+		if Costratio >= 0.3 then costburden=1;
+	    else if HHIncome_a~=. then costburden=0;
+		if costratio >= 0.5 then severeburden=1;
+		else if HHIncome_a~=. then severeburden=0; 
 
 	tothh = 1;
 
@@ -206,8 +196,7 @@ data Housing_needs_baseline_&year.;
     ****** Rental units ******;
     
    if ownershpd in (21, 22) then do;
-    
-    
+        
     Tenure = 1;
      Max_income = ( rentgrs_a * 12 ) / 0.30;
 	  if hud_inc in(1 2 3) then max_rent=HHINCOME_a/12*.3; 
@@ -248,8 +237,11 @@ data Housing_needs_baseline_&year.;
 			if 2500 <=max_rent<3500 then mallcostlevel=5;
 			if max_rent >= 3500 then mallcostlevel=6;
 
+
 	end;
 
+	
+	  		
 		
   	else if ownershpd in ( 12,13 ) then do;
 
@@ -320,18 +312,18 @@ data Housing_needs_baseline_&year.;
 
   end;
 
-  if hhincome_a > Max_income then do;
-
-  availability= 0;
-  end;
-
-  else if hhincome_a <= Max_income then do;
-
-  availability=1;
-  end;
-  
 
 	total=1;
+
+
+			label rentlevel = 'Rent Level Categories based on Current Gross Rent'
+		 		  mrentlevel='Rent Level Categories based on Max affordable-desired rent'
+				  allcostlevel='Housing Cost Categories (tenure combined) based on Current Rent or First-time Buyer Mtg'
+				  mallcostlevel='Housing Cost Categories (tenure combined) based on Max affordable-desired Rent-Buyer Mtg'
+				  ownlevel = 'Owner Cost Categories based on First-Time HomeBuyer Costs'
+				  mownlevel = 'Owner Cost Categories based on Max affordable-desired First-Time HomeBuyer Costs'
+
+				;
 	
 format mownlevel ownlevel ocost. rentlevel mrentlevel rcost. allcostlevel mallcostlevel acost. hud_inc hud_inc. incomecat inc_cat.; 
 run;
@@ -422,6 +414,11 @@ data Housing_needs_vacant_&year.;
 
 
 	  end;
+
+		label rentlevel = 'Rent Level Categories based on Current Gross Rent'
+		 		  allcostlevel='Housing Cost Categories (tenure combined) based on Current Rent or First-time Buyer Mtg'
+				  ownlevel = 'Owner Cost Categories based on First-Time HomeBuyer Costs'
+				;
 	format ownlevel ocost. rentlevel rcost. vacancy_r VACANCY_F. allcostlevel acost. ; 
 	run;
 
@@ -445,7 +442,24 @@ data fiveyeartotal_vacant;
 hhwt_5=hhwt*.2; 
 
 run; 
-
+proc univariate data= fiveyeartotal;
+class incomecat;
+var Costratio ;
+weight hhwt_5;
+output out=costall mean=costratiomean median= costratiomedian min=costratiomin max=costratiomax P1=percentile_1 P5=percentile_5 P10=percentile_10 P90=percentile_90;
+run;
+proc univariate data= fiveyeartotal;
+class incomecat;
+var Costratio ;
+weight hhwt_5;
+where tenure =1;
+run;
+proc univariate data= fiveyeartotal;
+class incomecat;
+var Costratio ;
+weight hhwt_5;
+where tenure =2;
+run;
 proc freq data=fiveyeartotal;
 tables incomecat*allcostlevel /nopercent norow nocol out=region_units;
 weight hhwt_5;
