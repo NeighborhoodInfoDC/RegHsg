@@ -59,7 +59,7 @@ source("../Macros/select-vars.R")
 source("../Macros/sample-properties.R")
 source("../Macros/classify-addresses.R")
 ```
-#### Create directory for data exports
+#### Create directory for data exports on local computer
 ```{r dir}
 if (!dir.exists("../Data")) {
   dir.create("../Data")
@@ -72,20 +72,16 @@ if (!dir.exists("../Data")) {
 ```{r fips}
 currentfips <- "11001"
 filepath <- "DC"
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
 ```
 
-#### Load in Black Knight data for the region, select jurisdiction and standard variables
+#### Load in precleaned Black Knight data for the region, select jurisdiction and standard variables
 ```{r read}
-if (!exists("region")) {
-  region <- read_bk("dc-cog-assessment_20181228.csv")
-} else {
-  warning("region data already read in")
-}
 
-jur <- region %>% 
-  filter_bk(fips = currentfips) %>% 
-  select_vars()
-
+jur <- readRDS(paste0(jdir, 
+               "precleaned-",
+               filepath,
+               "-data.Rdata"))
 ```
 ## Recatagorize county land use
 In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates four variables:
@@ -554,7 +550,8 @@ if (x == y) {
     warning("additional observations introduced")
 }
 
-rm(x, y)
+rm(x,y)
+
 
 ```
 
@@ -575,6 +572,8 @@ jur <- jur %>%
                                     propstreetsuffix,
                                     sep = " "),
                               propaddress))
+
+
 ```
 
  Compare the first 20 addresses to check
@@ -695,10 +694,10 @@ rm(v)
 nested <- multiples %>% 
   group_by(propaddress, parcel_address) %>%
   summarize_at(vars(zoning,lotsize_sf,
-                    
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
                     yearbuilt, long, lat), list) %>% 
+  
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
                   zoning = map(zoning_list, Mode),
@@ -726,9 +725,9 @@ nested <- multiples %>%
 
 #### Lot size
 
-Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show five cases that we have to reconcile.
+Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show some of the unique cases for DC.
 
-``` {r lot-ex}
+``` {r lot-ex, echo=FALSE}
 weird <- tibble(propaddress = c( "1 SCOTT CIR NW", "10 G ST NE", "100 FLORIDA AVE NE", "1000 CONSTITUTION AVE NW",  "1007 OTIS PL NW", "1003 50TH ST NE"),
                 instance = 1:6)
 
@@ -738,17 +737,14 @@ weird1 <- nested %>%
   select(instance, propaddress, nprops, lotsize_sf_list, lotsize_sf_sum) %>% 
   arrange(instance)
 
-knitr::kable(weird1)
+  knitr::kable(weird1)
 
 rm(weird, weird1)
 ```
 
-- In the first instance, the lot size is repeated- the number of unique lot sizes is 1, so mode is the right function.
-- In the second instance, the sum of the lot size is the incorrect lot size, and the mode is a better function- but there is more than one unique value.
-- In the third example, the mode would give is a lot size of 0, which is also incorrect- but again, every value is not unique. 
-- In the fourth instance, there are the same number of unique values as there are properties- sum is the correct function. 
-- In the fifth instance, we need to replace the lot size of 0 with `NA`, so future operations will also return `NA`. 
-(This part need to be adapter to DC, cases are already changed to DC)
+- IN the case of when the lot size is repeated (Instance 2)- the number of unique lot sizes is 1, so mode is the right function.
+- In the case of when there are the same number of unique values as there are properties- sum is the correct function. 
+- In the fifth and sixth instance, two smaller number add up to the third. I looked up several online and it seems like best to keep the total, summing all will double count the lot size
 
 
 First, filter out all the observations where the function is known. Then, re-examine the remaining observations.
@@ -1085,6 +1081,10 @@ multiples_f <- nested_final %>%
 finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>% 
   fill(county_fips) %>% 
   fill(county_name)
+
+
+finaljur[finaljur == "NULL"] = NA
+finaljur[finaljur == "character(0)"] = NA
 ```
 
 Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were `r nrow(filter(cdties, test_vacant == 1))` multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, `r nunits`,  minus `r nrow(filter(cdties, test_vacant == 1))`.
@@ -1109,5 +1109,5 @@ Write out clean data.
 
 ```{r write}
 write_csv(finaljur, 
-          paste0("../Data/", filepath, "-cleaned-data.csv"))
+          paste0(jdir, filepath, "-cleaned-data.csv"))
 ```

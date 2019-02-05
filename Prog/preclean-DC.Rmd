@@ -130,12 +130,6 @@ There are `r parcel %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcel
 parcelbaseDC %>% group_by(parcelbase_parcelID) %>% filter(n()>1) %>% nrow()
 
 
-parcel_clean <- parcelbaseDC %>% 
-  group_by(parcelbase_parcelID) %>% 
-  summarize( parcelbase_x = mean( parcelbase_x),
-            parcelbase_y = mean(parcelbase_y)) %>% 
-  ungroup()
-
 ```
 
 
@@ -143,7 +137,7 @@ Merge
 
 ```{r merge}
 
-jur <- left_join(jur, parcel_clean, 
+jur <- left_join(jur, parcelbaseDC, 
                  by = c("assessorsparcelnumberapnpin" = "parcelbase_parcelID"))
 
 ```
@@ -157,8 +151,6 @@ currentfips <- "11001"
 filepath <- "DC"
 jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
 rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
-
-setwd ("L:/Libraries/RegHsg/Data/")
 
 saveRDS(jur,
         paste0(jdir, 
