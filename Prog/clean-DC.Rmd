@@ -728,7 +728,7 @@ nested <- multiples %>%
 
 Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show five cases that we have to reconcile.
 
-``` {r lot-ex, echo=FALSE}
+``` {r lot-ex}
 weird <- tibble(propaddress = c( "1 SCOTT CIR NW", "10 G ST NE", "100 FLORIDA AVE NE", "1000 CONSTITUTION AVE NW",  "1007 OTIS PL NW", "1003 50TH ST NE"),
                 instance = 1:6)
 
