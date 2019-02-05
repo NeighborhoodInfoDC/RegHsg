@@ -638,7 +638,7 @@ rm(v)
 ``` {r nest}
 nested <- multiples %>% 
   group_by(propaddress, parcel_address) %>%
-  summarize_at(vars(zoning,lotsize_sf,
+  summarize_at(vars(zoning, lotsize_sf,
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
                     yearbuilt, long, lat), list) %>% 
@@ -698,7 +698,7 @@ There are a few variables needed:
 1. The number of unique observations in the `lotsize_sf_list` nested list
 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)
 
-e``` {r lot-vars}
+``` {r lot-vars}
 nested <- nested %>% 
   mutate(nprops = as.integer(nprops),
          lotsiz_sf_sum = as.integer(lotsize_sf_sum),
@@ -736,20 +736,6 @@ Based on examining the 77 addressess with different criteria, we develop these a
 
 First, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
 
-``` {r fx-choice2}
-nested_other <- nested %>% 
-  filter(fxn == "other") %>% 
-  mutate(lsmode_num = ifelse(map(lsmode, length) > 1, NA, lsmode),
-         lsmode_num = as.integer(lsmode_num),
-         fxn = case_when(
-            nprops > 500 ~ "missing",
-            lsmode_num > 8000 ~ "mode",
-            TRUE ~ "sum"
-  ))
-
-count(nested_other, fxn)
-```
-
 Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot side.
 
 ```{r combine}
@@ -759,6 +745,7 @@ nested_all <- bind_rows(nested_done, nested_other) %>%
   mutate(lotsize_sf_final = 
            case_when(fxn == "first" ~ lsfirst,
                      fxn == "sum" ~ lotsize_sf_sum,
+                     fxn == "other" ~ lotsize_sf_sum,
                      fxn == "mode" ~ lsmode_num))
 ```
 
