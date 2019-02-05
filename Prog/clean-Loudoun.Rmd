@@ -222,8 +222,6 @@ vacant <- c("AUTOMOTIVE BUILDINGS - VACANT",
             "WAREHOUSE - VACANT",
             "WINERY - VACANT")
 
-missing <- c("NA")
-
 jur <- jur %>% 
   mutate(category = case_when(
            countylandusedescription %in% other ~ "other",
@@ -232,7 +230,7 @@ jur <- jur %>%
            countylandusedescription %in% vacant ~ "vacant",
            is.na(countylandusedescription) ~ "missing"))
 
-rm(other, mf, sf, vacant, missing)
+rm(other, mf, sf, vacant)
 ```
 
 ##### `category_detail`
@@ -271,8 +269,8 @@ commercial <- c("AUTO SALES",
                 "WINERY")
 
 condo <- c("RESIDENTIAL CONDOS",
-        "CONDOMINIUM (RESIDENTIAL)",
-        "RES CONDO GARAGE UNIT")
+           "CONDOMINIUM (RESIDENTIAL)",
+           "RES CONDO GARAGE UNIT")
 
 duplex <- c("DUPLEX")
 
@@ -289,7 +287,7 @@ sfdetached <- c("SINGLE FAMILY",
 trailer <- c("MOBILE/MANUFACTURED HOMES",
              "TRAILER PARK")
 
-townhouse <-  c("TOWN HOUSES")
+townhouse <- c("TOWN HOUSES")
 
 educational <- c("EDUCATIONAL")
 
@@ -301,39 +299,36 @@ govt <- c("GOVERNMENT PROPERTY",
           "GOVT PROP")
 
 otheruse <- c("HANGER",
-              "IMPROVED, USED NOT SPECIFIED",
+              "IMPROVED, USE NOT SPECIFIED",
               "LEASEHOLD RIGHTS (MISC)",
               "MISC IMPROVEMENTS",
               "MISCELLANEOUS (GENERAL)")
 
 vacantcom <- c("AUTOMOTIVE BUILDINGS - VACANT",
-            "COMMERCIAL CONDOS - VACANT",
-            "FLEX WAREHOUSE - VACANT",
-            "GROCERY STORE - VACANT",
-            "MINI WAREHOUSE - VACANT",
-            "MISC COMM STRUCTURE - VACANT",
-            "MISC COMMERCIAL STRUCTURE - VACANT",
-            "OFFICE BUILDING - VACANT",
-            "RETAIL STORE - VACANT",
-            "SHOPPING CENTER - VACANT",
-            "WAREHOUSE - VACANT",
-            "WINERY - VACANT")
+               "COMMERCIAL CONDOS - VACANT",
+               "FLEX WAREHOUSE - VACANT",
+               "GROCERY STORE - VACANT",
+               "MINI WAREHOUSE - VACANT",
+               "MISC COMM STRUCTURE - VACANT",
+               "MISC COMMERCIAL STRUCTURE - VACANT",
+               "RETAIL STORE - VACANT",
+               "SHOPPING CENTER - VACANT",
+               "WAREHOUSE - VACANT",
+               "WINERY - VACANT")
 
 vacantother <- c("VACANT LAND",
                  "MISC IMPROVEMENTS - VACANT",
                  "RECREATIONAL - VACANT")
 
-vacantmf <- c("MULTI-FAMILY VACANT")
+vacantmf <- c("MULTI-FAMILY - VACANT")
 
 vacantoffice <- c("OFFICE BUILDING - VACANT")
 
 vacantsf <- c("SINGLE FAMILY - VACANT")
 
-vacanttownhouse <- ("TOWNHOUSES - VACANT")
+vacanttownhouse <- c("TOWNHOUSES - VACANT")
 
-vacanttrailer <- ("TRAILER PARK - VACANT")
-
-missingdetail <- c("NA")
+vacanttrailer <- c("TRAILER PARK - VACANT")
 
 jur <- jur %>% 
   mutate(category_detail = case_when(
@@ -342,37 +337,28 @@ jur <- jur %>%
            countylandusedescription %in% condo ~ "condo",
            countylandusedescription %in% duplex ~ "duplex",
            countylandusedescription %in% office ~ "office",
-           countylandusedescription %in% mfattached ~
-"mf attached",
+           countylandusedescription %in% mfattached ~ "mf attached",
            countylandusedescription %in% sfdetached ~ "sf detached",
-           countylandusedescription %in% trailer ~
-"trailer",
+           countylandusedescription %in% trailer ~ "trailer",
            countylandusedescription %in% townhouse ~ "townhouse",
-           countylandusedescription %in% educational ~
-"educational",
-           countylandusedescription %in% firedepartment ~ 
-"fire department",
-           countylandusedescription %in% recreational ~
-"recreational",
-           countylandusedescription %in% govt ~
-"government",
-           countylandusedescription %in% otheruse ~
-"other use",
+           countylandusedescription %in% educational ~ "educational",
+           countylandusedescription %in% firedepartment ~ "fire department",
+           countylandusedescription %in% recreational ~ "recreational",
+           countylandusedescription %in% govt ~ "government",
+           countylandusedescription %in% otheruse ~ "other use",
            countylandusedescription %in% vacantcom ~ "vacant commercial",
            countylandusedescription %in% vacantother ~ "vacant other",
            countylandusedescription %in% vacantmf ~ "vacant mf",
            countylandusedescription %in% vacantoffice ~ "vacant office",
            countylandusedescription %in% vacantsf ~ "vacant sf",
-           countylandusedescription %in% vacanttownhouse ~
-"vacant townhouse",
-           countylandusedescription %in% vacanttrailer ~
-"vacant trailer",
-           is.na(countylandusedescription) ~ "missingdetail"))
+           countylandusedescription %in% vacanttownhouse ~ "vacant townhouse",
+           countylandusedescription %in% vacanttrailer ~ "vacant trailer",
+           is.na(countylandusedescription) ~ "missing"))
 
 rm(apartment, commercial, condo, duplex,
    office, mfattached, sfdetached, trailer, townhouse,
    educational, firedepartment, recreational, govt, otheruse, vacantcom, vacantother, vacantmf,
-   vacantoffice, vacantsf, vacanttownhouse, vacanttrailer, missingdetail)
+   vacantoffice, vacantsf, vacanttownhouse, vacanttrailer)
 
 ```
 
@@ -449,7 +435,7 @@ jur <- jur %>%
 ```
 
 ## Collapsing properties
-Next, we need to collapse parcels to the number of units per acre, primarily due to condos habing seperate parcel numbers.
+Next, we need to collapse parcels to the number of units per acre, primarily due to condos having seperate parcel numbers.
 
 ### Preserving parcel numbers
 Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.
@@ -671,21 +657,6 @@ nested <- multiples %>%
 
 Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show five cases that we have to reconcile.
 
-``` {r lot-ex, echo=FALSE}
-weird <- tibble(propaddress = c( "1330 S FAIR ST", "1633 N COLONIAL TER", "1117 N VERMONT ST", "1134 N STUART ST", "1300 N MEADE ST"),
-                instance = 1:5)
-
-weird1 <- nested %>% 
-  filter(propaddress %in% weird$propaddress) %>%
-  left_join(weird, by = "propaddress") %>% 
-  select(instance, propaddress, nprops, lotsize_sf_list, lotsize_sf_sum) %>% 
-  arrange(instance)
-
-knitr::kable(weird1)
-
-rm(weird, weird1)
-```
-
 - In the first instance, the lot size is repeated- the number of unique lot sizes is 1, so mode is the right function.
 - In the second instance, the sum of the lot size is the incorrect lot size, and the mode is a better function- but there is more than one unique value.
 - In the third example, the mode would give is a lot size of 0, which is also incorrect- but again, every value is not unique. 
@@ -729,12 +700,28 @@ nested_done <- nested %>%
 
 ```
 
-Based on examining the 77 addressess with different criteria, we develop these assumptions:
+Based on examining the 9 addressess with different criteria, we develop these assumptions:
 1. Properties with more than 500 units are majority missing, and should be marked missing.
 2. If the mode is > 8,000 SF, we will use the mode.
 3. For all others, we use the sum.
 
 First, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
+
+```{r fx-choice2}
+nested_other <- nested %>% 
+  filter(fxn == "other") %>% 
+  mutate(lsmode_num = ifelse(map(lsmode, length) > 1, NA, lsmode),
+         lsmode_num = as.integer(lsmode_num),
+         fxn = case_when(
+            nprops > 500 ~ "missing",
+            lsmode_num > 8000 ~ "mode",
+            TRUE ~ "sum"
+  ))
+
+count(nested_other, fxn)
+
+```
+
 
 Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot side.
 
@@ -764,7 +751,7 @@ rm(nested, nested_done, nested_other)
 #### Ties
 
 ##### Zoning
-There are 62 instances where there is a tie in the zoning code- examples below.
+There are 21 instances where there is a tie in the zoning code- examples below.
 
 ``` {r ties}
 ties <- nested_all %>% 
@@ -831,8 +818,7 @@ count(cdties, test_vacant) %>%
   rename(`Number of vacant categories` = test_vacant,
          `Number of instances` = n) %>% 
   mutate(`What to do?` = c("Take the residential code",
-                           "Take the non-vacant categoty",
-                           "Pick the more general vacant category")) %>% 
+                           "Take the non-vacant categoty")) %>% 
   knitr::kable()
 ```
 
@@ -843,7 +829,7 @@ For all instances- we will determine position using the entire listed variable (
 - If one of the values is residential -> residential
 - If the tie is between commercial or office -> first value
 
-We use the residential indicator to determine which argument of the vector contains the residential category, and then select the same values by arguement position for each other variable that conflicts.
+We use the residential indicator to determine which argument of the vector contains the residential category, and then select the same values by argument position for each other variable that conflicts.
 
 ```{r no-vac}
 
@@ -874,7 +860,7 @@ novac <- cdties %>%
 - We want to select the non-vacant observation.
 We can test which argument is vacant using `str_detect` and then select the other value.
 
-Since one of these is vacant, we also want to adjust the `nprops` variable- which will become the our measure of determining number of units once we bind the multiple addresses back to the single addresses- back to `1`.
+Since one of these is vacant, we also want to adjust the `nprops` variable- which will become our measure of determining number of units once we bind the multiple addresses back to the single addresses- back to `1`.
 
 ```{r one-vac}
 onevac <- cdties %>% 
