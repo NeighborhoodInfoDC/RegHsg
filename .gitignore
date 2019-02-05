@@ -62,3 +62,6 @@ Prog/Temp/
 # Other
 *.bat
 Thumbs.db
+.Rproj.user
+.Rhistory
+
