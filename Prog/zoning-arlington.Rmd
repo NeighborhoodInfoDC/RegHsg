@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Vacant lots analysis for Arlington County"
+subtitle: "Identify correct zoning designation"
 author: ""
 output:
   html_document:
@@ -78,7 +78,7 @@ if (!exists("jur")) {
 
 ### Zoning Map
 
-First, download file if not already downloaded. Use "jurisdiction-zoning-map.kml" for consistency.
+First, download file if not already downloaded. Use "jurisdiction-zoning-map.zip" for consistency.
 
 ```{r download-map}
 zzip <- paste0("L:/Libraries/RegHsg/Maps/",
@@ -104,47 +104,152 @@ if (!file.exists(zzip)) {
 zfile <- str_sub(list.files(zdir), end = -5) %>% unique()
 ```
 
-Read in zoning file as an `sf` object. Quick map to make sure it looks alright.
+Repeat process for parcel shapefile if not already downloaded. Use "jurisdiction-parcel-map.zip" for consistency.
 
-```{r read-map}
+```{r get-parcel}
+
+pdir <- paste0("L:/Libraries/RegHsg/Maps/",
+               filepath,
+               "-parcel-map")
+pzip <- paste0("L:/Libraries/RegHsg/Maps/",
+               filepath,
+               "-parcel-map.zip")
+
+purl <- "https://opendata.arcgis.com/datasets/b70198178ff44462b00c5b5c0012668d_0.zip?outSR=%7B%22wkid%22%3A102746%2C%22latestWkid%22%3A2283%7D"
+
+if (!file.exists(pzip)) {
+  
+  download.file(purl,
+                destfile = pzip)
+  
+  dir.create(pdir)
+  
+  unzip(pzip, exdir = pdir)
+  
+}
+
+pfile <- str_sub(list.files(pdir), end = -5) %>% unique()
+
+```
+
+Read in files as `sf` objects.
+
+```{r read-parcel}
 
 zon <- read_sf(dsn = zdir,
                layer = zfile)
 
-ggplot(zon) +
-  geom_sf(mapping = aes(fill = ZN_DESIG))
+par <- read_sf(dsn = pdir,
+               layer = pfile)
 
-rm(zurl, zzip, zfile, zdir)
+rm(purl, pzip, pfile, pdir,
+   zurl, zzip, zfile, zdir)
+
 ```
 
-
-## Map vacant parcels
-
-First, check CRS of zoning map.
-```{r crs}
+Set CRS of both files.
+```{r set-crs}
 st_geometry(zon)
 
 zon <- st_transform(zon, crs = 4326)
+par <- st_transform(par, crs = 4326)
+
 ```
 
-Filter out only the parcels that are vacant
+
+Quick map for each to make sure they read in correctly.
+
+#### {.tabset .tabset.fade}
+
+##### zoning map
+```{r zon-map}
+
+ggplot(zon) +
+  geom_sf(mapping = aes(fill = ZN_DESIG))
+
+```
+
+##### parcel map
+```{r par-map}
+
+ggplot(par) +
+  geom_sf(mapping = aes())
+
+```
+
+### 
+
+Get centroid of parcels, map on zoning layers.
+
+```{r cent}
+
+par <- par %>% 
+  select(-cent)
+
+parc <- st_centroid(par)
+
+# make sample dataset with 500 observations for quick mapping
+
+par1 <- parc %>% sample_n(500, replace = FALSE)
+
+ggplot() +
+  geom_sf(data = zon, mapping = aes(fill = ZN_DESIG)) +
+  geom_sf(data = par1, mapping = aes())
+
+```
+
+## Merge vacant parcels with parcel centroids
+
+Filter out only the parcels that are vacant. Transform this into an `sf` object.
+
 ```{r get-vac}
 
 vacant <- jur %>% 
   filter(category == "vacant")
 
+vacant %>% count(address_type)
+
 vacantsf <- vacant %>% 
-  filter(!is.na(long), !is.na(lat)) %>% 
+  mutate(missingcoord = ifelse(is.na(lat) | is.na(long), 1, 0)) %>% 
+  mutate_at(vars(lat, long),
+            ~ ifelse(is.na(.), 999, .)) %>% 
   st_as_sf(coords = c("long", "lat")) %>% 
   st_set_crs(st_crs(zon))
 
+vacant <- vacant %>% 
+  mutate(parcel_id_merge = ifelse(address_type %in% c("missing", "single"),
+                                  assessorsparcelnumberapnpin,
+                                  parcel_address))
 
-ggplot() +
-  geom_sf(data = zon, mapping = aes(),
-          fill = "grey", color = "black") +
-  geom_sf(data = vacantsf, mapping = aes())
+# check to see that this worked
+vacant %>% 
+  mutate(len = map_int(parcel_id_merge, str_length)) %>% 
+  count(len)
+
+full <- vacant %>%
+  filter(address_type %in% c("missing", "other"))
+
+parc <- parc %>% 
+  mutate(parcel_id = paste0(substr(RPCMSTR, 1, 2),
+                            "-",
+                            substr(RPCMSTR, 3, 5),
+                            "-", 
+                            substr(RPCMSTR, 6, 8)))
+
+full <- full %>% 
+  left_join(parc, by = c("parcel_id_merge" = "parcel_id"))
+
+t <- vacant %>% 
+  anti_join(parc, by = c("assessorsparcelnumberapnpin" = "parcel_id"))
 
 ```
+
+Missing and single addresses should join cleanly with parcel shapefile, once we manipulate the parcel ID variables. For multiple addresses, we can merge on the first five numbers of the parcel ID- which have been stored as `parcel_address` during the cleaning phase.
+
+
+
+
+
 
 Spatial join
 ```{r join}
@@ -187,40 +292,4 @@ test_all <- y %>%
          category_detail, geometry)
 ```
 
-Go back to parcel file and fix coordinates.
-```{r read-parcel}
 
-pdir <- paste0("L:/Libraries/RegHsg/Maps/",
-               filepath,
-               "-parcel-map")
-pzip <- paste0("L:/Libraries/RegHsg/Maps/",
-               filepath,
-               "-parcel-map.zip")
-
-
-download.file("https://opendata.arcgis.com/datasets/b70198178ff44462b00c5b5c0012668d_0.zip?outSR=%7B%22wkid%22%3A102746%2C%22latestWkid%22%3A2283%7D", destfile = pzip)
-
-unzip(pzip, exdir = pdir)
-
-pfile <- str_sub(list.files(pdir), end = -5) %>% unique()
-
-parcel_sf <- read_sf(dsn = pdir,
-                     layer = pfile)
-
-```
-
-
-Test parcel geometry
-```{r test-geo}
-
-st_geometry(parcel_sf)
-
-parcel_sf <- st_transform(parcel_sf, crs = 4326)
-
-parcel_sf <- parcel_sf %>% 
-  mutate(area = st_area(geometry))
-
-ggplot() +
-  geom_sf(parcel_sf, mapping = aes())
-
-```
