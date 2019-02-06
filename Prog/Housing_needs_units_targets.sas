@@ -600,7 +600,7 @@ run;
 
 proc freq data=fiveyeartotal;
 by jurisdiction;
-tables incomecat*rentlevel /nopercent norow nocol out=jurisdiction_rent;
+tables incomecat*allcostlevel /nopercent norow nocol out=jurisdiction_rent;
 where tenure=1;
 weight hhwt_5;
 format jurisdiction Jurisdiction.;
@@ -613,7 +613,7 @@ run;
 
 proc freq data=fiveyeartotal;
 by jurisdiction;
-tables incomecat*ownlevel /nopercent norow nocol out=jurisdiction_own;
+tables incomecat*allcostlevel /nopercent norow nocol out=jurisdiction_own;
 where tenure=2;
 weight hhwt_5;
 format jurisdiction Jurisdiction.;
@@ -650,28 +650,28 @@ run;
 
 proc freq data=fiveyeartotal;
 by jurisdiction;
-tables mrentlevel /nopercent norow nocol out=jurisdiction_desire_rent;
+tables mallcostlevel /nopercent norow nocol out=jurisdiction_desire_rent;
 weight hhwt_5;
 where tenure=1 ;
-format jurisdiction Jurisdiction. mrentlevel;
+format jurisdiction Jurisdiction. mallcostlevel;
 run;
 	proc transpose data=jurisdiction_desire_rent out=jdr
 	prefix=level;
-	id mrentlevel;
+	id mallcostlevel;
 	by jurisdiction;
 	var count;
 	run;
 
 proc freq data=fiveyeartotal;
 by jurisdiction;
-tables mownlevel /nopercent norow nocol out=jurisdiction_desire_own;
+tables mallcostlevel /nopercent norow nocol out=jurisdiction_desire_own;
 weight hhwt_5;
 where tenure=2 ;
-format jurisdiction Jurisdiction. mownlevel;
+format jurisdiction Jurisdiction. mallcostlevel;
 run;
 	proc transpose data=jurisdiction_desire_own out=jdo
 	prefix=level;
-	id mownlevel;
+	id mallcostlevel;
 	by jurisdiction;
 	var count;
 	run;
@@ -703,28 +703,28 @@ run;
 	run;
 proc freq data=fiveyeartotal_vacant;
 by jurisdiction;
-tables rentlevel /nopercent norow nocol out=jurisdiction_vacant_rent;
+tables allcostlevel /nopercent norow nocol out=jurisdiction_vacant_rent;
 where tenure=1;
 weight hhwt_5;
-format jurisdiction Jurisdiction. rentlevel;
+format jurisdiction Jurisdiction. allcostlevel ;
 run;
 	proc transpose data=jurisdiction_vacant_rent out=jvr
 	prefix=level;
 	by jurisdiction;
-	id rentlevel;
+	id allcostlevel;
 	var count;
 	run;
 proc freq data=fiveyeartotal_vacant;
 by jurisdiction;
-tables ownlevel /nopercent norow nocol out=jurisdiction_vacant_own;
+tables allcostlevel /nopercent norow nocol out=jurisdiction_vacant_own;
 where tenure=2;
 weight hhwt_5;
-format jurisdiction Jurisdiction. ownlevel ;
+format jurisdiction Jurisdiction. allcostlevel ;
 run;
 	proc transpose data=jurisdiction_vacant_own out=jvo
 	prefix=level;
 	by jurisdiction;
-	id ownlevel;
+	id allcostlevel;
 	var count;
 	run;
 
