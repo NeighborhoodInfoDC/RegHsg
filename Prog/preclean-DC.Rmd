@@ -131,7 +131,7 @@ parcelbaseDC %>% group_by(parcelbase_parcelID) %>% filter(n()>1) %>% nrow()
 
 ```
 Clean up ID variable to remove spaces for join
-``` {r cleanid}
+```{r cleanid}
 
 jurid <- jur %>% 
           mutate(parcelnumber = paste0(substr(assessorsparcelnumberapnpin, 1, 4),
