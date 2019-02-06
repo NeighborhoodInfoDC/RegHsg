@@ -53,6 +53,7 @@ library(tidyverse)
 library(DescTools)
 library(purrr)
 library(lwgeom)
+library(sf)
 
 source("../Macros/read-bk.R")
 source("../Macros/filter-bk.R")
@@ -126,8 +127,10 @@ st_geometry(parcel_sf)
 parcel_sf <- st_transform(parcel_sf, crs = 4326)
 parcel_sf <- parcel_sf %>% 
   mutate(area = st_area(geometry))
-ggplot() +
-  geom_sf(parcel_sf, mapping = aes())
+
+
+#ggplot() +
+  #geom_sf(parcel_sf, mapping = aes())
 ```
 
 ## Clean and merge
@@ -158,12 +161,13 @@ parcel_clean <- parcel_sf %>%
 ```
 
 ####
+
 From the property file, we will save the address, the number of units, and the latitude and longitude.
-```{r select-prop}
+{r select-prop}
 property <- property %>% 
   select(raw_parcelid_prop = realEstatePropertyCode,
          lotsize_prop = lotSizeQty,
-         propaddress_prop = propertyStreetNbrNameText,
+         propaddress_prop = propertyStreetNbrNameText, 
          numberofunits_prop = numberOfUnitsCnt,
          lat_prop = latitudeCrd,
          long_prop = longitudeCrd) %>% 
@@ -172,7 +176,7 @@ property <- property %>%
                             substr(raw_parcelid_prop, 3, 5),
                             "-", 
                             substr(raw_parcelid_prop, 6, 8)))
-```
+
 
 Merge
 
