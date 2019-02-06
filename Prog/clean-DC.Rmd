@@ -82,6 +82,7 @@ jur <- readRDS(paste0(jdir,
                "precleaned-",
                filepath,
                "-data.Rdata"))
+    
 ```
 ## Recatagorize county land use
 In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates four variables:
@@ -721,9 +722,7 @@ nested <- multiples %>%
                       NA))
 
 
-sum(is.na(multiples$long_list))
-
-
+#sum(is.na(nested$long_list))
 ```
 
 #### Lot size
