@@ -247,7 +247,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 05, 2019</p>
+<p>Last updated February 06, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -652,7 +652,7 @@ get_unit_summary &lt;- function(dataset,
 <pre class="r"><code>get_unit_summary(zoningdata1,
                  &quot;One Family Dwelling&quot;,
                  .7,
-                 900,
+                 700,
                  dwelling_type_breakdown = TRUE) %&gt;% 
   knitr::kable()</code></pre>
 <table>
@@ -669,43 +669,43 @@ get_unit_summary &lt;- function(dataset,
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">CE: 70% , Unit size: 900 sf</td>
+<td align="left">CE: 70% , Unit size: 700 sf</td>
 <td align="left">Multiple-family</td>
 <td align="right">55</td>
-<td align="right">5521</td>
+<td align="right">7151</td>
 <td align="right">2445</td>
 <td align="right">2445</td>
 <td align="right">44</td>
 </tr>
 <tr class="even">
-<td align="left">CE: 70% , Unit size: 900 sf</td>
+<td align="left">CE: 70% , Unit size: 700 sf</td>
 <td align="left">Duplex</td>
 <td align="right">13</td>
-<td align="right">174</td>
+<td align="right">225</td>
 <td align="right">37</td>
 <td align="right">37</td>
 <td align="right">2</td>
 </tr>
 <tr class="odd">
-<td align="left">CE: 70% , Unit size: 900 sf</td>
+<td align="left">CE: 70% , Unit size: 700 sf</td>
 <td align="left">Townhouse</td>
 <td align="right">9</td>
-<td align="right">45</td>
+<td align="right">66</td>
 <td align="right">9</td>
 <td align="right">9</td>
 <td align="right">1</td>
 </tr>
 <tr class="even">
-<td align="left">CE: 70% , Unit size: 900 sf</td>
+<td align="left">CE: 70% , Unit size: 700 sf</td>
 <td align="left">Semi-detached</td>
 <td align="right">16</td>
-<td align="right">93</td>
+<td align="right">126</td>
 <td align="right">16</td>
 <td align="right">16</td>
 <td align="right">1</td>
 </tr>
 <tr class="odd">
-<td align="left">CE: 70% , Unit size: 900 sf</td>
+<td align="left">CE: 70% , Unit size: 700 sf</td>
 <td align="left">One Family Dwelling</td>
 <td align="right">321</td>
 <td align="right">321</td>
@@ -714,10 +714,10 @@ get_unit_summary &lt;- function(dataset,
 <td align="right">1</td>
 </tr>
 <tr class="even">
-<td align="left">CE: 70% , Unit size: 900 sf</td>
+<td align="left">CE: 70% , Unit size: 700 sf</td>
 <td align="left">All</td>
 <td align="right">414</td>
-<td align="right">6154</td>
+<td align="right">7889</td>
 <td align="right">2828</td>
 <td align="right">2828</td>
 <td align="right">6</td>
@@ -727,7 +727,7 @@ get_unit_summary &lt;- function(dataset,
 <pre class="r"><code>map_df(c(.7, .85), ~ get_unit_summary(zoningdata1,
                                       &quot;One Family Dwelling&quot;,
                                       .,
-                                      900,
+                                      700,
                                       dwelling_type_breakdown = FALSE)) %&gt;% 
   knitr::kable()</code></pre>
 <table>
@@ -743,17 +743,17 @@ get_unit_summary &lt;- function(dataset,
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">CE: 70% , Unit size: 900 sf</td>
+<td align="left">CE: 70% , Unit size: 700 sf</td>
 <td align="right">414</td>
-<td align="right">6154</td>
+<td align="right">7889</td>
 <td align="right">2828</td>
 <td align="right">2828</td>
 <td align="right">6</td>
 </tr>
 <tr class="even">
-<td align="left">CE: 85% , Unit size: 900 sf</td>
+<td align="left">CE: 85% , Unit size: 700 sf</td>
 <td align="right">414</td>
-<td align="right">7437</td>
+<td align="right">9531</td>
 <td align="right">2828</td>
 <td align="right">2828</td>
 <td align="right">6</td>

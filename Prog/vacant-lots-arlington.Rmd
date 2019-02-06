@@ -391,7 +391,7 @@ Get summary statistics for several different parameters
 get_unit_summary(zoningdata1,
                  "One Family Dwelling",
                  .7,
-                 900,
+                 700,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
@@ -399,7 +399,7 @@ get_unit_summary(zoningdata1,
 map_df(c(.7, .85), ~ get_unit_summary(zoningdata1,
                                       "One Family Dwelling",
                                       .,
-                                      900,
+                                      700,
                                       dwelling_type_breakdown = FALSE)) %>% 
   knitr::kable()
 
@@ -410,7 +410,7 @@ Look at the distribution of units for lots with more than 1 unit, to check for e
 ```{r scatter, echo = FALSE}
 
 zoningdata1 %>% 
-  get_unit_variables("One Family Dwelling", .7, 900) %>% 
+  get_unit_variables("One Family Dwelling", .7, 700) %>% 
   filter(units_total > 1) %>% 
   ggplot() +
   geom_point(mapping = aes(lotsize_sf, units_total),
@@ -434,7 +434,7 @@ Look more closely at vacant lots < 50000 SF
 ```{r scatter-small, echo = FALSE}
 
 zoningdata1 %>% 
-  get_unit_variables("One Family Dwelling", .7, 900) %>% 
+  get_unit_variables("One Family Dwelling", .7, 700) %>% 
   filter(lotsize_sf < 50000,
          units_total > 1) %>% 
   ggplot() +
