@@ -30,10 +30,10 @@ TITLE Apply AHS &Year. Formats;
 %LET CSVFile = AHS &Year. Value Labels.CSV;   /* name of input CSV file*/ 
 
 /* Specify location of AHS Public Use files. Include trailing backslash. Process metro and national files seperately from different file locations*/
-LIBNAME AHS "L:\Libraries\RegHsg\Raw\AHS 2017 Metropolitan PUF v1.0 SAS" ;
+LIBNAME AHS "L:\Libraries\RegHsg\Raw\AHS 2017 National PUF v2.0 SAS\" ;
 
 /* location where you want the format catlog to be stored */
-LIBNAME Cat  "L:\Libraries\RegHsg\Raw\AHS 2017 Metropolitan PUF v1.0 SAS\" ;
+LIBNAME Cat  "L:\Libraries\RegHsg\Data\AHS formats\" ;
 
 /* Set the files to be processed.  The choices are:
      RELATIONAL to process the individual SAS files (Newhouse, person, etc.)
@@ -44,7 +44,7 @@ LIBNAME Cat  "L:\Libraries\RegHsg\Raw\AHS 2017 Metropolitan PUF v1.0 SAS\" ;
 
 /* IF you are adding formats to metropolitan data, change this should be YES.
      For the national data, it should be NO. */
-%LET Metro = YES;
+%LET Metro = NO;
 
 /* Double-check that these are the names of the flat files.  We did not always use
      the same conventions. Sometimes the "N" was omitted from the national file. */
