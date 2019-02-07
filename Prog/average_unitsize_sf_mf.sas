@@ -28,12 +28,13 @@ set RegHsg.ahs2017m;
 keep OMB13CBSA;
 run;
 
+/*the metro file actually don't have DC, see table below, so had to use the national file*/
 proc freq data=test;
 tables OMB13CBSA;
 run;
 
 data DCMSA;
-set RegHsg.ahs2017m( where = ((INTSTATUS = '1') and (OMB13CBSA= '47900')));
+set RegHsg.ahs2017n( where = ((INTSTATUS = '1') and (OMB13CBSA= '47900')));
 if BLD= '02' or BLD= '03' then sf=1;
 if BLD in ('04', '05', '06', '07', '08', '09') then mf=1;
 run;
@@ -53,7 +54,17 @@ run;
 
 proc tabulate data = DCMSA_2 missing;
   weight WEIGHT;
-  class sf mf;
-  var area ;
+  class sf;
+  var area;
+  table sf,
+        area*(N Mean Max);
+run;
+
+proc tabulate data = DCMSA_2 missing;
+  weight WEIGHT;
+  class mf;
+  var area;
+  table mf,
+        area*(N Mean Max);
 run;
 
