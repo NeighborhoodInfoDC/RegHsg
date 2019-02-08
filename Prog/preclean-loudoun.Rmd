@@ -100,13 +100,13 @@ prfile <- paste0(rdir, filepath, "-property-file.csv")
 
 # parcel file
 if (!file.exists(pafile)) {
-  download.file("http://geohub-loudoungis.opendata.arcgis.com/datasets/5ef377801d824cd0b483d800f862675d_1.csv",
+  download.file("http://geohub-loudoungis.opendata.arcgis.com/datasets/940679f5fe8444699893a1ed7bb7c2c6_5.csv",
                 destfile = pafile)
 }
 
 # property file
 if (!file.exists(prfile)) {
-  download.file("http://geohub-loudoungis.opendata.arcgis.com/datasets/940679f5fe8444699893a1ed7bb7c2c6_5.csv",
+  download.file("http://geohub-loudoungis.opendata.arcgis.com/datasets/5ef377801d824cd0b483d800f862675d_1.csv",
                 destfile = prfile)
 }
 
@@ -134,8 +134,7 @@ property <- read_csv(prfile,
   LU_DISPLAY = col_character(),
   LU_TYPE = col_character(),
   LU_USE_CONSOLIDATED = col_character()
-)
-)
+))
 
 parcel <- read_csv(pafile,
                    col_types = cols(
@@ -151,8 +150,8 @@ PA_SUBD_PHASE = col_character(),
 PA_SUBD_SECT = col_character(),
 PA_SUBD_BLOCK = col_character(),
 PA_LEGAL_SQFT = col_double(),
-PA_UPD_DATE = col_date(),
-PA_MCPI = col_integer(),
+PA_UPD_DATE = col_datetime(format = ""),
+PA_MCPI = col_double(),
 SHAPE_Length = col_double(),
 SHAPE_Area = col_double()
 
@@ -168,5 +167,49 @@ Select variables from each dataset that we want to keep.
 
 From the parcel file, we will keep the area of the parcel shapefile to use in the event that the Black Knight lot size is unavailable or incorrect.
 We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.
+
+```{r select-parcel}
+parcel <- parcel %>% 
+  select(raw_parcelid_par = PA_MCPI,
+         parcel_area = SHAPE_Area, 
+         parcel_length = SHAPE_Length) %>% 
+  mutate(parcel_id = paste0(raw_parcelid_par)) %>% 
+  filter(!is.na(raw_parcelid_par))
+
+```
+
+```{r dups-parcel}
+
+parcel_clean <- parcel %>% 
+  group_by(parcel_id, raw_parcelid_par) %>% 
+  summarize(parcel_area = mean(parcel_area),
+            parcel_length = mean(parcel_area)) %>% 
+  ungroup()
+
+```
+
+From the property file, we will save the address, the number of units, and the latitude and longitude.
+The Loudon file does not have address, lat or long -RP
+```{r select-prop}
+property <- property %>% 
+  select(raw_parcelid_prop = LU_PIN,
+         lotsize_prop = LU_LEGAL_ACRE,
+         numberofunits_prop = LU_HUNITS_EXIST) %>% 
+  mutate(parcel_id = paste0(raw_parcelid_prop))
+
+```
+
+Merge
+
+
+```{r merge}
+
+jur <- left_join(jur, parcel_clean, 
+                 by = c("assessorsparcelnumberapnpin" = "parcel_id"))
+
+jur <- left_join(jur, property, 
+                 by = c("assessorsparcelnumberapnpin" = "parcel_id"))
+
+```
 
 While Sarah says to complete this step, I skip it for now. I can always go back and do this later, but I don't think it will serve me well to get rid of variables until I know what I need. 
