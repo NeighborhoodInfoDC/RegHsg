@@ -100,13 +100,13 @@ prfile <- paste0(rdir, filepath, "-property-file.csv")
 
 # parcel file
 if (!file.exists(pafile)) {
-  download.file("file:///L:/Libraries/RegHsg/Raw/loudoun/loudoun-parcel-file.csv",
+  download.file("http://geohub-loudoungis.opendata.arcgis.com/datasets/5ef377801d824cd0b483d800f862675d_1.csv",
                 destfile = pafile)
 }
 
 # property file
 if (!file.exists(prfile)) {
-  download.file("file:///L:/Libraries/RegHsg/Raw/loudoun/loudoun-property-file.csv",
+  download.file("http://geohub-loudoungis.opendata.arcgis.com/datasets/940679f5fe8444699893a1ed7bb7c2c6_5.csv",
                 destfile = prfile)
 }
 
