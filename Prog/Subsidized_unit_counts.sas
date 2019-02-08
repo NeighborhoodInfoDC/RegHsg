@@ -43,17 +43,17 @@ run;
 
 data Work.Allassistedunits;
 	set RegHsg.Natlpres_activeandinc_prop;
-	s8_all_assistedunits=sum(s8_1_AssistedUnits, s8_2_AssistedUnits);
-	s202_all_assistedunits=sum(s202_1_AssitedUnits, s202_2_AssistedUnits);
-	s236_all_assistedunits=sum(s236_1_AssistedUnits, s236_2_AssistedUnits);
-	FHA_all_assistedunits=sum(FHA_1_AssistedUnits, FHA_2_AssistedUnits);
-	LIHTC_all_assistedunits=sum(LIHTC_1_AssistedUnits,LIHTC_2_AssistedUnits);
-	s515_all_assistedunits=sum(RHS515_1_AssistedUnits,RHS515_2_AssistedUnits);
-	s538_all_assistedunits=sum(RHS538_1_AssistedUnits,RHS538_2_AssistedUnits);
-	HOME_all_assistedunits=sum(HOME_1_AssistedUnits, HOME_2_AssistedUnits);
-	PH_all_assistedunits=sum(PH_1_AssistedUnits, PH_2_AssistedUnits);
-	State_all_assistedunits=sum(State_1_AssistedUnits, State_2_AssistedUnits);
-	drop s8_1_AssistedUnits s8_2_AssistedUnits s202_1_assitedunits s202_2_assistedunits
+	s8_all_assistedunits=min(sum(s8_1_AssistedUnits, s8_2_AssistedUnits),TotalUnits);
+	s202_all_assistedunits=min(sum(s202_1_AssistedUnits, s202_2_AssistedUnits),TotalUnits);
+	s236_all_assistedunits=min(sum(s236_1_AssistedUnits, s236_2_AssistedUnits),TotalUnits);
+	FHA_all_assistedunits=min(sum(FHA_1_AssistedUnits, FHA_2_AssistedUnits),TotalUnits);
+	LIHTC_all_assistedunits=min(sum(LIHTC_1_AssistedUnits,LIHTC_2_AssistedUnits),TotalUnits);
+	s515_all_assistedunits=min(sum(RHS515_1_AssistedUnits,RHS515_2_AssistedUnits),TotalUnits);
+	s538_all_assistedunits=min(sum(RHS538_1_AssistedUnits,RHS538_2_AssistedUnits),TotalUnits);
+	HOME_all_assistedunits=min(sum(HOME_1_AssistedUnits, HOME_2_AssistedUnits),TotalUnits);
+	PH_all_assistedunits=min(sum(PH_1_AssistedUnits, PH_2_AssistedUnits),TotalUnits);
+	State_all_assistedunits=min(sum(State_1_AssistedUnits, State_2_AssistedUnits),TotalUnits);
+	drop s8_1_AssistedUnits s8_2_AssistedUnits s202_1_assistedunits s202_2_assistedunits
 	s236_1_AssistedUnits s236_2_AssistedUnits FHA_1_AssistedUnits FHA_2_AssistedUnits
 	LIHTC_1_AssistedUnits LIHTC_2_AssistedUnits RHS515_1_AssistedUnits RHS515_2_AssistedUnits
 	RHS538_1_AssistedUnits RHS538_2_AssistedUnits HOME_1_AssistedUnits HOME_2_AssistedUnits
@@ -61,48 +61,46 @@ data Work.Allassistedunits;
 
 	if s8_all_assistedunits > 0 
 	then s8_activeunits = 1;
-	else s8_noactiveunits = 0;
+	else s8_activeunits = 0;
 	
 	if s202_all_assistedunits > 0
 	then s202_activeunits = 1;
-	else s202_noactiveunits = 0;
+	else s202_activeunits = 0;
 
 	if s236_all_assistedunits > 0
 	then s236_activeunits = 1;
-	else s236_noactiveunits = 0;
+	else s236_activeunits = 0;
 
 	if FHA_all_assistedunits > 0
 	then FHA_activeunits = 1;
-	else FHA_noactiveunits = 0;
+	else FHA_activeunits = 0;
 
 	if LIHTC_all_assistedunits > 0
 	then LIHTC_activeunits = 1;
-	else LIHTC_noactiveunits = 0;
+	else LIHTC_activeunits = 0;
 
 	if s515_all_assistedunits > 0
 	then s515_activeunits = 1;
-	else s515_noactiveunits = 0;
+	else s515_activeunits = 0;
 
 	if s538_all_assistedunits > 0
 	then s538_activeunits = 1;
-	else s538_noactiveunits = 0;
+	else s538_activeunits = 0;
 
 	if HOME_all_assistedunits > 0
 	then HOME_activeunits = 1;
-	else HOME_noactiveunits = 0;
+	else HOME_activeunits = 0;
 
 	if PH_all_assistedunits > 0
 	then PH_activeunits = 1;
-	else PH_noactiveunits = 0;
+	else PH_activeunits = 0;
 
 	if State_all_assistedunits > 0
 	then State_activeunits = 1;
-	else State_noactiveunits = 0;
+	else State_activeunits = 0;
 
-	format State_activeunits State_noactiveunits PH_noactiveunits PH_activeunits HOME_noactiveunits 
-	HOME_activeunits s538_noactiveunits s538_activeunits s515_noactiveunits s515_activeunits LIHTC_noactiveunits
-	LIHTC_activeunits FHA_noactiveunits FHA_activeunits s236_noactiveunits s236_activeunits s202_noactiveunits
-	s202_activeunits s8_noactiveunits s8_activeunits ActiveUnits.;
+	format State_activeunits PH_activeunits HOME_activeunits s538_activeunits s515_activeunits
+	LIHTC_activeunits FHA_activeunits s236_activeunits s202_activeunits s8_activeunits ActiveUnits.;
 
 	run;
 
