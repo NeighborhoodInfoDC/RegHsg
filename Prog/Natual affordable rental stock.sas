@@ -112,7 +112,7 @@ proc format;
 	;
 
   value struc
-
+  . = 'other unit type'
   1= '1-4 units in structure'
   2= '4+ units in structure' ;
 
@@ -161,7 +161,7 @@ data Occupied_affordable_&year.;
 
 		end;
 
-	  label affordable = 'Rental unit under $1200';
+	  label affordable = 'Natural affordable rental unit';
 
 if BUILTYR2 in ( 00, 9999999, .n , . ) then structureyear=.;
 		else do; 
@@ -191,6 +191,17 @@ data Vacant_affordable_&year.;
   set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction BUILTYR2 UNITSSTR where=(vacancy in (1, 3)));
 
   retain Totalvacant 1;
+
+    %dollar_convert( rent,rent_a, &year., 2016, series=CUUR0000SA0 )
+
+	if rent_a in ( 9999999, .n , . ) then affordable_vacant=.;
+		else do; 
+		    if rent_a<=1200 then affordable_vacant=1;
+			else if rent_a>1200 then affordable_vacant=0;
+
+		end;
+
+	  label affordable_vacant = 'Natural affordable vacant rental unit';
 	
 if BUILTYR2 in ( 00, 9999999, .n , . ) then structureyear=.;
 		else do; 
@@ -209,7 +220,7 @@ if UNITSSTR in ( 00, 01, 02, 9999999, .n , . ) then unitcount=.;
 		 		  unitcount='Units in structure'
 				;
 
-	format structureyear buildingyear.  unitcount struc.; 
+	format affordable_vacant afford. structureyear buildingyear.  unitcount struc.; 
 	run;
 
 %mend single_year; 
@@ -233,11 +244,10 @@ hhwt_5=hhwt*.2;
 
 run; 
 
-
 proc sort data=fiveyeartotal;
 by Jurisdiction structureyear unitcount;run;
 
-proc summary data=fiveyeartotal;
+proc summary data=fiveyeartotal (where=(affordable=1));
 by Jurisdiction structureyear unitcount;
 var affordable;
 weight hhwt_5;
@@ -247,9 +257,9 @@ run;
 proc sort data=fiveyeartotal_vacant;
 by Jurisdiction structureyear unitcount;run;
 
-proc summary data=fiveyeartotal_vacant;
+proc summary data=fiveyeartotal_vacant (where=(affordable_vacant=1));
 by Jurisdiction structureyear unitcount;
-var Totalvacant;
+var affordable_vacant;
 weight hhwt_5;
 output out = region_vacant_afford (drop=_TYPE_ _FREQ_) sum=;
 run;
@@ -271,7 +281,7 @@ proc export data=naturalaffordablestock
 proc sort data=fiveyeartotal;
 by structureyear unitcount;run;
 
-proc summary data=fiveyeartotal;
+proc summary data=fiveyeartotal(where=(affordable=1));
 by structureyear unitcount;
 var affordable;
 weight hhwt_5;
@@ -281,9 +291,9 @@ run;
 proc sort data=fiveyeartotal_vacant;
 by structureyear unitcount;run;
 
-proc summary data=fiveyeartotal_vacant;
+proc summary data=fiveyeartotal_vacant (where=(affordable_vacant=1));
 by structureyear unitcount;
-var Totalvacant;
+var affordable_vacant;
 weight hhwt_5;
 output out = region_vacant_afford_COG (drop=_TYPE_ _FREQ_) sum=;
 run;
@@ -299,3 +309,6 @@ proc export data=naturalaffordablestock_COG
    replace;
    run;
 
+proc univariate data= fiveyeartotal_vacant;
+var rent ;
+run;
