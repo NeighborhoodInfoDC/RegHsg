@@ -137,7 +137,28 @@ property <- read_csv(prfile,
 )
 )
 
-rm(prfile)
+parcel <- read_csv(pafile,
+                   col_types = cols(
+OBJECTID = col_double(),
+PA_TYPE = col_character(),
+PA_UNITS = col_integer(),
+PA_PLAT_NUM = col_character(),
+PA_PLAT_LOT = col_character(),
+PA_GIS_ACRE = col_double(),
+PA_LEGAL_ACRE = col_double(),
+PA_SUBD_NAME = col_character(),
+PA_SUBD_PHASE = col_character(),
+PA_SUBD_SECT = col_character(),
+PA_SUBD_BLOCK = col_character(),
+PA_LEGAL_SQFT = col_double(),
+PA_UPD_DATE = col_date(),
+PA_MCPI = col_integer(),
+SHAPE_Length = col_double(),
+SHAPE_Area = col_double()
+
+                   ))
+
+rm(prfile, pafile)
 
 ```
 
