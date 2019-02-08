@@ -98,9 +98,19 @@ currentjur_county <- jur %>%
   group_by(countylandusedescription) %>% 
   count()
 
+crosstab_category <- jur %>% 
+  group_by(countylandusedescription, parcelbase_usecode) %>% 
+  count()
+
 if (!file.exists(paste0("../Data/", filepath, "-county-land-use.csv"))) {
   write_csv(currentjur_county,
             paste0("../Data/", filepath, "-county-land-use.csv"))
+}
+
+
+if (!file.exists(paste0("../Data/", filepath, "-county-land-use-crosstab.csv"))) {
+  write_csv(crosstab_category,
+            paste0("../Data/", filepath, "-county-land-use-crosstab.csv"))
 }
 
 rm(currentjur_county)
@@ -134,7 +144,6 @@ res_codes <-
       "RES FLATS - LESS THAN 5 UNITS",
       "RES MIXED USE",
       "RES SINGLE FAMILY DETACHED",
-      "RES SINGLE FAMILY GARAGE",
       "RES SINGLE FAMILY MISC",
       "RES SINGLE FAMILY ROW",
       "RES SINGLE FAMILY SEMI-DETACHED",
@@ -172,7 +181,8 @@ mf <- c("CONDO - VERTICAL",
         "RES FLATS - LESS THAN 5 UNITS",
         "RES MIXED USE",
         "RESIDENTIAL - MULTIFAMILY MISC",
-        "WALK UP APT")
+        "WALK UP APT",
+        "RESIDENTIAL TRANSIENT MISC")
 
 sf <- c("RES SINGLE FAMILY DETACHED",
         "RES SINGLE FAMILY MISC",
@@ -230,7 +240,6 @@ allother <- c("BANKS/FINANCIAL",
                 "RECREATIONAL",
                 "RELIGIOUS",
                 "RES SINGLE FAMILY GARAGE",
-                "RESIDENTIAL TRANSIENT MISC",
                 "RESTAURANTS",
                 "SPECIAL PURPOSE - MISC",
                 "SPECIAL PURPOSE MEMORIAL",

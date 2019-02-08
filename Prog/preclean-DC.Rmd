@@ -83,7 +83,7 @@ if (!exists("region")) {
   warning("region data already read in")
 }
 
-jur <- region %>% 
+jurraw <- region %>% 
   filter_bk(fips = currentfips) %>% 
   select_vars()
 
@@ -97,6 +97,8 @@ I used the DC parcel base data for merging to provide alternative property and l
 library(haven)
 
 parcelbase <- haven::read_sas("L:/Libraries/realprop/data/parcel_base.sas7bdat")
+
+parcelgeo <- haven::read_sas("L:/Libraries/realprop/data/parcel_geo.sas7bdat")
 
 ```
 
@@ -114,10 +116,22 @@ parcelbaseDC <- parcelbase %>%
          parcelbase_address=PREMISEADD,
          parcelbase_proparea=LANDAREA,
          parcelbase_x= X_COORD,
-         parcelbase_y= Y_COORD
-         ) %>% 
+         parcelbase_y= Y_COORD,
+         parcelbase_usecode= USECODE,
+         parcelbase_proptype= PROPTYPE,
+         parcelbase_phasebuilt= PHASEBUILD
+        ) %>% 
   mutate(parcelbase_parcelID= as.character(parcelbase_parcelID)) %>% 
   filter(!is.na(parcelbase_parcelID))
+
+
+parcelgeoDC <- parcelgeo %>% 
+  select (parcelgeo_parcelID = SSL,
+          parcelgeo_x= X_COORD,
+          parcelgeo_y= Y_COORD) %>%
+mutate(parcelgeo_parcelID= as.character(parcelgeo_parcelID)) %>% 
+  filter(!is.na(parcelgeo_parcelID))
+
 
 ```
 
@@ -128,12 +142,14 @@ There are `r parcel %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcel
 
 parcelbaseDC %>% group_by(parcelbase_parcelID) %>% filter(n()>1) %>% nrow()
 
+parcelgeoDC %>% group_by(parcelgeo_parcelID) %>% filter(n()>1) %>% nrow()
+
 
 ```
 Clean up ID variable to remove spaces for join
-```{r cleanid}
+``` {r cleanid}
 
-jurid <- jur %>% 
+jurid <- jurraw %>% 
           mutate(parcelnumber = paste0(substr(assessorsparcelnumberapnpin, 1, 4),
                             "-",
                             substr(assessorsparcelnumberapnpin, 11, 16)))
@@ -144,6 +160,10 @@ parcelbaseDC <- parcelbaseDC %>%
                             substr(parcelbase_parcelID, 9, 12)))
 
 
+parcelgeoDC <- parcelgeoDC %>%
+            mutate(parcelgeo_SSL = paste0(substr(parcelgeo_parcelID, 1, 4),
+                            "-",
+                            substr(parcelgeo_parcelID, 9, 12)))
 
 
 ```
@@ -151,13 +171,35 @@ parcelbaseDC <- parcelbaseDC %>%
 
 Merge
 
+Use anti_join to identify SSL ID that don't exist in all datasets
+
+All parcelbase dataset was merged on to parcelgeo dataset 
+
+
+
 ```{r merge}
 
-jur <- left_join(jurid, parcelbaseDC, 
+parcel <- left_join(parcelbaseDC, parcelgeoDC, by = c("parcelbase_SSL"="parcelgeo_SSL"))
+
+
+jur <- left_join(jurid, parcel ,
                  by = c("parcelnumber" = "parcelbase_SSL"))
 
 
 jur %>% filter(is.na(parcelbase_x)) %>% nrow()
+
+#if nonmatching has 0 rows it means parcelbase data is completely merged with parcel geo dataset
+nonmatching <- anti_join ( parcelbaseDC, parcelgeoDC, by=c("parcelbase_SSL"="parcelgeo_SSL"))
+
+#19738 observation from black knight didn't merge
+nonmatchingblackknight <- anti_join(jurid, parcel ,
+                 by = c("parcelnumber" = "parcelbase_SSL"))
+
+#2498 observations from parcelbase dataset didn't merge
+nonmatchingparcel <- anti_join(parcel, jurid, 
+                 by = c( "parcelbase_SSL" = "parcelnumber"))
+
+
 
 
 ```
