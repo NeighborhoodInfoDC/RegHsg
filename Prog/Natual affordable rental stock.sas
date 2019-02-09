@@ -173,7 +173,8 @@ run;
 data Occupied_affordable_&year.;
 
   set COGSarea_&year.
-        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh Jurisdiction BUILTYR2 UNITSSTR where=(pernum=1 and gq in (1,2) and ownershpd in ( 21,22 )));
+        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh Jurisdiction BUILTYR2 UNITSSTR 
+		 where=(pernum=1 and gq in (1,2) and ownershpd in ( 21,22 )));
 
   %dollar_convert( rentgrs,rentgrs_a, &year., 2016, series=CUUR0000SA0 )
 
@@ -211,7 +212,7 @@ run;
 
 data Vacant_affordable_&year.;
 
-  set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction BUILTYR2 UNITSSTR where=(vacancy in (1, 3)));
+  set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction BUILTYR2 UNITSSTR where=(vacancy in (1, 3) & rent ~=.n));
 
   retain Totalvacant 1;
 	
