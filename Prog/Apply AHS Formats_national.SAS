@@ -33,7 +33,7 @@ TITLE Apply AHS &Year. Formats;
 LIBNAME AHS "L:\Libraries\RegHsg\Raw\AHS 2017 National PUF v2.0 SAS\" ;
 
 /* location where you want the format catlog to be stored */
-LIBNAME Cat  "L:\Libraries\RegHsg\Data\AHS formats\" ;
+LIBNAME Cat  "L:\Libraries\RegHsg\Data\" ;
 
 /* Set the files to be processed.  The choices are:
      RELATIONAL to process the individual SAS files (Newhouse, person, etc.)
