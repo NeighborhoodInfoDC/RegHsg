@@ -206,7 +206,7 @@ if UNITSSTR in ( 00, 01, 02, 9999999, .n , . ) then unitcount=.;
 		 		  unitcount='Units in structure'
 				;
 	
-format affordable afford. structureyear buildingyear.  unitcount struc. ; 
+format affordable afford. structureyear buildingyear.  unitcount struc. Jurisdiction Jurisdiction.; 
 run;
 
 data Vacant_affordable_&year.;
@@ -247,7 +247,9 @@ if UNITSSTR in ( 00, 01, 02, 9999999, .n , . ) then unitcount=.;
 		 		  unitcount='Units in structure'
 				;
 
-	format affordable_vacant afford. structureyear buildingyear.  unitcount struc.; 
+				total_vacant=1;
+
+	format affordable_vacant afford. structureyear buildingyear.  unitcount struc. Jurisdiction Jurisdiction.; 
 	run;
 
 %mend single_year; 
@@ -274,9 +276,9 @@ run;
 proc sort data=fiveyeartotal;
 by Jurisdiction structureyear unitcount;run;
 
-proc summary data=fiveyeartotal (where=(affordable=1));
+proc summary data=fiveyeartotal ;
 by Jurisdiction structureyear unitcount;
-var affordable;
+var affordable total;
 weight hhwt_5;
 output out = region_occupied_afford  (drop=_TYPE_ _FREQ_) sum=;
 run;
@@ -284,16 +286,17 @@ run;
 proc sort data=fiveyeartotal_vacant;
 by Jurisdiction structureyear unitcount;run;
 
-proc summary data=fiveyeartotal_vacant (where=(affordable_vacant=1));
+proc summary data=fiveyeartotal_vacant;
 by Jurisdiction structureyear unitcount;
-var affordable_vacant;
+var affordable_vacant total_vacant;
 weight hhwt_5;
 output out = region_vacant_afford (drop=_TYPE_ _FREQ_) sum=;
 run;
 
 data naturalaffordablestock (drop=_TYPE_ _FREQ_);
 merge region_occupied_afford  region_vacant_afford;
-by Jurisdiction structureyear unitcount;;
+by Jurisdiction structureyear unitcount;
+format affordable_vacant affordable;
 run;
 
 proc export data=naturalaffordablestock
@@ -308,9 +311,9 @@ proc export data=naturalaffordablestock
 proc sort data=fiveyeartotal;
 by structureyear unitcount;run;
 
-proc summary data=fiveyeartotal(where=(affordable=1));
+proc summary data=fiveyeartotal;
 by structureyear unitcount;
-var affordable;
+var affordable total;
 weight hhwt_5;
 output out = region_occupied_afford_COG  (drop=_TYPE_ _FREQ_) sum=;
 run;
@@ -318,16 +321,17 @@ run;
 proc sort data=fiveyeartotal_vacant;
 by structureyear unitcount;run;
 
-proc summary data=fiveyeartotal_vacant (where=(affordable_vacant=1));
+proc summary data=fiveyeartotal_vacant ;
 by structureyear unitcount;
-var affordable_vacant;
+var affordable_vacant total_vacant;
 weight hhwt_5;
 output out = region_vacant_afford_COG (drop=_TYPE_ _FREQ_) sum=;
 run;
 
 data naturalaffordablestock_COG (drop=_TYPE_ _FREQ_);
 merge region_occupied_afford_COG  region_vacant_afford_COG;
-by structureyear unitcount;;
+by structureyear unitcount;
+format affordable_vacant affordable;
 run;
 
 proc export data=naturalaffordablestock_COG
