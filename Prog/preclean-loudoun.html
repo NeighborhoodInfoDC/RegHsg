@@ -101,9 +101,6 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
-summary {
-  display: list-item;
-}
 </style>
 
 
@@ -111,70 +108,9 @@ summary {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
-
-<style type="text/css">
-.tabset-dropdown > .nav-tabs {
-  display: inline-table;
-  max-height: 500px;
-  min-height: 44px;
-  overflow-y: auto;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
-  font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
-  font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
-}
-
-.tabset-dropdown > .nav-tabs > li.active {
-  display: block;
-}
-
-.tabset-dropdown > .nav-tabs > li > a,
-.tabset-dropdown > .nav-tabs > li > a:focus,
-.tabset-dropdown > .nav-tabs > li > a:hover {
-  border: none;
-  display: inline-block;
-  border-radius: 4px;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
-  display: block;
-  float: none;
-}
-
-.tabset-dropdown > .nav-tabs > li {
-  display: none;
-}
-</style>
-
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
 });
 </script>
 
@@ -187,6 +123,7 @@ $(document).ready(function () {
   window.initializeCodeFolding("show" === "show");
 });
 </script>
+
 
 
 
@@ -310,7 +247,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 06, 2019</p>
+<p>Last updated February 09, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -336,6 +273,10 @@ rdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath, &quot;/&quot;)
 
 if (!dir.exists(paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath))) {
   dir.create(paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath))
+}
+
+if (!dir.exists(paste0(&quot;L:/Libraries/RegHsg/Data/&quot;, filepath))) {
+  dir.create(paste0(&quot;L:/Libraries/RegHsg/Data/&quot;, filepath))
 }</code></pre>
 <p>Load in Black Knight data for the region, select jurisdiction and standard variables</p>
 <pre class="r"><code>if (!exists(&quot;region&quot;)) {
@@ -356,22 +297,15 @@ prfile &lt;- paste0(rdir, filepath, &quot;-property-file.csv&quot;)
 
 # parcel file
 if (!file.exists(pafile)) {
-  download.file(&quot;file:///L:/Libraries/RegHsg/Raw/loudoun/loudoun-parcel-file.csv&quot;,
+  download.file(&quot;http://geohub-loudoungis.opendata.arcgis.com/datasets/940679f5fe8444699893a1ed7bb7c2c6_5.csv&quot;,
                 destfile = pafile)
 }
 
 # property file
 if (!file.exists(prfile)) {
-  download.file(&quot;file:///L:/Libraries/RegHsg/Raw/loudoun/loudoun-property-file.csv&quot;,
+  download.file(&quot;http://geohub-loudoungis.opendata.arcgis.com/datasets/5ef377801d824cd0b483d800f862675d_1.csv&quot;,
                 destfile = prfile)
 }</code></pre>
-</div>
-<div id="check-to-see-if-variables-prfile-and-pafile-exist" class="section level2">
-<h2>check to see if variables prfile and pafile exist</h2>
-<pre class="r"><code>ls()</code></pre>
-<pre><code>##  [1] &quot;currentfips&quot; &quot;filepath&quot;    &quot;filter_bk&quot;   &quot;jdir&quot;        &quot;jur&quot;        
-##  [6] &quot;pafile&quot;      &quot;prfile&quot;      &quot;rdir&quot;        &quot;read_bk&quot;     &quot;region&quot;     
-## [11] &quot;select_vars&quot;</code></pre>
 </div>
 <div id="read-files" class="section level2">
 <h2>Read files</h2>
@@ -391,16 +325,88 @@ if (!file.exists(prfile)) {
   LU_DISPLAY = col_character(),
   LU_TYPE = col_character(),
   LU_USE_CONSOLIDATED = col_character()
-)
-)
+))
 
-rm(prfile)</code></pre>
+parcel &lt;- read_csv(pafile,
+                   col_types = cols(
+OBJECTID = col_double(),
+PA_TYPE = col_character(),
+PA_UNITS = col_integer(),
+PA_PLAT_NUM = col_character(),
+PA_PLAT_LOT = col_character(),
+PA_GIS_ACRE = col_double(),
+PA_LEGAL_ACRE = col_double(),
+PA_SUBD_NAME = col_character(),
+PA_SUBD_PHASE = col_character(),
+PA_SUBD_SECT = col_character(),
+PA_SUBD_BLOCK = col_character(),
+PA_LEGAL_SQFT = col_double(),
+PA_UPD_DATE = col_datetime(format = &quot;&quot;),
+PA_MCPI = col_double(),
+SHAPE_Length = col_double(),
+SHAPE_Area = col_double()
+
+                   ))
+
+rm(prfile, pafile)</code></pre>
 </div>
 <div id="clean-and-merge" class="section level2">
 <h2>Clean and merge</h2>
 <p>Select variables from each dataset that we want to keep.</p>
-<p>From the parcel file, we will keep the area of the parcel shapefile to use in the event that the Black Knight lot size is unavailable or incorrect. We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.</p>
-<p>While Sarah says to complete this step, I skip it for now. I can always go back and do this later, but I don’t think it will serve me well to get rid of variables until I know what I need.</p>
+<p>From the parcel file, we will keep the area of the parcel shapefile to use in the event that the Black Knight lot size is unavailable or incorrect. We also select a lot size variable for comparison, and keep the number of units varaibles. We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.</p>
+<pre class="r"><code>parcel2 &lt;- parcel %&gt;% 
+  select(raw_parcelid_par = PA_MCPI,
+         units_par = PA_UNITS,
+         lotsize_acres_par = PA_GIS_ACRE,
+         parcel_area = SHAPE_Area, 
+         parcel_length = SHAPE_Length) %&gt;% 
+  mutate(parcel_idz = str_pad(raw_parcelid_par, 12, side = &quot;left&quot;, pad = &quot;0&quot;)) %&gt;% 
+  mutate(parcel_id = paste0(substr(parcel_idz, 1, 3),
+                            &quot;-&quot;,
+                            substr(parcel_idz, 4, 5),
+                            &quot;-&quot;, 
+                            substr(parcel_idz, 6, 9),
+                            &quot;-&quot;,
+                            substr(parcel_idz, 10, 12))) %&gt;% 
+  filter(!is.na(raw_parcelid_par))</code></pre>
+<p>Collapse at the parcel level, sum parcels that have multiple disconnected geographies.</p>
+<pre class="r"><code>parcel_clean &lt;- parcel2 %&gt;% 
+  group_by(parcel_id, raw_parcelid_par) %&gt;% 
+  summarize(parcel_area = sum(parcel_area),
+            parcel_length = sum(parcel_area)) %&gt;% 
+  ungroup()</code></pre>
+<p>From the property file, we will save the numer of units, the land use, a lot size variable, and a residential indicator. Variables are given the suffiz <code>prop</code> to indicate their source.</p>
+<pre class="r"><code>property &lt;- property %&gt;% 
+  select(raw_parcelid_prop = LU_PIN,
+         lotsize_acres_prop = LU_LEGAL_ACRE,
+         numberofunits_prop = LU_HUNITS_EXIST,
+         propertytype_par = LU_DISPLAY,
+         landusetype_prop = LU_TYPE) %&gt;% 
+  mutate(prop_idz = str_pad(raw_parcelid_prop, 12, side = &quot;left&quot;, pad = &quot;0&quot;)) %&gt;% 
+  mutate(parcel_id = paste0(substr(prop_idz, 1, 3),
+                            &quot;-&quot;,
+                            substr(prop_idz, 4, 5),
+                            &quot;-&quot;, 
+                            substr(prop_idz, 6, 9),
+                            &quot;-&quot;,
+                            substr(prop_idz, 10, 12)))</code></pre>
+<p>Merge</p>
+<pre class="r"><code>jur &lt;- left_join(jur, parcel_clean, 
+                 by = c(&quot;assessorsparcelnumberapnpin&quot; = &quot;parcel_id&quot;))
+
+jur &lt;- left_join(jur, property, 
+                 by = c(&quot;assessorsparcelnumberapnpin&quot; = &quot;parcel_id&quot;))
+
+jur &lt;- jur %&gt;% select(-prop_idz)</code></pre>
+</div>
+<div id="save" class="section level2">
+<h2>Save</h2>
+<p>Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.</p>
+<pre class="r"><code>saveRDS(jur,
+        paste0(jdir, 
+               &quot;precleaned-&quot;,
+               filepath,
+               &quot;-data.Rdata&quot;))</code></pre>
 </div>
 
 

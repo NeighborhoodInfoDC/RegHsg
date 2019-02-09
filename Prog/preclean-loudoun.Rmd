@@ -75,6 +75,9 @@ if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
   dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))
 }
 
+if (!dir.exists(paste0("L:/Libraries/RegHsg/Data/", filepath))) {
+  dir.create(paste0("L:/Libraries/RegHsg/Data/", filepath))
+}
 ```
 
 Load in Black Knight data for the region, select jurisdiction and standard variables
@@ -111,10 +114,8 @@ if (!file.exists(prfile)) {
 }
 
 ```
-##check to see if variables prfile and pafile exist
-```{r}
-ls()
-```
+
+
 ## Read files
 ```{r read-files}
 
@@ -165,12 +166,14 @@ rm(prfile, pafile)
 
 Select variables from each dataset that we want to keep.
 
-From the parcel file, we will keep the area of the parcel shapefile to use in the event that the Black Knight lot size is unavailable or incorrect.
+From the parcel file, we will keep the area of the parcel shapefile to use in the event that the Black Knight lot size is unavailable or incorrect. We also select a lot size variable for comparison, and keep the number of units varaibles.
 We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.
 
 ```{r select-parcel}
 parcel2 <- parcel %>% 
   select(raw_parcelid_par = PA_MCPI,
+         units_par = PA_UNITS,
+         lotsize_acres_par = PA_GIS_ACRE,
          parcel_area = SHAPE_Area, 
          parcel_length = SHAPE_Length) %>% 
   mutate(parcel_idz = str_pad(raw_parcelid_par, 12, side = "left", pad = "0")) %>% 
@@ -185,23 +188,27 @@ parcel2 <- parcel %>%
 
 ```
 
+Collapse at the parcel level, sum parcels that have multiple disconnected geographies.
+
 ```{r dups-parcel}
 
 parcel_clean <- parcel2 %>% 
   group_by(parcel_id, raw_parcelid_par) %>% 
-  summarize(parcel_area = mean(parcel_area),
-            parcel_length = mean(parcel_area)) %>% 
+  summarize(parcel_area = sum(parcel_area),
+            parcel_length = sum(parcel_area)) %>% 
   ungroup()
 
 ```
 
-From the property file, we will save the address, the number of units, and the latitude and longitude.
-The Loudon file does not have address, lat or long -RP
+From the property file, we will save the numer of units, the land use, a lot size variable, and a residential indicator. Variables are given the suffiz `prop` to indicate their source.
+
 ```{r select-prop}
 property <- property %>% 
   select(raw_parcelid_prop = LU_PIN,
-         lotsize_prop = LU_LEGAL_ACRE,
-         numberofunits_prop = LU_HUNITS_EXIST) %>% 
+         lotsize_acres_prop = LU_LEGAL_ACRE,
+         numberofunits_prop = LU_HUNITS_EXIST,
+         propertytype_par = LU_DISPLAY,
+         landusetype_prop = LU_TYPE) %>% 
   mutate(prop_idz = str_pad(raw_parcelid_prop, 12, side = "left", pad = "0")) %>% 
   mutate(parcel_id = paste0(substr(prop_idz, 1, 3),
                             "-",
@@ -215,8 +222,8 @@ property <- property %>%
 
 Merge
 
-
 ```{r merge}
+
 
 jur <- left_join(jur, parcel_clean, 
                  by = c("assessorsparcelnumberapnpin" = "parcel_id"))
@@ -224,6 +231,18 @@ jur <- left_join(jur, parcel_clean,
 jur <- left_join(jur, property, 
                  by = c("assessorsparcelnumberapnpin" = "parcel_id"))
 
+jur <- jur %>% select(-prop_idz)
+
 ```
 
-While Sarah says to complete this step, I skip it for now. I can always go back and do this later, but I don't think it will serve me well to get rid of variables until I know what I need. 
+## Save
+
+Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.
+
+```{r save}
+saveRDS(jur,
+        paste0(jdir, 
+               "precleaned-",
+               filepath,
+               "-data.Rdata"))
+```
