@@ -33,7 +33,7 @@
 %DCData_lib( RegHsg )
 %DCData_lib( Ipums )
 
-%let date=01222019; 
+%let date=02092019; 
 
 
 proc format;
@@ -102,6 +102,7 @@ proc format;
 	5 = '81-120%'
     6 = '120-200%'
     7 = 'More than 200%'
+	8 = 'Vacant'
 	;
   	  
 run;
@@ -150,8 +151,10 @@ data Housing_needs_baseline_&year.;
         (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh Jurisdiction
          where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 
-  %dollar_convert( hhincome, hhincome_a, &year., 2016, series=CUUR0000SA0 )
+  if hhincome !=.n or hhincome !=9999999 then do; 
 
+  %dollar_convert( hhincome, hhincome_a, &year., 2016, series=CUUR0000SA0 )
+  end; 
   
   %Hud_inc_RegHsg( hhinc=hhincome_a, hhsize=numprec )
   
@@ -176,7 +179,7 @@ data Housing_needs_baseline_&year.;
   %dollar_convert( owncost, owncost_a, &year., 2016, series=CUUR0000SA0L2 )
   %dollar_convert( valueh, valueh_a, &year., 2016, series=CUUR0000SA0L2 )
 
-    if ownershp = 2 then do;
+    if ownershp = 2  then do;
 
 		Costratio= (rentgrs_a*12)/hhincome_a;
 	end;
@@ -200,9 +203,11 @@ data Housing_needs_baseline_&year.;
     Tenure = 1;
      Max_income = ( rentgrs_a * 12 ) / 0.30;
 	  if hud_inc in(1 2 3) then max_rent=HHINCOME_a/12*.3; 
-	  if hud_inc =4 then max_rent=HHINCOME_a/12*.24;
-	  if hud_inc = 5 then max_rent=HHINCOME_a/12*.18;
-      if hud_inc = 6 then max_rent=HHINCOME_a/12*.12; 
+	  if hud_inc =4 then max_rent=HHINCOME_a/12*.25; *avg for all HH hud_inc=4; 
+	  if costratio <=.18 and hud_inc = 5 then max_rent=HHINCOME_a/12*.18; *avg for all HH hud_inc=5; 	
+		else if hud_inc = 5 then max_rent=HHINCOME_a/12*costratio; *allow 120-200% above average to spend more; 
+	  if costratio <=.12 and hud_inc = 6 then max_rent=HHINCOME_a/12*.12; *avg for all HH hud_inc=6; 
+	  	else if hud_inc=6 then max_rent=HHINCOME_a/12*costratio; *allow 200%+ above average to spend more; 
     
 			rentlevel=.;
 			if 0 <=rentgrs_a<750 then rentlevel=1;
@@ -250,9 +255,11 @@ data Housing_needs_baseline_&year.;
 	    Tenure = 2;
 
 		if hud_inc in(1 2 3) then max_ocost=HHINCOME_a/12*.3;
-		if hud_inc =4 then max_ocost=HHINCOME_a/12*.24;
-		if hud_inc=5 then max_ocost=HHINCOME_a/12*.19;
-		if hud_inc=6 then max_ocost=HHINCOME_a/12*.13; 
+		if hud_inc =4 then max_ocost=HHINCOME_a/12*.25;
+		if costratio <=.18 and hud_inc = 5 then max_ocost=HHINCOME_a/12*.18; *avg for all HH HUD_inc=5; 
+			else if hud_inc = 5 then max_ocost=HHINCOME_a/12*costratio; *allow 120-200% above average to pay more; 
+		if costratio <=.12 and hud_inc=6 then max_ocost=HHINCOME_a/12*.12; *avg for all HH HUD_inc=6;
+			else if hud_inc = 6 then max_ocost=HHINCOME_a/12*costratio; *allow 120-200% above average to pay more; 
 
 	    **** 
 	    Calculate max income for first-time homebuyers. 
@@ -436,57 +443,50 @@ data fiveyeartotal;
 hhwt_5=hhwt*.2; 
 
 run; 
+proc means data= fiveyeartotal;
+class hud_inc;
+var Costratio ;
+weight hhwt_5;
+run;
 data fiveyeartotal_vacant;
 	set Housing_needs_vacant_2013 Housing_needs_vacant_2014 Housing_needs_vacant_2015 Housing_needs_vacant_2016 Housing_needs_vacant_2017;
 
 hhwt_5=hhwt*.2; 
 
 run; 
-proc univariate data= fiveyeartotal;
-class incomecat;
-var Costratio ;
-weight hhwt_5;
-output out=costall mean=costratiomean median= costratiomedian min=costratiomin max=costratiomax P1=percentile_1 P5=percentile_5 P10=percentile_10 P90=percentile_90;
-run;
-proc univariate data= fiveyeartotal;
-class incomecat;
-var Costratio ;
-weight hhwt_5;
-where tenure =1;
-run;
-proc univariate data= fiveyeartotal;
-class incomecat;
-var Costratio ;
-weight hhwt_5;
-where tenure =2;
-run;
-proc freq data=fiveyeartotal;
+data all;
+	set fiveyeartotal fiveyeartotal_vacant (in=a);
+	if a then incomecat=8; 
+
+run; 
+
+/*output current households by unit cost*/
+proc freq data=all;
 tables incomecat*allcostlevel /nopercent norow nocol out=region_units;
 weight hhwt_5;
  
 run;
-proc freq data=fiveyeartotal;
+proc freq data=all;
 tables incomecat*rentlevel /nopercent norow nocol out=region_rental;
 where tenure=1;
 weight hhwt_5;
-
 run;
-proc freq data=fiveyeartotal;
+proc freq data=all;
 tables incomecat*ownlevel /nopercent norow nocol out=region_owner;
 where tenure=2;
 weight hhwt_5;
 
 run;
 
-	proc transpose data=region_owner out=ro;
+	proc transpose data=region_owner prefix=level out=ro;
 	by incomecat;
 	var count;
 	run;
-	proc transpose data=region_rental out=rr;
+	proc transpose data=region_rental prefix=level out=rr;
 	by incomecat;
 	var  count;
 	run;
-	proc transpose data=region_units out=ru;
+	proc transpose data=region_units  prefix=level  out=ru;
 	by incomecat;
 	var count;
 	run;
@@ -497,17 +497,142 @@ run;
 	if _name_="COUNT" & b then _name_="Owner";
 	if _name_="COUNT" & c then _name_="Rental";
 	run; 
-proc export data=region
+
+
+/*randomly select observations to reduce cost burden halfway*/
+data all_costb;
+	set fiveyeartotal;
+	where costburden=1;
+	run;
+proc surveyselect data=all_costb  groups=2 seed=5000 out=randomgroups noprint;
+run; 
+proc sort data=randomgroups;
+by year serial;
+proc sort data=fiveyeartotal;
+by year serial;
+data fiveyearrandom;
+merge fiveyeartotal randomgroups (keep=year serial groupid);
+by year serial;
+
+reduced_costb=.;
+
+if incomecat in (1, 2, 3, 4) and groupid=1 then reduced_costb=0;
+else reduced_costb=costburden; 
+
+
+
+if tenure=1 then do; 
+
+	if reduced_costb=1 then reduced_rent =rentgrs_a;
+	if reduced_costb=0 and costburden=1 then reduced_rent=hhincome_a/12*.3;
+	if reduced_costb=0 and costburden=0 then reduced_rent=rentgrs_a; 
+
+	 allcostlevel_halfway=.; 
+
+				if reduced_rent<800 then allcostlevel_halfway=1;
+				if 800 <=reduced_rent<1300 then allcostlevel_halfway=2;
+				if 1300 <=reduced_rent<1800 then allcostlevel_halfway=3;
+				if 1800 <=reduced_rent<2500 then allcostlevel_halfway=4;
+				if 2500 <=reduced_rent<3500 then allcostlevel_halfway=5;
+				if reduced_rent >= 3500 then allcostlevel_halfway=6;
+
+end; 
+
+if tenure=2 then do; 
+
+	if reduced_costb=1 then reduced_totalmonth =total_month;
+	if reduced_costb=0 and costburden=1 then reduced_totalmonth=hhincome_a/12*.3;
+	if reduced_costb=0 and costburden=0 then reduced_totalmonth=total_month; 
+
+		 allcostlevel_halfway=.; 
+
+				if reduced_totalmonth<800 then allcostlevel_halfway=1;
+				if 800 <=reduced_totalmonth<1300 then allcostlevel_halfway=2;
+				if 1300 <=reduced_totalmonth<1800 then allcostlevel_halfway=3;
+				if 1800 <=reduced_totalmonth<2500 then allcostlevel_halfway=4;
+				if 2500 <=reduced_totalmonth<3500 then allcostlevel_halfway=5;
+				if reduced_totalmonth >= 3500 then allcostlevel_halfway=6; 
+end;
+
+label allcostlevel_halfway ='Housing Cost Categories (tenure combined) based on Current Rent or First-time Buyer Mtg -Reduced Cost Burden by Half';
+format allcostlevel_halfway acost.;
+
+run; 
+proc freq data=fiveyeartotal;
+tables incomecat*costburden /nofreq nopercent nocol out=region_burden_byinc;
+weight hhwt_5;
+
+run;
+proc freq data=fiveyearrandom;
+tables incomecat*reduced_costb /nofreq nopercent nocol out=region_rburden_byinc;
+weight hhwt_5;
+
+run;
+
+proc freq data=fiveyeartotal;
+tables incomecat*allcostlevel /nofreq nopercent nocol out=region_actual_byinc;
+weight hhwt_5;
+
+run;
+proc freq data=fiveyeartotal;
+tables incomecat*mallcostlevel /nofreq nopercent nocol out=region_desire_byinc;
+weight hhwt_5;
+
+run;
+proc freq data=fiveyearrandom;
+tables incomecat*allcostlevel_halfway /nofreq nopercent nocol out=region_half_byinc;
+weight hhwt_5;
+
+run;
+data ractual_byinc;
+	set region_actual_byinc;
+ 	rename count =actual_count;
+	drop percent;
+run;
+data rdesire_byinc;
+	set region_desire_byinc;
+	rename count=desire_count
+		   mallcostlevel=allcostlevel;
+	drop percent;
+run;
+data rhalf_byinc;
+	set region_half_byinc;
+	rename count=half_count
+		   allcostlevel_halfway=allcostlevel;
+
+	drop percent; 
+run;
+data merge_byinc;
+	merge ractual_byinc rdesire_byinc rhalf_byinc;
+	by incomecat allcostlevel;
+
+	format allcostlevel ; 
+run; 
+proc transpose data=merge_byinc out=byinc prefix=level; 
+by incomecat;
+id allcostlevel ;
+var half_count desire_count actual_count;
+	run;
+data byinc_actual_to_desired;
+set byinc;
+
+drop _label_;
+run;
+proc sort data=byinc_actual_to_desired;
+by _name_ incomecat;
+data region_byinc_actual_to_desired;
+set  byinc_actual_to_desired (where=(_name_ ~="actual_count")) region;
+
+run; 
+proc sort data=region_byinc_actual_to_desired;
+by _name_; 
+proc export data=region_byinc_actual_to_desired
  	outfile="&_dcdata_default_path\RegHsg\Prog\region_units_&date..csv"
    dbms=csv
    replace;
    run;
-/*region affordable/desired*/
-proc freq data=fiveyeartotal;
-tables incomecat*mallcostlevel /nopercent norow nocol out=region_desire_byinc;
-weight hhwt_5;
 
-run;
+/*desired by tenure*/
 proc freq data=fiveyeartotal;
 tables mallcostlevel /nopercent norow nocol out=region_desire;
 weight hhwt_5;
@@ -543,50 +668,11 @@ proc export data=desire
    dbms=csv
    replace;
    run;
-/*Regional Vacant Units*/
-proc freq data=fiveyeartotal_vacant;
-tables allcostlevel /nopercent norow nocol out=region_vacant;
-weight hhwt_5;
-
-run;
-proc freq data=fiveyeartotal_vacant;
-tables rentlevel /nopercent norow nocol out=region_vacant_rent;
-where tenure=1;
-weight hhwt_5;
-
-run;
-proc freq data=fiveyeartotal_vacant;
-tables ownlevel /nopercent norow nocol out=region_vacant_own;
-where tenure=2;
-weight hhwt_5;
-
-run;
-	proc transpose data=region_vacant_own out=rvo;
-	var ownlevel count;
-	run;
-	proc transpose data=region_vacant_rent out=rvr;
-	var rentlevel count;
-	run;
-	proc transpose data=region_vacant out=rv;
-	var allcostlevel count;
-	run;
-	data vacant; 
-		set rv (in=a) rvo (in=b) rvr (in=c);
-
-	if _name_="COUNT" & a then _name_="All Vacant";
-	if _name_="COUNT" & b then _name_="Vacant Owner";
-	if _name_="COUNT" & c then _name_="Vacant Rental";
-	run; 
-proc export data=vacant
- 	outfile="&_dcdata_default_path\RegHsg\Prog\vacant_units_&date..csv"
-   dbms=csv
-   replace;
-   run;
 
 /*by jurisdiction*/
-proc sort data=fiveyeartotal;
+proc sort data=all;
 by jurisdiction;
-proc freq data=fiveyeartotal;
+proc freq data=all;
 by jurisdiction;
 tables incomecat*allcostlevel /nopercent norow nocol out=jurisdiction;
 weight hhwt_5;
@@ -598,7 +684,7 @@ run;
 
 	run;
 
-proc freq data=fiveyeartotal;
+proc freq data=all;
 by jurisdiction;
 tables incomecat*allcostlevel /nopercent norow nocol out=jurisdiction_rent;
 where tenure=1;
@@ -611,7 +697,7 @@ run;
 
 	run;
 
-proc freq data=fiveyeartotal;
+proc freq data=all;
 by jurisdiction;
 tables incomecat*allcostlevel /nopercent norow nocol out=jurisdiction_own;
 where tenure=2;
@@ -684,60 +770,6 @@ data jurisdiction_desire_units (drop=_label_);
 	run; 
 proc export data=jurisdiction_desire_units
  	outfile="&_dcdata_default_path\RegHsg\Prog\jurisdiction_desire_units_&date..csv"
-   dbms=csv
-   replace;
-   run;
-proc sort data=fiveyeartotal_vacant;
-by jurisdiction;
-proc freq data=fiveyeartotal_vacant;
-by jurisdiction;
-tables allcostlevel /nopercent norow nocol out=jurisdiction_vacant;
-weight hhwt_5;
-format jurisdiction Jurisdiction. allcostlevel;
-run;
-	proc transpose data=jurisdiction_vacant out=jv
-	prefix=level;
-	by jurisdiction;
-	id allcostlevel;
-	var count;
-	run;
-proc freq data=fiveyeartotal_vacant;
-by jurisdiction;
-tables allcostlevel /nopercent norow nocol out=jurisdiction_vacant_rent;
-where tenure=1;
-weight hhwt_5;
-format jurisdiction Jurisdiction. allcostlevel ;
-run;
-	proc transpose data=jurisdiction_vacant_rent out=jvr
-	prefix=level;
-	by jurisdiction;
-	id allcostlevel;
-	var count;
-	run;
-proc freq data=fiveyeartotal_vacant;
-by jurisdiction;
-tables allcostlevel /nopercent norow nocol out=jurisdiction_vacant_own;
-where tenure=2;
-weight hhwt_5;
-format jurisdiction Jurisdiction. allcostlevel ;
-run;
-	proc transpose data=jurisdiction_vacant_own out=jvo
-	prefix=level;
-	by jurisdiction;
-	id allcostlevel;
-	var count;
-	run;
-
-data jurisdiction_vacant_units (drop=_label_); 
-		set jv (in=a) jvo (in=b) jvr (in=c);
-
-	if _name_="COUNT" & a then _name_="All Vacant";
-	if _name_="COUNT" & b then _name_="Owner Vacant";
-	if _name_="COUNT" & c then _name_="Rental Vacant";
-	run; 
-
-proc export data=jurisdiction_vacant_units
- 	outfile="&_dcdata_default_path\RegHsg\Prog\jurisdiction_vacant_units_&date..csv"
    dbms=csv
    replace;
    run;
