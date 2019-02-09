@@ -147,6 +147,29 @@ run;
 
 	run;
 
+
+	data Ratio;
+
+	  set COGSarea_&year.
+	    (keep= rent rentgrs pernum gq ownershpd Jurisdiction
+	     where=(pernum=1 and gq in (1,2) and ownershpd in ( 22 )));
+	     
+	  Ratio_rentgrs_rent_&year. = rentgrs / rent;
+	 
+	run;
+
+	proc means data=Ratio;
+	  var  Ratio_rentgrs_rent_&year. rentgrs rent;
+	run;
+		%** Value copied from Proc Means output **;
+	%if &year=2013 %then %let Ratio_rentgrs_rent_&year.= 1.1429187;
+	%if &year=2014 %then %let Ratio_rentgrs_rent_&year.= 1.1600331;
+	%if &year=2015 %then %let Ratio_rentgrs_rent_&year.= 1.1556884;
+	%if &year=2016 %then %let Ratio_rentgrs_rent_&year.= 1.1425105;
+	%if &year=2017 %then %let Ratio_rentgrs_rent_&year.= 1.1193682;
+
+	%put Ratio_rentgrs_rent_&year.=&&Ratio_rentgrs_rent_&year.;
+
 data Occupied_affordable_&year.;
 
   set COGSarea_&year.
@@ -191,13 +214,17 @@ data Vacant_affordable_&year.;
   set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction BUILTYR2 UNITSSTR where=(vacancy in (1, 3)));
 
   retain Totalvacant 1;
+	
+  ** Impute gross rent for vacant units **;
+	  		rentgrs = rent*&&Ratio_rentgrs_rent_&year.;
 
-    %dollar_convert( rent,rent_a, &year., 2016, series=CUUR0000SA0 )
+			  %dollar_convert( rentgrs, rentgrs_a, &year., 2016, series=CUUR0000SA0L2 )
+			
 
-	if rent_a in ( 9999999, .n , . ) then affordable_vacant=.;
+	if rentgrs_a in ( 9999999, .n , . ) then affordable_vacant=.;
 		else do; 
-		    if rent_a<=1200 then affordable_vacant=1;
-			else if rent_a>1200 then affordable_vacant=0;
+		    if rentgrs_a<=1200 then affordable_vacant=1;
+			else if rentgrs_a>1200 then affordable_vacant=0;
 
 		end;
 
