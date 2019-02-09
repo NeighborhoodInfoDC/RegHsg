@@ -330,9 +330,10 @@ get_unit_variables <- function(dataset,
            units_height = units_per_floor * floors,
            units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
     mutate_at(vars(units_height, units_lotsize),
-              funs(ifelse(dwelling_type == single_designation, 
-                          1, 
-                          .))) %>% 
+              funs(case_when(
+                dwelling_type == single_designation ~ 1,
+                dwelling_type == "Duplex" ~ 2,
+                TRUE ~ .))) %>% 
     mutate(units_total = case_when(
       dwelling_type == "One Family Dwelling" ~ 1,
       units_height < units_lotsize ~ units_height,
@@ -391,7 +392,7 @@ Get summary statistics for several different parameters
 get_unit_summary(zoningdata1,
                  "One Family Dwelling",
                  .7,
-                 700,
+                 940,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
@@ -399,7 +400,7 @@ get_unit_summary(zoningdata1,
 map_df(c(.7, .85), ~ get_unit_summary(zoningdata1,
                                       "One Family Dwelling",
                                       .,
-                                      700,
+                                      940,
                                       dwelling_type_breakdown = FALSE)) %>% 
   knitr::kable()
 
@@ -410,7 +411,7 @@ Look at the distribution of units for lots with more than 1 unit, to check for e
 ```{r scatter, echo = FALSE}
 
 zoningdata1 %>% 
-  get_unit_variables("One Family Dwelling", .7, 700) %>% 
+  get_unit_variables("One Family Dwelling", .7, 940) %>% 
   filter(units_total > 1) %>% 
   ggplot() +
   geom_point(mapping = aes(lotsize_sf, units_total),
@@ -429,12 +430,12 @@ zoningdata1 %>%
 ```
 
 
-Look more closely at vacant lots < 50000 SF
+Look more closely at vacant lots < 50,000 SF
 
 ```{r scatter-small, echo = FALSE}
 
 zoningdata1 %>% 
-  get_unit_variables("One Family Dwelling", .7, 700) %>% 
+  get_unit_variables("One Family Dwelling", .7, 940) %>% 
   filter(lotsize_sf < 50000,
          units_total > 1) %>% 
   ggplot() +
