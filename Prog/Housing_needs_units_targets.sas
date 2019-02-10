@@ -335,9 +335,9 @@ data Housing_needs_baseline_&year.;
 format mownlevel ownlevel ocost. rentlevel mrentlevel rcost. allcostlevel mallcostlevel acost. hud_inc hud_inc. incomecat inc_cat.; 
 run;
 
-data Housing_needs_vacant_&year.;
+data Housing_needs_vacant_&year. Other_vacant_&year. ;
 
-  set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction where=(vacancy in (1,2,3)));
+  set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction );
 
   retain Total 1;
 	
@@ -427,6 +427,9 @@ data Housing_needs_vacant_&year.;
 				  ownlevel = 'Owner Cost Categories based on First-Time HomeBuyer Costs'
 				;
 	format ownlevel ocost. rentlevel rcost. vacancy_r VACANCY_F. allcostlevel acost. ; 
+
+	if vacancy in (1, 2, 3) then output Housing_needs_vacant_&year.;
+	else if vacancy in (4, 7, 9) then output other_vacant_&year.; 
 	run;
 
 %mend single_year; 
@@ -454,6 +457,27 @@ data fiveyeartotal_vacant;
 hhwt_5=hhwt*.2; 
 
 run; 
+data fiveyeartotal_othervacant;
+   set other_vacant_2013 other_vacant_2014 other_vacant_2015 other_vacant_2016 other_vacant_2017;
+
+hhwt_5=hhwt*.2;
+
+run; 
+proc sort data =fiveyeartotal_othervacant;
+by jurisdiction;
+proc freq data=fiveyeartotal_othervacant;
+by jurisdiction;
+tables vacancy /nopercent norow nocol out=other_vacant;
+weight hhwt_5;
+format jurisdiction jurisdiction.;
+run; 
+proc export data=other_vacant
+ 	outfile="&_dcdata_default_path\RegHsg\Prog\other_vacant_&date..csv"
+   dbms=csv
+   replace;
+   run;
+
+/*all  units that we can determine cost level*/ 
 data all;
 	set fiveyeartotal fiveyeartotal_vacant (in=a);
 	if a then incomecat=8; 
