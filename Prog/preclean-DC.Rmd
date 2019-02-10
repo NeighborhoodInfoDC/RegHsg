@@ -115,8 +115,6 @@ parcelbaseDC <- parcelbase %>%
          parcelbase_UIproptype = ui_proptype,
          parcelbase_address=PREMISEADD,
          parcelbase_proparea=LANDAREA,
-         parcelbase_x= X_COORD,
-         parcelbase_y= Y_COORD,
          parcelbase_usecode= USECODE,
          parcelbase_proptype= PROPTYPE,
          parcelbase_phasebuilt= PHASEBUILD
@@ -147,7 +145,7 @@ parcelgeoDC %>% group_by(parcelgeo_parcelID) %>% filter(n()>1) %>% nrow()
 
 ```
 Clean up ID variable to remove spaces for join
-``` {r cleanid}
+```{r cleanid}
 
 jurid <- jurraw %>% 
           mutate(parcelnumber = paste0(substr(assessorsparcelnumberapnpin, 1, 4),
