@@ -1,16 +1,16 @@
 /**************************************************************************
  Program:  Housing_needs_units_targets.sas
  Library:  RegHsg
- Project:  Urban-Greater DC 
+ Project:  Regional Housing Framework
  Author:   L. Hendey
  Created:  1/22/2019
  Version:  SAS 9.4
  Environment:  Local Windows session (desktop)
  
- Description:  Produce numbers for housing needs analysis from 2013-17
+ Description:  Produce numbers for housing needs and targets analysis from 2013-17
  ACS IPUMS data for the COGS region:
  DC (11001)
- Charles Couty(24017)
+ Charles County(24017)
  Frederick County(24021)
  Montgomery County (24031)
  Prince George's County(24033)
@@ -34,7 +34,6 @@
 %DCData_lib( Ipums )
 
 %let date=02092019; 
-
 
 proc format;
 
@@ -95,13 +94,13 @@ proc format;
 	
   value inc_cat
 
-    1 = '0-30% AMI'
-    2 = '31-50%'
-    3 = '51-80%'
-    4 = '81-120%'
-	5 = '81-120%'
-    6 = '120-200%'
-    7 = 'More than 200%'
+    1 = '$32,600 and below'
+    2 = '$32,600-$54,300'
+    3 = '$54,300-$70,150'
+    4 = '$70,150-$130,320'
+	5 = '$70,150-$130,320'
+    6 = '$130,320-$217,200'
+    7 = 'More than $217,200'
 	8 = 'Vacant'
 	;
   	  
@@ -151,10 +150,9 @@ data Housing_needs_baseline_&year.;
         (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh Jurisdiction
          where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 
-  if hhincome !=.n or hhincome !=9999999 then do; 
-
-  %dollar_convert( hhincome, hhincome_a, &year., 2016, series=CUUR0000SA0 )
-  end; 
+  if hhincome ~=.n or hhincome ~=9999999 then do; 
+	 %dollar_convert( hhincome, hhincome_a, &year., 2016, series=CUUR0000SA0 )
+   end; 
   
   %Hud_inc_RegHsg( hhinc=hhincome_a, hhsize=numprec )
   
