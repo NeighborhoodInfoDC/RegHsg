@@ -92,6 +92,7 @@ proc format;
 	  6= "More than $3,500"
   ;
 	
+  /*format collapses 80-100% and 100-120% of AMI*/
   value inc_cat
 
     1 = '$32,600 and below'
@@ -157,6 +158,7 @@ data Housing_needs_baseline_&year.;
   %Hud_inc_RegHsg( hhinc=hhincome_a, hhsize=numprec )
   
 
+	/*to match categories used in projections*/
 	if hhincome_a in ( 9999999, .n , . ) then incomecat=.;
 		else do; 
 		    if hhincome_a<=32600 then incomecat=1;
@@ -465,12 +467,12 @@ weight hhwt_5;
  
 run;
 proc freq data=all;
-tables incomecat*rentlevel /nopercent norow nocol out=region_rental;
+tables incomecat*allcostlevel /nopercent norow nocol out=region_rental;
 where tenure=1;
 weight hhwt_5;
 run;
 proc freq data=all;
-tables incomecat*ownlevel /nopercent norow nocol out=region_owner;
+tables incomecat*allcostlevel /nopercent norow nocol out=region_owner;
 where tenure=2;
 weight hhwt_5;
 
@@ -488,12 +490,13 @@ run;
 	by incomecat;
 	var count;
 	run;
-	data region (drop=_label_); 
+	data region (drop=_label_ _name_); 
 		set ru (in=a) ro (in=b) rr (in=c);
 	
-	if _name_="COUNT" & a then _name_="All";
-	if _name_="COUNT" & b then _name_="Owner";
-	if _name_="COUNT" & c then _name_="Rental";
+		length name $20.; 
+	if _name_="COUNT" & a then name="Actual All";
+	if _name_="COUNT" & b then name="Actual Owner";
+	if _name_="COUNT" & c then name="Actual Rental";
 	run; 
 
 
@@ -557,118 +560,97 @@ label allcostlevel_halfway ='Housing Cost Categories (tenure combined) based on 
 format allcostlevel_halfway acost.;
 
 run; 
-proc freq data=fiveyeartotal;
-tables incomecat*costburden /nofreq nopercent nocol out=region_burden_byinc;
-weight hhwt_5;
+	proc freq data=fiveyeartotal;
+	tables incomecat*costburden /nofreq nopercent nocol;
+	weight hhwt_5;
+	title2 "initial cost burden rates";
+	run;
+	proc freq data=fiveyearrandom;
+	tables incomecat*reduced_costb /nofreq nopercent nocol;
+	weight hhwt_5;
+	title2 "reduced cost burden rates"; 
+	run;
 
-run;
-proc freq data=fiveyearrandom;
-tables incomecat*reduced_costb /nofreq nopercent nocol out=region_rburden_byinc;
-weight hhwt_5;
 
-run;
-
-proc freq data=fiveyeartotal;
-tables incomecat*allcostlevel /nofreq nopercent nocol out=region_actual_byinc;
-weight hhwt_5;
-
-run;
 proc freq data=fiveyeartotal;
 tables incomecat*mallcostlevel /nofreq nopercent nocol out=region_desire_byinc;
 weight hhwt_5;
-
+title2;
 run;
+proc freq data=fiveyeartotal;
+tables incomecat*mallcostlevel /nofreq nopercent nocol out=region_desire_rent;
+weight hhwt_5;
+where tenure=1;
+run;
+proc freq data=fiveyeartotal;
+tables incomecat*mallcostlevel /nofreq nopercent nocol out=region_desire_own;
+weight hhwt_5;
+where tenure=2;
+run;
+
 proc freq data=fiveyearrandom;
 tables incomecat*allcostlevel_halfway /nofreq nopercent nocol out=region_half_byinc;
 weight hhwt_5;
 
 run;
-data ractual_byinc;
-	set region_actual_byinc;
- 	rename count =actual_count;
-	drop percent;
+proc freq data=fiveyearrandom;
+tables incomecat*allcostlevel_halfway /nofreq nopercent nocol out=region_half_rent;
+weight hhwt_5;
+where tenure=1;
 run;
-data rdesire_byinc;
-	set region_desire_byinc;
-	rename count=desire_count
-		   mallcostlevel=allcostlevel;
-	drop percent;
+proc freq data=fiveyearrandom;
+tables incomecat*allcostlevel_halfway /nofreq nopercent nocol out=region_half_own;
+weight hhwt_5;
+where tenure=2; 
 run;
-data rhalf_byinc;
-	set region_half_byinc;
-	rename count=half_count
-		   allcostlevel_halfway=allcostlevel;
+data rdesire_half_byinc ;
+	set region_desire_byinc (in=a rename=(mallcostlevel=allcostlevel) )
+		region_desire_rent  (in=b rename=(mallcostlevel=allcostlevel))
+		region_desire_own   (in=c rename=(mallcostlevel=allcostlevel))
+		region_half_byinc (in=d rename=(allcostlevel_halfway=allcostlevel))
+		region_half_rent  (in=e rename=(allcostlevel_halfway=allcostlevel))
+		region_half_own   (in=f rename=(allcostlevel_halfway=allcostlevel));
 
-	drop percent; 
-run;
-data merge_byinc;
-	merge ractual_byinc rdesire_byinc rhalf_byinc;
-	by incomecat allcostlevel;
+	drop percent;
 
-	format allcostlevel ; 
-run; 
-proc transpose data=merge_byinc out=byinc prefix=level; 
-by incomecat;
+	length name $20.;
+
+	if a then name="Desired All"; 
+	if b then name="Desired Renter";  
+	if c then name="Desired Owner";
+	
+	if d then name="Halfway All"; 
+	if e then name="Halfway Renter";  
+	if f then name="Halfway Owner"; 
+
+format allcostlevel ; 
+run;
+
+proc sort data=rdesire_half_byinc;
+by incomecat name;
+proc transpose data=rdesire_half_byinc out=desire_half prefix=level; 
+by incomecat name;
 id allcostlevel ;
-var half_count desire_count actual_count;
+var count;
 	run;
-data byinc_actual_to_desired;
-set byinc;
 
-drop _label_;
-run;
-proc sort data=byinc_actual_to_desired;
-by _name_ incomecat;
+/*set with region units file (all, renter, owner) */
+
 data region_byinc_actual_to_desired;
-set  byinc_actual_to_desired (where=(_name_ ~="actual_count")) region;
+set region desire_half (drop=_name_ _label_);
 
 run; 
 proc sort data=region_byinc_actual_to_desired;
-by _name_; 
+by name; 
 proc export data=region_byinc_actual_to_desired
  	outfile="&_dcdata_default_path\RegHsg\Prog\region_units_&date..csv"
    dbms=csv
    replace;
    run;
 
-/*desired by tenure*/
-proc freq data=fiveyeartotal;
-tables mallcostlevel /nopercent norow nocol out=region_desire;
-weight hhwt_5;
 
-run;
-proc freq data=fiveyeartotal;
-tables mrentlevel /nopercent norow nocol out=region_desire_rent;
-weight hhwt_5;
-where tenure=1 ;
-run;
-proc freq data=fiveyeartotal;
-tables mownlevel /nopercent norow nocol out=region_desire_own;
-weight hhwt_5;
-where tenure=2 ;
-run;
-	proc transpose data=region_desire_own out=rdo;
-	var mownlevel count;
-	run;
-	proc transpose data=region_desire_rent out=rdr;
-	var mrentlevel count;
-	run;
-	proc transpose data=region_desire out=rd;
-	var mallcostlevel count;
-	run;
-	data desire; 
-		set rd (in=a) rdo (in=b) rdr (in=c);
-	if _name_="COUNT" & a then _name_="All";
-	if _name_="COUNT" & b then _name_="Owner";
-	if _name_="COUNT" & c then _name_="Rental";
-	run; 
-proc export data=desire
- 	outfile="&_dcdata_default_path\RegHsg\Prog\desire_units_&date..csv"
-   dbms=csv
-   replace;
-   run;
 
-/*by jurisdiction*/
+/*by jurisdiction -actual unit distribution (all, renter, owner) */
 proc sort data=all;
 by jurisdiction;
 proc freq data=all;
@@ -677,7 +659,7 @@ tables incomecat*allcostlevel /nopercent norow nocol out=jurisdiction;
 weight hhwt_5;
 format jurisdiction Jurisdiction.;
 run;
-	proc transpose data=jurisdiction out=ju;
+	proc transpose data=jurisdiction out=ju prefix=level;;
 	by jurisdiction incomecat;
 	var count;
 
@@ -690,7 +672,7 @@ where tenure=1;
 weight hhwt_5;
 format jurisdiction Jurisdiction.;
 run;
-	proc transpose data=jurisdiction_rent out=jr;
+	proc transpose data=jurisdiction_rent out=jr prefix=level;;
 	by jurisdiction incomecat;
 	var count;
 
@@ -703,39 +685,41 @@ where tenure=2;
 weight hhwt_5;
 format jurisdiction Jurisdiction.;
 run;
-	proc transpose data=jurisdiction_own out=jo;
+	proc transpose data=jurisdiction_own out=jo prefix=level;;
 	by jurisdiction incomecat;
 	var count;
 
 	run;
-data jurisdiction_units (drop=_label_); 
+data jurisdiction_units (drop=_label_ _name_); 
 		set ju (in=a) jo (in=b) jr (in=c);
 
-	if _name_="COUNT" & a then _name_="All";
-	if _name_="COUNT" & b then _name_="Owner";
-	if _name_="COUNT" & c then _name_="Rental";
+	length name $20.;
+
+	if _name_="COUNT" & a then name="Actual All";
+	if _name_="COUNT" & b then name="Actual Owner";
+	if _name_="COUNT" & c then name="Actual Rental";
 	run; 
-proc export data=jurisdiction_units
- 	outfile="&_dcdata_default_path\RegHsg\Prog\jurisdiction_units_&date..csv"
-   dbms=csv
-   replace;
-   run;
+
+
+/*jurisdiction desire and halfway (by tenure)*/
+proc sort data=fiveyeartotal;
+by jurisdiction; 
 proc freq data=fiveyeartotal;
 by jurisdiction;
-tables mallcostlevel /nopercent norow nocol out=jurisdiction_desire;
+tables incomecat*mallcostlevel /nopercent norow nocol out=jurisdiction_desire;
 weight hhwt_5;
 format jurisdiction Jurisdiction. mallcostlevel;
 run;
 	proc transpose data=jurisdiction_desire out=jd
 	prefix=level;
 	id mallcostlevel;
-	by jurisdiction;
+	by jurisdiction incomecat;
 	var count;
 	run;
 
 proc freq data=fiveyeartotal;
 by jurisdiction;
-tables mallcostlevel /nopercent norow nocol out=jurisdiction_desire_rent;
+tables incomecat*mallcostlevel /nopercent norow nocol out=jurisdiction_desire_rent;
 weight hhwt_5;
 where tenure=1 ;
 format jurisdiction Jurisdiction. mallcostlevel;
@@ -743,13 +727,13 @@ run;
 	proc transpose data=jurisdiction_desire_rent out=jdr
 	prefix=level;
 	id mallcostlevel;
-	by jurisdiction;
+	by jurisdiction incomecat;
 	var count;
 	run;
 
 proc freq data=fiveyeartotal;
 by jurisdiction;
-tables mallcostlevel /nopercent norow nocol out=jurisdiction_desire_own;
+tables incomecat*mallcostlevel /nopercent norow nocol out=jurisdiction_desire_own;
 weight hhwt_5;
 where tenure=2 ;
 format jurisdiction Jurisdiction. mallcostlevel;
@@ -757,18 +741,79 @@ run;
 	proc transpose data=jurisdiction_desire_own out=jdo
 	prefix=level;
 	id mallcostlevel;
-	by jurisdiction;
+	by jurisdiction incomecat;
 	var count;
 	run;
-data jurisdiction_desire_units (drop=_label_); 
+data jurisdiction_desire_units (drop=_label_ _name_); 
 		set jd (in=a) jdo (in=b) jdr (in=c);
 
-	if _name_="COUNT" & a then _name_="All";
-	if _name_="COUNT" & b then _name_="Owner";
-	if _name_="COUNT" & c then _name_="Rental";
+	length name $20.;
+
+	if _name_="COUNT" & a then name="Desired All";
+	if _name_="COUNT" & b then name="Desired Owner";
+	if _name_="COUNT" & c then name="Desired Renter";
 	run; 
-proc export data=jurisdiction_desire_units
- 	outfile="&_dcdata_default_path\RegHsg\Prog\jurisdiction_desire_units_&date..csv"
+proc sort data=fiveyearrandom;
+by jurisdiction;
+proc freq data=fiveyearrandom;
+by jurisdiction;
+tables incomecat*allcostlevel_halfway /nofreq nopercent nocol out=jurisdiction_half_byinc;
+weight hhwt_5;
+
+format jurisdiction Jurisdiction. allcostlevel_halfway;
+run;
+proc transpose data=jurisdiction_half_byinc out=jhalf
+	prefix=level;
+	id allcostlevel_halfway;
+	by jurisdiction incomecat;
+	var count;
+	run;
+proc freq data=fiveyearrandom;
+by jurisdiction;
+tables incomecat*allcostlevel_halfway /nofreq nopercent nocol out=jurisdiction_half_rent;
+weight hhwt_5;
+where tenure=1; 
+format jurisdiction Jurisdiction. allcostlevel_halfway;
+run;
+proc transpose data=jurisdiction_half_rent out=jhalfr
+	prefix=level;
+	id allcostlevel_halfway;
+	by jurisdiction incomecat;
+	var count;
+	run;
+proc freq data=fiveyearrandom;
+by jurisdiction;
+tables incomecat*allcostlevel_halfway /nofreq nopercent nocol out=jurisdiction_half_own;
+weight hhwt_5;
+where tenure=2; 
+format jurisdiction Jurisdiction. allcostlevel_halfway;
+run;
+proc transpose data=jurisdiction_half_own out=jhalfo
+	prefix=level;
+	id allcostlevel_halfway;
+	by jurisdiction incomecat;
+	var count;
+	run;
+
+data jurisdiction_half_units (drop=_label_ _name_); 
+		set jhalf (in=a) jhalfo (in=b) jhalfr (in=c);
+
+	length name $20.;
+
+	if _name_="COUNT" & a then name="Halfway All";
+	if _name_="COUNT" & b then name="Halfway Owner";
+	if _name_="COUNT" & c then name="Halfway Rental";
+	run; 
+
+/*export jurisidiction units*/ 
+data jurisdiction_all;
+set jurisdiction_units jurisdiction_desire_units jurisdiction_half_units;
+run; 
+proc sort data= jurisdiction_all;
+by jurisdiction name incomecat;
+proc export data=jurisdiction_all
+ 	outfile="&_dcdata_default_path\RegHsg\Prog\jurisdiction_units_&date..csv"
    dbms=csv
    replace;
    run;
+
