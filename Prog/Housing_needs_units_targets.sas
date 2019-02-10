@@ -33,7 +33,7 @@
 %DCData_lib( RegHsg )
 %DCData_lib( Ipums )
 
-%let date=02092019; 
+%let date=02102019; 
 
 proc format;
 
@@ -502,6 +502,7 @@ data all_costb;
 	set fiveyeartotal;
 	where costburden=1;
 	run;
+
 proc surveyselect data=all_costb  groups=2 seed=5000 out=randomgroups noprint;
 run; 
 proc sort data=randomgroups;
@@ -514,7 +515,7 @@ by year serial;
 
 reduced_costb=.;
 
-if incomecat in (1, 2, 3, 4) and groupid=1 then reduced_costb=0;
+if incomecat in (1, 2, 3, 4, 5) and groupid=1 then reduced_costb=0;
 else reduced_costb=costburden; 
 
 
