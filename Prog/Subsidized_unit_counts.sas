@@ -66,16 +66,16 @@ data Work.Allassistedunits;
 	if CountyCode in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600", "51610", "51683", "51685") then COGregion =1;
   	else COGregion=0;
   	format COGregion COG. ;
-	s8_all_assistedunits=min(sum(s8_1_AssistedUnits, s8_2_AssistedUnits),TotalUnits);
-	s202_all_assistedunits=min(sum(s202_1_AssistedUnits, s202_2_AssistedUnits),TotalUnits);
-	s236_all_assistedunits=min(sum(s236_1_AssistedUnits, s236_2_AssistedUnits),TotalUnits);
-	FHA_all_assistedunits=min(sum(FHA_1_AssistedUnits, FHA_2_AssistedUnits),TotalUnits);
-	LIHTC_all_assistedunits=min(sum(LIHTC_1_AssistedUnits,LIHTC_2_AssistedUnits),TotalUnits);
-	rhs515_all_assistedunits=min(sum(RHS515_1_AssistedUnits,RHS515_2_AssistedUnits),TotalUnits);
-	rhs538_all_assistedunits=min(sum(RHS538_1_AssistedUnits,RHS538_2_AssistedUnits),TotalUnits);
-	HOME_all_assistedunits=min(sum(HOME_1_AssistedUnits, HOME_2_AssistedUnits),TotalUnits);
-	PH_all_assistedunits=min(sum(PH_1_AssistedUnits, PH_2_AssistedUnits),TotalUnits);
-	State_all_assistedunits=min(sum(State_1_AssistedUnits, State_2_AssistedUnits),TotalUnits);
+	s8_all_assistedunits=min(sum(s8_1_AssistedUnits, s8_2_AssistedUnits,0),TotalUnits);
+	s202_all_assistedunits=min(sum(s202_1_AssistedUnits, s202_2_AssistedUnits,0),TotalUnits);
+	s236_all_assistedunits=min(sum(s236_1_AssistedUnits, s236_2_AssistedUnits,0),TotalUnits);
+	FHA_all_assistedunits=min(sum(FHA_1_AssistedUnits, FHA_2_AssistedUnits,0),TotalUnits);
+	LIHTC_all_assistedunits=min(sum(LIHTC_1_AssistedUnits,LIHTC_2_AssistedUnits,0),TotalUnits);
+	rhs515_all_assistedunits=min(sum(RHS515_1_AssistedUnits,RHS515_2_AssistedUnits,0),TotalUnits);
+	rhs538_all_assistedunits=min(sum(RHS538_1_AssistedUnits,RHS538_2_AssistedUnits,0),TotalUnits);
+	HOME_all_assistedunits=min(sum(HOME_1_AssistedUnits, HOME_2_AssistedUnits,0),TotalUnits);
+	PH_all_assistedunits=min(sum(PH_1_AssistedUnits, PH_2_AssistedUnits,0),TotalUnits);
+	State_all_assistedunits=min(sum(State_1_AssistedUnits, State_2_AssistedUnits,0),TotalUnits);
 	drop s8_1_AssistedUnits s8_2_AssistedUnits s202_1_assistedunits s202_2_assistedunits
 	s236_1_AssistedUnits s236_2_AssistedUnits FHA_1_AssistedUnits FHA_2_AssistedUnits
 	LIHTC_1_AssistedUnits LIHTC_2_AssistedUnits RHS515_1_AssistedUnits RHS515_2_AssistedUnits
