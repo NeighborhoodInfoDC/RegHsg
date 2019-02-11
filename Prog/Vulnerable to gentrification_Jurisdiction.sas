@@ -387,7 +387,7 @@ run;
 data Householdcounts (where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
 set ACS.Acs_2012_16_dc_sum_tr_tr10 ACS.Acs_2012_16_md_sum_tr_tr10 ACS.Acs_2012_16_va_sum_tr_tr10 ACS.Acs_2012_16_wv_sum_tr_tr10;
 
-keep geo2010 county Jurisdiction medhhincm_2012_16 numhshlds_2012_16;
+keep geo2010 county Jurisdiction medhhincm_2012_16 numhshlds_2012_16 hhunder80AMI ;
 
 	county= substr(geo2010,1,5);
 		if county in ("11001") then Jurisdiction=1;
@@ -400,6 +400,8 @@ keep geo2010 county Jurisdiction medhhincm_2012_16 numhshlds_2012_16;
 	if county in ("51107") then Jurisdiction=8;
 	if county in ("51153", "51683","51685") then Jurisdiction=9;
 	if county in ("51510") then Jurisdiction=10;
+
+hhunder80AMI= numhshlds_2012_16- (hshldinc75000to99999_2012_16+hshldinc100000plus_2012_16);
 
 run;
 
@@ -428,14 +430,16 @@ run;
 proc import out=adjacentflag  datafile="L:\Libraries\RegHsg\Maps\adjacent flag.CSV"
             DBMS=CSV REPLACE;
 			GUESSINGROWS=MAX;
-geoid = put(GEOID, $11.) ;
 RUN;
 
-data adjacentflag2;
+data adjacentflag2 (rename=(geoid3=geoid));
 set adjacentflag;
-keep geoid DCMetroArea2015_tr10_adjacent;
-rename geoid=geoid2;
-geoid = put(geoid2, 11.) ;
+keep geoid3 DCMetroArea2015_tr10_adjacent;
+length geoid3 $11.;
+geoid3 = geoid;
+run;
+proc sort data= adjacentflag2;
+by geoid;
 run;
 
 data allflags;
@@ -443,6 +447,47 @@ merge completetypology adjacentflag2;
 by geoid;
 run;
 
+proc format;
+
+	value type
+	1= "Susceptible"
+	2= "Early: Type 1"
+	3="Early: Type 2"
+	4="Dynamic"
+	5="Late"
+	6="Continued Loss";
+
+	value Jurisdiction
+    1= "District of Columbia"
+	2= "Charles County"
+	3= "Frederick County "
+	4="Montgomery County"
+	5="Prince George's County"
+	6="Arlington County"
+	7="Fairfax, Fairfax City, and Falls Church"
+	8="Loudoun County"
+	9="Prince William, Manassas, and Manassas Park"
+    10="City of Alexandria";
+
+
+run;
 data gentrificationstage;
 set allflags;
-if 
+keep Geo2010 geoid Jurisdiction vulnerable demographicchange_MHH accelerating appreciated DCMetroArea2015_tr10_adjacent neighborhoodtype numhshlds_2012_16 hhunder80AMI;
+if vulnerable=1 and demographicchange_MHH=0 and DCMetroArea2015_tr10_adjacent=1 then neighborhoodtype=1;
+if vulnerable=1 and demographicchange_MHH=0 and accelerating=1 then neighborhoodtype=2;
+if vulnerable=1 and demographicchange_MHH=1 and DCMetroArea2015_tr10_adjacent=1 then neighborhoodtype=3;
+if vulnerable=1 and demographicchange_MHH=1 and accelerating=1 then neighborhoodtype=4;
+if vulnerable=1 and demographicchange_MHH=1 and appreciated=1 then neighborhoodtype=5;
+if vulnerable=0 and gentrifier_white=1 and gentrifier_college=1 and appreciated=1 then neighborhoodtype=6;
+
+format neighborhoodtype type. Jurisdiction Jurisdiction. ;
+run;
+
+proc export data = gentrificationstage
+   outfile="&_dcdata_default_path\RegHsg\Prog\Neighborhood typology for mapping.csv"
+   dbms=csv
+   replace;
+run;
+
+
