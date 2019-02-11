@@ -36,6 +36,12 @@ Manassas Park City (51685)
 *Create property and unit counts for individual programs**;
 
 proc format;
+	value COG
+    1= "COG county"
+    0="Non COG county";
+
+run;
+proc format;
 	value ActiveUnits
     1= "Active subsidies"
     0="No active subsidies";
@@ -57,13 +63,16 @@ run;
 
 data Work.Allassistedunits;
 	set RegHsg.Natlpres_activeandinc_prop;
+	if CountyCode in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600", "51610", "51683", "51685") then COGregion =1;
+  	else COGregion=0;
+  	format COGregion COG. ;
 	s8_all_assistedunits=min(sum(s8_1_AssistedUnits, s8_2_AssistedUnits),TotalUnits);
 	s202_all_assistedunits=min(sum(s202_1_AssistedUnits, s202_2_AssistedUnits),TotalUnits);
 	s236_all_assistedunits=min(sum(s236_1_AssistedUnits, s236_2_AssistedUnits),TotalUnits);
 	FHA_all_assistedunits=min(sum(FHA_1_AssistedUnits, FHA_2_AssistedUnits),TotalUnits);
 	LIHTC_all_assistedunits=min(sum(LIHTC_1_AssistedUnits,LIHTC_2_AssistedUnits),TotalUnits);
-	s515_all_assistedunits=min(sum(RHS515_1_AssistedUnits,RHS515_2_AssistedUnits),TotalUnits);
-	s538_all_assistedunits=min(sum(RHS538_1_AssistedUnits,RHS538_2_AssistedUnits),TotalUnits);
+	rhs515_all_assistedunits=min(sum(RHS515_1_AssistedUnits,RHS515_2_AssistedUnits),TotalUnits);
+	rhs538_all_assistedunits=min(sum(RHS538_1_AssistedUnits,RHS538_2_AssistedUnits),TotalUnits);
 	HOME_all_assistedunits=min(sum(HOME_1_AssistedUnits, HOME_2_AssistedUnits),TotalUnits);
 	PH_all_assistedunits=min(sum(PH_1_AssistedUnits, PH_2_AssistedUnits),TotalUnits);
 	State_all_assistedunits=min(sum(State_1_AssistedUnits, State_2_AssistedUnits),TotalUnits);
@@ -93,13 +102,13 @@ data Work.Allassistedunits;
 	then LIHTC_activeunits = 1;
 	else LIHTC_activeunits = 0;
 
-	if s515_all_assistedunits > 0
-	then s515_activeunits = 1;
-	else s515_activeunits = 0;
+	if rhs515_all_assistedunits > 0
+	then rhs515_activeunits = 1;
+	else rhs515_activeunits = 0;
 
-	if s538_all_assistedunits > 0
-	then s538_activeunits = 1;
-	else s538_activeunits = 0;
+	if rhs538_all_assistedunits > 0
+	then rhs538_activeunits = 1;
+	else rhs538_activeunits = 0;
 
 	if HOME_all_assistedunits > 0
 	then HOME_activeunits = 1;
@@ -113,7 +122,7 @@ data Work.Allassistedunits;
 	then State_activeunits = 1;
 	else State_activeunits = 0;
 
-	format State_activeunits PH_activeunits HOME_activeunits s538_activeunits s515_activeunits
+	format State_activeunits PH_activeunits HOME_activeunits rhs538_activeunits rhs515_activeunits
 	LIHTC_activeunits FHA_activeunits s236_activeunits s202_activeunits s8_activeunits ActiveUnits.;
 run;
 data Work.SubsidyCategories;
@@ -121,36 +130,43 @@ data Work.SubsidyCategories;
 
 	if PH_activeunits  then ProgCat = 1;
 
-	else if s8_all_activeunits and not( fha_all_activeunits or home_all_activeunits or 
-	lihtc_all_activeunits or rhs515_all_activeunits or rhs538_all_activeunits or 
-	s202_all_activeunits or s236_all_activeunits ) 
+	else if s8_activeunits and not( fha_activeunits or home_activeunits or 
+	lihtc_activeunits or rhs515_activeunits or rhs538_activeunits or 
+	s202_activeunits or s236_activeunits ) 
 	then ProgCat = 2;
 
-	else if s8_all_activeunits and ( fha_all_activeunits or s236_all_activeunits ) and 
-	not( home_all_activeunits or lihtc_all_activeunits or rhs515_all_activeunits or 
-	rhs538_all_activeunits or s202_all_activeunits ) 
+	else if s8_activeunits and ( fha_activeunits or s236_activeunits ) and 
+	not( home_activeunits or lihtc_activeunits or rhs515_activeunits or 
+	rhs538_activeunits or s202_activeunits ) 
 	then ProgCat = 3;
 
-	else if s8_all_activeunits then ProgCat = 4;
+	else if s8_activeunits then ProgCat = 4;
 
-	else if lihtc_all_activeunits and not( fha_all_activeunits or home_all_activeunits or 
-	rhs515_all_activeunits or rhs538_all_activeunits or s202_all_activeunits or 
-	s236_all_activeunits ) 
+	else if lihtc_activeunits and not( fha_activeunits or home_activeunits or 
+	rhs515_activeunits or rhs538_activeunits or s202_activeunits or 
+	s236_activeunits ) 
 	then ProgCat = 5;
 
-	else if lihtc_all_activeunits then ProgCat = 6;
+	else if lihtc_activeunits then ProgCat = 6;
 
-	else if home_all_activeunits and not ( fha_all_activeunits or s8_all_activeunits or 
-	rhs515_all_activeunits or rhs538_all_activeunits or s202_all_activeunits or 
-	s236_all_activeunits ) 
+	else if home_activeunits and not ( fha_activeunits or s8_activeunits or 
+	rhs515_activeunits or rhs538_activeunits or s202_activeunits or 
+	s236_activeunits ) 
 	then ProgCat = 7;
 
 	
-    else if rhs515_all_activeunits or rhs538 and not (fha_all_activeunits or s8_all_activeunits or 
-	home_all_activeunits or s202_all_activeunits or s236_all_activeunits ) 
+   	else if (rhs515_activeunits or rhs538_activeunits) and not (fha_activeunits or s8_activeunits or 
+	home_activeunits or s202_activeunits or s236_activeunits ) 
 	then ProgCat = 8;
 
-	
+	else if s202_activeunits and not( fha_activeunits or s8_activeunits or 
+	rhs515_activeunits or rhs538_activeunits or home_activeunits or 
+	s236_activeunits ) 
+	then ProgCat=9;
+
+	else ProgCat =10;
+
+
 	format ProgCat ProgCat.;
 
 
