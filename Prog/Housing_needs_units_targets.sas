@@ -108,7 +108,7 @@ proc format;
 run;
 %macro single_year(year);
 
-	** Calculate average ratio of gross rent to contract rent for occupied units **;
+
 	data COGSvacant_&year.(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
 		set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
 
@@ -123,27 +123,29 @@ run;
 
 	run;
 
-	data Ratio;
 
-	  set COGSarea_&year.
-	    (keep= rent rentgrs pernum gq ownershpd Jurisdiction
-	     where=(pernum=1 and gq in (1,2) and ownershpd in ( 22 )));
-	     
-	  Ratio_rentgrs_rent_&year. = rentgrs / rent;
-	 
-	run;
+ %**create ratio for rent to rentgrs to adjust rents on vacant units**;
+	 data Ratio;
 
-	proc means data=Ratio;
-	  var  Ratio_rentgrs_rent_&year. rentgrs rent;
-	run;
-		%** Value copied from Proc Means output **;
-	%if &year=2013 %then %let Ratio_rentgrs_rent_&year.= 1.1429187;
-	%if &year=2014 %then %let Ratio_rentgrs_rent_&year.= 1.1600331;
-	%if &year=2015 %then %let Ratio_rentgrs_rent_&year.= 1.1556884;
-	%if &year=2016 %then %let Ratio_rentgrs_rent_&year.= 1.1425105;
-	%if &year=2017 %then %let Ratio_rentgrs_rent_&year.= 1.1193682;
+		  set COGSarea_&year.
+		    (keep= rent rentgrs pernum gq ownershpd Jurisdiction
+		     where=(pernum=1 and gq in (1,2) and ownershpd in ( 22 )));
+		     
+		  Ratio_rentgrs_rent_&year. = rentgrs / rent;
+		 
+		run;
 
-	%put Ratio_rentgrs_rent_&year.=&&Ratio_rentgrs_rent_&year.;
+		proc means data=Ratio;
+		  var  Ratio_rentgrs_rent_&year. rentgrs rent;
+		run;
+			%** Value copied from Proc Means output **;
+		%if &year=2013 %then %let Ratio_rentgrs_rent_&year.= 1.1429187;
+		%if &year=2014 %then %let Ratio_rentgrs_rent_&year.= 1.1600331;
+		%if &year=2015 %then %let Ratio_rentgrs_rent_&year.= 1.1556884;
+		%if &year=2016 %then %let Ratio_rentgrs_rent_&year.= 1.1425105;
+		%if &year=2017 %then %let Ratio_rentgrs_rent_&year.= 1.1193682;
+
+		%put Ratio_rentgrs_rent_&year.=&&Ratio_rentgrs_rent_&year.;
 
 data Housing_needs_baseline_&year.;
 
@@ -151,49 +153,55 @@ data Housing_needs_baseline_&year.;
         (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh Jurisdiction
          where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 
-  if hhincome ~=.n or hhincome ~=9999999 then do; 
-	 %dollar_convert( hhincome, hhincome_a, &year., 2016, series=CUUR0000SA0 )
-   end; 
+	 *adjust all incomes to 2016 $; 
+
+	  if hhincome ~=.n or hhincome ~=9999999 then do; 
+		 %dollar_convert( hhincome, hhincome_a, &year., 2016, series=CUUR0000SA0 )
+	   end; 
   
-  %Hud_inc_RegHsg( hhinc=hhincome_a, hhsize=numprec )
+	*create HUD_inc - uses 2016 limits but has categories for 120-200% and 200%+ AMI; 
+
+		%Hud_inc_RegHsg( hhinc=hhincome_a, hhsize=numprec )
   
 
-	/*to match categories used in projections*/
-	if hhincome_a in ( 9999999, .n , . ) then incomecat=.;
-		else do; 
-		    if hhincome_a<=32600 then incomecat=1;
-			else if 32600<hhincome_a<=54300 then incomecat=2;
-			else if 54300<hhincome_a<=70150 then incomecat=3;
-			else if 70150<hhincome_a<=108600 then incomecat=4;
-			else if 108600<hhincome_a<=130320 then incomecat=5;
-			else if 130320<hhincome_a<=217200 then incomecat=6;
-			else if 217200 < hhincome_a then incomecat=7;
+	/*to match categories used in projections which do not account for household size*/
+		if hhincome_a in ( 9999999, .n , . ) then incomecat=.;
+			else do; 
+			    if hhincome_a<=32600 then incomecat=1;
+				else if 32600<hhincome_a<=54300 then incomecat=2;
+				else if 54300<hhincome_a<=70150 then incomecat=3;
+				else if 70150<hhincome_a<=108600 then incomecat=4;
+				else if 108600<hhincome_a<=130320 then incomecat=5;
+				else if 130320<hhincome_a<=217200 then incomecat=6;
+				else if 217200 < hhincome_a then incomecat=7;
+			end;
+
+		  label hud_inc = 'HUD Income Limits category for household (2016)'
+			    incomecat='Income Categories based on 2016 HUD Limit for Family of 4';
+
+
+	 *adjust housing costs for inflation; 
+
+	  %dollar_convert( rentgrs, rentgrs_a, &year., 2016, series=CUUR0000SA0L2 )
+	  %dollar_convert( owncost, owncost_a, &year., 2016, series=CUUR0000SA0L2 )
+	  %dollar_convert( valueh, valueh_a, &year., 2016, series=CUUR0000SA0L2 )
+
+  	** Cost-burden flag & create cost ratio **;
+	    if ownershp = 2  then do;
+
+			Costratio= (rentgrs_a*12)/hhincome_a;
 		end;
 
-	  label hud_inc = 'HUD Income Limits category for household (2016)'
-		    incomecat='Income Categories based on 2016 HUD Limit for Family of 4';
+	    if ownershp = 1 then do;
+			Costratio= (owncost_a*12)/hhincome_a;
+		end;
+	    
+			if Costratio >= 0.3 then costburden=1;
+		    else if HHIncome_a~=. then costburden=0;
+			if costratio >= 0.5 then severeburden=1;
+			else if HHIncome_a~=. then severeburden=0; 
 
-** Cost-burden flag **;
-
-  %dollar_convert( rentgrs, rentgrs_a, &year., 2016, series=CUUR0000SA0L2 )
-  %dollar_convert( owncost, owncost_a, &year., 2016, series=CUUR0000SA0L2 )
-  %dollar_convert( valueh, valueh_a, &year., 2016, series=CUUR0000SA0L2 )
-
-    if ownershp = 2  then do;
-
-		Costratio= (rentgrs_a*12)/hhincome_a;
-	end;
-
-    if ownershp = 1 then do;
-		Costratio= (owncost_a*12)/hhincome_a;
-	end;
-    
-		if Costratio >= 0.3 then costburden=1;
-	    else if HHIncome_a~=. then costburden=0;
-		if costratio >= 0.5 then severeburden=1;
-		else if HHIncome_a~=. then severeburden=0; 
-
-	tothh = 1;
+		tothh = 1;
 
     
     ****** Rental units ******;
@@ -201,14 +209,18 @@ data Housing_needs_baseline_&year.;
    if ownershpd in (21, 22) then do;
         
     Tenure = 1;
-     Max_income = ( rentgrs_a * 12 ) / 0.30;
-	  if hud_inc in(1 2 3) then max_rent=HHINCOME_a/12*.3; 
+
+	 *create maximum desired or affordable rent based on HUD_Inc categories*; 
+
+	  if hud_inc in(1 2 3) then max_rent=HHINCOME_a/12*.3; *under 80% of AMI then pay 30% threshold; 
 	  if hud_inc =4 then max_rent=HHINCOME_a/12*.25; *avg for all HH hud_inc=4; 
 	  if costratio <=.18 and hud_inc = 5 then max_rent=HHINCOME_a/12*.18; *avg for all HH hud_inc=5; 	
 		else if hud_inc = 5 then max_rent=HHINCOME_a/12*costratio; *allow 120-200% above average to spend more; 
 	  if costratio <=.12 and hud_inc = 6 then max_rent=HHINCOME_a/12*.12; *avg for all HH hud_inc=6; 
 	  	else if hud_inc=6 then max_rent=HHINCOME_a/12*costratio; *allow 200%+ above average to spend more; 
-    
+
+
+    	*rent cost categories that make more sense for rents - no longer used in targets;
 			rentlevel=.;
 			if 0 <=rentgrs_a<750 then rentlevel=1;
 			if 750 <=rentgrs_a<1200 then rentlevel=2;
@@ -225,6 +237,7 @@ data Housing_needs_baseline_&year.;
 			if 2000 <=max_rent<2500 then mrentlevel=5;
 			if max_rent >= 2500 then mrentlevel=6;
 
+		 *rent cost categories now used in targets that provide a set of categories useable for renters and owners combined; 
 			allcostlevel=.;
 			if rentgrs_a<800 then allcostlevel=1;
 			if 800 <=rentgrs_a<1300 then allcostlevel=2;
@@ -254,15 +267,17 @@ data Housing_needs_baseline_&year.;
 	    
 	    Tenure = 2;
 
-		if hud_inc in(1 2 3) then max_ocost=HHINCOME_a/12*.3;
-		if hud_inc =4 then max_ocost=HHINCOME_a/12*.25;
+		*create maximum desired or affordable owner costs based on HUD_Inc categories*; 
+
+		if hud_inc in(1 2 3) then max_ocost=HHINCOME_a/12*.3; *under 80% of AMI then pay 30% threshold; 
+		if hud_inc =4 then max_ocost=HHINCOME_a/12*.25; *avg for all HH hud_inc=4;
 		if costratio <=.18 and hud_inc = 5 then max_ocost=HHINCOME_a/12*.18; *avg for all HH HUD_inc=5; 
 			else if hud_inc = 5 then max_ocost=HHINCOME_a/12*costratio; *allow 120-200% above average to pay more; 
 		if costratio <=.12 and hud_inc=6 then max_ocost=HHINCOME_a/12*.12; *avg for all HH HUD_inc=6;
 			else if hud_inc = 6 then max_ocost=HHINCOME_a/12*costratio; *allow 120-200% above average to pay more; 
 
 	    **** 
-	    Calculate max income for first-time homebuyers. 
+	    Calculate monthly payment for first-time homebuyers. 
 	    Using 3.69% as the effective mortgage rate for DC in 2016, 
 	    calculate monthly P & I payment using monthly mortgage rate and compounded interest calculation
 	    ******; 
@@ -279,9 +294,8 @@ data Housing_needs_baseline_&year.;
 	    tax_ins = .25 * monthly_PI; **taxes assumed to be 25% of monthly PI; 
 	    total_month = monthly_PI + PMI + tax_ins; **Sum of monthly payment components;
 
-	    ** Calculate annual_income necessary to finance house **;
-	    Max_income = 12 * total_month / .28;
 
+		*owner cost categories that make more sense for owner costs - no longer used in targets;
 
 		ownlevel=.;
 			if 0 <=total_month<1200 then ownlevel=1;
@@ -300,6 +314,7 @@ data Housing_needs_baseline_&year.;
 			if max_ocost >= 4200 then mownlevel=6;
 
 
+		 *owner cost categories now used in targets that provide a set of categories useable for renters and owners combined; 
 			allcostlevel=.;
 			if total_month<800 then allcostlevel=1;
 			if 800 <=total_month<1300 then allcostlevel=2;
@@ -340,7 +355,8 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
   set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction );
 
   retain Total 1;
-	
+
+  *reassign vacant but rented or sold based on whether rent or value is available; 	
   vacancy_r=vacancy; 
   if vacancy=3 and rent ~= .n then vacancy_r=1; 
   if vacancy=3 and valueh ~= .u then vacancy_r=2; 
@@ -355,8 +371,7 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 			  %dollar_convert( rentgrs, rentgrs_a, &year., 2016, series=CUUR0000SA0L2 )
 			
 
-	  		Max_income = ( rentgrs_a * 12 ) / 0.30;
-
+		/*create rent level categories*/ 
 		rentlevel=.;
 		if 0 <=rentgrs_a<750 then rentlevel=1;
 		if 750 <=rentgrs_a<1200 then rentlevel=2;
@@ -365,6 +380,7 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 		if 2000 <=rentgrs_a<2500 then rentlevel=5;
 		if rentgrs_a >= 2500 then rentlevel=6;
 
+		/*create  categories now used in targets for renter/owner costs combined*/ 
 				allcostlevel=.;
 				if rentgrs_a<800 then allcostlevel=1;
 				if 800 <=rentgrs_a<1300 then allcostlevel=2;
@@ -382,7 +398,7 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 	    Tenure = 2;
 
 	    **** 
-	    Calculate max income for first-time homebuyers. 
+	    Calculate  monthly payment for first-time homebuyers. 
 	    Using 3.69% as the effective mortgage rate for DC in 2016, 
 	    calculate monthly P & I payment using monthly mortgage rate and compounded interest calculation
 	    ******; 
@@ -398,19 +414,17 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 	    PMI = (.007 * loan ) / 12; **typical annual PMI is .007 of loan amount;
 	    tax_ins = .25 * monthly_PI; **taxes assumed to be 25% of monthly PI; 
 	    total_month = monthly_PI + PMI + tax_ins; **Sum of monthly payment components;
-
-	    ** Calculate annual_income necessary to finance house **;
-	    Max_income = 12 * total_month / .28;
-
-
-		ownlevel=.;
+		
+			/*create owner cost level categories*/ 
+			ownlevel=.;
 				if 0 <=total_month<1200 then ownlevel=1;
 				if 1200 <=total_month<1800 then ownlevel=2;
 				if 1800 <=total_month<2500 then ownlevel=3;
 				if 2500 <=total_month<3200 then ownlevel=4;
 				if 3200 <=total_month<4200 then ownlevel=5;
 				if total_month >= 4200 then ownlevel=6;
-
+			
+			/*create  categories now used in targets for renter/owner costs combined*/ 
 				allcostlevel=.;
 				if total_month<800 then allcostlevel=1;
 				if 800 <=total_month<1300 then allcostlevel=2;
@@ -428,6 +442,7 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 				;
 	format ownlevel ocost. rentlevel rcost. vacancy_r VACANCY_F. allcostlevel acost. ; 
 
+	*output other vacant - seasonal separately ;
 	if vacancy in (1, 2, 3) then output Housing_needs_vacant_&year.;
 	else if vacancy in (4, 7, 9) then output other_vacant_&year.; 
 	run;
@@ -440,6 +455,7 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 %single_year(2016);
 %single_year(2017);
 
+/*merge single year data*/ 
 data fiveyeartotal;
 	set Housing_needs_baseline_2013 Housing_needs_baseline_2014 Housing_needs_baseline_2015 Housing_needs_baseline_2016 Housing_needs_baseline_2017;
 
@@ -594,7 +610,7 @@ run;
 	weight hhwt_5;
 	title2 "reduced cost burden rates"; 
 	run;
-
+/*output income distributions by cost for desired cost and cost burden halfway solved*/ 
 
 proc freq data=fiveyeartotal;
 tables incomecat*mallcostlevel /nofreq nopercent nocol out=region_desire_byinc;
