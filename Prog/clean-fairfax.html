@@ -279,7 +279,8 @@ source(&quot;../Macros/classify-addresses.R&quot;)</code></pre>
 <h4>Set FIPS code and filepath name</h4>
 <pre class="r"><code>currentfips &lt;- &quot;51059&quot;
 filepath &lt;- &quot;fairfax&quot;
-jdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Data/&quot;, filepath, &quot;/&quot;)</code></pre>
+#jdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Data/&quot;, filepath, &quot;/&quot;)
+jdir &lt;- paste0(&quot;D:/DCDATA/RegHsg/Data/&quot;, filepath, &quot;/&quot;)</code></pre>
 </div>
 <div id="load-in-black-knight-data-for-the-region-select-jurisdiction-and-standard-variables" class="section level4">
 <h4>Load in Black Knight data for the region, select jurisdiction and standard variables</h4>
@@ -788,11 +789,12 @@ missing &lt;- jur %&gt;%
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
                     yearbuilt, long, lat,
-                    area, zone, possibleSF), list) %&gt;% 
+                    area_tax, zone_tax, possibleSF_tax, stories_tax, units_tax, category_tax), list) %&gt;% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., &quot;_list&quot;)) %&gt;% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
          lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
+         area_tax_sum = map_dbl(area_tax_list, sum, na.rm=T),
          buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
          countylandusedescription = map(countylandusedescription_list, Mode),
          residential = map(residential_list, max, na.rm = FALSE),
@@ -810,8 +812,8 @@ missing &lt;- jur %&gt;%
          yearbuilt = ifelse(!is.na(yearbuilt_list),
                       map(yearbuilt_list, max, na.rm = TRUE),
                       NA),
-         parcel_area = map_dbl(area_list, sum, na.rm = TRUE),
-         sf_area = map_dbl(possibleSF_list, sum, na.rm=T))</code></pre>
+         parcel_area = map_dbl(area_tax_list, sum, na.rm = TRUE),
+         sf_area = map_dbl(possibleSF_tax_list, sum, na.rm=T))</code></pre>
 <div id="lot-size" class="section level4">
 <h4>Lot size</h4>
 <p><strong>Note: This entire section may not hold accross jurisdictions. Visually confirm that this applies. Some thresholds may need to be adjusted.</strong></p>
@@ -823,7 +825,7 @@ missing &lt;- jur %&gt;%
 <li>In the fourth instance, there are the same number of unique values as there are properties- sum is the correct function.</li>
 <li>In the fifth instance, we need to replace the lot size of 0 with <code>NA</code>, so future operations will also return <code>NA</code>.</li>
 </ul>
-<p>First, filter out all the observations where the function is known. Then, re-examine the remaining observations. There are a few variables needed: 1. The number of unique observations in the <code>lotsize_sf_list</code> nested list 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode) 3. Whether the <code>lotsize_sf_list</code> contains NA</p>
+<p>First, filter out all the observations where the function is known. Then, re-examine the remaining observations. There are a few variables needed: 1. The number of unique observations in the <code>lotsize_sf_list</code> nested list 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode) 3. Whether there is an element that has greater than 1,000,000 sq ft in <code>lotsize_sf_list</code></p>
 <pre class="r"><code>nested &lt;- nested %&gt;% 
   mutate(nprops = as.integer(nprops),
          lotsize_sf_sum = as.integer(lotsize_sf_sum),
@@ -902,6 +904,88 @@ count(nested_other, fxn)</code></pre>
 
 rm(nested, nested_done, nested_other)</code></pre>
 </div>
+<div id="lot-size-var-2" class="section level4">
+<h4>Lot size Var 2</h4>
+<p><strong>Note: This entire section may not hold accross jurisdictions. Visually confirm that this applies. Some thresholds may need to be adjusted.</strong></p>
+<p>As the lot size variable from the BlackKnight data is missing <code>sum(is.na(jur$lotsize_sf))</code> observations, we would like to do the same methodology with some joined data from Fairfax county to compare whether their size variable contains more information. Fairfax’s lotsize variable has <code>sum(is.na(jur$area_tax))</code> missing observations.</p>
+<p>First, filter out all the observations where the function is known. Then, re-examine the remaining observations. There are a few variables needed: 1. The number of unique observations in the <code>area_tax_list</code> nested list 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode) 3. Whether there is an element that has greater than 1,000,000 sq ft in <code>area_tax_list</code></p>
+<pre class="r"><code>nested_tax &lt;- nested_all %&gt;% 
+  mutate(nprops_tax = as.integer(nprops),
+         area_tax_sum = as.integer(area_tax_sum),
+         unique_lots_tax = map(area_tax_list, function(x) length(unique(x))),
+         lsfirst_tax = map(area_tax_list, function(x) x[1]),
+         lsmode_tax = ifelse(area_tax_sum == 0,
+                         NA,
+                         map(area_tax_list, Mode, na.rm = TRUE)),
+         containsLarge_tax = map_lgl(area_tax_list, function(x) any(x&gt;1000000, na.rm=T)),
+         maxsize_tax = map_dbl(area_tax_list, function(x) max(x, na.rm=T))
+         ) %&gt;%
+  ungroup()</code></pre>
+<p>Based on these variables, we can identify when<code>sum()</code> is definitely the right function (when the number of unique values in <code>area_tax_list</code> is the same as <code>nprops_tax</code>), and when we want to take the first argument is definitely the right function (there is only one unique value in <code>lotsize_sf_list</code>).</p>
+<pre class="r"><code>nested_tax &lt;- nested_tax %&gt;% 
+  mutate(fxn_tax = case_when(
+    area_tax_sum &lt; 1 ~ &quot;missing&quot;,
+    nprops_tax == unique_lots_tax ~ &quot;sum&quot;,
+    unique_lots_tax == 1 ~ &quot;first&quot;,
+    TRUE ~ &quot;other&quot;
+  ))
+
+nested_tax %&gt;% count(fxn_tax)</code></pre>
+<pre><code>## # A tibble: 4 x 2
+##   fxn_tax     n
+##   &lt;chr&gt;   &lt;int&gt;
+## 1 first      50
+## 2 missing  4346
+## 3 other      54
+## 4 sum       801</code></pre>
+<pre class="r"><code>nested_done &lt;- nested_tax %&gt;% 
+  filter(fxn_tax != &quot;other&quot;)</code></pre>
+<p><strong>NOTE:</strong> The following assumptions are specific to Fairfax County. Develop new logic for other jurisdictions!</p>
+<p>Based on examining the 54 addressess with different criteria, we develop these assumptions: 1. Properties with SF greater than 1,000,000 should be marked missing. 2. Properties with SF greater than 100,000 should have the max-size be the total size. 2. For all others, we use the sum.</p>
+<p>First, we coerce the <code>lsmode</code> variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.</p>
+<pre class="r"><code>nested_other &lt;- nested_tax %&gt;% 
+  filter(fxn_tax == &quot;other&quot;) %&gt;% 
+  mutate(lsmode_num_tax = ifelse(map(lsmode_tax, length) &gt; 1, NA, lsmode_tax),
+         lsmode_num_tax = as.integer(lsmode_num_tax),
+         list_no_na_tax = map(area_tax_list, function(x) subset(x, !is.na(x))),
+         fxn_tax = case_when(
+           containsLarge_tax ~ &quot;missing&quot;,
+           maxsize_tax &gt; 100000 ~&quot;max&quot;,
+           TRUE ~ &quot;sum&quot;))
+
+count(nested_other, fxn_tax)</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   fxn_tax     n
+##   &lt;chr&gt;   &lt;int&gt;
+## 1 max        16
+## 2 sum        38</code></pre>
+<p>Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot size.</p>
+<pre class="r"><code>nested_all &lt;- bind_rows(nested_done, nested_other) %&gt;% 
+  mutate_at(vars(area_tax_sum, lsfirst_tax, lsmode_num_tax), as.double) %&gt;% 
+  mutate(area_tax_final = 
+           case_when(fxn_tax == &quot;first&quot; ~ lsfirst_tax,
+                     fxn_tax == &quot;sum&quot; ~ area_tax_sum,
+                     fxn_tax == &quot;mode&quot; ~ lsmode_num_tax,
+                     fxn_tax == &quot;missing&quot; ~NA %&gt;% as.numeric(),
+                     fxn_tax == &quot;max&quot; ~ maxsize_tax))</code></pre>
+<p>The number of NAs should be the same as the number of those with the designation “missing”</p>
+<pre class="r"><code>count(nested_all, fxn_tax == &quot;missing&quot;)</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   `fxn_tax == &quot;missing&quot;`     n
+##   &lt;lgl&gt;                  &lt;int&gt;
+## 1 FALSE                    905
+## 2 TRUE                    4346</code></pre>
+<pre class="r"><code>count(nested_all, is.na(area_tax_final))</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   `is.na(area_tax_final)`     n
+##   &lt;lgl&gt;                   &lt;int&gt;
+## 1 FALSE                     905
+## 2 TRUE                     4346</code></pre>
+<p>Lastly, the number of rows should be the same as before we split and re-combined.</p>
+<pre class="r"><code>stopifnot(nrow(nested_all) == nrow(nested_tax))
+
+rm(nested_tax, nested_done, nested_other)</code></pre>
+</div>
 <div id="ties" class="section level4">
 <h4>Ties</h4>
 <div id="zoning" class="section level5">
@@ -916,9 +1000,9 @@ rm(nested, nested_done, nested_other)</code></pre>
          cl1 = map(countylandusedescription, 1),
          cl2 = map(countylandusedescription, 2),
          cl3 = map(countylandusedescription, 3), 
-         zone1 = map(zone_list, 1),
-         zone2 = map(zone_list, 2),
-         zone3 = map(zone_list, 3)) %&gt;% 
+         zone1 = map(zone_tax_list, 1),
+         zone2 = map(zone_tax_list, 2),
+         zone3 = map(zone_tax_list, 3)) %&gt;% 
   select(propaddress, nprops,
          z1, z2, z3,
          cl1, cl2, cl3, zone1, zone2, zone3) %&gt;% 
@@ -1122,7 +1206,7 @@ rm(novac, onevac, bothvac, nested_all)</code></pre>
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
          ends_with(&quot;prop&quot;),
-         area, zone, possibleSF,
+         area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, units_tax, 
          parcel_id)
 
 missing_f &lt;- missing %&gt;% 
@@ -1134,23 +1218,23 @@ missing_f &lt;- missing %&gt;%
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type, area, zone, possibleSF, parcel_id)
+         category, category_detail, residential, building_type, area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, units_tax, parcel_id)
 
 multiples_f &lt;- nested_final %&gt;% 
   select(-ends_with(&quot;_list&quot;), -lsmode, -lsfirst, 
-         -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %&gt;% 
+         -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum, -lsmode_tax, -lsfirst_tax, -lsmode_num_tax, -fxn_tax, -unique_lots_tax, -area_tax_sum) %&gt;% 
   mutate_at(vars(countylandusedescription, zoning,
                  category, category_detail, building_type, yearbuilt),
             as.character) %&gt;% 
   mutate_at(vars(buildingarea, lat, long, residential), as.double) %&gt;% 
-  rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops) %&gt;% 
+  rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops, area_tax = area_tax_final, numberofunits_tax = nprops_tax) %&gt;% 
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = &quot;multiple&quot;)
 
 finaljur &lt;- bind_rows(singles_f, multiples_f, missing_f) %&gt;% 
   fill(county_fips) %&gt;% 
   fill(county_name) %&gt;%
-  select(-list_no_na)
+  select(-list_no_na, -list_no_na_tax)
 
 finaljur[finaljur == &quot;NULL&quot;] = NA
 finaljur[finaljur == &quot;character(0)&quot;] = NA</code></pre>

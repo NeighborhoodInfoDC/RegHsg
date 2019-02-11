@@ -247,7 +247,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 07, 2019</p>
+<p>Last updated February 11, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -264,15 +264,22 @@ source(&quot;../Macros/select-vars.R&quot;)</code></pre>
 <p>Set FIPS code, filepath name, and directory for data storage (on L drive)</p>
 <pre class="r"><code>currentfips &lt;- &quot;51059&quot;
 filepath &lt;- &quot;fairfax&quot;
-jdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Data/&quot;, filepath, &quot;/&quot;)
-rdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath, &quot;/&quot;)</code></pre>
+#jdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Data/&quot;, filepath, &quot;/&quot;)
+#rdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath, &quot;/&quot;)
+
+jdir &lt;- paste0(&quot;D:/DCDATA/RegHsg/Data/&quot;, filepath, &quot;/&quot;)
+rdir &lt;- paste0(&quot;D:/DCDATA/RegHsg/Raw/&quot;, filepath, &quot;/&quot;)</code></pre>
 <p>Create directory for data exports</p>
 <pre class="r"><code>if (!dir.exists(&quot;Data&quot;)) {
   dir.create(&quot;Data&quot;)
 }
 
-if (!dir.exists(paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath))) {
-  dir.create(paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath))
+#if (!dir.exists(paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath))) {
+#  dir.create(paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath))
+#}
+
+if (!dir.exists(paste0(&quot;D:/DCDATA/RegHsg/Raw&quot;, filepath))) {
+  dir.create(paste0(&quot;D:/DCDATA/RegHsg/Raw&quot;, filepath))
 }</code></pre>
 <p>Load in Black Knight data for the region, select jurisdiction and standard variables</p>
 <pre class="r"><code>if (!exists(&quot;region&quot;)) {
@@ -287,7 +294,10 @@ jur &lt;- region %&gt;%
 </div>
 <div id="download-files" class="section level2">
 <h2>Download files</h2>
-<p>Fairfax has several files of use - Tax Administration’s Real Estate - Parcel-level file, Buildable/non-buildable, description of property, zone - Tax Administration’s Real Estate - Land Area file - SF land area, # Units (although seems way too high for some), Type of building - Tax Administration’s Real Estate - Dwelling Data - Has number of stories of parcel</p>
+<p>Fairfax has several files of use<br />
+- Tax Administration’s Real Estate - Parcel-level file, Buildable/non-buildable, description of property, zone<br />
+- Tax Administration’s Real Estate - Land Area file - SF land area, # Units (although seems way too high for some), Type of building<br />
+- Tax Administration’s Real Estate - Dwelling Data - Has number of stories of parcel</p>
 <pre class="r"><code>pafile &lt;- paste0(rdir, filepath, &quot;-parcel-file.csv&quot;)
 landfile &lt;-paste0(rdir, filepath, &quot;-land-file.csv&quot;)
 dwellingfile &lt;- paste0(rdir, filepath, &quot;-dwelling-file.csv&quot;)
@@ -327,18 +337,18 @@ rm(pafile, landfile, dwellingfile)</code></pre>
 <p>We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.</p>
 <pre class="r"><code>parcel &lt;- parcel %&gt;% 
   select(raw_parcelid_par = PARID,
-         loc_desc = LOCATION_DESC, 
-         luc_desc = LUC_DESC,
-         zone = ZONING_DESC) %&gt;% 
+         loc_desc_tax = LOCATION_DESC, 
+         luc_desc_tax = LUC_DESC,
+         zone_tax = ZONING_DESC) %&gt;% 
   mutate(parcel_id = str_replace_all(raw_parcelid_par, &quot; &quot;, &quot;&quot;)) %&gt;%
   filter(!is.na(raw_parcelid_par))</code></pre>
 <p>There are 1550 parcels that show up more than once on the parcel file. These may be unit counts but it is unclear.</p>
 <p>For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data</p>
 <pre class="r"><code>parcel&lt;-parcel %&gt;% 
   group_by(parcel_id) %&gt;%
-  summarize(loc_desc=first(loc_desc),
-  luc_desc=first(luc_desc),
-  zone = first(zone))</code></pre>
+  summarize(loc_desc_tax=first(loc_desc_tax),
+  luc_desc=first(luc_desc_tax),
+  zone_tax = first(zone_tax))</code></pre>
 <p>(Chris add) As the parcel IDs are not comprable, we will add a variable with a pin that eliminates the “-”s from the Blacknight file.</p>
 <pre class="r"><code>jur &lt;- jur %&gt;%
         mutate(parcel_id = str_replace_all(assessorsparcelnumberapnpin, &quot;-&quot;, &quot;&quot;))</code></pre>
@@ -347,30 +357,30 @@ rm(pafile, landfile, dwellingfile)</code></pre>
 <p>We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.</p>
 <pre class="r"><code>dwelling &lt;- dwelling %&gt;% 
   select(raw_parcelid_par = PARID,
-         stories = STYLE_DESC, 
-         possibleSF = SFLA) %&gt;% 
+         stories_tax = STYLE_DESC, 
+         possibleSF_tax = SFLA) %&gt;% 
   mutate(parcel_id = str_replace_all(raw_parcelid_par, &quot; &quot;, &quot;&quot;)) %&gt;%
   filter(!is.na(raw_parcelid_par))</code></pre>
 <p>There are 709 parcels that show up more than once on the parcel file. There are sometimes also multiple stories for the same parcel. If we do use this, I need to go back and clean this.</p>
 <p>For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data</p>
 <pre class="r"><code>dwelling&lt;-dwelling %&gt;% 
   group_by(parcel_id) %&gt;%
-  summarize(stories=first(stories),
-  possibleSF = first(possibleSF))</code></pre>
+  summarize(stories_tax=first(stories_tax),
+  possibleSF_tax = first(possibleSF_tax))</code></pre>
 <p>From the land file, we will save land area, number of units, and category of parcel</p>
 <pre class="r"><code>land  &lt;- land %&gt;% 
   select(raw_parcelid_land = PARID,
-         area = SF,
-         units = UNITS,
-         category = CODE_DESC) %&gt;% 
+         area_tax = SF,
+         units_tax = UNITS,
+         category_tax = CODE_DESC) %&gt;% 
   mutate(parcel_id = str_replace_all(raw_parcelid_land, &quot; &quot;, &quot;&quot;)) %&gt;%
   filter(!is.na(raw_parcelid_land))</code></pre>
 <p>There are 6864 parcels that show up more than once on the parcel file. For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data</p>
 <pre class="r"><code>land&lt;-land %&gt;% 
   group_by(parcel_id) %&gt;%
-  summarize(area=first(area),
-  units = first(units),
-  category = first(category))</code></pre>
+  summarize(area_tax=sum(area_tax, na.rm=T),
+  units_tax = first(units_tax),
+  category_tax = first(category_tax))</code></pre>
 <p>Merge</p>
 <pre class="r"><code>jur &lt;- left_join(jur, parcel, 
                  by = &quot;parcel_id&quot;)
