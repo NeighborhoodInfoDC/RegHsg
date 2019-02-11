@@ -153,7 +153,8 @@ parcel_clean <- parcel_sf %>%
   select(raw_parcelid_par = ACCT,
          parcel_area = SHAPE_AREA, 
          parcel_length = SHAPE_LEN,
-         raw_parcelid_d = DISTRICT) %>% 
+         raw_parcelid_d = DISTRICT,
+         parcel_category= LU_CATEGOR) %>% 
   mutate(parcel_id = paste0(raw_parcelid_d,
                             "-",
                             raw_parcelid_par)) %>% 
@@ -170,6 +171,8 @@ parcel_cleandf <- parcel_cleandf %>%
   summarize(parcel_area = mean(parcel_area),
             parcel_length = mean(parcel_area)) %>% 
   ungroup()
+
+count(parcel_cleandf, parcel_category)
 ```
 
 
