@@ -298,7 +298,7 @@ data flag_population;
 set risk_displacement;
 keep geo2010 county Jurisdiction vulnerable demographicchange_MFAM demographicchange_MHH percentrenter_2016 percentwhite_2016 percentcollege_2016 avghhinc_2016
 popwhitenonhispbridge_&_years. popwithrace_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. 
-agghshldincome_&_years.  numhshlds_&_years. medianhomevalue_&_years. ;
+agghshldincome_&_years.  numhshlds_&_years. medianhomevalue_&_years. gentrifier_white gentrifier_college ;
 
 format vulnerable signofrisk. demographicchange_MHH   demographicchange_MFAM signofrisk. ;
 
@@ -383,8 +383,28 @@ run;
 proc sort data=flag_population;
 by geo2010;
 run;
+
+data Householdcounts (where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
+set ACS.Acs_2012_16_dc_sum_tr_tr10 ACS.Acs_2012_16_md_sum_tr_tr10 ACS.Acs_2012_16_va_sum_tr_tr10 ACS.Acs_2012_16_wv_sum_tr_tr10;
+
+keep geo2010 county Jurisdiction medhhincm_2012_16 numhshlds_2012_16;
+
+	county= substr(geo2010,1,5);
+		if county in ("11001") then Jurisdiction=1;
+	if county in ("24017") then Jurisdiction=2;
+	if county in ("24021") then Jurisdiction=3;
+	if county in ("24031") then Jurisdiction=4;
+	if county in ("24033") then Jurisdiction=5;
+	if county in ("51013") then Jurisdiction=6;
+	if county in ("51600", "51059","51610") then Jurisdiction=7;
+	if county in ("51107") then Jurisdiction=8;
+	if county in ("51153", "51683","51685") then Jurisdiction=9;
+	if county in ("51510") then Jurisdiction=10;
+
+run;
+
 data completetypology;
-merge flag_population appreciationtracts;
+merge flag_population appreciationtracts Householdcounts ;
 by geo2010;
 run;
 
@@ -405,4 +425,24 @@ run;
 /* need to import appreciated and accelerating tract flag to ArcGIS to finish the housing market change typoloy*/
 /* Then with the complete typology flag, we can either import the data back to SAS or just use excel to assign tracts to the 6 different categories*/
 
-/*******************end of the main program**********************************************************/
+proc import out=adjacentflag  datafile="L:\Libraries\RegHsg\Maps\adjacent flag.CSV"
+            DBMS=CSV REPLACE;
+			GUESSINGROWS=MAX;
+geoid = put(GEOID, $11.) ;
+RUN;
+
+data adjacentflag2;
+set adjacentflag;
+keep geoid DCMetroArea2015_tr10_adjacent;
+rename geoid=geoid2;
+geoid = put(geoid2, 11.) ;
+run;
+
+data allflags;
+merge completetypology adjacentflag2;
+by geoid;
+run;
+
+data gentrificationstage;
+set allflags;
+if 
