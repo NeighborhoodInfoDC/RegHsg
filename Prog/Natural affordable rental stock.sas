@@ -299,7 +299,11 @@ merge region_occupied_afford  region_vacant_afford;
 by Jurisdiction structureyear unitcount;
 format affordable_vacant affordable;
 if affordable_vacant=. then affordable_vacant=0;
+if total_vacant=. then total_vacant=0;
+if 
 totalaffordable= affordable_vacant+ affordable;
+Totalunits= total+total_vacant;
+pctafford= totalaffordable/Totalunits;
 run;
 
 proc export data=naturalaffordablestock
@@ -335,6 +339,8 @@ merge region_occupied_afford_COG  region_vacant_afford_COG;
 by structureyear unitcount;
 format affordable_vacant affordable;
 totalaffordable= affordable_vacant+ affordable;
+Totalunits= total+total_vacant;
+pctafford= totalaffordable/Totalunits;
 run;
 
 proc export data=naturalaffordablestock_COG
