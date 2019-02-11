@@ -56,11 +56,11 @@ Set FIPS code, filepath name, and directory for data storage (on L drive)
 ```{r fips}
 currentfips <- "51059"
 filepath <- "fairfax"
-#jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
-#rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
 
-jdir <- paste0("D:/DCDATA/RegHsg/Data/", filepath, "/")
-rdir <- paste0("D:/DCDATA/RegHsg/Raw/", filepath, "/")
+#jdir <- paste0("D:/DCDATA/RegHsg/Data/", filepath, "/")
+#rdir <- paste0("D:/DCDATA/RegHsg/Raw/", filepath, "/")
 
 
 ```
@@ -68,17 +68,17 @@ rdir <- paste0("D:/DCDATA/RegHsg/Raw/", filepath, "/")
 
 Create directory for data exports
 ```{r dir}
-if (!dir.exists("Data")) {
-  dir.create("Data")
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
 }
 
-#if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
-#  dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))
-#}
-
-if (!dir.exists(paste0("D:/DCDATA/RegHsg/Raw", filepath))) {
-  dir.create(paste0("D:/DCDATA/RegHsg/Raw", filepath))
+if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
+  dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))
 }
+
+# if (!dir.exists(paste0("D:/DCDATA/RegHsg/Raw", filepath))) {
+#   dir.create(paste0("D:/DCDATA/RegHsg/Raw", filepath))
+# }
 
 
 ```

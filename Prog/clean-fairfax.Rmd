@@ -68,8 +68,8 @@ if (!dir.exists("../Data")) {
 ```{r fips}
 currentfips <- "51059"
 filepath <- "fairfax"
-#jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
-jdir <- paste0("D:/DCDATA/RegHsg/Data/", filepath, "/")
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+#jdir <- paste0("D:/DCDATA/RegHsg/Data/", filepath, "/")
 ```
 
 #### Load in Black Knight data for the region, select jurisdiction and standard variables
