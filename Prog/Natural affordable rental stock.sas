@@ -300,7 +300,6 @@ by Jurisdiction structureyear unitcount;
 format affordable_vacant affordable;
 if affordable_vacant=. then affordable_vacant=0;
 if total_vacant=. then total_vacant=0;
-if 
 totalaffordable= affordable_vacant+ affordable;
 Totalunits= total+total_vacant;
 pctafford= totalaffordable/Totalunits;
