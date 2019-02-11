@@ -8,7 +8,17 @@
  Environment:  Local Windows session (desktop)
  
  Description:  Produce numbers for housing needs and targets analysis from 2013-17
- ACS IPUMS data for the COGS region:
+ ACS IPUMS data. Program outputs counts of units based on distribution of income categories
+ and housing cost categories for the region and jurisdictions for 3 scenarios:
+
+ a) actual distribution of units by income category and unit cost category
+ b) desired (ideal) distribution of units by income category and unit cost category in which
+	all housing needs are met and no households have cost burden.
+ c) halfway - distribution of units by income category and unit cost category in which
+	cost burden rates are cut in half for households below 120% of AMI as a more pausible 
+	set of targets for the future. 
+
+ COG region defined as:
  DC (11001)
  Charles County(24017)
  Frederick County(24021)
@@ -153,7 +163,7 @@ data Housing_needs_baseline_&year.;
         (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh Jurisdiction
          where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 
-	 *adjust all incomes to 2016 $; 
+	 *adjust all incomes to 2016 $ to match use of 2016 family of 4 income limit in projections (originally based on use of most recent 5-year IPUMS; 
 
 	  if hhincome ~=.n or hhincome ~=9999999 then do; 
 		 %dollar_convert( hhincome, hhincome_a, &year., 2016, series=CUUR0000SA0 )
@@ -473,6 +483,8 @@ data fiveyeartotal_vacant;
 hhwt_5=hhwt*.2; 
 
 run; 
+
+/*need to account for other vacant units in baseline and future targets for the region to complete picture of the total housing stock*/
 data fiveyeartotal_othervacant;
    set other_vacant_2013 other_vacant_2014 other_vacant_2015 other_vacant_2016 other_vacant_2017;
 
@@ -493,14 +505,14 @@ proc export data=other_vacant
    replace;
    run;
 
-/*all  units that we can determine cost level*/ 
+/*data set for all units that we can determine cost level*/ 
 data all;
 	set fiveyeartotal fiveyeartotal_vacant (in=a);
 	if a then incomecat=8; 
 
 run; 
 
-/*output current households by unit cost*/
+/*output current households by unit cost catgories by tenure*/
 proc freq data=all;
 tables incomecat*allcostlevel /nopercent norow nocol out=region_units;
 weight hhwt_5;
@@ -540,7 +552,9 @@ run;
 	run; 
 
 
-/*randomly select observations to reduce cost burden halfway*/
+/*to create a distribution of units by income categories and cost categories that meets more housing needs than the current distribution with
+	large mismatch between needs and units and likely is more probable future goal than desired/ideal scenario*/
+/*Create this scenario by randomly select observations to reduce cost burden halfway*/
 data all_costb;
 	set fiveyeartotal;
 	where costburden=1;
@@ -610,6 +624,7 @@ run;
 	weight hhwt_5;
 	title2 "reduced cost burden rates"; 
 	run;
+
 /*output income distributions by cost for desired cost and cost burden halfway solved*/ 
 
 proc freq data=fiveyeartotal;
@@ -674,7 +689,7 @@ id allcostlevel ;
 var count;
 	run;
 
-/*set with region units file (all, renter, owner) */
+/*set with region units file (all, renter, owner) to output all 3 scenarios for the region */
 
 data region_byinc_actual_to_desired;
 set region desire_half (drop=_name_ _label_);
@@ -690,7 +705,9 @@ proc export data=region_byinc_actual_to_desired
 
 
 
-/*by jurisdiction -actual unit distribution (all, renter, owner) */
+/*output by jurisdiction*./
+
+ /*actual unit distribution (all, renter, owner) */
 proc sort data=all;
 by jurisdiction;
 proc freq data=all;
@@ -845,7 +862,7 @@ data jurisdiction_half_units (drop=_label_ _name_);
 	if _name_="COUNT" & c then name="Halfway Rental";
 	run; 
 
-/*export jurisidiction units*/ 
+/*export all 3 jurisidiction scenarios*/ 
 data jurisdiction_all;
 set jurisdiction_units jurisdiction_desire_units jurisdiction_half_units;
 run; 
