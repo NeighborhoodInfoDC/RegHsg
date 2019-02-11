@@ -39,6 +39,20 @@ proc format;
 	value ActiveUnits
     1= "Active subsidies"
     0="No active subsidies";
+	run;
+proc format;
+	value ProgCat
+	1= "Public housing"
+	2= "Section 8 only"
+	3= "Section 8 and HUD mortgage (FHA or S236) only"
+	4= "Section 8 and other subsidy combinations"
+	5= "LIHTC only"
+	6= "LIHTC and other subsidies"
+	7= "HOME only"
+	8= "RHS only"
+	9= "S202/811 only"
+	10= "All other subsidy combination";
+
 run;
 
 data Work.Allassistedunits;
@@ -101,9 +115,45 @@ data Work.Allassistedunits;
 
 	format State_activeunits PH_activeunits HOME_activeunits s538_activeunits s515_activeunits
 	LIHTC_activeunits FHA_activeunits s236_activeunits s202_activeunits s8_activeunits ActiveUnits.;
+run;
+data Work.SubsidyCategories;
+	set Work.Allassistedunits;
+
+	if PH_activeunits  then ProgCat = 1;
+
+	else if s8_all_activeunits and not( fha_all_activeunits or home_all_activeunits or 
+	lihtc_all_activeunits or rhs515_all_activeunits or rhs538_all_activeunits or 
+	s202_all_activeunits or s236_all_activeunits ) 
+	then ProgCat = 2;
+
+	else if s8_all_activeunits and ( fha_all_activeunits or s236_all_activeunits ) and 
+	not( home_all_activeunits or lihtc_all_activeunits or rhs515_all_activeunits or 
+	rhs538_all_activeunits or s202_all_activeunits ) 
+	then ProgCat = 3;
+
+	else if s8_all_activeunits then ProgCat = 4;
+
+	else if lihtc_all_activeunits and not( fha_all_activeunits or home_all_activeunits or 
+	rhs515_all_activeunits or rhs538_all_activeunits or s202_all_activeunits or 
+	s236_all_activeunits ) 
+	then ProgCat = 5;
+
+	else if lihtc_all_activeunits then ProgCat = 6;
+
+	else if home_all_activeunits and not ( fha_all_activeunits or s8_all_activeunits or 
+	rhs515_all_activeunits or rhs538_all_activeunits or s202_all_activeunits or 
+	s236_all_activeunits ) 
+	then ProgCat = 7;
+
+	
+    else if rhs515_all_activeunits or rhs538 and not (fha_all_activeunits or s8_all_activeunits or 
+	home_all_activeunits or s202_all_activeunits or s236_all_activeunits ) 
+	then ProgCat = 8;
+
+	
+	format ProgCat ProgCat.;
+
+
 
 	run;
-
-
-
 
