@@ -31,7 +31,7 @@
 UNITSSTR: 1-4 units: 03,04, 05, 06  4+ units: 07, 08, 09, 10
 BUILTYR: less than 30: 1-5 30-60: 6-8 60+: 9
 
- Modifications:
+ Modifications: 
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -298,6 +298,8 @@ data naturalaffordablestock (drop=_TYPE_ _FREQ_);
 merge region_occupied_afford  region_vacant_afford;
 by Jurisdiction structureyear unitcount;
 format affordable_vacant affordable;
+if affordable_vacant=. then affordable_vacant=0;
+totalaffordable= affordable_vacant+ affordable;
 run;
 
 proc export data=naturalaffordablestock
@@ -305,7 +307,6 @@ proc export data=naturalaffordablestock
    dbms=csv
    replace;
    run;
-
 
 /*for COG region*/
    
@@ -333,6 +334,7 @@ data naturalaffordablestock_COG (drop=_TYPE_ _FREQ_);
 merge region_occupied_afford_COG  region_vacant_afford_COG;
 by structureyear unitcount;
 format affordable_vacant affordable;
+totalaffordable= affordable_vacant+ affordable;
 run;
 
 proc export data=naturalaffordablestock_COG
