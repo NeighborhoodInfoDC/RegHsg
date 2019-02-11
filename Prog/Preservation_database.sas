@@ -146,7 +146,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format S236_1_StartDate mmddyy10. ;
    informat S236_1_EndDate mmddyy10. ;
    format S236_1_EndDate mmddyy10. ;
-   format S236_1_AssistedUnits $15. ;
+   format S236_1_AssistedUnits best12. ;
    format S236_1_InacStatusDesc $15. ;
    format S236_2_ID $15. ;
    format S236_2_Status $15. ;
@@ -155,7 +155,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format S236_2_StartDate mmddyy10. ;
    informat S236_2_EndDate mmddyy10. ;
    format S236_2_EndDate mmddyy10. ;
-   format S236_2_AssistedUnits $15. ;
+   format S236_2_AssistedUnits best12. ;
    format S236_2_InacStatusDesc $15. ;
    format NumberActiveHUDInsured best12. ;
    format NumberInconclusiveHUDInsured best12. ;
@@ -236,7 +236,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format RHS538_1_StartDate mmddyy10. ;
    informat RHS538_1_EndDate mmddyy10. ;
    format RHS538_1_EndDate mmddyy10. ;
-   format RHS538_1_AssistedUnits $1. ;
+   format RHS538_1_AssistedUnits best12. ;
    format RHS538_1_PrincipalBalance $1. ;
    format RHS538_1_InacStatusDesc $15. ;
    format RHS538_2_ID $15. ;
@@ -246,7 +246,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format RHS538_2_StartDate mmddyy10. ;
    informat RHS538_2_EndDate mmddyy10. ;
    format RHS538_2_EndDate mmddyy10. ;
-   format RHS538_2_AssistedUnits $1. ;
+   format RHS538_2_AssistedUnits best12. ;
    format RHS538_2_PrincipalBalance $1. ;
    format RHS538_2_InacStatusDesc $15. ;
    format NumberActiveHome best12. ;
@@ -269,7 +269,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format HOME_2_StartDate mmddyy10. ;
    informat HOME_2_EndDate mmddyy10. ;
    format HOME_2_EndDate mmddyy10. ;
-   format HOME_2_AssistedUnits $15. ;
+   format HOME_2_AssistedUnits best12. ;
    format HOME_2_ConstructionType $15. ;
    format HOME_2_InacStatusDesc $15. ;
    format NumberActivePublicHousing best12. ;
@@ -292,7 +292,7 @@ data WORK.Test (where=(CBSACode="47900"))    ;
    format PH_2_StartDate mmddyy10. ;
    informat PH_2_EndDate mmddyy10. ;
    format PH_2_EndDate mmddyy10. ;
-   format PH_2_AssistedUnits $1. ;
+   format PH_2_AssistedUnits best12. ;
    format PH_2_InacStatusDesc $15. ;
    format PH_2_PhaCode $15. ;
    format NumberActiveState best12. ;
@@ -371,7 +371,7 @@ input
             S8_1_RenewalStatus $
             S8_1_StartDate $
             S8_1_EndDate $
-            S8_1_AssistedUnits $
+            S8_1_AssistedUnits 
             S8_1_RentToFMR $
             S8_1_InacStatusDesc $
             S8_2_ID $
@@ -380,7 +380,7 @@ input
             S8_2_RenewalStatus $
             S8_2_StartDate $
             S8_2_EndDate $
-            S8_2_AssistedUnits $
+            S8_2_AssistedUnits 
             S8_2_RentToFMR $
             S8_2_InacStatusDesc $
             NumberActiveSection202
@@ -391,7 +391,7 @@ input
             S202_1_ProgramName $
             S202_1_StartDate $
             S202_1_EndDate $
-            S202_1_AssistedUnits $
+            S202_1_AssistedUnits 
             S202_1_PrincipalBalance $
             S202_1_InacStatusDesc $
             S202_2_ID $
@@ -399,7 +399,7 @@ input
             S202_2_ProgramName $
             S202_2_StartDate $
             S202_2_EndDate $
-            S202_2_AssistedUnits $
+            S202_2_AssistedUnits 
             S202_2_PrincipalBalance $
             S202_2_InacStatusDesc $
             NumberActiveSection236
@@ -410,14 +410,14 @@ input
             S236_1_ProgramName $
             S236_1_StartDate $
             S236_1_EndDate $
-            S236_1_AssistedUnits $
+            S236_1_AssistedUnits 
             S236_1_InacStatusDesc $
             S236_2_ID $
             S236_2_Status $
             S236_2_ProgramName $
             S236_2_StartDate $
             S236_2_EndDate $
-            S236_2_AssistedUnits $
+            S236_2_AssistedUnits 
             S236_2_InacStatusDesc $
             NumberActiveHUDInsured
             NumberInconclusiveHUDInsured
@@ -484,7 +484,7 @@ input
             RHS538_1_ProgramName $
             RHS538_1_StartDate $
             RHS538_1_EndDate $
-            RHS538_1_AssistedUnits $
+            RHS538_1_AssistedUnits 
             RHS538_1_PrincipalBalance $
             RHS538_1_InacStatusDesc $
             RHS538_2_ID $
@@ -492,7 +492,7 @@ input
             RHS538_2_ProgramName $
             RHS538_2_StartDate $
             RHS538_2_EndDate $
-            RHS538_2_AssistedUnits $
+            RHS538_2_AssistedUnits 
             RHS538_2_PrincipalBalance $
             RHS538_2_InacStatusDesc $
             NumberActiveHome
@@ -511,7 +511,7 @@ input
             HOME_2_ProgramName $
             HOME_2_StartDate $
             HOME_2_EndDate $
-            HOME_2_AssistedUnits $
+            HOME_2_AssistedUnits 
             HOME_2_ConstructionType $
             HOME_2_InacStatusDesc $
             NumberActivePublicHousing
@@ -522,7 +522,7 @@ input
             PH_1_ProgramName $
             PH_1_StartDate $
             PH_1_EndDate $
-            PH_1_AssistedUnits $
+            PH_1_AssistedUnits 
             PH_1_InacStatusDesc $
             PH_1_PhaCode $
             PH_2_ID $
@@ -530,7 +530,7 @@ input
             PH_2_ProgramName $
             PH_2_StartDate $
             PH_2_EndDate $
-            PH_2_AssistedUnits $
+            PH_2_AssistedUnits 
             PH_2_InacStatusDesc $
             PH_2_PhaCode $
             NumberActiveState
@@ -919,7 +919,7 @@ outlib=RegHsg,
 label="National Preservation Database Active and Inconclusive Properties 1/2019",
 sortby=EarliestStartDate,
 /** Metadata parameters **/
-revisions=%str(New file),
+revisions=%str(Correct character vars for assisted unit counts),
 printobs=5
 )
 
