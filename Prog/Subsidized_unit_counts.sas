@@ -195,7 +195,7 @@ proc sort data=Work.SubsidyCategories;
   by ProgCat;
 run;
 
-proc freq data=Work.SubsidyExpirationDates;
+proc freq data=Work.SubsidyCategories;
   by ProgCat;
   tables ph_activeunits * s8_activeunits * lihtc_activeunits * 
     home_activeunits * rhs515_activeunits * s202_activeunits * s236_activeunits * fha_activeunits 
