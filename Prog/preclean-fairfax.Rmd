@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Pre-clean Arlington County public records data"
+subtitle: "Pre-clean Fairfax County public records data"
 author: ""
 output:
   html_document:
@@ -20,7 +20,7 @@ Library: RegHsg
 
 Project: Regional Housing Framework
 
-Author: Sarah Strochak
+Author: Chris Davis, adapted from Sarah Strochak
 
 Version: R 3.5.1, RStudio 1.1.423
 
@@ -37,7 +37,7 @@ knitr::opts_chunk$set(message = FALSE)
 
 ## Description
 
-The purpose of this program is to obtain additional data from the county to supplement the Black Knight data when possible.
+The purpose of this program is to obtain additional data from the county to supplement the Black Knight data when possible. Originally based on preclean_arlington.rmd.
 
 ## Set-up
 Load libraries and functions
@@ -152,6 +152,7 @@ We also archive the raw parcel ID and create a new version that will merge with 
 ```{r select-parcel}
 parcel_temp<- parcel %>% 
   select(raw_parcelid_par = PARID,
+         num_liv_unit = LIVUNIT,
          loc_desc_tax = LOCATION_DESC, 
          luc_desc_tax = LUC_DESC,
          zone_tax = ZONING_DESC) %>% 
@@ -169,7 +170,8 @@ parcel_final<-parcel_temp %>%
   group_by(parcel_id) %>%
   summarize(loc_desc_tax=first(loc_desc_tax),
   luc_desc=first(luc_desc_tax),
-  zone_tax = first(zone_tax))
+  zone_tax = first(zone_tax),
+  num_livunit=first(num_liv_unit))
 ```
 
 
@@ -201,7 +203,7 @@ dwelling_temp <- dwelling %>%
 
 ```
 
-There are `r dwelling_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once on the parcel file.
+There are `r dwelling_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once on the dwelling file.
 There are sometimes also multiple stories for the same parcel. If we do use this, I need to go back and clean this. 
 
 For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data
