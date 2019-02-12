@@ -169,7 +169,34 @@ data Work.SubsidyCategories;
 
 	format ProgCat ProgCat.;
 
-
-
 	run;
 
+data Work.SubsidyExpirationDates;
+	set Work.SubsidyCategories;
+	min_assistedunits = max( s8_all_assistedunits, s202_all_assistedunits, s236_all_assistedunits,FHA_all_assistedunits,
+	LIHTC_all_assistedunits,rhs515_all_assistedunits,rhs538_all_assistedunits,HOME_all_assistedunits ,PH_all_assistedunits,0);
+	max_assistedunits = min( sum( s8_all_assistedunits, s202_all_assistedunits,s236_all_assistedunits,FHA_all_assistedunits,
+	LIHTC_all_assistedunits,rhs515_all_assistedunits,rhs538_all_assistedunits,HOME_all_assistedunits ,PH_all_assistedunits,0 ), TotalUnits );
+	mid_assistedunits = min( round( mean( min_assistedunits, max_assistedunits ), 1 ), max_assistedunits );
+	if mid_assistedunits ~= max_assistedunits then moe_assistedunits = max_assistedunits - mid_assistedunits;
+	earliest_expirationdate = min(S8_1_EndDate,LIHTC_1_EndDate,S8_2_EndDate,S202_1_EndDate,S202_2_EndDate,S236_1_EndDate,S236_2_EndDate,
+	LIHTC_2_EndDate,RHS515_1_EndDate,RHS515_2_EndDate,RHS538_1_EndDate,RHS538_2_EndDate,HOME_1_EndDate,HOME_2_EndDate,
+	FHA_1_EndDate,FHA_2_EndDate,PH_1_EndDate,PH_2_EndDate);
+	latest_expirationdate = max(S8_1_EndDate,LIHTC_1_EndDate,S8_2_EndDate,S202_1_EndDate,S202_2_EndDate,S236_1_EndDate,S236_2_EndDate,
+	LIHTC_2_EndDate,RHS515_1_EndDate,RHS515_2_EndDate,RHS538_1_EndDate,RHS538_2_EndDate,HOME_1_EndDate,HOME_2_EndDate,
+	FHA_1_EndDate,FHA_2_EndDate,PH_1_EndDate,PH_2_EndDate);
+	informat latest_expirationdate MMDDYY10.;
+	format latest_expirationdate MMDDYY10.;
+	informat earliest_expirationdate MMDDYY10.;
+	format earliest_expirationdate MMDDYY10.;
+
+label
+  min_assistedunits = 'Minimum possible assisted units in project'
+  max_assistedunits = 'Maximum possible assisted units in project'
+  mid_assistedunits = 'Midpoint of project assisted unit estimate in project'
+  moe_assistedunits = 'Margin of error for assisted unit estimate in project'
+  earliest_expirationdate = 'Earliest expiration date for property'
+  latest_expirationdate= 'Latest expiration date for property';
+
+
+  run;
