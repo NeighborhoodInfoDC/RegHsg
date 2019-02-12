@@ -1157,6 +1157,7 @@ For single addresses, we have to reclassify condos that have a unique observatio
 count(singles, category_detail)
 ```
 
+Patrick's Notes - I only have "condo" category, no "sf attached". all stay as "condo"
 ```{r singles-redo}
 
 singles <- singles %>% 
@@ -1164,7 +1165,7 @@ singles <- singles %>%
                            "sf",
                            category),
          category_detail = ifelse(category_detail == "condo",
-                                  "sf attached",
+                                  "condo",
                                   category_detail))
 ```
 
@@ -1229,6 +1230,19 @@ stopifnot(mult + nrow(other) == nrow(jur) -
 rm(mult, other, nunits, cdties)
 
 ```
+
+### Spatial Join
+Patrick's Notes. Filling in multifamily units with missing data that did not match on parcel number.
+```{spatial join}
+
+
+
+sf_contain(points, polygons)
+sf_join()
+
+```
+
+
 
 Write out clean data.
 
