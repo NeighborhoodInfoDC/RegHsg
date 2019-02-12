@@ -49,15 +49,17 @@ proc format;
 proc format;
 	value ProgCat
 	1= "Public housing"
-	2= "Section 8 only"
-	3= "Section 8 and HUD mortgage (FHA or S236) only"
-	4= "Section 8 and other subsidy combinations"
-	5= "LIHTC only"
-	6= "LIHTC and other subsidies"
-	7= "HOME only"
-	8= "RHS only"
-	9= "S202/811 only"
-	10= "All other subsidy combinations";
+	2= "Public housing and other subsidies"
+	3= "Section 8 only"
+	4= "Section 8 and HUD mortgage (FHA or S236) only"
+	5= "Section 8 and other subsidy combinations"
+	6= "LIHTC only"
+	7= "LIHTC and other subsidies"
+	8= "HOME only"
+	9= "RHS only"
+	10= "S202/811 only"
+	11= "HUD insured mortgage only"
+	12= "All other subsidy combinations";
 
 run;
 
@@ -135,43 +137,52 @@ run;
 data Work.SubsidyCategories;
 	set Work.Allassistedunits;
 
-	if PH_activeunits  then ProgCat = 1;
+	if PH_activeunits  and not( fha_activeunits or home_activeunits or 
+	lihtc_activeunits or rhs515_activeunits or rhs538_activeunits or 
+	s202_activeunits or s236_activeunits ) 
+	then ProgCat = 1;
+
+	else if PH_activeunits then ProgCat = 2;
 
 	else if s8_activeunits and not( fha_activeunits or home_activeunits or 
 	lihtc_activeunits or rhs515_activeunits or rhs538_activeunits or 
 	s202_activeunits or s236_activeunits ) 
-	then ProgCat = 2;
+	then ProgCat = 3;
 
 	else if s8_activeunits and ( fha_activeunits or s236_activeunits ) and 
 	not( home_activeunits or lihtc_activeunits or rhs515_activeunits or 
 	rhs538_activeunits or s202_activeunits ) 
-	then ProgCat = 3;
+	then ProgCat = 4;
 
-	else if s8_activeunits then ProgCat = 4;
+	else if s8_activeunits then ProgCat = 5;
 
 	else if lihtc_activeunits and not( fha_activeunits or home_activeunits or 
 	rhs515_activeunits or rhs538_activeunits or s202_activeunits or 
 	s236_activeunits ) 
-	then ProgCat = 5;
+	then ProgCat = 6;
 
-	else if lihtc_activeunits then ProgCat = 6;
+	else if lihtc_activeunits then ProgCat = 7;
 
 	else if home_activeunits and not ( fha_activeunits or s8_activeunits or 
 	rhs515_activeunits or rhs538_activeunits or s202_activeunits or 
 	s236_activeunits ) 
-	then ProgCat = 7;
+	then ProgCat = 8;
 
 	
    	else if (rhs515_activeunits or rhs538_activeunits) and not (fha_activeunits or s8_activeunits or 
 	home_activeunits or s202_activeunits or s236_activeunits ) 
-	then ProgCat = 8;
+	then ProgCat = 9;
 
 	else if s202_activeunits and not( fha_activeunits or s8_activeunits or 
 	rhs515_activeunits or rhs538_activeunits or home_activeunits or 
 	s236_activeunits ) 
-	then ProgCat=9;
+	then ProgCat=10;
 
-	else ProgCat =10;
+	else if (fha_activeunits or s236_activeunits) and not (home_activeunits or lihtc_activeunits or rhs515_activeunits or 
+	rhs538_activeunits or s202_activeunits or s8_activeunits)
+	then ProgCat=11;
+
+	else ProgCat =12;
 
 
 	format ProgCat ProgCat.;
@@ -216,9 +227,7 @@ data Work.SubsidyExpirationDates;
 	LIHTC_2_EndDate,RHS515_1_EndDate,RHS515_2_EndDate,RHS538_1_EndDate,RHS538_2_EndDate,HOME_1_EndDate,HOME_2_EndDate,
 	FHA_1_EndDate,FHA_2_EndDate,PH_1_EndDate,PH_2_EndDate);
 
-  informat latest_expirationdate MMDDYY10.;
 	format latest_expirationdate MMDDYY10.;
-	informat earliest_expirationdate MMDDYY10.;
 	format earliest_expirationdate MMDDYY10.;
 
 label
