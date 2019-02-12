@@ -57,7 +57,7 @@ proc format;
 	7= "HOME only"
 	8= "RHS only"
 	9= "S202/811 only"
-	10= "All other subsidy combination";
+	10= "All other subsidy combinations";
 
 run;
 
@@ -125,6 +125,13 @@ data Work.Allassistedunits;
 	format State_activeunits PH_activeunits HOME_activeunits rhs538_activeunits rhs515_activeunits
 	LIHTC_activeunits FHA_activeunits s236_activeunits s202_activeunits s8_activeunits ActiveUnits.;
 run;
+
+** Check assisted unit counts and flags **;
+
+proc means data=Work.Allassistedunits n sum mean min max;
+run;
+
+
 data Work.SubsidyCategories;
 	set Work.Allassistedunits;
 
@@ -171,21 +178,45 @@ data Work.SubsidyCategories;
 
 	run;
 
+** Check project category coding **;
+
+proc sort data=Work.SubsidyCategories;
+  by ProgCat;
+run;
+
+proc freq data=Work.SubsidyExpirationDates;
+  by ProgCat;
+  tables ph_activeunits * s8_activeunits * lihtc_activeunits * 
+    home_activeunits * rhs515_activeunits * s202_activeunits * s236_activeunits * fha_activeunits 
+    / list missing nocum nopercent;
+  format 
+    ProgCat ProgCat. 
+    ph_activeunits s8_activeunits lihtc_activeunits home_activeunits 
+    rhs515_activeunits s202_activeunits s236_activeunits fha_activeunits ;
+run;
+
+
 data Work.SubsidyExpirationDates;
-	set Work.SubsidyCategories;
-	min_assistedunits = max( s8_all_assistedunits, s202_all_assistedunits, s236_all_assistedunits,FHA_all_assistedunits,
+
+  set Work.SubsidyCategories;
+
+  min_assistedunits = max( s8_all_assistedunits, s202_all_assistedunits, s236_all_assistedunits,FHA_all_assistedunits,
 	LIHTC_all_assistedunits,rhs515_all_assistedunits,rhs538_all_assistedunits,HOME_all_assistedunits ,PH_all_assistedunits,0);
 	max_assistedunits = min( sum( s8_all_assistedunits, s202_all_assistedunits,s236_all_assistedunits,FHA_all_assistedunits,
 	LIHTC_all_assistedunits,rhs515_all_assistedunits,rhs538_all_assistedunits,HOME_all_assistedunits ,PH_all_assistedunits,0 ), TotalUnits );
 	mid_assistedunits = min( round( mean( min_assistedunits, max_assistedunits ), 1 ), max_assistedunits );
-	if mid_assistedunits ~= max_assistedunits then moe_assistedunits = max_assistedunits - mid_assistedunits;
-	earliest_expirationdate = min(S8_1_EndDate,LIHTC_1_EndDate,S8_2_EndDate,S202_1_EndDate,S202_2_EndDate,S236_1_EndDate,S236_2_EndDate,
+
+  if mid_assistedunits ~= max_assistedunits then moe_assistedunits = max_assistedunits - mid_assistedunits;
+
+  earliest_expirationdate = min(S8_1_EndDate,LIHTC_1_EndDate,S8_2_EndDate,S202_1_EndDate,S202_2_EndDate,S236_1_EndDate,S236_2_EndDate,
 	LIHTC_2_EndDate,RHS515_1_EndDate,RHS515_2_EndDate,RHS538_1_EndDate,RHS538_2_EndDate,HOME_1_EndDate,HOME_2_EndDate,
 	FHA_1_EndDate,FHA_2_EndDate,PH_1_EndDate,PH_2_EndDate);
-	latest_expirationdate = max(S8_1_EndDate,LIHTC_1_EndDate,S8_2_EndDate,S202_1_EndDate,S202_2_EndDate,S236_1_EndDate,S236_2_EndDate,
+
+  latest_expirationdate = max(S8_1_EndDate,LIHTC_1_EndDate,S8_2_EndDate,S202_1_EndDate,S202_2_EndDate,S236_1_EndDate,S236_2_EndDate,
 	LIHTC_2_EndDate,RHS515_1_EndDate,RHS515_2_EndDate,RHS538_1_EndDate,RHS538_2_EndDate,HOME_1_EndDate,HOME_2_EndDate,
 	FHA_1_EndDate,FHA_2_EndDate,PH_1_EndDate,PH_2_EndDate);
-	informat latest_expirationdate MMDDYY10.;
+
+  informat latest_expirationdate MMDDYY10.;
 	format latest_expirationdate MMDDYY10.;
 	informat earliest_expirationdate MMDDYY10.;
 	format earliest_expirationdate MMDDYY10.;
@@ -200,3 +231,17 @@ label
 
 
   run;
+
+** Review results of assisted unit and expiration date calculations **;
+
+proc sort data=Work.SubsidyExpirationDates;
+  by ProgCat;
+run;
+
+proc means data=Work.SubsidyExpirationDates n mean min max;
+  by ProgCat;
+  var min_assistedunits max_assistedunits mid_assistedunits moe_assistedunits 
+      earliest_expirationdate latest_expirationdate;
+  format ProgCat ProgCat.;
+run;
+
