@@ -335,7 +335,7 @@ rm(pafile, landfile, dwellingfile)</code></pre>
 <p>Select variables from each dataset that we want to keep.</p>
 <p>From the parcel file, we will keep the location descriptions and the zoning data in case we need to confirm zoning information and category of the parcels.</p>
 <p>We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.</p>
-<pre class="r"><code>parcel &lt;- parcel %&gt;% 
+<pre class="r"><code>parcel_temp&lt;- parcel %&gt;% 
   select(raw_parcelid_par = PARID,
          loc_desc_tax = LOCATION_DESC, 
          luc_desc_tax = LUC_DESC,
@@ -344,18 +344,18 @@ rm(pafile, landfile, dwellingfile)</code></pre>
   filter(!is.na(raw_parcelid_par))</code></pre>
 <p>There are 1550 parcels that show up more than once on the parcel file. These may be unit counts but it is unclear.</p>
 <p>For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data</p>
-<pre class="r"><code>parcel&lt;-parcel %&gt;% 
+<pre class="r"><code>parcel_final&lt;-parcel_temp %&gt;% 
   group_by(parcel_id) %&gt;%
   summarize(loc_desc_tax=first(loc_desc_tax),
   luc_desc=first(luc_desc_tax),
   zone_tax = first(zone_tax))</code></pre>
 <p>(Chris add) As the parcel IDs are not comprable, we will add a variable with a pin that eliminates the “-”s from the Blacknight file.</p>
-<pre class="r"><code>jur &lt;- jur %&gt;%
+<pre class="r"><code>jur_temp &lt;- jur %&gt;%
         mutate(parcel_id = str_replace_all(assessorsparcelnumberapnpin, &quot;-&quot;, &quot;&quot;))</code></pre>
 <p>There are 531 units in the Blacknight data that are not in the parcels data.</p>
 <p>From the dwelling file, we will keep a variable designating the number of stories of the dwelling.</p>
 <p>We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.</p>
-<pre class="r"><code>dwelling &lt;- dwelling %&gt;% 
+<pre class="r"><code>dwelling_temp &lt;- dwelling %&gt;% 
   select(raw_parcelid_par = PARID,
          stories_tax = STYLE_DESC, 
          possibleSF_tax = SFLA) %&gt;% 
@@ -363,40 +363,41 @@ rm(pafile, landfile, dwellingfile)</code></pre>
   filter(!is.na(raw_parcelid_par))</code></pre>
 <p>There are 709 parcels that show up more than once on the parcel file. There are sometimes also multiple stories for the same parcel. If we do use this, I need to go back and clean this.</p>
 <p>For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data</p>
-<pre class="r"><code>dwelling&lt;-dwelling %&gt;% 
+<pre class="r"><code>dwelling_final&lt;-dwelling_temp %&gt;% 
   group_by(parcel_id) %&gt;%
   summarize(stories_tax=first(stories_tax),
   possibleSF_tax = first(possibleSF_tax))</code></pre>
 <p>From the land file, we will save land area, number of units, and category of parcel</p>
-<pre class="r"><code>land  &lt;- land %&gt;% 
+<pre class="r"><code>land_temp  &lt;- land %&gt;% 
   select(raw_parcelid_land = PARID,
          area_tax = SF,
          units_tax = UNITS,
          category_tax = CODE_DESC) %&gt;% 
   mutate(parcel_id = str_replace_all(raw_parcelid_land, &quot; &quot;, &quot;&quot;)) %&gt;%
   filter(!is.na(raw_parcelid_land))</code></pre>
-<p>There are 6864 parcels that show up more than once on the parcel file. For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data</p>
-<pre class="r"><code>land&lt;-land %&gt;% 
+<p>There are 6864 parcels that show up more than once in the land file. For now, for each parcel that has multiple entries, I take the sum of the area and the first value of all of the other values. Can clean up later if we want to use this data</p>
+<pre class="r"><code>land_final&lt;-land_temp %&gt;% 
   group_by(parcel_id) %&gt;%
   summarize(area_tax=sum(area_tax, na.rm=T),
   units_tax = first(units_tax),
   category_tax = first(category_tax))</code></pre>
 <p>Merge</p>
-<pre class="r"><code>jur &lt;- left_join(jur, parcel, 
+<pre class="r"><code>jur1 &lt;- left_join(jur_temp, parcel_final, 
                  by = &quot;parcel_id&quot;)
 
-jur &lt;- left_join(jur, dwelling, 
+jur2 &lt;- left_join(jur1, dwelling_final, 
                  by = &quot;parcel_id&quot;)
 
-jur &lt;- left_join(jur, land, 
+jur_final &lt;- left_join(jur2, land_final, 
                  by = &quot;parcel_id&quot;)</code></pre>
 </div>
 <div id="save" class="section level2">
 <h2>Save</h2>
 <p>Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.</p>
-<pre class="r"><code>saveRDS(jur,
+<pre class="r"><code>saveRDS(jur_final,
         paste0(jdir, 
                &quot;precleaned-&quot;,
+               
                filepath,
                &quot;-data.Rdata&quot;))</code></pre>
 </div>
