@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Clean Arlington County public records data"
+subtitle: "Clean Fairfax County public records data"
 author: ""
 output:
   html_document:
@@ -20,7 +20,7 @@ Library: RegHsg
 
 Project: Regional Housing Framework
 
-Author: Sarah Strochak
+Author: Chris Davis, adapting from Sarah Strochak
 
 Version: R 3.5.1, RStudio 1.1.423
 
@@ -35,6 +35,8 @@ knitr::opts_chunk$set(warning = FALSE, message = F)
 ```
 
 ## Description
+
+Adapted from clean-arlington.rmd 
 
 There are three main goals of the jurisdiction level cleaning process:
 
@@ -166,7 +168,6 @@ mf <- c("APARTMENTS (GARDEN), CONDO (UP TO 4 STORIES)",
         "MEDIUM RISE APTS, RENTAL (5 TO 8 STORIES)",
         "CONDOMINIUM (RESIDENTIAL)",
         "CONDO CENTER - INDIVIDUAL OWNED UNITS OPER",
-        "CONDO RETAIL -LOCATED IN PREDOMINANTLY OFFICE",
         "HIGH RISE APTS, RENTAL, WITH COM/PROFL",
         "HIGH RISE APTS, RENTAL, W/O COM/PROFL",
         "APARTMENTS, NEC, INCLUDING COOPERATIVES")
@@ -212,8 +213,7 @@ condo <- c("CONDO-MULTIPLEX",
            "HIGH RISE APTS, CONDO, W/O COM/PROFL",
            "MEDIUM RISE APTS, CONDO (5 TO 8 STORIES)",
            "CONDOMINIUM (RESIDENTIAL)",
-           "CONDO CENTER - INDIVIDUAL OWNED UNITS OPER",
-           "CONDO RETAIL -LOCATED IN PREDOMINANTLY OFFICE")
+           "CONDO CENTER - INDIVIDUAL OWNED UNITS OPER")
 
 duplex <- c("DUPLEX, EITHER VERTICAL OR HORIZONTAL",
             "TWO-FAMILY NEC",
