@@ -33,6 +33,9 @@ Manassas Park City (51685)
 
 ** Define libraries **;
 %DCData_lib( RegHsg, local=n )
+** Year range for preservation targets **;
+%let Startyr = 2015;
+%let Endyr = 2035;
 *Create property and unit counts for individual programs**;
 
 proc format;
@@ -230,13 +233,57 @@ data Work.SubsidyExpirationDates;
 	format latest_expirationdate MMDDYY10.;
 	format earliest_expirationdate MMDDYY10.;
 
+  if LIHTC_1_enddate > 0 then LIHTC_1_15date = intnx( 'year', LIHTC_1_enddate, -15, 'same' );
+  if LIHTC_2_enddate > 0 then LIHTC_2_15date = intnx( 'year', LIHTC_2_enddate, -15, 'same' );
+
+  format LIHTC_1_15date MMDDYY10.;
+  format LIHTC_2_15date MMDDYY10.;
+
+  if &Startyr <= year( S8_1_enddate ) <= &Endyr then s8_endyr = year( S8_1_enddate );
+  if &Startyr <= year( S8_2_enddate ) <= &Endyr then s8_endyr = min( year( S8_2_enddate ), s8_endyr );
+
+  if &Startyr <= year( S202_1_enddate ) <= &Endyr then s202_endyr = year( S202_1_enddate );
+  if &Startyr <= year( S202_2_enddate ) <= &Endyr then s202_endyr = min( year( S202_2_enddate ), s202_endyr );
+
+  if &Startyr <= year( S236_1_enddate ) <= &Endyr then s236_endyr = year( S236_1_enddate );
+  if &Startyr <= year( S236_2_enddate ) <= &Endyr then s236_endyr = min( year( S236_2_enddate ), s236_endyr );
+
+  if &Startyr <= year( FHA_1_enddate ) <= &Endyr then FHA_endyr = year( FHA_1_enddate );
+  if &Startyr <= year( FHA_2_enddate ) <= &Endyr then FHA_endyr = min( year( FHA_2_enddate ), FHA_endyr );
+  
+  if &Startyr <= year( LIHTC_1_enddate ) <= &Endyr then LIHTC_endyr = year( LIHTC_1_enddate );
+  if &Startyr <= year( LIHTC_2_enddate ) <= &Endyr then LIHTC_endyr = min( year( LIHTC_2_enddate ), LIHTC_endyr );
+  if &Startyr <= year( LIHTC_1_15date ) <= &Endyr then LIHTC_15yr = year( LIHTC_1_15date );
+  if &Startyr <= year( LIHTC_2_15date ) <= &Endyr then LIHTC_15yr = min( year( LIHTC_2_15date ), LIHTC_15yr );
+
+  if &Startyr <= year( RHS515_1_enddate ) <= &Endyr then rhs515_endyr = year( rhs515_1_enddate );
+  if &Startyr <= year( RHS515_2_enddate ) <= &Endyr then rhs515_endyr = min( year( rhs515_2_enddate ), rhs515_endyr );
+
+  if &Startyr <= year( RHS538_1_enddate ) <= &Endyr then rhs538_endyr = year( rhs538_1_enddate );
+  if &Startyr <= year( RHS538_2_enddate ) <= &Endyr then rhs538_endyr = min( year( rhs538_2_enddate ), rhs538_endyr );
+
+  if &Startyr <= year( HOME_1_enddate ) <= &Endyr then HOME_endyr = year( HOME_1_enddate );
+  if &Startyr <= year( HOME_2_enddate ) <= &Endyr then HOME_endyr = min( year( HOME_2_enddate ), HOME_endyr );
+
+  if &Startyr <= year( PH_1_enddate ) <= &Endyr then PH_endyr = year( PH_1_enddate );
+  if &Startyr <= year( PH_2_enddate ) <= &Endyr then PH_endyr = min( year( PH_2_enddate ), PH_endyr );
+
+  earliest_expirationdate15 = min(s8_endyr,s202_endyr,s236_endyr,FHA_endyr,LIHTC_endyr,LIHTC_15yr,rhs515_endyr,rhs538_endyr,
+	HOME_endyr,PH_endyr);
+
+  latest_expirationdate15 = max(s8_endyr,s202_endyr,s236_endyr,FHA_endyr,LIHTC_endyr,LIHTC_15yr,rhs515_endyr,rhs538_endyr,
+	HOME_endyr,PH_endyr);
+ 
+
 label
   min_assistedunits = 'Minimum possible assisted units in project'
   max_assistedunits = 'Maximum possible assisted units in project'
   mid_assistedunits = 'Midpoint of project assisted unit estimate in project'
   moe_assistedunits = 'Margin of error for assisted unit estimate in project'
   earliest_expirationdate = 'Earliest expiration date for property'
-  latest_expirationdate= 'Latest expiration date for property';
+  latest_expirationdate= 'Latest expiration date for property'
+  earliest_expirationdate15= 'Earliest expiration date between 2015 and 2035 for property'
+  latest_expirationdate15= 'Latest expiration date between 2015 and 2035 for property';
 
 
   run;
