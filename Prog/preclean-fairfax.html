@@ -101,6 +101,9 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
+summary {
+  display: list-item;
+}
 </style>
 
 
@@ -108,9 +111,70 @@ button.code-folding-btn:focus {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
 });
 </script>
 
@@ -123,7 +187,6 @@ $(document).ready(function () {
   window.initializeCodeFolding("show" === "show");
 });
 </script>
-
 
 
 
@@ -237,7 +300,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Regional Housing Framework</h1>
-<h3 class="subtitle"><em>Pre-clean Arlington County public records data</em></h3>
+<h3 class="subtitle"><em>Pre-clean Fairfax County public records data</em></h3>
 
 </div>
 
@@ -245,13 +308,13 @@ div.tocify {
 <p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv14%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
-<p>Author: Sarah Strochak</p>
+<p>Author: Chris Davis, adapted from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 11, 2019</p>
+<p>Last updated February 12, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
-<p>The purpose of this program is to obtain additional data from the county to supplement the Black Knight data when possible.</p>
+<p>The purpose of this program is to obtain additional data from the county to supplement the Black Knight data when possible. Originally based on preclean_arlington.rmd.</p>
 </div>
 <div id="set-up" class="section level2">
 <h2>Set-up</h2>
@@ -337,6 +400,7 @@ rm(pafile, landfile, dwellingfile)</code></pre>
 <p>We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.</p>
 <pre class="r"><code>parcel_temp&lt;- parcel %&gt;% 
   select(raw_parcelid_par = PARID,
+         num_liv_unit = LIVUNIT,
          loc_desc_tax = LOCATION_DESC, 
          luc_desc_tax = LUC_DESC,
          zone_tax = ZONING_DESC) %&gt;% 
@@ -348,7 +412,8 @@ rm(pafile, landfile, dwellingfile)</code></pre>
   group_by(parcel_id) %&gt;%
   summarize(loc_desc_tax=first(loc_desc_tax),
   luc_desc=first(luc_desc_tax),
-  zone_tax = first(zone_tax))</code></pre>
+  zone_tax = first(zone_tax),
+  num_livunit=first(num_liv_unit))</code></pre>
 <p>(Chris add) As the parcel IDs are not comprable, we will add a variable with a pin that eliminates the “-”s from the Blacknight file.</p>
 <pre class="r"><code>jur_temp &lt;- jur %&gt;%
         mutate(parcel_id = str_replace_all(assessorsparcelnumberapnpin, &quot;-&quot;, &quot;&quot;))</code></pre>
@@ -361,7 +426,7 @@ rm(pafile, landfile, dwellingfile)</code></pre>
          possibleSF_tax = SFLA) %&gt;% 
   mutate(parcel_id = str_replace_all(raw_parcelid_par, &quot; &quot;, &quot;&quot;)) %&gt;%
   filter(!is.na(raw_parcelid_par))</code></pre>
-<p>There are 709 parcels that show up more than once on the parcel file. There are sometimes also multiple stories for the same parcel. If we do use this, I need to go back and clean this.</p>
+<p>There are 709 parcels that show up more than once on the dwelling file. There are sometimes also multiple stories for the same parcel. If we do use this, I need to go back and clean this.</p>
 <p>For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data</p>
 <pre class="r"><code>dwelling_final&lt;-dwelling_temp %&gt;% 
   group_by(parcel_id) %&gt;%
