@@ -186,7 +186,7 @@ jur_temp <- jur %>%
 There are `r (!jur_temp$parcel_id%in%parcel_final$parcel_id) %>% sum` units in the Blacknight data that are not in the parcels data.  
 There are `r (!parcel_final$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the parcels data that are not in the BlackKnight data.
 
-From the dwelling file, we will keep a variable designating the number of stories of the dwelling.
+From the dwelling file, we will keep a variable designating the number of stories and the sf of living area of the dwelling.
 
 We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.
 
