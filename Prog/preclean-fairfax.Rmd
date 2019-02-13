@@ -162,7 +162,7 @@ parcel_temp<- parcel %>%
 ```
 
 
-There are `r parcel_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once on the parcel file. These may be unit counts but it is unclear. 
+There are `r parcel_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once on the parcel file. These may be unit counts or portions of parcels, but it is unclear. 
 
 For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data
 ```{r parcel}
@@ -183,8 +183,8 @@ jur_temp <- jur %>%
         mutate(parcel_id = str_replace_all(assessorsparcelnumberapnpin, "-", ""))
 ```
 
-There are `r (!jur_temp$parcel_id%in%parcel_final$parcel_id) %>% sum` units in the Blacknight data that are not in the parcels data. 
-
+There are `r (!jur_temp$parcel_id%in%parcel_final$parcel_id) %>% sum` units in the Blacknight data that are not in the parcels data.  
+There are `r (!parcel_final$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the parcels data that are not in the BlackKnight data.
 
 
 From the dwelling file, we will keep a variable designating the number of stories of the dwelling.
@@ -206,12 +206,18 @@ dwelling_temp <- dwelling %>%
 There are `r dwelling_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once on the dwelling file.
 There are sometimes also multiple stories for the same parcel. If we do use this, I need to go back and clean this. 
 
-For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data
+There are `r (!jur_temp$parcel_id%in%dwelling_temp$parcel_id) %>% sum` units in the Blacknight data that are not in the dwelling data. 
+There are `r (!dwelling_temp$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the dwelling data that are not in the Blacknight data.  
+
+
+
+For now, for each parcel that has multiple entries, I take the first value of stories and sum the possible the SF variable. 
 ```{r summarize-dwelling}
 dwelling_final<-dwelling_temp %>% 
   group_by(parcel_id) %>%
-  summarize(stories_tax=first(stories_tax),
-  possibleSF_tax = first(possibleSF_tax))
+  summarize(stories_tax=first(stories_tax), 
+            dwellings_per_parcel = n(), 
+            possibleSF_tax = sum(possibleSF_tax, na.rm=T))
 ```
 
 
@@ -229,14 +235,21 @@ land_temp  <- land %>%
  
 ```
 
-There are `r land_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once in the land file. For now, for each parcel that has multiple entries, I take the sum of the area and the first value of all of the other values. Can clean up later if we want to use this data
+There are `r land_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once in the land file.  
+
+There are `r (!jur_temp$parcel_id%in%land_temp$parcel_id) %>% sum` units in the Blacknight data that are not in the dwelling data. 
+There are `r (!land_temp$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the dwelling data that are not in the Blacknight data.  
+
+For now, for each parcel that has multiple entries, I take the sum of the area and the first value of all of the other values. Can clean up later if we want to use this data.
+
 
 ```{r summarize-land}
 land_final<-land_temp %>% 
   group_by(parcel_id) %>%
-  summarize(area_tax=sum(area_tax, na.rm=T),
-  units_tax = first(units_tax),
-  category_tax = first(category_tax))
+  summarize(area_tax=sum(area_tax, na.rm=T), 
+            land_parcel_sum = n(),
+            units_tax = first(units_tax),
+            category_tax = first(category_tax))
 ```
 
 
