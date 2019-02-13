@@ -81,3 +81,4 @@ Prog/Temp/
 *.bat
 Thumbs.db
 .Rproj.user
+.Rhistory
