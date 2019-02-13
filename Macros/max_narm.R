@@ -10,7 +10,7 @@ max_narm <- function(x) {
   if (sum(is.na(x)) == length(x)) {
     NA
   } else if (sum(is.na(x)) != length(x)) {
-    dplyr::max(x, na.rm = TRUE)
+    max(x, na.rm = TRUE)
   } else {
     stop("Invalid vector")
   }

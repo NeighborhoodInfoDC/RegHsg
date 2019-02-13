@@ -17,3 +17,4 @@ mode_narm <- function(x) {
 }
 
 
+

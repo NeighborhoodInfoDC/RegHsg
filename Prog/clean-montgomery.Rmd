@@ -633,17 +633,7 @@ filter(jur, is.na(buildingarea)) %>%
   count(category)
 
 
-jur <- jur %>% 
-  mutate(lotsize_sf = if_else(is.na(lotsize_sf), parcel_area, lotsize_sf))
 
-filter(jur, is.na(lotsize_sf)) %>% 
-  count(category)
-
-filter(jur, is.na(lotsize_sf)) %>% 
-  count(category)
-
-count( jur, is.na(parcel_area))
-count(jur, is.na(lotsize_sf))
 
 ```
 
@@ -840,16 +830,14 @@ nested <- multiples %>%
   summarize_at(vars(zoning,lotsize_sf,
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
-                    yearbuilt, long, lat, parcel_area, parcel_length), list) %>% 
+                    yearbuilt, long, lat), list) %>% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, mode_narm),
          lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
          buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
-         parcel_area = map_dbl(parcel_area_list, sum, na.rm = TRUE),
-         parcel_length = map_dbl(parcel_length_list, sum, na.rm = TRUE),
          countylandusedescription = map(countylandusedescription_list, mode_narm),
-         residential = map(residential_list, max, na.rm = FALSE),
+         residential = map(residential_list, max_narm),
          category = map(category_list, mode_narm),
          category_detail = map(category_detail_list, mode_narm),
          building_type = ifelse(category == "MF",
@@ -858,12 +846,8 @@ nested <- multiples %>%
          long = map(long_list, median),
          lat = map(lat_list, median),
          # year built handled differently due to missing values
-         yearbuilt_list = ifelse(as.integer(map(yearbuilt_list, function(x) sum(!is.na(x)))) == 0,
-                                 NA,
-                                 yearbuilt_list),
-         yearbuilt = ifelse(!is.na(yearbuilt_list),
-                      map(yearbuilt_list, max, na.rm = TRUE),
-                      NA))
+         yearbuilt_list = map(yearbuilt_list, max_narm))
+                      
 
 ```
 
@@ -1052,8 +1036,7 @@ count(cdties, test_vacant) %>%
   rename(`Number of vacant categories` = test_vacant,
          `Number of instances` = n) %>% 
   mutate(`What to do?` = c("Take the residential code",
-                           "Take the non-vacant categoty",
-                           "Pick the more general vacant category")) %>% 
+                           "Take the non-vacant category")) %>% 
   knitr::kable()
 ```
 
@@ -1074,19 +1057,19 @@ novac <- cdties %>%
          test_res2 = map(residential_list, 2)) %>% 
   mutate(argnum = case_when(test_res1 == 1 ~ 1,
                             test_res2 == 1 ~ 2,
-                            TRUE ~ 1)) %>% 
-  mutate(category = ifelse(argnum == 1,
-                           map(category_list, 1),
-                           map(category_list, 2)),
-         category_detail = ifelse(argnum == 1,
-                           map(category_detail_list, 1),
-                           map(category_detail_list, 2)),
-         building_type = ifelse(argnum == 1,
-                           map(building_type_list, 1),
-                           map(building_type_list, 2)),
-         countylandusedescription = ifelse(argnum == 1,
-                           map(countylandusedescription_list, 1),
-                           map(countylandusedescription_list, 2))) %>% 
+                            TRUE ~ 3)) %>% 
+  mutate(category = case_when(argnum == 1 ~ map(category_list, 1),
+                              argnum == 2 ~ map(category_list, 2),
+                              argnum == 3 ~ map(category_list, 3)),
+         category_detail = case_when(argnum == 1 ~ map(category_detail, 1),
+                                     argnum == 2 ~ map(category_detail, 2),
+                                     argnum == 3 ~ map(category_detail, 3)),
+         building_type = case_when(argnum == 1 ~ map(building_type, 1),
+                                   argnum == 2 ~ map(building_type, 2),
+                                   argnum == 3 ~ map(building_type, 3)),
+         countylandusedescription = case_when(argnum == 1 ~ map(countylandusedescription, 1),
+                                              argnum == 2 ~ map(countylandusedescription, 2),
+                                              argnum == 3 ~ map(countylandusedescription, 3))) %>% 
   select(-test_res1, -test_res2, -argnum)
 
 ```
@@ -1100,19 +1083,20 @@ Since one of these is vacant, we also want to adjust the `nprops` variable- whic
 ```{r one-vac}
 onevac <- cdties %>% 
   filter(test_vacant == 1) %>% 
-  mutate(vac1 = str_detect(map(category_detail_list, 1), "vacant")) %>% 
-  mutate(category = ifelse(vac1 == FALSE,
-                           map(category_list, 1),
-                           map(category_list, 2)),
-         category_detail = ifelse(vac1 == FALSE,
-                           map(category_detail_list, 1),
-                           map(category_detail_list, 2)),
-         building_type = ifelse(vac1 == FALSE,
-                           map(building_type_list, 1),
-                           map(building_type_list, 2)),
-         countylandusedescription = ifelse(vac1 == FALSE,
-                           map(countylandusedescription_list, 1),
-                           map(countylandusedescription_list, 2))) %>% 
+  mutate(vac1 = str_detect(map(category_detail_list, 1), "vacant"))  %>% 
+  mutate(vac2 = str_detect(map(category_detail_list, 2), "vacant"))  %>% 
+  mutate(category = case_when(vac1 == TRUE ~ map(category_list, 1),
+                              vac2 == TRUE ~ map(category_list, 2),
+                              vac1 == FALSE & vac2 == FALSE ~ map(category_list, 3)),
+         category_detail = case_when(vac1 == TRUE ~ map(category_detail_list, 1),
+                              vac2 == TRUE ~ map(category_detail_list, 2),
+                              vac1 == FALSE & vac2 == FALSE ~ map(category_detail_list, 3)),
+         building_type = case_when(vac1 == TRUE ~ map(building_type_list, 1),
+                              vac2 == TRUE ~ map(building_type_list, 2),
+                              vac1 == FALSE & vac2 == FALSE ~ map(building_type_list, 3)),
+         countylandusedescription = case_when(vac1 == TRUE ~ map(countylandusedescription_list, 1),
+                              vac2 == TRUE ~ map(countylandusedescription_list, 2),
+                              vac1 == FALSE & vac2 == FALSE ~ map(countylandusedescription_list, 3))) %>% 
   mutate(nprops = 1,
          vacant_flag = 1) %>% 
   select(-vac1)
@@ -1201,7 +1185,7 @@ multiples_f <- nested_final %>%
   select(-ends_with("_list"), -lsmode, -lsfirst, 
          -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %>% 
   mutate_at(vars(countylandusedescription, zoning,
-                 category, category_detail, building_type, yearbuilt),
+                 category, category_detail, building_type),
             as.character) %>% 
   mutate_at(vars(buildingarea, lat, long, residential), as.double) %>% 
   rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops) %>% 
@@ -1231,15 +1215,16 @@ rm(mult, other, nunits, cdties)
 
 ```
 
-### Spatial Join
-Patrick's Notes. Filling in multifamily units with missing data that did not match on parcel number.
-```{spatial join}
+## Save
 
+save as an R dataset for easy reading into the spatial join.
 
-
-sf_contain(points, polygons)
-sf_join()
-
+```{r save}
+saveRDS(jur,
+        paste0(jdir, 
+               "cleaned-",
+               filepath,
+               "-data.Rdata"))
 ```
 
 
