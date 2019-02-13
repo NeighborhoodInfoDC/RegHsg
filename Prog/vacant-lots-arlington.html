@@ -693,7 +693,17 @@ rm(z)</code></pre>
 <li>Units allowed based on lot size: this is the lot area divided by <code>lotarea_per_unit</code></li>
 </ol>
 <p>We can create a function that will allow us to easily adjust these parameters and compare results.</p>
-<pre class="r"><code>get_unit_variables &lt;- function(dataset, 
+<pre class="r"><code>#' Get maximum unit variables
+#' @description this function generates the variables necessary to calculate the maximum number of units that can occupy one lot, per the by-right zoning code.
+#'
+#' @param dataset dataset with lot size and zoning variables 
+#' @param construction_efficiency Assumption for construction efficiency
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey
+#'
+#' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`, `units_height`, `units_lotsize`, and `units_total`
+#'
+#' @examples
+get_unit_variables &lt;- function(dataset, 
                                construction_efficiency, 
                                average_unit_size) {
   
@@ -720,6 +730,16 @@ rm(z)</code></pre>
   
 }
 
+#' Get maximum unit summary
+#'
+#' @param dataset dataset with lot size and zoning variables 
+#' @param construction_efficiency Assumption for construction efficiency
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey
+#' @param dwelling_type_breakdown Options are T or F- indicated whether or not estimates should be broken down by `dwelling_type`
+#'
+#' @return Returns a dataframe with summary statistics on the maximum units that can be build on lots, per the by-right zoning code.
+#'
+#' @examples
 get_unit_summary &lt;- function(dataset, 
                              construction_efficiency, 
                              average_unit_size,
