@@ -101,9 +101,6 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
-summary {
-  display: list-item;
-}
 </style>
 
 
@@ -111,70 +108,9 @@ summary {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
-
-<style type="text/css">
-.tabset-dropdown > .nav-tabs {
-  display: inline-table;
-  max-height: 500px;
-  min-height: 44px;
-  overflow-y: auto;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
-  font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
-  font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
-}
-
-.tabset-dropdown > .nav-tabs > li.active {
-  display: block;
-}
-
-.tabset-dropdown > .nav-tabs > li > a,
-.tabset-dropdown > .nav-tabs > li > a:focus,
-.tabset-dropdown > .nav-tabs > li > a:hover {
-  border: none;
-  display: inline-block;
-  border-radius: 4px;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
-  display: block;
-  float: none;
-}
-
-.tabset-dropdown > .nav-tabs > li {
-  display: none;
-}
-</style>
-
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
 });
 </script>
 
@@ -187,6 +123,7 @@ $(document).ready(function () {
   window.initializeCodeFolding("show" === "show");
 });
 </script>
+
 
 
 
@@ -444,7 +381,7 @@ There are 848 units in the parcels data that are not in the BlackKnight data.</p
   mutate(parcel_id = str_replace_all(raw_parcelid_land, &quot; &quot;, &quot;&quot;)) %&gt;%
   filter(!is.na(raw_parcelid_land))</code></pre>
 <p>There are 6864 parcels that show up more than once in the land file.</p>
-<p>There are 2471 units in the Blacknight data that are not in the land data. There are 872 units in the land data that are not in the Blacknight data.</p>
+<p>There are 2471 units in the Blacknight data that are not in the dwelling data. There are 872 units in the dwelling data that are not in the Blacknight data.</p>
 <p>For now, for each parcel that has multiple entries, I take the sum of the area and the first value of all of the other values. Can clean up later if we want to use this data.</p>
 <pre class="r"><code>land_final&lt;-land_temp %&gt;% 
   group_by(parcel_id) %&gt;%
@@ -452,15 +389,20 @@ There are 848 units in the parcels data that are not in the BlackKnight data.</p
             land_per_parcel = n(),
             units_tax = first(units_tax),
             category_tax = first(category_tax))</code></pre>
-<p>Merge</p>
-<pre class="r"><code>jur1 &lt;- left_join(jur_temp, parcel_final, 
-                 by = &quot;parcel_id&quot;)
-
-jur2 &lt;- left_join(jur1, dwelling_final, 
-                 by = &quot;parcel_id&quot;)
-
-jur_final &lt;- left_join(jur2, land_final, 
-                 by = &quot;parcel_id&quot;)</code></pre>
+<p>We decide to merge the Fairfax files first in order to ensure that we maintain as much data as possible.</p>
+<p>Congruence of Fairfax files</p>
+<p>There are 29825 units in the parcel data that are not in the dwelling data.<br />
+There are 0 units in the dwelling data that are not in the parcel data.</p>
+<p>Merge parcels and dwellings</p>
+<pre class="r"><code>tax_temp &lt;- left_join(parcel_final, dwelling_final, by=&quot;parcel_id&quot;)</code></pre>
+<p>There are 1980 units in the combined parcel/dwelling data that are not in the land file.<br />
+There are 0 units in the land file that are not in the parcel/dwelling data.</p>
+<p>Merge parcels/dwellings and land file</p>
+<pre class="r"><code>tax_final &lt;- left_join(tax_temp, land_final, by=&quot;parcel_id&quot;)</code></pre>
+<p>Merge onto Blacknight file</p>
+<p>There are 848 units in the combined tax data that are not in the BlacKnight data.<br />
+There are 531 units in the tax data that are not in the BlackKnight data.</p>
+<pre class="r"><code>jur_final &lt;- left_join(tax_final, jur_temp, by=&quot;parcel_id&quot;)</code></pre>
 </div>
 <div id="save" class="section level2">
 <h2>Save</h2>
