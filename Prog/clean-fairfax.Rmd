@@ -389,9 +389,9 @@ jur_1 <- jur %>%
 Next, we need to collapse parcels to the number of units per acre, primarily due to condos habing seperate parcel numbers.
 
 ### Preserving parcel numbers
-Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.
+Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 8 digits in case there is a need to later combine with another parcel-level dataset.
 
-First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace `parcel_address` with `NA`.
+First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 8-digit parcel ID for the building, we replace `parcel_address` with `NA`.
 
 **Note:** It is possible that this may not hold for all jurisdiction. Visually confirm with a few multiple addresses.
 

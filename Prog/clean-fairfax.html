@@ -101,6 +101,9 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
+summary {
+  display: list-item;
+}
 </style>
 
 
@@ -108,9 +111,70 @@ button.code-folding-btn:focus {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
 });
 </script>
 
@@ -123,7 +187,6 @@ $(document).ready(function () {
   window.initializeCodeFolding("show" === "show");
 });
 </script>
-
 
 
 
@@ -247,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 12, 2019</p>
+<p>Last updated February 13, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -621,8 +684,8 @@ rm(jur_1, jur_2, jur_3)</code></pre>
 <p>Next, we need to collapse parcels to the number of units per acre, primarily due to condos habing seperate parcel numbers.</p>
 <div id="preserving-parcel-numbers" class="section level3">
 <h3>Preserving parcel numbers</h3>
-<p>Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.</p>
-<p>First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace <code>parcel_address</code> with <code>NA</code>.</p>
+<p>Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 8 digits in case there is a need to later combine with another parcel-level dataset.</p>
+<p>First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 8-digit parcel ID for the building, we replace <code>parcel_address</code> with <code>NA</code>.</p>
 <p><strong>Note:</strong> It is possible that this may not hold for all jurisdiction. Visually confirm with a few multiple addresses.</p>
 <pre class="r"><code>jur_2 &lt;- jur_1 %&gt;% 
   mutate(parcel_address = substr(parcel_id, 1, 8)) 
@@ -1057,13 +1120,13 @@ ties %&gt;%
   select(propaddress, z1, z2) %&gt;% 
   head(5)</code></pre>
 <pre><code>## # A tibble: 5 x 3
-##   propaddress             z1                      z2                      
-##   &lt;chr&gt;                   &lt;chr&gt;                   &lt;chr&gt;                   
-## 1 1013 DRANESVILLE RD     C-8(HIGHWAY COMMERCIAL) R-1(RESIDENTIAL 1 DU/AC)
-## 2 1020 SENECA RD          C-8(HIGHWAY COMMERCIAL) COMM (W/ RES/APT ZONING)
-## 3 10424 STALLWORTH CT     R-3C(R-3 W/CLUSTER DEV) RC(RES CONSERVATION 1DU~
-## 4 10605 OLD COLCHESTER RD R-1(RESIDENTIAL 1 DU/A~ RE(RES ESTATE 1DU/2AC)  
-## 5 10712 OLD COLCHESTER RD R-1(RESIDENTIAL 1 DU/A~ RE(RES ESTATE 1DU/2AC)</code></pre>
+##   propaddress             z1                       z2                      
+##   &lt;chr&gt;                   &lt;chr&gt;                    &lt;chr&gt;                   
+## 1 1013 DRANESVILLE RD     C-8(HIGHWAY COMMERCIAL)  R-1(RESIDENTIAL 1 DU/AC)
+## 2 1020 SENECA RD          C-8(HIGHWAY COMMERCIAL)  COMM (W/ RES/APT ZONING)
+## 3 10424 STALLWORTH CT     R-3C(R-3 W/CLUSTER DEV)  RC(RES CONSERVATION 1DU~
+## 4 10605 OLD COLCHESTER RD R-1(RESIDENTIAL 1 DU/AC) RE(RES ESTATE 1DU/2AC)  
+## 5 10712 OLD COLCHESTER RD R-1(RESIDENTIAL 1 DU/AC) RE(RES ESTATE 1DU/2AC)</code></pre>
 <p>Since there is no definitive way to break these ties, we replace the <code>zoning</code> variable with <code>NA</code>. In a later step, we will spatially join with the zoning layer to determine which zone these properties are in.</p>
 <pre class="r"><code>nested_all_1 &lt;- nested_all %&gt;% 
   mutate(ties_z = ifelse(map(zoning, length) &gt; 1, 1, 0)) %&gt;% 
