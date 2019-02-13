@@ -237,8 +237,8 @@ land_temp  <- land %>%
 
 There are `r land_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once in the land file.  
 
-There are `r (!jur_temp$parcel_id%in%land_temp$parcel_id) %>% sum` units in the Blacknight data that are not in the land data. 
-There are `r (!land_temp$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the land data that are not in the Blacknight data.  
+There are `r (!jur_temp$parcel_id%in%land_temp$parcel_id) %>% sum` units in the Blacknight data that are not in the dwelling data. 
+There are `r (!land_temp$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the dwelling data that are not in the Blacknight data.  
 
 For now, for each parcel that has multiple entries, I take the sum of the area and the first value of all of the other values. Can clean up later if we want to use this data.
 
@@ -252,21 +252,36 @@ land_final<-land_temp %>%
             category_tax = first(category_tax))
 ```
 
+We decide to merge the Fairfax files first in order to ensure that we maintain as much data as possible. 
+
+Congruence of Fairfax files
+
+There are `r (!parcel_final$parcel_id%in%dwelling_final$parcel_id) %>% sum` units in the parcel data that are not in the dwelling data.  
+There are `r (!dwelling_final$parcel_id%in% parcel_final$parcel_id) %>% sum` units in the dwelling data that are not in the parcel data.
+
+Merge parcels and dwellings
+```{r}
+tax_temp <- left_join(parcel_final, dwelling_final, by="parcel_id")
+```
+
+There are `r (!tax_temp$parcel_id%in%land_final$parcel_id) %>% sum` units in the combined parcel/dwelling data that are not in the land file.  
+There are `r (!land_final$parcel_id%in% tax_temp$parcel_id) %>% sum` units in the land file that are not in the parcel/dwelling data.
+
+Merge parcels/dwellings and land file
+
+```{r}
+tax_final <- left_join(tax_temp, land_final, by="parcel_id")
+```
 
 
-Merge
+Merge onto Blacknight file
+
+There are `r (!tax_final$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the combined tax data that are not in the BlacKnight data.  
+There are `r (!jur_temp$parcel_id%in% tax_final$parcel_id) %>% sum` units in the tax data that are not in the BlackKnight data.
+
 
 ```{r merge}
-
-jur1 <- left_join(jur_temp, parcel_final, 
-                 by = "parcel_id")
-
-jur2 <- left_join(jur1, dwelling_final, 
-                 by = "parcel_id")
-
-jur_final <- left_join(jur2, land_final, 
-                 by = "parcel_id")
-
+jur_final <- left_join(tax_final, jur_temp, by="parcel_id")
 ```
 
 ## Save
