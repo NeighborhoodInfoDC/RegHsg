@@ -65,6 +65,15 @@ proc format;
 	12= "All other subsidy combinations";
 
 run;
+*** Create summary tables ***;
+
+proc format;
+  value yearrng
+    2015-2020 = '2015 - 2020'
+    2021-2025 = '2021 - 2025'
+    2026-2030 = '2026 - 2030'
+    2031-2035 = '2031 - 2035';
+run;
 
 data Work.Allassistedunits;
 	set RegHsg.Natlpres_activeandinc_prop;
@@ -301,3 +310,244 @@ proc means data=Work.SubsidyExpirationDates n mean min max;
   format ProgCat ProgCat.;
 run;
 
+options missing=' ';
+
+ods csvall  body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_unique.csv";
+
+title3 "Project and assisted unit unique counts";
+
+proc tabulate data=Work.SubsidyExpirationDates  format=comma10. noseps missing;
+  class ProgCat / preloadfmt order=data;
+  var mid_assistedunits moe_assistedunits;
+  table
+    /** Rows **/
+    all='Total' ProgCat=' ',
+    /** Columns **/
+    n='Projects'
+    sum='Assisted Units' * ( mid_assistedunits='Est.'  moe_assistedunits='+/-' )
+    ;
+  format ProgCat ProgCat.;
+run;
+
+ods csvall close;
+
+ods csvall  body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_expire.csv";
+
+title3 "Projects and assisted units with subsidies  expiring 2015 - 2035";
+footnote1 "LIHTC expiration includes 15-year compliance and 30-year subsidy end dates.";
+
+proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+  where not missing(earliest_expirationdate15);
+  class ProgCat / preloadfmt order=data;
+  class earliest_expirationdate15;
+  var mid_assistedunits moe_assistedunits;
+  table
+    /** Rows **/
+    all='Total' ProgCat=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units By Subsidy Expiration Year' * (  all='Total' earliest_expirationdate15=' ' ) 
+      * (  mid_assistedunits='Est.' moe_assistedunits='+/-' )
+    ;
+  format ProgCat ProgCat. earliest_expirationdate15 yearrng.;
+run;
+
+ods csvall close;
+
+/*Section 8*/
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_s8.csv";
+
+title3 "Section 8 projects and assisted units with subsidies expiring 2015 - 2035";
+footnote1;
+
+proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+  where not missing(s8_endyr);
+  class s8_endyr;
+  var s8_all_assistedunits;
+  table 
+    /** Rows **/
+    all='Total' s8_endyr=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units' * s8_all_assistedunits=' ' 
+    ;
+  format s8_endyr yearrng.;
+run;
+
+ods csvall close;
+
+/*S202*/
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_s202.csv";
+
+title3 "Section 202 projects and assisted units with subsidies expiring 2015 - 2035";
+footnote1;
+
+proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+  where not missing(s202_endyr);
+  class s202_endyr;
+  var s202_all_assistedunits;
+  table 
+    /** Rows **/
+    all='Total' s202_endyr=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units' * s202_all_assistedunits=' ' 
+    ;
+  format s202_endyr yearrng.;
+run;
+
+ods csvall close;
+
+/*S236*/
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_s236.csv";
+
+title3 "Section 236 projects and assisted units with subsidies expiring 2015 - 2035";
+footnote1;
+
+proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+  where not missing(s236_endyr);
+  class s236_endyr;
+  var s236_all_assistedunits;
+  table 
+    /** Rows **/
+    all='Total' s236_endyr=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units' * s236_all_assistedunits=' ' 
+    ;
+  format s236_endyr yearrng.;
+run;
+
+ods csvall close;
+
+/*FHA*/
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_FHA.csv";
+
+title3 "FHA projects and assisted units with subsidies expiring 2015 - 2035";
+footnote1;
+
+proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+  where not missing(FHA_endyr);
+  class FHA_endyr;
+  var FHA_all_assistedunits;
+  table 
+    /** Rows **/
+    all='Total' FHA_endyr=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units' * FHA_all_assistedunits=' ' 
+    ;
+  format FHA_endyr yearrng.;
+run;
+
+ods csvall close;
+
+/*LIHTC*/
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_LIHTC.csv";
+
+title3 "LIHTC projects and assisted units with subsidies expiring 2015 - 2035";
+footnote1;
+
+proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+  where not missing(LIHTC_endyr);
+  class LIHTC_endyr;
+  var LIHTC_all_assistedunits;
+  table 
+    /** Rows **/
+    all='Total' LIHTC_endyr=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units' * LIHTC_all_assistedunits=' ' 
+    ;
+  format LIHTC_endyr yearrng.;
+run;
+
+ods csvall close;
+
+/*LIHTC-15year*/
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_LIHTC15yr.csv";
+
+title3 "LIHTC projects and assisted units with subsidies expiring 2015 - 2035, 15 year dates";
+footnote1;
+
+proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+  where not missing(LIHTC_15yr);
+  class LIHTC_15yr;
+  var LIHTC_all_assistedunits;
+  table 
+    /** Rows **/
+    all='Total' LIHTC_15yr=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units' * LIHTC_all_assistedunits=' ' 
+    ;
+  format LIHTC_15yr yearrng.;
+run;
+
+ods csvall close;
+
+/*RHS515*/
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_rhs515.csv";
+
+title3 "RHS 515 projects and assisted units with subsidies expiring 2015 - 2035";
+footnote1;
+
+proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+  where not missing(RHS515_endyr);
+  class RHS515_endyr;
+  var RHS515_all_assistedunits;
+  table 
+    /** Rows **/
+    all='Total' RHS515_endyr=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units' * RHS515_all_assistedunits=' ' 
+    ;
+  format RHS515_endyr yearrng.;
+run;
+
+ods csvall close;
+
+/*RHS538*/
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_rhs538.csv";
+
+title3 "RHS 538 projects and assisted units with subsidies expiring 2015 - 2035";
+footnote1;
+
+proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+  where not missing(RHS538_endyr);
+  class RHS538_endyr;
+  var RHS538_all_assistedunits;
+  table 
+    /** Rows **/
+    all='Total' RHS538_endyr=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units' * RHS538_all_assistedunits=' ' 
+    ;
+  format RHS538_endyr yearrng.;
+run;
+
+ods csvall close;
+
+/*HOME*/
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_HOME.csv";
+
+title3 "HOME projects and assisted units with subsidies expiring 2015 - 2035";
+footnote1;
+
+proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+  where not missing(HOME_endyr);
+  class HOME_endyr;
+  var HOME_all_assistedunits;
+  table 
+    /** Rows **/
+    all='Total' HOME_endyr=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units' * HOME_all_assistedunits=' ' 
+    ;
+  format HOME_endyr yearrng.;
+run;
+
+ods csvall close;
