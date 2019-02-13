@@ -101,6 +101,9 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
+summary {
+  display: list-item;
+}
 </style>
 
 
@@ -108,9 +111,70 @@ button.code-folding-btn:focus {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
 });
 </script>
 
@@ -123,7 +187,6 @@ $(document).ready(function () {
   window.initializeCodeFolding("show" === "show");
 });
 </script>
-
 
 
 
@@ -356,7 +419,7 @@ rm(pafile, landfile, dwellingfile)</code></pre>
         mutate(parcel_id = str_replace_all(assessorsparcelnumberapnpin, &quot;-&quot;, &quot;&quot;))</code></pre>
 <p>There are 531 units in the Blacknight data that are not in the parcels data.<br />
 There are 848 units in the parcels data that are not in the BlackKnight data.</p>
-<p>From the dwelling file, we will keep a variable designating the number of stories of the dwelling.</p>
+<p>From the dwelling file, we will keep a variable designating the number of stories and the sf of living area of the dwelling.</p>
 <p>We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.</p>
 <pre class="r"><code>dwelling_temp &lt;- dwelling %&gt;% 
   select(raw_parcelid_par = PARID,
@@ -381,12 +444,12 @@ There are 848 units in the parcels data that are not in the BlackKnight data.</p
   mutate(parcel_id = str_replace_all(raw_parcelid_land, &quot; &quot;, &quot;&quot;)) %&gt;%
   filter(!is.na(raw_parcelid_land))</code></pre>
 <p>There are 6864 parcels that show up more than once in the land file.</p>
-<p>There are 2471 units in the Blacknight data that are not in the dwelling data. There are 872 units in the dwelling data that are not in the Blacknight data.</p>
+<p>There are 2471 units in the Blacknight data that are not in the land data. There are 872 units in the land data that are not in the Blacknight data.</p>
 <p>For now, for each parcel that has multiple entries, I take the sum of the area and the first value of all of the other values. Can clean up later if we want to use this data.</p>
 <pre class="r"><code>land_final&lt;-land_temp %&gt;% 
   group_by(parcel_id) %&gt;%
   summarize(area_tax=sum(area_tax, na.rm=T), 
-            land_parcel_sum = n(),
+            land_per_parcel = n(),
             units_tax = first(units_tax),
             category_tax = first(category_tax))</code></pre>
 <p>Merge</p>
