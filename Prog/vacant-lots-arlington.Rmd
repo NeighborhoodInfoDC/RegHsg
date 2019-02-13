@@ -52,7 +52,7 @@ library(sf)
 
 set_urbn_defaults("print")
 
-source("../Macros/read-jurisdiction.R")
+source("../Macros/read-arlington.R")
 
 ```
 
@@ -66,6 +66,7 @@ if (!dir.exists("../Data")) {
 
 Set FIPS code and filepath name
 ```{r fips}
+
 currentfips <- "51013"
 filepath <- "arlington"
 
@@ -77,7 +78,7 @@ Load in Black Knight data for the region, select jurisdiction and standard varia
 
 ```{r read}
 if (!exists("jur")) {
-  jur <- read_jurisdiction(filepath)
+  jur <- read_arlington()
 } else {
   warning(filepath, " data already read in")
 }

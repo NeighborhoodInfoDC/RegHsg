@@ -266,7 +266,7 @@ library(sf)
 
 set_urbn_defaults(&quot;print&quot;)
 
-source(&quot;../Macros/read-jurisdiction.R&quot;)</code></pre>
+source(&quot;../Macros/read-arlington.R&quot;)</code></pre>
 <p>Create directory for data exports</p>
 <pre class="r"><code>if (!dir.exists(&quot;../Data&quot;)) {
   dir.create(&quot;../Data&quot;)
@@ -276,7 +276,7 @@ source(&quot;../Macros/read-jurisdiction.R&quot;)</code></pre>
 filepath &lt;- &quot;arlington&quot;</code></pre>
 <p>Load in Black Knight data for the region, select jurisdiction and standard variables <strong>CHANGE THIS TO clean_arlington function !!!</strong></p>
 <pre class="r"><code>if (!exists(&quot;jur&quot;)) {
-  jur &lt;- read_jurisdiction(filepath)
+  jur &lt;- read_arlington()
 } else {
   warning(filepath, &quot; data already read in&quot;)
 }</code></pre>

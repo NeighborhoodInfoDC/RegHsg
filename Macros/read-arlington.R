@@ -1,17 +1,16 @@
 
-#' Read in cleaned Black Knight data for jurisdiction
+#' Read in cleaned Black Knight data for Arlington County
 #'
 #'
 #'
-#' @param name name of county or jurisdiction 
 #' @param rmd indicates whether or not function is being called from an 
 #' Rmd document or not. Default is set to TRUE.
 #'
-#' @return dataframe of black knight data for select jurisdiction
+#' @return dataframe of black knight data for Arlington county, with all variables that were created in the clean and preclean phase.
 #' @export
 #'
 #' @examples jur <- read_jurisdiction("arlington", rmd = TRUE)
-read_jurisdiction <- function(name, rmd = TRUE) {
+read_arlington <- function(rmd = TRUE) {
   
   filename <- paste0("L:/Libraries/RegHsg/Data/", filepath,
                      "/", filepath, "-cleaned-data.csv")
