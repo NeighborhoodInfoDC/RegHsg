@@ -109,7 +109,7 @@ Select variables from each dataset that we want to keep: parcel id, UI property 
 We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.
 
 ```{r select-parcel}
-parcelbaseDC <- parcelbase %>% 
+parcelbaseDCraw <- parcelbase %>% 
   filter(in_last_ownerpt==1) %>% 
   select(parcelbase_parcelID = SSL,
          parcelbase_UIproptype = ui_proptype,
@@ -117,13 +117,14 @@ parcelbaseDC <- parcelbase %>%
          parcelbase_proparea=LANDAREA,
          parcelbase_usecode= USECODE,
          parcelbase_proptype= PROPTYPE,
-         parcelbase_phasebuilt= PHASEBUILD
+         parcelbase_phasebuilt= PHASEBUILD,
+         parcelbase_suffix= SUFFIX
         ) %>% 
   mutate(parcelbase_parcelID= as.character(parcelbase_parcelID)) %>% 
   filter(!is.na(parcelbase_parcelID))
 
 
-parcelgeoDC <- parcelgeo %>% 
+parcelgeoDCraw <- parcelgeo %>% 
   select (parcelgeo_parcelID = SSL,
           parcelgeo_x= X_COORD,
           parcelgeo_y= Y_COORD) %>%
@@ -138,31 +139,38 @@ There are `r parcel %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcel
 
 ```{r dups-parcel}
 
-parcelbaseDC %>% group_by(parcelbase_parcelID) %>% filter(n()>1) %>% nrow()
+parcelbaseDCraw %>% group_by(parcelbase_parcelID) %>% filter(n()>1) %>% nrow()
 
-parcelgeoDC %>% group_by(parcelgeo_parcelID) %>% filter(n()>1) %>% nrow()
+parcelgeoDCraw %>% group_by(parcelgeo_parcelID) %>% filter(n()>1) %>% nrow()
 
 
 ```
 Clean up ID variable to remove spaces for join
 ```{r cleanid}
 
-jurid <- jurraw %>% 
-          mutate(parcelnumber = paste0(substr(assessorsparcelnumberapnpin, 1, 4),
-                            "-",
-                            substr(assessorsparcelnumberapnpin, 11, 16)))
+jurpar <- jurraw %>% 
+  filter(str_detect(assessorsparcelnumberapnpin, "PAR")) %>% 
+  mutate(newparcelid= paste0(substr(assessorsparcelnumberapnpin, 1, 4), substr(assessorsparcelnumberapnpin, 6, 9), substr(assessorsparcelnumberapnpin, 11, 14))
+         )
 
-parcelbaseDC <- parcelbaseDC %>%
-            mutate(parcelbase_SSL = paste0(substr(parcelbase_parcelID, 1, 4),
-                            "-",
-                            substr(parcelbase_parcelID, 9, 12)))
+jurrest <- jurraw %>% 
+  filter(!str_detect(assessorsparcelnumberapnpin, "PAR"))
+
+jurmutate <- jurrest %>% 
+  mutate(square= substr(assessorsparcelnumberapnpin, 1, 4),
+         lot= substr(assessorsparcelnumberapnpin, 11, 14),
+         newsuffix= str_extract(assessorsparcelnumberapnpin, "[[:alpha:] ]+"),
+         newsuffix2= str_replace(newsuffix, " ", "-"),
+         suflen=str_length(newsuffix2))
 
 
-parcelgeoDC <- parcelgeoDC %>%
-            mutate(parcelgeo_SSL = paste0(substr(parcelgeo_parcelID, 1, 4),
-                            "-",
-                            substr(parcelgeo_parcelID, 9, 12)))
+ jurmutate2 <-  jurmutate %>% 
+        mutate (suffix= str_detect(assessorsparcelnumberapnpin, "[:alpha:]"== 1,1,0),
+                newparcelid= ifelse(suffix==0, paste0(square, "----", lot), paste0(square, newsuffix2,lot)))                                                                                    
+                  
 
+
+dup2 <- parcelgeoDC %>% group_by(parcelgeo_SSL) %>% filter(n()>1) 
 
 ```
 
@@ -177,21 +185,29 @@ All parcelbase dataset was merged on to parcelgeo dataset
 
 ```{r merge}
 
-parcel <- left_join(parcelbaseDC, parcelgeoDC, by = c("parcelbase_SSL"="parcelgeo_SSL"))
+#since the parcel_geo file don't have suffix information, merge first and then construct the SSL
+parcel <- left_join(parcelbaseDCraw, parcelgeoDCraw, by = c("parcelbase_parcelID"="parcelgeo_parcelID"))
+
+parcelbaseDC <- parcel %>%
+            mutate(parcelbase_SSL = paste0(substr(parcelbase_parcelID, 1, 4),       str_pad(parcelbase_suffix,width=4, side="right",pad="-"), substr(parcelbase_parcelID, 9, 12)))
+
+#no dups after cleaning up the parcel base data SSL
+dup2 <- parcelbaseDC %>% 
+  group_by(parcelbase_SSL) %>% filter(n()>1) 
 
 
-jur <- left_join(jurid, parcel ,
+#join with black knight data
+jur <- left_join(jurid, parcel,
                  by = c("parcelnumber" = "parcelbase_SSL"))
-
 
 jur %>% filter(is.na(parcelbase_x)) %>% nrow()
 
 #if nonmatching has 0 rows it means parcelbase data is completely merged with parcel geo dataset
-nonmatching <- anti_join ( parcelbaseDC, parcelgeoDC, by=c("parcelbase_SSL"="parcelgeo_SSL"))
+nonmatching <- anti_join ( parcelbaseDCraw, parcelgeoDCraw, by=c("parcelbase_parcelID"="parcelgeo_parcelID"))
 
 #19738 observation from black knight didn't merge
 nonmatchingblackknight <- anti_join(jurid, parcel ,
-                 by = c("parcelnumber" = "parcelbase_SSL"))
+                 by = c("new_parcelnumber" = "parcelbase_SSL"))
 
 #2498 observations from parcelbase dataset didn't merge
 nonmatchingparcel <- anti_join(parcel, jurid, 
