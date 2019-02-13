@@ -509,6 +509,17 @@ else if jurisdiction=10 then hhwt_COG=hhwt_5*1.037945192; *alexandria;
 label hhwt_COG="Household Weight Calibrated to COG Estimates for Households";
 
 run; 
+
+proc tabulate data=fiveyeartotal format=comma12. noseps missing;
+  class jurisdiction;
+  var hhwt_5 hhwt_cog;
+  table
+    all='Total' jurisdiction=' ',
+    sum='Sum of HHWTs' * ( hhwt_5='Original 5-year' hhwt_cog='Adjusted to COG totals' )
+  / box='Occupied housing units';
+  format jurisdiction jurisdiction.;
+run;
+
 proc means data= fiveyeartotal;
 class hud_inc;
 var Costratio incomecat total ;
@@ -535,6 +546,16 @@ else if jurisdiction=10 then hhwt_COG=hhwt_5*1.037945192; *alexandria;
 label hhwt_COG="Household Weight Calibrated to COG Estimates for Households";
 run; 
 
+proc tabulate data=fiveyeartotal_vacant format=comma12. noseps missing;
+  class jurisdiction;
+  var hhwt_5 hhwt_cog;
+  table
+    all='Total' jurisdiction=' ',
+    sum='Sum of HHWTs' * ( hhwt_5='Original 5-year' hhwt_cog='Adjusted to COG totals' )
+  / box='Vacant (nonseasonal) housing units';
+  format jurisdiction jurisdiction.;
+run;
+
 /*need to account for other vacant units in baseline and future targets for the region to complete picture of the total housing stock*/
 data fiveyeartotal_othervacant;
    set other_vacant_2013 other_vacant_2014 other_vacant_2015 other_vacant_2016 other_vacant_2017;
@@ -556,6 +577,17 @@ else if jurisdiction=10 then hhwt_COG=hhwt_5*1.037945192; *alexandria;
 
 label hhwt_COG="Household Weight Calibrated to COG Estimates for Households";
 run; 
+
+proc tabulate data=fiveyeartotal_othervacant format=comma12. noseps missing;
+  class jurisdiction;
+  var hhwt_5 hhwt_cog;
+  table
+    all='Total' jurisdiction=' ',
+    sum='Sum of HHWTs' * ( hhwt_5='Original 5-year' hhwt_cog='Adjusted to COG totals' )
+  / box='Seasonal vacant housing units';
+  format jurisdiction jurisdiction.;
+run;
+
 proc sort data =fiveyeartotal_othervacant;
 by jurisdiction;
 proc freq data=fiveyeartotal_othervacant;
