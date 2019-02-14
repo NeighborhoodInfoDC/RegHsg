@@ -10,7 +10,7 @@
  Description:  Produce detailed popualtion by age group, race ethnicity and jurisciation from 2008-2017
  ACS IPUMS data for the COGS region:
  DC (11001)
- Charles Couty(24017)
+ Charles County(24017)
  Frederick County(24021)
  Montgomery County (24031)
  Prince George's County(24033)
@@ -25,6 +25,7 @@
  Manassas Park City (51685)
 
  Modifications: 01/16/19 LH Update incomecat for capped 80% of AMI. Add date for output. 
+			    02/13/19 LH Change relate for 2 serials to better reflect household structure. 
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -33,7 +34,7 @@
 %DCData_lib( RegHsg)
 %DCData_lib( Ipums)
 
-%let date=01162019;
+%let date=02132019;
 
 proc format;
 
@@ -156,8 +157,17 @@ run;
 %householdinfo(2016);
 %householdinfo(2017);
 
+
+/*change serial 560493 and 255313 in 2013 from HoH to other nonrelative as they really reflect GQ (GQ=5) and those households have 11 and 20 people (not related)*/
+data Householddetail_2013r;
+	set Householddetail_2013;
+
+if serial in (560493, 255313) then relate=12;
+
+run; 
+
 data fiveyeartotal;
-set Householddetail_2013 Householddetail_2014 Householddetail_2015 Householddetail_2016 Householddetail_2017;
+set Householddetail_2013r Householddetail_2014 Householddetail_2015 Householddetail_2016 Householddetail_2017;
 totalpop=0.2;
 run;
 /*total COG*/
