@@ -167,28 +167,46 @@ jurrestmutate <- jurrest %>%
          newsuffix= str_extract(assessorsparcelnumberapnpin, "[[:alpha:] ]+"),
          newsuffix2= str_trim(newsuffix, side=c("both")),
          suflen=str_length(newsuffix2),
-         newsuffix3= str_pad(newsuffix2, 4, side="right",pad="-"))
+         newsuffix3= str_pad(newsuffix2, 4, side="right",pad=" "))
  
 jurrestmutate2 <- jurrestmutate %>% 
   mutate(newparcelid = paste0(square, newsuffix3,lot)) 
 
 jurrestmutate3 <- select( jurrestmutate2, -newsuffix, -newsuffix2, -suflen, -characterdetect, firstcharacter)
 
-####then clean up the SSL with leading alphabets
+####then clean up the SSL with leading alphabets, there are two cases: 1. normal leading alphabets, we want to keep them. For SSL that start with "WF", "BD", "BDPI", "PI", we need to remove them 
 
-jursquaremutate <- jursquare %>% 
+####break the jursquare dataset into two
+jursquare1 <- jursquare %>% 
+  mutate (removeflag= ifelse(str_detect(assessorsparcelnumberapnpin, c("WF", "BD", "BDPI", "PI")), 1, 0))%>% 
+  filter (removeflag==1)
+
+jursquare2 <- jursquare %>% 
+  mutate (removeflag= ifelse(str_detect(assessorsparcelnumberapnpin, c("WF", "BD", "BDPI", "PI")), 1, 0))%>% 
+  filter (removeflag!=1)
+
+
+jursquaremutate2 <- jursquare2 %>% 
   mutate(square= substr(assessorsparcelnumberapnpin, 1, 4),
          lot= substr(assessorsparcelnumberapnpin, 11, 14),
          newsuffix= str_sub(assessorsparcelnumberapnpin, 5, 10),
          newsuffix2= str_trim(newsuffix, side=c("both")),
          suflen=str_length(newsuffix2),
-         newsuffix3= str_pad(newsuffix2, 4, side="right",pad="-"))
+         newsuffix3= str_pad(newsuffix2, 4, side="right",pad=" "))
 
-jursquaremutate2 <- jursquaremutate %>% 
+jursquaremutatenew2 <- jursquaremutate2 %>% 
   mutate(newparcelid = paste0(square, newsuffix3,lot)) 
 
-jursquaremutate3 <- select( jursquaremutate2, -newsuffix, -newsuffix2, -suflen, -characterdetect, firstcharacter)
 
+jursquaremutate1 <- jursquare1 %>% 
+   mutate(square= substr(assessorsparcelnumberapnpin, 5, 9),
+         lot= substr(assessorsparcelnumberapnpin, 11, 14),
+         newparcelid= paste0(square, "    ", lot)) 
+
+jursquaremutate <-  bind_rows(jursquaremutatenew2, jursquaremutate1) 
+
+jursquaremutate3 <- select( jursquaremutate, -removeflag, -newsuffix, -newsuffix2, -suflen, -characterdetect, firstcharacter)
+                          
 
 ######then merge the two dataset together to get the new blackknight dataset
 finaljur <- bind_rows(jurrestmutate3, jursquaremutate3) 
@@ -217,7 +235,7 @@ All parcelbase dataset was merged on to parcelgeo dataset
 parcel <- left_join(parcelbaseDCraw, parcelgeoDCraw, by = c("parcelbase_parcelID"="parcelgeo_parcelID"))
 
 parcelbaseDC <- parcel %>%
-            mutate( parcelbase_SSL = paste0(substr(parcelbase_parcelID, 1, 4),       str_pad(parcelbase_suffix,width=4, side="right",pad="-"), substr(parcelbase_parcelID, 9, 12)))
+            mutate( parcelbase_SSL = paste0(substr(parcelbase_parcelID, 1, 4),       str_pad(parcelbase_suffix,width=4, side="right",pad=" "), substr(parcelbase_parcelID, 9, 12)))
 
 #check is duplicate id is created due to cleaning
 dup2 <- parcelbaseDC %>% 
