@@ -117,7 +117,8 @@ parcelbaseDCraw <- parcelbase %>%
          parcelbase_usecode= USECODE,
          parcelbase_proptype= PROPTYPE,
          parcelbase_phasebuilt= PHASEBUILD,
-         parcelbase_suffix= SUFFIX
+         parcelbase_suffix= SUFFIX，
+         in_last_ownerpt= in_last_ownerpt
         ) %>% 
   mutate(parcelbase_parcelID= as.character(parcelbase_parcelID)) %>% 
   filter(!is.na(parcelbase_parcelID))
@@ -210,7 +211,7 @@ jursquaremutate3 <- select( jursquaremutate, -removeflag, -newsuffix, -newsuffix
                           
 
 ######then merge the two dataset together to get the new blackknight dataset
-finaljur <- bind_rows(jurrestmutate3, jursquaremutate3) 
+finaljur1 <- bind_rows(jurrestmutate3, jursquaremutate3) 
 
 #### check if it has the same rows as the raw dataset
 stopifnot(nrow(finaljur) == nrow(jurraw))
@@ -218,9 +219,14 @@ stopifnot(nrow(finaljur) == nrow(jurraw))
 #CHECK if duplate ids are introduced after the cleaning
 dup <- finaljur %>% group_by(newparcelid) %>% filter(n()>1) 
 
-#since duplicate is introduced because of removing "BD", "PI", "WF", need to remove one record
+#since duplicate is introduced because of removing "BD", "PI", "WF", need to remove duplicate record
+# here I'm keeping whichever record that have less missing information
+finaljur1$na_count <- apply(is.na(finaljur1), 1, sum)
 
-
+finaljur2 <- finaljur1 %>% group_by(newparcelid) %>% 
+  arrange(desc(-na_count)) %>% 
+    slice(1) %>%
+    ungroup()
 
 ```
 
@@ -255,25 +261,25 @@ dup2 <- parcelbaseDC %>%
   group_by(parcelbase_SSL) %>% filter(n()>1) 
 
 #final check of parcel id length before joining
-checkblk <- finaljur %>% 
+checkblk <- finaljur2 %>% 
   mutate(idlength= str_length(newparcelid))
 
 checkparcel <- parcelbaseDC %>% 
   mutate(idlength=str_length(parcelbase_SSL))
 
 #join with black knight data
-jur <- left_join(parcelbaseDC,finaljur, 
+jur <- left_join(parcelbaseDC,finaljur2, 
                  by = c( "parcelbase_SSL"= "newparcelid" ))
 
-#20112 observation from black knight didn't merge
-nonmatchingblackknight <- anti_join(finaljur, parcelbaseDC ,
+#20072 observation from black knight didn't merge
+nonmatchingblackknight <- anti_join(finaljur2, parcelbaseDC ,
                  by = c("newparcelid" = "parcelbase_SSL"))
 
 #2512 observations from parcelbase dataset didn't merge
-nonmatchingparcel <- anti_join(parcelbaseDC, finaljur, 
+nonmatchingparcel <- anti_join(parcelbaseDC, finaljur2, 
                  by = c( "parcelbase_SSL" = "newparcelid"))
 
-#of the 20112 observations from black knight didn't merge,   are in the parcelbase dataset but was not in the most recent update 
+#of the 20072 observations from black knight didn't merge,14378 are in the parcelbase dataset but was not in the most recent update 
 nonmatchingblackknigtrest <- anti_join(nonmatchingblackknight, parcelbaseDCnonupdate,
                  by = c("newparcelid" = "parcelbase_SSL"))
 
