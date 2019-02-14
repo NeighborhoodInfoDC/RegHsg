@@ -74,7 +74,6 @@ filepath <- "arlington"
 ```
 
 Load in Black Knight data for the region, select jurisdiction and standard variables
-**CHANGE THIS TO clean_arlington function !!!**
 
 ```{r read}
 if (!exists("jur")) {
@@ -143,10 +142,8 @@ zdir <- paste0("L:/Libraries/RegHsg/Maps/",
                "-zoning-map")
 zfile <- str_sub(list.files(zdir), end = -5) %>% unique()
 
-
 zon <- read_sf(dsn = zdir,
                layer = zfile)
-
 
 st_geometry(zon)
 zon <- st_transform(zon, crs = 4326)
@@ -187,6 +184,19 @@ vacant1 <- st_set_geometry(vacantjoin, NULL)
 
 ```
 
+Count how many observations did not join. This will throw an error if more than 5% did not match- in this case, check the underlying shapefiles for compatability.
+
+```{r count-spatial}
+
+paste0(sum(is.na(vacant1$ZN_DESIG)), " observations didn't join- ",
+      round(sum(is.na(vacant1$ZN_DESIG)) / nrow(vacant1) * 100, 2), "%")
+
+if (sum(is.na(vacant1$ZN_DESIG)) / nrow(vacant1) > .05) {
+  stop("More than 5% of observations could not be spatially joined.")
+}
+      
+```
+
 Test how many have different results from the Black Knight zoning variable.
 
 ```{r test-spatial}
@@ -194,6 +204,20 @@ Test how many have different results from the Black Knight zoning variable.
 vacant1 %>% 
   group_by(is.na(zoning)) %>% 
   count(zoning == ZN_DESIG)
+```
+
+Take a closer look how many and what percent are different "just because"- not because they didn't merge, have missing values, or have duplicate values.
+
+```{r test-spatial-again}
+vacant1 %>% 
+  filter(!is.na(zoning), 
+         !is.na(ZN_DESIG), 
+         str_detect(zoning, "/") == FALSE) %>% 
+  mutate(different_flag = ifelse(zoning != ZN_DESIG,
+                                 1,
+                                 0)) %>% 
+  summarize(different = sum(different_flag, na.rm = TRUE)) %>% 
+  mutate(percent_different = paste0(round(different / nrow(vacant1) *100, 2), "%"))
 
 ```
 
@@ -224,6 +248,7 @@ vacant1 <- vacant1 %>%
 ```
 
 Recombine with observations with missing coordinates, check that number of rows is the same.
+
 ```{r get-final}
 
 vacantfinal <- vacant %>% 
@@ -238,6 +263,7 @@ stopifnot(nrow(vacantfinal) == nrow(vacant))
 Some of the observations that have missing coordinates also have a dual zoning designation. We reset these to NA, since there is no way to break the tie.
 
 ```{r real-final}
+
 vacantfinal <- vacantfinal %>% 
   mutate(zoning = ifelse(str_detect(zoning, "/") == TRUE,
                          NA,
@@ -368,16 +394,15 @@ zoningcode <- zoningcode %>%
 Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original `zoning` variable.
 
 ```{r bk-clean}
+
 vacantfinal <- vacantfinal %>% 
-  mutate(zoning_code = ifelse(zoning == "RC",
-                              "R-C",
-                              zoning),
-         zoning_code = ifelse(zoning_code %in% c("C-O-ROSSLYN", "C-O-ROSS"),
-                              "C-O Rosslyn",
-                              zoning_code),
-         zoning_code = ifelse(zoning_code == "RA-H-3.2",
-                              "RA-H 3.2",
-                              zoning_code))
+  mutate(zoning_code = case_when(
+    zoning == "RC" ~ "R-C",
+    zoning %in% c("C-O-ROSSLYN", "C-O-ROSS") ~ "C-O Rosslyn",
+    zoning == "RA-H-3.2" ~ "RA-H 3.2",
+    TRUE ~ zoning
+  ))
+           
 ```
 
 
@@ -434,7 +459,7 @@ We can create a function that will allow us to easily adjust these parameters an
 #'
 #' @param dataset dataset with lot size and zoning variables 
 #' @param construction_efficiency Assumption for construction efficiency
-#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
 #'
 #' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`, `units_height`, `units_lotsize`, and `units_total`
 #'
@@ -470,8 +495,8 @@ get_unit_variables <- function(dataset,
 #'
 #' @param dataset dataset with lot size and zoning variables 
 #' @param construction_efficiency Assumption for construction efficiency
-#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey
-#' @param dwelling_type_breakdown Options are T or F- indicated whether or not estimates should be broken down by `dwelling_type`
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
+#' @param dwelling_type_breakdown Options are TRUE or FALSE- indicates whether or not estimates should be broken down by `dwelling_type`
 #'
 #' @return Returns a dataframe with summary statistics on the maximum units that can be build on lots, per the by-right zoning code.
 #'
@@ -521,16 +546,16 @@ Get summary statistics for several different parameters
 
 ```{r sum}
 
-get_unit_summary(zoningdata1,
-                 .7,
-                 940,
+get_unit_summary(dataset = zoningdata1,
+                 construction_efficiency = .7,
+                 average_unit_size = 940,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
 
-map_df(c(.7, .85), ~ get_unit_summary(zoningdata1,
-                                      .,
-                                      940,
+map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata1,
+                                      construction_efficiency = .,
+                                      average_unit_size = 940,
                                       dwelling_type_breakdown = FALSE)) %>% 
   knitr::kable()
 
@@ -541,7 +566,8 @@ Look at the distribution of units for lots with more than 1 unit, to check for e
 ```{r scatter, echo = FALSE}
 
 zoningdata1 %>% 
-  get_unit_variables(.7, 940) %>% 
+  get_unit_variables(construction_efficiency = .7,
+                     average_unit_size = 940) %>% 
   filter(units_total > 1) %>% 
   ggplot() +
   geom_point(mapping = aes(lotsize_sf, units_total),
@@ -565,7 +591,8 @@ Look more closely at vacant lots < 50,000 SF
 ```{r scatter-small, echo = FALSE}
 
 zoningdata1 %>% 
-  get_unit_variables(.7, 940) %>% 
+  get_unit_variables(construction_efficiency = .7,
+                     average_unit_size = 940) %>% 
   filter(lotsize_sf < 50000,
          units_total > 1) %>% 
   ggplot() +

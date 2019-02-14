@@ -247,7 +247,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 13, 2019</p>
+<p>Last updated February 14, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -274,7 +274,7 @@ source(&quot;../Macros/read-arlington.R&quot;)</code></pre>
 <p>Set FIPS code and filepath name</p>
 <pre class="r"><code>currentfips &lt;- &quot;51013&quot;
 filepath &lt;- &quot;arlington&quot;</code></pre>
-<p>Load in Black Knight data for the region, select jurisdiction and standard variables <strong>CHANGE THIS TO clean_arlington function !!!</strong></p>
+<p>Load in Black Knight data for the region, select jurisdiction and standard variables</p>
 <pre class="r"><code>if (!exists(&quot;jur&quot;)) {
   jur &lt;- read_arlington()
 } else {
@@ -397,10 +397,8 @@ filepath &lt;- &quot;arlington&quot;</code></pre>
                &quot;-zoning-map&quot;)
 zfile &lt;- str_sub(list.files(zdir), end = -5) %&gt;% unique()
 
-
 zon &lt;- read_sf(dsn = zdir,
                layer = zfile)
-
 
 st_geometry(zon)</code></pre>
 <pre><code>## Geometry set for 614 features 
@@ -429,6 +427,13 @@ ggplot() +
 <pre class="r"><code>vacantjoin &lt;- st_join(vacantsf, zon, join = st_intersects)</code></pre>
 <p>After the join, we convert back to a dataframe, for ease of computations.</p>
 <pre class="r"><code>vacant1 &lt;- st_set_geometry(vacantjoin, NULL)</code></pre>
+<p>Count how many observations did not join. This will throw an error if more than 5% did not match- in this case, check the underlying shapefiles for compatability.</p>
+<pre class="r"><code>paste0(sum(is.na(vacant1$ZN_DESIG)), &quot; observations didn't join- &quot;,
+      round(sum(is.na(vacant1$ZN_DESIG)) / nrow(vacant1) * 100, 2), &quot;%&quot;)</code></pre>
+<pre><code>## [1] &quot;11 observations didn't join- 0.56%&quot;</code></pre>
+<pre class="r"><code>if (sum(is.na(vacant1$ZN_DESIG)) / nrow(vacant1) &gt; .05) {
+  stop(&quot;More than 5% of observations could not be spatially joined.&quot;)
+}</code></pre>
 <p>Test how many have different results from the Black Knight zoning variable.</p>
 <pre class="r"><code>vacant1 %&gt;% 
   group_by(is.na(zoning)) %&gt;% 
@@ -441,6 +446,18 @@ ggplot() +
 ## 2 FALSE           TRUE                  1348
 ## 3 FALSE           NA                      11
 ## 4 TRUE            NA                      74</code></pre>
+<p>Take a closer look how many and what percent are different “just because”- not because they didn’t merge, have missing values, or have duplicate values.</p>
+<pre class="r"><code>vacant1 %&gt;% 
+  filter(!is.na(zoning), 
+         !is.na(ZN_DESIG), 
+         str_detect(zoning, &quot;/&quot;) == FALSE) %&gt;% 
+  mutate(different_flag = ifelse(zoning != ZN_DESIG,
+                                 1,
+                                 0)) %&gt;% 
+  summarize(different = sum(different_flag, na.rm = TRUE)) %&gt;% 
+  mutate(percent_different = paste0(round(different / nrow(vacant1) *100, 2), &quot;%&quot;))</code></pre>
+<pre><code>##   different percent_different
+## 1       435            21.96%</code></pre>
 <p>Many are different because the Black Knight zoning has two zoning codes, separated by a slash. We can test how many of these instances have the spatially joined zoning designation in the Black Knight zoning variable.</p>
 <pre class="r"><code>vacant1 %&gt;% 
   filter(str_detect(zoning, &quot;/&quot;)) %&gt;% 
@@ -624,15 +641,12 @@ rm(z)</code></pre>
 <h2>Merge with cleaned data</h2>
 <p>Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original <code>zoning</code> variable.</p>
 <pre class="r"><code>vacantfinal &lt;- vacantfinal %&gt;% 
-  mutate(zoning_code = ifelse(zoning == &quot;RC&quot;,
-                              &quot;R-C&quot;,
-                              zoning),
-         zoning_code = ifelse(zoning_code %in% c(&quot;C-O-ROSSLYN&quot;, &quot;C-O-ROSS&quot;),
-                              &quot;C-O Rosslyn&quot;,
-                              zoning_code),
-         zoning_code = ifelse(zoning_code == &quot;RA-H-3.2&quot;,
-                              &quot;RA-H 3.2&quot;,
-                              zoning_code))</code></pre>
+  mutate(zoning_code = case_when(
+    zoning == &quot;RC&quot; ~ &quot;R-C&quot;,
+    zoning %in% c(&quot;C-O-ROSSLYN&quot;, &quot;C-O-ROSS&quot;) ~ &quot;C-O Rosslyn&quot;,
+    zoning == &quot;RA-H-3.2&quot; ~ &quot;RA-H 3.2&quot;,
+    TRUE ~ zoning
+  ))</code></pre>
 <p>Merge on zoning code variable. Test that all variables merged.</p>
 <pre class="r"><code>zoningdata &lt;- left_join(vacantfinal, zoningcode, by = &quot;zoning_code&quot;)</code></pre>
 <p>There are <code>r</code> observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.</p>
@@ -698,7 +712,7 @@ rm(z)</code></pre>
 #'
 #' @param dataset dataset with lot size and zoning variables 
 #' @param construction_efficiency Assumption for construction efficiency
-#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
 #'
 #' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`, `units_height`, `units_lotsize`, and `units_total`
 #'
@@ -734,8 +748,8 @@ get_unit_variables &lt;- function(dataset,
 #'
 #' @param dataset dataset with lot size and zoning variables 
 #' @param construction_efficiency Assumption for construction efficiency
-#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey
-#' @param dwelling_type_breakdown Options are T or F- indicated whether or not estimates should be broken down by `dwelling_type`
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
+#' @param dwelling_type_breakdown Options are TRUE or FALSE- indicates whether or not estimates should be broken down by `dwelling_type`
 #'
 #' @return Returns a dataframe with summary statistics on the maximum units that can be build on lots, per the by-right zoning code.
 #'
@@ -776,9 +790,9 @@ get_unit_summary &lt;- function(dataset,
     }
 }</code></pre>
 <p>Get summary statistics for several different parameters</p>
-<pre class="r"><code>get_unit_summary(zoningdata1,
-                 .7,
-                 940,
+<pre class="r"><code>get_unit_summary(dataset = zoningdata1,
+                 construction_efficiency = .7,
+                 average_unit_size = 940,
                  dwelling_type_breakdown = TRUE) %&gt;% 
   knitr::kable()</code></pre>
 <table>
@@ -841,9 +855,9 @@ get_unit_summary &lt;- function(dataset,
 </tr>
 </tbody>
 </table>
-<pre class="r"><code>map_df(c(.7, .85), ~ get_unit_summary(zoningdata1,
-                                      .,
-                                      940,
+<pre class="r"><code>map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata1,
+                                      construction_efficiency = .,
+                                      average_unit_size = 940,
                                       dwelling_type_breakdown = FALSE)) %&gt;% 
   knitr::kable()</code></pre>
 <table>
