@@ -60,6 +60,8 @@ source("../Macros/filter-bk.R")
 source("../Macros/select-vars.R")
 source("../Macros/sample-properties.R")
 source("../Macros/classify-addresses.R")
+source("../Macros/mode_narm.R")
+source("../Macros/max_narm.R")
 ```
 
 #### Set FIPS code and filepath name
