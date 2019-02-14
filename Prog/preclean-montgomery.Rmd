@@ -43,13 +43,7 @@ knitr::opts_chunk$set(message = FALSE)
 
 ## Description
 
-There are three main goals of the jurisdiction level cleaning process:
-
-1. Recategorize the county land use codes into more general codes
-
-2. Collapse observations at the address level
-
-3. Clean the variables needed to provide density estimates
+Read in Blacknight Parcel data and save it as an R data file.
 
 
 ## Set-up
@@ -108,7 +102,8 @@ jur <- region %>%
 ## Download files
 
 Montgomery has one files of use
-- Parcel-level file, could provide alternative lot area metric
+- Parcel-level shape file, could provide alternative lot area metric, be of use for later analyses
+- Will merge shape file after data cleaning
 
 ```{r download-data}
 pafile <- paste0(rdir, filepath, "-parcel-file.zip")
