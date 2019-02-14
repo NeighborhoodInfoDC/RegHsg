@@ -110,7 +110,6 @@ We also archive the raw parcel ID and create a new version that will merge with 
 
 ```{r select-parcel}
 parcelbaseDCraw <- parcelbase %>% 
-  filter(in_last_ownerpt==1) %>% 
   select(parcelbase_parcelID = SSL,
          parcelbase_UIproptype = ui_proptype,
          parcelbase_address=PREMISEADD,
@@ -134,8 +133,6 @@ mutate(parcelgeo_parcelID= as.character(parcelgeo_parcelID)) %>%
 
 ```
 
-
-There are `r parcel %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once on the parcel file. We combine these by taking the average area and width. 
 
 ```{r dups-parcel}
 
@@ -178,16 +175,16 @@ jurrestmutate3 <- select( jurrestmutate2, -newsuffix, -newsuffix2, -suflen, -cha
 
 ####break the jursquare dataset into two
 jursquare1 <- jursquare %>% 
-  mutate (firsttwo= str_sub(assessorsparcelnumberapnpin, 1,2),
-          newfirsttwo= str_trim(firsttwo, side=c("both")),
-    removeflag= ifelse(str_detect(firstcharacter,c("WF", "BD", "PI"), 1, 0))%>% 
-  filter (removeflag==1))
+  mutate(firsttwo= str_sub(assessorsparcelnumberapnpin, 1,2),
+         newfirsttwo= str_trim(firsttwo, side=c("both")),
+         removeflag= ifelse(str_detect(newfirsttwo, "WF|BD|PI") ==1, 1, 0)) %>% 
+  filter(removeflag==1)
 
 jursquare2 <- jursquare %>% 
-  mutate (firsttwo= str_sub(assessorsparcelnumberapnpin, 1,2),
-          newfirsttwo= str_trim(firsttwo, side=c("both")),
-          removeflag= ifelse(str_detect(firstcharacter, c("WF", "BD", "PI"), 1, 0))%>% 
-  filter (removeflag!=1))
+  mutate(firsttwo= str_sub(assessorsparcelnumberapnpin, 1,2),
+         newfirsttwo= str_trim(firsttwo, side=c("both")),
+         removeflag= ifelse(str_detect(newfirsttwo,"WF|BD|PI")==1, 1, 0)) %>%
+  filter(removeflag!=1)
 
 
 jursquaremutate2 <- jursquare2 %>% 
@@ -221,6 +218,9 @@ stopifnot(nrow(finaljur) == nrow(jurraw))
 #CHECK if duplate ids are introduced after the cleaning
 dup <- finaljur %>% group_by(newparcelid) %>% filter(n()>1) 
 
+#since duplicate is introduced because of removing "BD", "PI", "WF", need to remove one record
+
+
 
 ```
 
@@ -239,7 +239,16 @@ All parcelbase dataset was merged on to parcelgeo dataset
 parcel <- left_join(parcelbaseDCraw, parcelgeoDCraw, by = c("parcelbase_parcelID"="parcelgeo_parcelID"))
 
 parcelbaseDC <- parcel %>%
-            mutate( parcelbase_SSL = paste0(substr(parcelbase_parcelID, 1, 4),       str_pad(parcelbase_suffix,width=4, side="right",pad=" "), substr(parcelbase_parcelID, 9, 12)))
+            mutate( parcelbase_SSL = paste0(substr(parcelbase_parcelID, 1, 4), 
+                                            str_pad(parcelbase_suffix,width=4, side="right",pad=" "),
+                                            substr(parcelbase_parcelID, 9, 12))) %>%
+            filter(in_last_ownerpt==1) 
+
+parcelbaseDCnonupdate <- parcel %>%
+            mutate( parcelbase_SSL = paste0(substr(parcelbase_parcelID, 1, 4), 
+                                            str_pad(parcelbase_suffix,width=4, side="right",pad=" "),
+                                            substr(parcelbase_parcelID, 9, 12))) %>%
+            filter(in_last_ownerpt!=1) 
 
 #check is duplicate id is created due to cleaning
 dup2 <- parcelbaseDC %>% 
@@ -263,6 +272,10 @@ nonmatchingblackknight <- anti_join(finaljur, parcelbaseDC ,
 #2512 observations from parcelbase dataset didn't merge
 nonmatchingparcel <- anti_join(parcelbaseDC, finaljur, 
                  by = c( "parcelbase_SSL" = "newparcelid"))
+
+#of the 20112 observations from black knight didn't merge,   are in the parcelbase dataset but was not in the most recent update 
+nonmatchingblackknigtrest <- anti_join(nonmatchingblackknight, parcelbaseDCnonupdate,
+                 by = c("newparcelid" = "parcelbase_SSL"))
 
 
 ```
