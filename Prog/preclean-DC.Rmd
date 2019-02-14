@@ -180,14 +180,14 @@ jurrestmutate3 <- select( jurrestmutate2, -newsuffix, -newsuffix2, -suflen, -cha
 jursquare1 <- jursquare %>% 
   mutate (firsttwo= str_sub(assessorsparcelnumberapnpin, 1,2),
           newfirsttwo= str_trim(firsttwo, side=c("both")),
-    removeflag= ifelse(newfirsttwo==c("WF", "BD", "PI"), 1, 0))%>% 
-  filter (removeflag==1)
+    removeflag= ifelse(str_detect(firstcharacter,c("WF", "BD", "PI"), 1, 0))%>% 
+  filter (removeflag==1))
 
 jursquare2 <- jursquare %>% 
   mutate (firsttwo= str_sub(assessorsparcelnumberapnpin, 1,2),
           newfirsttwo= str_trim(firsttwo, side=c("both")),
-          removeflag= ifelse(newfirsttwo== c("WF", "BD", "PI"), 1, 0))%>% 
-  filter (removeflag!=1)
+          removeflag= ifelse(str_detect(firstcharacter, c("WF", "BD", "PI"), 1, 0))%>% 
+  filter (removeflag!=1))
 
 
 jursquaremutate2 <- jursquare2 %>% 
