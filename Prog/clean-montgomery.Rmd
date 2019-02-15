@@ -60,6 +60,8 @@ source("../Macros/filter-bk.R")
 source("../Macros/select-vars.R")
 source("../Macros/sample-properties.R")
 source("../Macros/classify-addresses.R")
+source("../Macros/max_narm.R")
+source("../Macros/mode_narm.R")
 ```
 
 #### Create local directory for data exports
@@ -100,9 +102,9 @@ currentjur_county <- jur %>%
   group_by(countylandusedescription) %>% 
   count()
 
-if (!file.exists(paste0("Data/", filepath, "-county-land-use.csv"))) {
+if (!file.exists(paste0("../Data/", filepath, "-county-land-use.csv"))) {
   write_csv(currentjur_county,
-            paste0("Data/", filepath, "-county-land-use.csv"))
+            paste0("../Data/", filepath, "-county-land-use.csv"))
 }
 
 rm(currentjur_county)
@@ -132,20 +134,12 @@ res_codes <-
     "CONDO HI RISE",
     "CONDO HI RISE-VACANT",
     "CONDO TH",
-    "DORMITORY",
-    "FRATERNAL BUILDING",
-    "FRATERNITY HOUSE",
     "GARDEN CONDO",
     "GARDEN CONDO-VACANT",
-    "GROUP HOME",
-    "HOME FOR THE ELDERLY",
     "LOFT",
-    "MARINA CONDOMINIUM SLIP",
     "MIXED RESIDENTIAL / RETAIL",
     "MULTIPLE RESIDENCE",
-    "OFFICE CONDOMINIUM",
     "ONE BEDROOMS",
-    "RECTORY",
     "RESIDENTIAL",
     "RESIDENTIAL-COMMERCIAL",
     "RESIDENTIAL-CONDOMINIUM",
@@ -158,12 +152,10 @@ res_codes <-
     "RESIDENTIAL SPLIT FOYER",
     "RESIDENTIAL SPLIT LEVEL",
     "RESIDENTIAL STANDARD UNIT",
-    "RETAIL CONDOMINIUM",
     "RURAL RESIDENCE",
     "TOWN HOUSE",
-    "VACANT RESIDENTIAL",
-    "WAREHOUSE CONDOMINIUM"
-)
+    "VACANT RESIDENTIAL"
+ )
 
 jur <- jur %>% 
   mutate(residential =
@@ -185,25 +177,15 @@ mf <- c("APARTMENT",
         "CONDO-END UNIT",
         "CONDO HI RISE",
         "CONDO TH",
-        "DORMITORY",
-        "FRATERNAL BUILDING",
-        "FRATERNITY HOUSE",
         "GARDEN CONDO",
-        "GROUP HOME",
-        "HOME FOR THE ELDERLY",
         "LOFT",
-        "MARINA CONDOMINIUM SLIP",
         "MIXED RESIDENTIAL / RETAIL",
         "MULTIPLE RESIDENCE",
-        "OFFICE CONDOMINIUM",
         "ONE BEDROOMS",
         "RESIDENTIAL-CONDOMINIUM",
-        "RESIDENTIAL APARTMENT UNITS",
-        "RETAIL CONDOMINIUM",
-        "WAREHOUSE CONDOMINIUM")
+        "RESIDENTIAL APARTMENT UNITS")
 
-sf <- c("RECTORY",
-        "RESIDENTIAL",
+sf <- c("RESIDENTIAL",
         "RESIDENTIAL-COMMERCIAL",
         "RESIDENTIAL-TOWNHOUSE CENTER UNIT",
         "RESIDENTIAL-TOWNHOUSE END UNIT",
@@ -222,7 +204,17 @@ vacant <- c("APARTMENTS-VACANT",
             "RESIDENTIAL-VACANT",
             "VACANT RESIDENTIAL")
 
-other <- c("AGRICULTURAL",
+other <- c("WAREHOUSE CONDOMINIUM",
+           "RETAIL CONDOMINIUM",
+           "OFFICE CONDOMINIUM",
+           "MARINA CONDOMINIUM SLIP",
+           "GROUP HOME",
+           "HOME FOR THE ELDERLY",
+           "FRATERNAL BUILDING",
+           "FRATERNITY HOUSE",
+           "DORMITORY",
+           "RECTORY",
+           "AGRICULTURAL",
            "ARMORY",
            "AUDITORIUM",
            "AUTO CENTER",
@@ -336,11 +328,9 @@ rm(mf, sf, vacant, other)
 ```{r cr-catd}
 apartment <- c("APARTMENT",
                "APARTMENTS",
-               "DORMITORY",
                "LOFT",
                "ONE BEDROOMS",
-               "RESIDENTIAL APARTMENT UNITS",
-               "HOME FOR THE ELDERLY")
+               "RESIDENTIAL APARTMENT UNITS")
 
 condo <- c("CONDO",
            "CONDO-CENTER UNIT",
@@ -348,20 +338,12 @@ condo <- c("CONDO",
            "CONDO HI RISE",
            "CONDO TH",
            "GARDEN CONDO",
-           "MARINA CONDOMINIUM SLIP",
-           "OFFICE CONDOMINIUM",
-           "RESIDENTIAL-CONDOMINIUM",
-           "RETAIL CONDOMINIUM",
-           "WAREHOUSE CONDOMINIUM")
+           "RESIDENTIAL-CONDOMINIUM")
 
 
 mfother <- c("MULTIPLE RESIDENCE")
 
-sfdetached <- c("FRATERNAL BUILDING",
-                "FRATERNITY HOUSE",
-                "GROUP HOME",
-                "RECTORY",
-                "RESIDENTIAL MOBILE HOME",
+sfdetached <- c("RESIDENTIAL MOBILE HOME",
                 "RESIDENTIAL SPLIT FOYER",
                 "RESIDENTIAL SPLIT LEVEL",
                 "RESIDENTIAL STANDARD UNIT",
@@ -387,7 +369,17 @@ vacantres <- c("RESIDENTIAL-VACANT",
 
 vacantmixeduse <- c("COMMERCIAL/RESIDENTIAL-VACANT")
 
-other <- c("AGRICULTURAL",
+other <- c("WAREHOUSE CONDOMINIUM",
+           "RETAIL CONDOMINIUM",
+           "OFFICE CONDOMINIUM",
+           "MARINA CONDOMINIUM SLIP",
+           "GROUP HOME",
+           "HOME FOR THE ELDERLY",
+           "FRATERNAL BUILDING",
+           "FRATERNITY HOUSE",
+           "DORMITORY",
+           "RECTORY",
+           "AGRICULTURAL",
            "ARMORY",
            "AUDITORIUM",
            "AUTO CENTER",
@@ -515,11 +507,7 @@ condo <- c("CONDO",
         "CONDO-CENTER UNIT",
         "CONDO-END UNIT",
         "CONDO TH",
-        "MARINA CONDOMINIUM SLIP",
-        "OFFICE CONDOMINIUM",
-        "RESIDENTIAL-CONDOMINIUM",
-        "RETAIL CONDOMINIUM",
-        "WAREHOUSE CONDOMINIUM")
+        "RESIDENTIAL-CONDOMINIUM")
 
 mixeduse <- c("MIXED RESIDENTIAL / RETAIL",
               "COMMERCIAL/RESIDENTIAL",
@@ -530,13 +518,9 @@ apartment <- c("APARTMENT",
         "APARTMENTS",
         "LOFT",
         "ONE BEDROOMS",
-        "RESIDENTIAL APARTMENT UNITS",
-        "DORMITORY")
+        "RESIDENTIAL APARTMENT UNITS")
 
-other <- c("FRATERNAL BUILDING",
-        "FRATERNITY HOUSE","GROUP HOME",
-        "HOME FOR THE ELDERLY",
-        "MULTIPLE RESIDENCE")
+other <- c("MULTIPLE RESIDENCE")
 
 
 
