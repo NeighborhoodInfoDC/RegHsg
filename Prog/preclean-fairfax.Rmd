@@ -275,8 +275,8 @@ tax_final <- left_join(tax_temp, land_final, by="parcel_id")
 
 Merge onto Blacknight file
 
-There are `r (!tax_final$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the combined tax data that are not in the BlacKnight data.  
-There are `r (!jur_temp$parcel_id%in% tax_final$parcel_id) %>% sum` units in the tax data that are not in the BlackKnight data.
+There are `r (!tax_final$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the combined tax data that are not in the BlackKnight data.  
+There are `r (!jur_temp$parcel_id%in% tax_final$parcel_id) %>% sum` units in the BlackKnight data that are not in the tax data.
 
 
 ```{r merge}

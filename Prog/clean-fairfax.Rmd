@@ -593,7 +593,7 @@ nested <- multiples_1 %>%
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
                     yearbuilt, long, lat,
-                    area_tax, zone_tax, possibleSF_tax, stories_tax, units_tax, category_tax), list) %>% 
+                    area_tax, zone_tax, possibleSF_tax, stories_tax, units_tax, category_tax, land_per_parcel, dwellings_per_parcel, num_livunit), list) %>% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
@@ -748,7 +748,7 @@ rm(nested, nested_done, nested_other, nested_1, nested_2)
 
 **Note: This entire section may not hold accross jurisdictions. Visually confirm that this applies. Some thresholds may need to be adjusted.**
 
-As the lot size variable from the BlackKnight data is missing `sum(is.na(jur$lotsize_sf))` observations, we would like to do the same methodology with some joined data from Fairfax county to compare whether their size variable contains more information. Fairfax's lotsize variable has `sum(is.na(jur$area_tax))` missing observations. 
+As the lot size variable from the BlackKnight data is missing `r sum(is.na(jur$lotsize_sf))` observations, we would like to do the same methodology with some joined data from Fairfax county to compare whether their size variable contains more information. Fairfax's lotsize variable has `r sum(is.na(jur$area_tax))` missing observations. 
 
 First, filter out all the observations where the function is known. Then, re-examine the remaining observations.
 There are a few variables needed:
@@ -1056,8 +1056,7 @@ singles_f <- singles_1 %>%
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
          ends_with("prop"),
-         area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, units_tax, 
-         parcel_id)
+         area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax,               units_tax, parcel_id, num_livunit, dwellings_per_parcel, land_per_parcel)
 
 missing_f <- missing %>% 
   select(county_fips, county_name,
@@ -1068,14 +1067,14 @@ missing_f <- missing %>%
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type, area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, units_tax, parcel_id)
+         category, category_detail, residential, building_type, area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, units_tax, parcel_id, num_livunit, dwellings_per_parcel, land_per_parcel)
 
 multiples_f <- nested_final %>% 
   select(-ends_with("_list"), -lsmode, -lsfirst, 
          -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum, -lsmode_tax, -lsfirst_tax, -lsmode_num_tax, -fxn_tax, -unique_lots_tax, -area_tax_sum) %>% 
   mutate_at(vars(countylandusedescription, zoning,
                  category, category_detail, building_type, yearbuilt),
-            as.character) %>% 
+            as.character) %>%  
   mutate_at(vars(buildingarea, lat, long, residential), as.double) %>% 
   rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops, area_tax = area_tax_final, numberofunits_tax = nprops_tax) %>% 
   mutate(lotsize_acres = lotsize_sf / 43560,
