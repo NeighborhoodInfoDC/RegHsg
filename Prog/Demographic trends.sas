@@ -34,6 +34,7 @@ COGS region:
 %DCData_lib( NCDB )
 %DCData_lib( ACS )
 %DCData_lib( RegHsg )
+%DCData_lib( Census );
 proc format;
 
   value hud_inc
@@ -131,6 +132,145 @@ proc format;
 	;
   	  
 run;
+
+** Define libraries **;
+
+
+/* Path to raw data csv files and names */
+
+%let filepath = L:\Libraries\Census\Raw\Census population estimates\;
+%let infile = co-est2017-alldata.csv;
+
+/* Revisions */
+%let revisions = New file;
+
+filename fimport "&filepath.&infile." lrecl=32767;
+
+data Cen_population_estimates ;
+
+	infile FIMPORT delimiter = ',' MISSOVER DSD lrecl=32767 firstobs=2 ;
+
+	informat state best32. ;
+	informat county best32.;
+	informat POPESTIMATE2017 best32.;
+	informat POPESTIMATE2016 best32.;
+	informat POPESTIMATE2015 best32.;
+	informat POPESTIMATE2014 best32.;
+	informat POPESTIMATE2013 best32.;
+	informat POPESTIMATE2012 best32.;
+	informat POPESTIMATE2011 best32.;
+	informat POPESTIMATE2010 best32.;
+	informat CENSUS2010POP  best32.;
+	informat BIRTHS2010  best32.;
+	informat BIRTHS2011  best32.;
+	informat BIRTHS2012  best32.;
+	informat BIRTHS2013  best32.;
+	informat BIRTHS2014  best32.;
+	informat BIRTHS2015  best32.;
+	informat BIRTHS2016  best32.;
+	informat BIRTHS2017  best32.;
+	informat DEATHS2010  best32.;
+	informat DEATHS2011  best32.;
+	informat DEATHS2012  best32.;
+	informat DEATHS2013  best32.;
+	informat DEATHS2014  best32.;
+	informat DEATHS2015  best32.;
+	informat DEATHS2016  best32.;
+	informat DEATHS2017  best32.;
+	informat NATURALINCS2010  best32.;
+	informat NATURALINCS2011  best32.;
+	informat NATURALINCS2012  best32.;
+	informat NATURALINCS2013  best32.;
+	informat NATURALINCS2014  best32.;
+	informat NATURALINCS2015  best32.;
+	informat NATURALINCS2016  best32.;
+	informat NATURALINCS2017  best32.;
+	informat INTERNATIONALMIGS2010  best32.;
+	informat INTERNATIONALMIGS2011  best32.;
+	informat INTERNATIONALMIGS2012  best32.;
+	informat INTERNATIONALMIGS2013  best32.;
+	informat INTERNATIONALMIGS2014  best32.;
+	informat INTERNATIONALMIGS2015  best32.;
+	informat INTERNATIONALMIGS2016  best32.;
+	informat INTERNATIONALMIGS2017  best32.;
+	informat DOMESTICMIGS2010  best32.;
+	informat DOMESTICMIGS2011  best32.;
+	informat DOMESTICMIGS2012  best32.;
+	informat DOMESTICMIGS2013  best32.;
+	informat DOMESTICMIGS2014  best32.;
+	informat DOMESTICMIGS2015  best32.;
+	informat DOMESTICMIGS2016  best32.;
+	informat DOMESTICMIGS2017  best32.;
+
+	input 	
+
+	state
+	county
+	POPESTIMATE2017 
+	POPESTIMATE2016 
+	POPESTIMATE2015 
+	POPESTIMATE2014 
+	POPESTIMATE2013 
+	POPESTIMATE2012 
+    POPESTIMATE2011 
+	POPESTIMATE2010 
+    CENSUS2010POP
+    BIRTHS2017 
+	BIRTHS2016 
+	BIRTHS2015 
+	BIRTHS2014 
+	BIRTHS2013 
+	BIRTHS2012 
+    BIRTHS2011 
+	BIRTHS2010 
+	DEATHS2017 
+	DEATHS2016 
+	DEATHS2015 
+	DEATHS2014 
+	DEATHS2013 
+	DEATHS2012 
+    DEATHS2011 
+	DEATHS2010 
+	NATURALINCS2017 
+	NATURALINCS2016 
+	NATURALINCS2015 
+	NATURALINCS2014 
+	NATURALINCS2013 
+	NATURALINCS2012 
+    NATURALINCS2011 
+	NATURALINCS2010 
+	INTERNATIONALMIGSS2017 
+	INTERNATIONALMIGSS2016 
+	INTERNATIONALMIGSS2015 
+	INTERNATIONALMIGSS2014 
+	INTERNATIONALMIGSS2013 
+	INTERNATIONALMIGSS2012 
+    INTERNATIONALMIGSS2011 
+	INTERNATIONALMIGSS2010 
+	DOMESTICMIGSS2017 
+	DOMESTICMIGSS2016 
+	DOMESTICMIGSS2015 
+	DOMESTICMIGSS2014 
+	DOMESTICMIGSS2013 
+	DOMESTICMIGSS2012 
+    DOMESTICMIGSS2011 
+	DOMESTICMIGSS2010 
+
+
+	;
+
+	ucounty = put(county,z5.);
+	state = put(state,z2.);
+
+	drop county_fips state_fips ;
+
+    if county in ("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685");
+
+
+run;
+
+
+
 data population (where= (ucounty in("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685" )));
 set NCDB.Ncdb_master_update;
 keep ucounty Jurisdiction trctpop7 trctpop8 trctpop9 trctpop0 trctpop1 numhhs7 numhhs8 numhhs9 numhhs0 numhhs1;
@@ -153,30 +293,26 @@ by ucounty;
 run;
 
 data pop17;
-set ACS.Acs_2013_17_dc_sum_regcnt_regcnt  ACS.Acs_2013_17_md_sum_regcnt_regcnt  ACS.Acs_2013_17_va_sum_regcnt_regcnt ;
-keep county ucounty Jurisdiction totpop_2013_17 totalhh_13_17;
-  if county in ("11001") then Jurisdiction =1;
-  if county  in ("24017") then Jurisdiction =2;
-  if county  in ("24021") then Jurisdiction =3;
-  if county  in ("24031") then Jurisdiction =4;
-  if county  in ("24033") then Jurisdiction =5;
-  if county  in ("51013") then Jurisdiction =6;
-  if county  in ("51059", "51600", "51610") then Jurisdiction =7;
-  if county  in ("51107") then Jurisdiction =8;
-  if county  in ("51153", "51683", "51685") then Jurisdiction =9; 
-  if county  in ("51510") then Jurisdiction =10; 
-
-  ucounty=county;
-
-  totalhh_13_17= familyhhtot_2013_17+nonfamilyhhtot_2013_17; 
+set Cen_population_estimates (where= (ucounty in("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685" )));
+keep ucounty Jurisdiction POPESTIMATE2017;
+  if ucounty in ("11001") then Jurisdiction =1;
+  if ucounty  in ("24017") then Jurisdiction =2;
+  if ucounty  in ("24021") then Jurisdiction =3;
+  if ucounty  in ("24031") then Jurisdiction =4;
+  if ucounty  in ("24033") then Jurisdiction =5;
+  if ucounty  in ("51013") then Jurisdiction =6;
+  if ucounty  in ("51059", "51600", "51610") then Jurisdiction =7;
+  if ucounty  in ("51107") then Jurisdiction =8;
+  if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
+  if ucounty  in ("51510") then Jurisdiction =10; 
 run;
 
-proc sort data=pop17;
+proc sort data=hh17;
 by county;
 run;
 
 data populationtrend;
-merge population pop17;
+merge population hh17;
 by ucounty;
 format Jurisdiction Jurisdiction. ;
 run;
@@ -187,9 +323,37 @@ run;
 
 proc summary data= populationtrend;
 	class Jurisdiction;
-	var trctpop7 trctpop8 trctpop9 trctpop0 trctpop1 totpop_2013_17 numhhs7 numhhs8 numhhs9 numhhs0 numhhs1 totalhh_13_17;
+	var trctpop7 trctpop8 trctpop9 trctpop0 trctpop1 POPESTIMATE2017;
 	output out= populationbyjur sum=;
 run;
+
+data COGSvacant_2017(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and pernum=1 and gq in (1,2) and ownershpd in ( 21,22 ));
+
+set Ipums.Acs_2017_vacant_dc Ipums.Acs_2017_vacant_md Ipums.Acs_2017_vacant_va ;
+%assign_jurisdiction; 
+totalvacant=1;
+
+run;
+
+data COGSarea_2017 (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
+		set Ipums.Acs_2017_dc Ipums.Acs_2017_md Ipums.Acs_2017_va;
+	%assign_jurisdiction; 
+totalunits=1;
+	run;
+
+proc data vacancyrate;
+merge COGSvacant_2017 COGSarea_2017;
+by upuma;
+run;
+
+proc summary data=vacancyrate;
+class Jurisdiction;
+var totalunits totalvacant;
+output out= vacancy2017 sum=;
+run;
+
+
+
 
 %macro popbyrace(year);
 data persons_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;
@@ -256,7 +420,6 @@ run;
 
 %mend popbyrace;
 
-%popbyrace(2000);
 %popbyrace(2010);
 %popbyrace(2017);
 
