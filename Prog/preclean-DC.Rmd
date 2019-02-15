@@ -214,10 +214,10 @@ jursquaremutate3 <- select( jursquaremutate, -removeflag, -newsuffix, -newsuffix
 finaljur1 <- bind_rows(jurrestmutate3, jursquaremutate3) 
 
 #### check if it has the same rows as the raw dataset
-stopifnot(nrow(finaljur) == nrow(jurraw))
+stopifnot(nrow(finaljur1) == nrow(jurraw))
 
 #CHECK if duplate ids are introduced after the cleaning
-dup <- finaljur %>% group_by(newparcelid) %>% filter(n()>1) 
+dup <- finaljur1 %>% group_by(newparcelid) %>% filter(n()>1) 
 
 #since duplicate is introduced because of removing "BD", "PI", "WF", need to remove duplicate record
 # here I'm keeping whichever record that have less missing information
