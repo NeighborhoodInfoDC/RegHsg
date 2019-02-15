@@ -514,6 +514,9 @@ stopifnot(sum(is.na(jur$propaddress)) == nrow(filter(jur,
 In order to do the collapse, we first identify addresses with more than one observation, and filter out those with a missing house number or address to avoid an improper collapse. Then, run a quick check to make sure there are no NAs.
 
 ```{r sep}
+
+#use parcelbase address to fill in address where possible
+
 jur <- jur %>% 
   classify_addresses()
 
@@ -831,7 +834,7 @@ Here, we create a variable to indicate how many of the values in `category_detai
 ```{r cd-resolve}
 cdties <- cdties %>% 
   mutate(test_vacant = as.integer(map(category_detail, 
-                                      ~ sum(str_detect(., "vacant")))))
+                                      ~ sum(str_detect(., "Vacant")))))
 
 count(cdties, test_vacant) %>% 
   rename(`Number of vacant categories` = test_vacant,
@@ -950,7 +953,7 @@ singles <- singles %>%
                            "sf",
                            category),
          category_detail = ifelse(category_detail == "Condominium unit",
-                                  "sf",
+                                  "Single-family home",
                                   category_detail))
 ```
 
