@@ -93,6 +93,10 @@ In order to complete the vacant land and soft site analysis, we will need to bre
 4. building_type: this indicates the building type for multifamily parcels (condos and apartments)
 
 Export county land use codes for manual classification
+
+Since we are keeping all parcel_base observations, this caused missing county land use descriptions in cases where blackknight data is not available. So instead of manual classifying county land use code, we will actually use the usecode and uiproptype for the next step. But we are still exporting a crosstab spread sheet where you can see the landusedescription and usecode. 
+
+
 ```{r export-landuse}
 currentjur_county <- jur %>% 
   group_by(countylandusedescription) %>% 
@@ -102,15 +106,15 @@ crosstab_category <- jur %>%
   group_by(countylandusedescription, parcelbase_usecode) %>% 
   count()
 
-if (!file.exists(paste0("../Data/", filepath, "-county-land-use.csv"))) {
+if (!file.exists(paste0("../Data/", filepath, "-county-land-use-new.csv"))) {
   write_csv(currentjur_county,
-            paste0("../Data/", filepath, "-county-land-use.csv"))
+            paste0("../Data/", filepath, "-county-land-use-new.csv"))
 }
 
 
-if (!file.exists(paste0("../Data/", filepath, "-county-land-use-crosstab.csv"))) {
+if (!file.exists(paste0("../Data/", filepath, "-county-land-use-crosstab-new.csv"))) {
   write_csv(crosstab_category,
-            paste0("../Data/", filepath, "-county-land-use-crosstab.csv"))
+            paste0("../Data/", filepath, "-county-land-use-crosstab-new.csv"))
 }
 
 rm(currentjur_county)
@@ -126,323 +130,222 @@ We use `ifelse()` and `case_when()` to create the three new variables based on t
 ##### `residential`
 ```{r classify}
 res_codes <- 
-  c("CONDO - VERTICAL",
-      "CONDO HORIZONTAL",
-      "CONDO HORIZONTAL COMBINED",
-      "CONDO VERTICAL",
-      "CONDO VERTICAL COMBINED",
-      "CONDO, INVESTMENT, HORIZONTAL",
-      "CONDO, INVESTMENT, VERTICAL",
-      "COOPERATIVE - HORIZONTAL - MIXED USE",
-      "COOPERATIVE - VERTICAL - MIXED USE",
-      "ELEVATOR APT",
-      "RES - CONVERSIONS - MORE THAN 5 UNITS",
-      "RES - COOPERATIVE - VERTICAL",
-      "RES CONVERSIONS - 5 UNITS",
-      "RES CONVERSIONS - LESS THAN 5 UNITS",
-      "RES COOPERATIVE - HORIZONTAL",
-      "RES FLATS - LESS THAN 5 UNITS",
-      "RES MIXED USE",
-      "RES SINGLE FAMILY DETACHED",
-      "RES SINGLE FAMILY MISC",
-      "RES SINGLE FAMILY ROW",
-      "RES SINGLE FAMILY SEMI-DETACHED",
-      "RESIDENTIAL - MULTIFAMILY MISC",
-      "RESIDENTIAL TRANSIENT MISC",
-      "SINGLE FAMILY - RES - NON CONFORMING",
-      "WALK UP APT"
- )
+  c("10", "11", "12", "13", "14")
 
 jur <- jur %>% 
   mutate(residential =
-           ifelse(countylandusedescription %in% res_codes, 1, 0))
+           ifelse(parcelbase_UIproptype %in% res_codes, 1, 0))
 
 rm(res_codes)
 ```
 
 ##### `category`
+
+I used this code to check some of the confusing ones in the parcel base data to assign the right category. May not need this step if we are identifying vacant lots/structures based on the ui_proptype
+```{r}
+## some Flase vacant are actually not vacant
+jur %>% 
+ filter(countylandusedescription == "FALSE VACANT") %>% 
+  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuilt) %>% 
+    arrange(desc(parcelbase_phasebuilt)) %>% 
+  head(20)
+
+```
+
 ```{r cr-cat}
 
-mf <- c("CONDO - VERTICAL",
-        "CONDO HORIZONTAL",
-        "CONDO HORIZONTAL COMBINED",
-        "CONDO VERTICAL",
-        "CONDO VERTICAL COMBINED",
-        "CONDO, INVESTMENT, HORIZONTAL",
-        "CONDO, INVESTMENT, VERTICAL",
-        "COOPERATIVE - HORIZONTAL - MIXED USE",
-        "COOPERATIVE - VERTICAL - MIXED USE",
-        "ELEVATOR APT",
-        "RES - CONVERSIONS - MORE THAN 5 UNITS",
-        "RES - COOPERATIVE - VERTICAL",
-        "RES CONVERSIONS - 5 UNITS",
-        "RES CONVERSIONS - LESS THAN 5 UNITS",
-        "RES COOPERATIVE - HORIZONTAL",
-        "RES FLATS - LESS THAN 5 UNITS",
-        "RES MIXED USE",
-        "RESIDENTIAL - MULTIFAMILY MISC",
-        "WALK UP APT",
-        "RESIDENTIAL TRANSIENT MISC")
+mf <- c("002",
+        "003",
+        "016",
+        "017",
+        "021",
+        "022",
+        "023",
+        "024",
+        "025",
+        "026",
+        "027",
+        "028",
+        "029",
+        "116",
+        "117",
+        "126",
+        "127",
+        "216",
+        "217",
+        "316",
+        "516",
+        "995"
+        )
 
-sf <- c("RES SINGLE FAMILY DETACHED",
-        "RES SINGLE FAMILY MISC",
-        "RES SINGLE FAMILY ROW",
-        "RES SINGLE FAMILY SEMI-DETACHED",
-        "SINGLE FAMILY - RES - NON CONFORMING")
+sf <- c("001",
+        "011",
+        "012",
+        "013",
+        "015",
+        "019"
+        )
 
-vacant <- c("FALSE VACANT",
-            "FALSE VACANT ABUTTING LOT (RES)",
-            "IMPROVED-USE NOT SPECIFIED",
-            "IMPROVED W/ PERMIT COMMERCIAL",
-            "TRUE VACANT",
-            "VACANT - UNIMPROVED PARKING",
-            "VACANT COMM USE, MISC COMM IMPRS",
-            "VACANT COMM W/ ZONING LIMITATIONS",
-            "VACANT W/ PERMIT COMMERCIAL",
-            "VACANT W/COMMERCIAL USE",
-            "VACANT W/PERMIT",
-            "VACANT W/ZONING LIMITS",
-            "UNIMPROVED-USE NOT SPECIFIED")
+vacant <- c("091",
+            "092",
+            "093",
+            "094",
+            "095",
+            "096",
+            "097",
+            "191",
+            "192",
+            "193",
+            "194",
+            "195",
+            "196",
+            "197"
+            )
 
-allother <- c("BANKS/FINANCIAL",
-                "CLUB PRIVATE",
-                "COMMERCIAL - OFFICE CONDOMINIUM",
-                "COMMERCIAL - OFFICE MISC",
-                "COMMERCIAL - RETAIL - CONDOMINIUM",
-                "COMMERCIAL - RETAIL - MISC",
-                "COMMERCIAL USE",
-                "CONDO GARAGE",
-                "DORMITORY",
-                "EDUCATIONAL",
-                "EMBASSIES/CHANCERIES/ETC",
-                "FAST FOOD RESTAURANTS",
-                "FRATERNITY/SORORITY HOUSE",
-                "GARAGE, MULTIFAMILY",
-                "GARAGE/VEHICLE SALES",
-                "HEALTH CARE FACILITY",
-                "HOTEL LARGE",
-                "HOTEL SMALL",
-                "INDUSTRIAL - MISC",
-                "INN",
-                "LIGHT INDUSTRIAL",
-                "MEDICAL",
-                "MOTEL",
-                "MUSEUMS/LIBRARIES/GALLERIES",
-                "OFFICE - CONDOMINIUM HORIZONTAL",
-                "OFFICE - CONDOMINIUM VERTICAL",
-                "OFFICE - LARGE",
-                "OFFICE - SMALL",
-                "PARKING GARAGE",
-                "PARKING LOT",
-                "PLANNED COMMERCIAL DEVELOPMENT",
-                "PUBLIC SERVICE",
-                "RAW MATERIAL HANDLING",
-                "RECREATIONAL",
-                "RELIGIOUS",
-                "RES SINGLE FAMILY GARAGE",
-                "RESTAURANTS",
-                "SPECIAL PURPOSE - MISC",
-                "SPECIAL PURPOSE MEMORIAL",
-                "STORE - BARBER/BEAUTY SHOP",
-                "STORE - DEPARTMENT",
-                "STORE - MISC",
-                "STORE - RESTAURANT",
-                "STORE - SHOPPING CENTER/MALL",
-                "STORE - SMALL/1 STORY",
-                "STORE - SUPER MARKET",
-                "THEATERS/ENTERTAINMENT",
-                "TOURIST HOMES",
-                "TRUCK TERMINAL",
-                "TRUE VACANT COMMERCIAL",
-                "UNIMPROVED PARKING LOT",
-                "VEHICLE SERVICE STATION - KIOSK",
-                "VEHICLE SERVICE STATION - KIOSK/OTHER",
-                "VEHICLE SERVICE STATION - MARKET/OTHER",
-                "VEHICLE SERVICE STATION - VINTAGE",
-                "VEHICLE SERVICE STATION, MARKET",
-                "WAREHOUSE - CONDOMINIUM",
-                "WAREHOUSING - 1 STORY",
-                "WAREHOUSING - MULTI-STORY"
-                )
+allother <- c("000",
+              "004",
+              "005",
+              "006",
+              "007",
+              "008",
+              "014",
+              "018",
+              "031",
+              "032",
+              "033",
+              "034",
+              "035",
+              "036",
+              "037",
+              "038",
+              "039",
+              "041",
+              "042",
+              "043",
+              "044",
+              "045",
+              "046",
+              "047",
+              "048",
+              "049",
+              "051",
+              "052",
+              "053",
+              "056",
+              "057",
+              "058",
+              "059",
+              "061",
+              "062",
+              "063",
+              "064",
+              "065",
+              "066",
+              "067",
+              "068",
+              "069",
+              "071",
+              "072",
+              "073",
+              "074",
+              "075",
+              "076",
+              "078",
+              "079",
+              "081",
+              "082",
+              "083",
+              "084",
+              "085",
+              "086",
+              "087",
+              "088",
+              "089",
+              "165",
+              "189",
+              "214",
+              "265",
+              "365",
+              "416",
+              "417",
+              "465"
+              )
 
 
 jur <- jur %>% 
   mutate(category = case_when(
-           countylandusedescription %in% mf ~ "mf",
-           countylandusedescription %in% allother ~ "all other category",
-           countylandusedescription %in% sf ~ "sf",
-           countylandusedescription %in% vacant ~ "vacant"))
+           parcelbase_usecode %in% mf ~ "mf",
+           parcelbase_usecode %in% allother ~ "all other category",
+           parcelbase_usecode %in% sf ~ "sf",
+           parcelbase_usecode %in% vacant ~ "vacant"))
 
 rm(mf, sf, vacant, allother)
 ```
 
 ##### `category_detail`
 ```{r cr-catd}
-sfd <- c("RES SINGLE FAMILY DETACHED",
-         "RES SINGLE FAMILY SEMI-DETACHED")
-
-sfa <- c("RES SINGLE FAMILY ROW")
-
-condo <- c("CONDO - VERTICAL",
-          "CONDO GARAGE",
-          "CONDO HORIZONTAL",
-          "CONDO HORIZONTAL COMBINED",
-          "CONDO VERTICAL",
-          "CONDO VERTICAL COMBINED",
-          "CONDO, INVESTMENT, HORIZONTAL",
-          "CONDO, INVESTMENT, VERTICAL",
-          "RES - CONVERSIONS - MORE THAN 5 UNITS",
-          "RES - COOPERATIVE - VERTICAL",
-          "RES CONVERSIONS - 5 UNITS",
-          "RES CONVERSIONS - LESS THAN 5 UNITS",
-          "RES COOPERATIVE - HORIZONTAL")
-
-apt <- c("ELEVATOR APT",
-        "RES FLATS - LESS THAN 5 UNITS",
-        "WALK UP APT",
-        "COOPERATIVE - HORIZONTAL - MIXED USE",
-        "COOPERATIVE - VERTICAL - MIXED USE")
-
-com <- c("BANKS/FINANCIAL",
-          "CLUB PRIVATE",
-          "COMMERCIAL - OFFICE CONDOMINIUM",
-          "COMMERCIAL - OFFICE MISC",
-          "COMMERCIAL - RETAIL - CONDOMINIUM",
-          "COMMERCIAL - RETAIL - MISC",
-          "COMMERCIAL USE",
-          "FAST FOOD RESTAURANTS",
-          "GARAGE/VEHICLE SALES",
-          "HEALTH CARE FACILITY",
-          "HOTEL LARGE",
-          "HOTEL SMALL",
-          "IMPROVED W/ PERMIT COMMERCIAL",
-          "INDUSTRIAL - MISC",
-          "INN",
-          "LIGHT INDUSTRIAL",
-          "MEDICAL",
-          "MOTEL",
-          "PARKING GARAGE",
-          "PARKING LOT",
-          "PLANNED COMMERCIAL DEVELOPMENT",
-          "RAW MATERIAL HANDLING",
-          "RECREATIONAL",
-          "RESTAURANTS",
-          "STORE - BARBER/BEAUTY SHOP",
-          "STORE - DEPARTMENT",
-          "STORE - MISC",
-          "STORE - RESTAURANT",
-          "STORE - SHOPPING CENTER/MALL",
-          "STORE - SMALL/1 STORY",
-          "STORE - SUPER MARKET",
-          "THEATERS/ENTERTAINMENT",
-          "TOURIST HOMES",
-          "VEHICLE SERVICE STATION - MARKET/OTHER",
-          "VEHICLE SERVICE STATION - VINTAGE",
-          "VEHICLE SERVICE STATION, MARKET",
-          "WAREHOUSE - CONDOMINIUM",
-          "WAREHOUSING - 1 STORY",
-          "WAREHOUSING - MULTI-STORY")
-
-office <- c("OFFICE - CONDOMINIUM HORIZONTAL",
-          "OFFICE - CONDOMINIUM VERTICAL",
-          "OFFICE - LARGE",
-          "OFFICE - SMALL")
-
-vacantcom <- c("TRUE VACANT COMMERCIAL",
-              "VACANT COMM USE, MISC COMM IMPRS",
-              "VACANT COMM W/ ZONING LIMITATIONS",
-              "VACANT W/ PERMIT COMMERCIAL",
-              "VACANT W/COMMERCIAL USE")
-
-vacantother <- c("FALSE VACANT",
-              "FALSE VACANT ABUTTING LOT (RES)",
-              "IMPROVED-USE NOT SPECIFIED",
-              "UNIMPROVED-USE NOT SPECIFIED",
-              "TRUE VACANT",
-              "VACANT - UNIMPROVED PARKING",
-              "VACANT W/PERMIT",
-              "VACANT W/ZONING LIMITS")
-
-otherres <-  c("RES MIXED USE",
-              "RES SINGLE FAMILY MISC",
-              "RESIDENTIAL - MULTIFAMILY MISC",
-              "RESIDENTIAL TRANSIENT MISC",
-              "SINGLE FAMILY - RES - NON CONFORMING") 
-
-othernonres <- c("DORMITORY",
-                "EDUCATIONAL",
-                "EMBASSIES/CHANCERIES/ETC",
-                "FRATERNITY/SORORITY HOUSE",
-                "GARAGE, MULTIFAMILY",
-                "MUSEUMS/LIBRARIES/GALLERIES",
-                "PUBLIC SERVICE",
-                "RELIGIOUS",
-                "SPECIAL PURPOSE - MISC",
-                "SPECIAL PURPOSE MEMORIAL",
-                "TRUCK TERMINAL",
-                "UNIMPROVED PARKING LOT",
-                "VEHICLE SERVICE STATION - KIOSK",
-                "VEHICLE SERVICE STATION - KIOSK/OTHER",
-                "RES SINGLE FAMILY GARAGE") 
 
 jur <- jur %>% 
   mutate(category_detail = case_when(
-           countylandusedescription %in% sfd ~ "single family detached",
-           countylandusedescription %in% sfa ~ "single family attached",
-           countylandusedescription %in% condo ~ "condo",
-           countylandusedescription %in% apt ~ "rental apartment",
-           countylandusedescription %in% com ~ "commerical",
-           countylandusedescription %in% office ~ "office",
-           countylandusedescription %in% vacantcom ~ "vacant commercial",
-           countylandusedescription %in% vacantother ~ "vacant all other",
-           countylandusedescription %in% otherres ~ "all other residential",
-           countylandusedescription %in% othernonres ~ "all other non residential"))
+           parcelbase_UIproptype == 10 ~ "Single-family home",
+           parcelbase_UIproptype == 11 ~ "Condominium unit",
+           parcelbase_UIproptype == 12  ~ "Cooperative building",
+           parcelbase_UIproptype == 13 ~ "Rental apartment building",
+           parcelbase_UIproptype == 19 ~ "Residential: Other",
+           parcelbase_UIproptype == 20  ~ "Retail",
+           parcelbase_UIproptype == 21  ~ "Office",
+           parcelbase_UIproptype == 22 ~ "Parking",
+           parcelbase_UIproptype == 23  ~ "Industrial",
+           parcelbase_UIproptype == 24  ~ "Hotel/motel",
+           parcelbase_UIproptype == 29  ~ "Other commerical",
+           parcelbase_UIproptype == 30  ~ "Group quarters",
+           parcelbase_UIproptype == 40  ~ "Garage",
+           parcelbase_UIproptype == 50  ~ "Vacant unimproved",
+           parcelbase_UIproptype == 51  ~ "Vacant with structures",
+           parcelbase_UIproptype == 99  ~ "unknown"
+           ))
 
-rm(sfd, sfa, condo,apt,com,office,vacantcom,vacantother,otherres,othernonres)
 
 ```
 
 ##### `building_type`
 ```{r cr-bt}
                
-vertical <- c("CONDO - VERTICAL",
-              "CONDO VERTICAL COMBINED",
-              "CONDO, INVESTMENT, VERTICAL",
-              "COOPERATIVE - VERTICAL - MIXED USE",
-              "ELEVATOR APT",
-              "RES - CONVERSIONS - MORE THAN 5 UNITS",
-              "RES - COOPERATIVE - VERTICAL")
+vertical <- c("017",
+            "022",
+            "027",
+            "028",
+            "117",
+            "126",
+            "127",
+            "217"
+            )
                
-horizontal <- c("CONDO HORIZONTAL",
-                "CONDO HORIZONTAL COMBINED",
-                "CONDO VERTICAL",
-                "CONDO, INVESTMENT, HORIZONTAL",
-                "RES COOPERATIVE - HORIZONTAL",
-                "COOPERATIVE - HORIZONTAL - MIXED USE",
-                "WALK UP APT")
+horizontal <- c("016",
+              "021",
+              "023",
+              "024",
+              "025",
+              "026",
+              "116",
+              "216",
+              "316",
+              "516")
 
-othermf <- c("RES CONVERSIONS - 5 UNITS",
-            "RES CONVERSIONS - LESS THAN 5 UNITS",
-            "RES FLATS - LESS THAN 5 UNITS",
-            "RES MIXED USE",
-            "RESIDENTIAL - MULTIFAMILY MISC")
+othermf <- c("002",
+            "003",
+            "029",
+            "995")
 
 jur <- jur %>% 
   mutate(building_type = case_when(
-           countylandusedescription %in% vertical ~ "vertical",
-           countylandusedescription %in% horizontal ~ "horizontal",
-           countylandusedescription %in% othermf ~ "other multi family structure"))
+           parcelbase_usecode %in% vertical ~ "vertical",
+           parcelbase_usecode %in% horizontal ~ "horizontal",
+           parcelbase_usecode %in% othermf ~ "other multi family structure"))
                            
 rm(vertical, horizontal, othermf )           
 ```
 
-I used this code to check some of the confusing ones in the parcel base data to assign the right category
-```{r}
-jur %>% 
- filter(countylandusedescription == "FALSE VACANT") %>% 
-  select(assessorsparcelnumberapnpin, propstreetname, owneroccupiedresidential) %>% 
-  head(20)
-```
 
 ### Check variable classifications
 These checks make sure that all county land use codes recieved new classifications, and shows the distribution of properties 
@@ -496,6 +399,8 @@ rm(newcat, mf)
 
 ### Recreate lot size
 There are errors in the different Black Knight lot size variables that make it impossible to compare lot size when reported in acres and square feet. Here, we create two new variables, `lotsize_acres` and `lotsize_sf` that standardize the unit of measurement. These variables will also convert values of 0 to `NA`, which will simplify calculations down the line.
+
+Note the parcelbase source file also has a landarea variable, but that's the square footage of property so we can't use it for calculating lot sizes.
 ```{r count}
 count(jur, lotsizeareaunit)
 ```
@@ -515,14 +420,16 @@ Next, we need to collapse parcels to the number of units per acre, primarily due
 ### Preserving parcel numbers
 Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.
 
-First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace `parcel_address` with `NA`.  
+First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace `parcel_address` with `NA`.  Notice parcel base id should always be the same for blackknight and parcelbase data because of the merge. 
 ```{r parcel}
 jur <- jur %>% 
-  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6)) 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6),
+         parcelbase_address= substr(parcelbase_parcelID, 1, 6)) 
 
 bad_parcels <- jur %>% 
   group_by(propaddress) %>% 
-  summarize(parcel = list(parcel_address)) %>% 
+  summarize(parcel = list(parcel_address),
+            parcelbase= list(parcelbase_address)) %>% 
   mutate(unq_parcels = as.integer(map(parcel, 
                                   function(x) length(unique(x))))) %>% 
   filter(unq_parcels > 1)
@@ -536,6 +443,7 @@ jur <- jur %>%
                                  parcel_address))
 
 rm(bad_addresses, bad_parcels)
+
 
 ```
 
@@ -617,14 +525,10 @@ if (TRUE %in% is.na(jur$address_type)) {
 
 ```
 
-For townhouses and other forms of attached housing, we do not want a collapse, since this is a function of addressing and not the unit type. We will reclassify the address type as `single` for properties that have a value of `sf attached` and `townhouse` for the `category_detail` variable.
+For townhouses and other forms of attached housing, we do not want a collapse, since this is a function of addressing and not the unit type. We will reclassify the address type as `single` for properties that have a value of `sf attached` and `townhouse` for the `category_detail` variable. For parcel base data we have already precleaned the type so don't need more cleaning here. 
 
 ```{r th}
 
-jur <- jur %>% 
-  mutate(address_type = ifelse(category_detail %in% c("single family attached" ),
-                                  "single",
-                                  address_type))
 
 ```
 
@@ -794,7 +698,7 @@ nested_done <- nested %>%
 
 ```
 
-There are a total of 3225 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah's logic, but had some with the nprops one. 
+There are a total of 2469 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah's logic, but had some with the nprops one. 
 
 1. The lotsize seems reasonable, but the nprop is double the actual value. Not sure how to deal with this
 2. In addition, I found a case (also presented in the table above) where one lotzie equals the sum of all other lotsize in the same address. I'm not sure how to programmatically detect all cases like this. 
@@ -858,7 +762,7 @@ rm(nested, nested_done, nested_other)
 #### Ties
 
 ##### Zoning
-There are 154 instances where there is a tie in the zoning code- examples below.
+There are 208 instances where there is a tie in the zoning code- examples below.
 
 ``` {r ties}
 
@@ -1042,11 +946,11 @@ count(singles, category)
 ```{r singles-redo}
 
 singles <- singles %>% 
-  mutate(category = ifelse(category_detail == "condo",
+  mutate(category = ifelse(category_detail == "Condominium unit",
                            "sf",
                            category),
-         category_detail = ifelse(category_detail == "condo",
-                                  "single family attached",
+         category_detail = ifelse(category_detail == "Condominium unit",
+                                  "sf",
                                   category_detail))
 ```
 
