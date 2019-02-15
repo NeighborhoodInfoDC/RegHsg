@@ -646,7 +646,8 @@ nested <- multiples %>%
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
                     yearbuilt, long, lat,
-                    parcel_area, parcel_length), list) %>% 
+                    parcel_area, parcel_length,
+                    assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %>% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
@@ -662,14 +663,20 @@ nested <- multiples %>%
          long = map(long_list, median),
          lat = map(lat_list, median),
          # year built handled differently due to missing values
-         yearbuilt_list = ifelse(as.integer(map(yearbuilt_list, function(x) sum(!is.na(x)))) == 0,
+         yearbuilt_list = ifelse(as.integer(map(yearbuilt_list, 
+                                                function(x) 
+                                                  sum(!is.na(x)))) == 0,
                                  NA,
                                  yearbuilt_list),
          yearbuilt = ifelse(!is.na(yearbuilt_list),
                       map(yearbuilt_list, max, na.rm = TRUE),
                       NA),
          parcel_area = map_dbl(parcel_area_list, sum, na.rm = TRUE),
-         parcel_length = map_dbl(parcel_length_list, sum, na.rm = TRUE))
+         parcel_length = map_dbl(parcel_length_list, sum, na.rm = TRUE),
+         totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
+         assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
+                                            sum, na.rm = TRUE),
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))
 
 ```
 
@@ -991,6 +998,7 @@ singles_f <- singles %>%
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
          ends_with("prop"),
          parcel_area, parcel_length,
          raw_parcelid_par)
