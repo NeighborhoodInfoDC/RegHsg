@@ -628,14 +628,14 @@ filter(jur, is.na(buildingarea)) %>%
 Next, we need to collapse parcels to the number of units per acre, primarily due to condos habing seperate parcel numbers.
 
 ### Preserving parcel numbers
-Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.
+Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 8 digits in case there is a need to later combine with another parcel-level dataset.
 
-First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace `parcel_address` with `NA`.  
+First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 8-digit parcel ID for the building, we replace `parcel_address` with `NA`.  
 ```{r parcel}
-jur <- jur %>% 
-  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6)) 
+jurtest <- jur %>% 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 8)) 
 
-bad_parcels <- jur %>% 
+bad_parcels <- jurtest %>% 
   group_by(propaddress) %>% 
   summarize(parcel = list(parcel_address)) %>% 
   mutate(unq_parcels = as.integer(map(parcel, 
@@ -645,7 +645,7 @@ bad_parcels <- jur %>%
 bad_addresses <- bad_parcels %>% 
   pull(propaddress)
 
-jur <- jur %>% 
+jur1 <- jurtest %>% 
   mutate(parcel_address = ifelse(propaddress %in% bad_addresses,
                                  NA,
                                  parcel_address))
@@ -657,13 +657,13 @@ rm(bad_addresses, bad_parcels)
 We can do a quick check to make sure that there are no properties that have the same address but different parcel IDs by seeing if the number of rows are the same when we group by address and parcel ID, vs. just grouping by address.
 
 ```{r check-parcel}
-x <- jur %>% 
+x <- jur1 %>% 
   filter(residential == 1) %>% 
   group_by(propaddress) %>% 
   count() %>% 
   nrow()
 
-y <- jur %>% 
+y <- jur1 %>% 
   filter(residential == 1) %>% 
   group_by(propaddress, parcel_address) %>% 
   count() %>% 
@@ -684,7 +684,7 @@ There are a number of properties that have numbers or symbols in their house num
 This will also recategorize properties that have a missing house number as properties that have a missing address. This is important for the collapse because it could cause us to combine two observations that would otherwise be seperate.
 
 ```{r letters}
-jur <- jur %>% 
+jur <- jur1 %>% 
   mutate(house_letter = ifelse(str_detect(prophouseno, "[:alpha:]") == 1, 1, 0),
          oldadd = propaddress,
          new_houseno = ifelse(house_letter == 1,
