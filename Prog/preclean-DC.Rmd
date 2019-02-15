@@ -117,7 +117,7 @@ parcelbaseDCraw <- parcelbase %>%
          parcelbase_usecode= USECODE,
          parcelbase_proptype= PROPTYPE,
          parcelbase_phasebuilt= PHASEBUILD,
-         parcelbase_suffix= SUFFIX，
+         parcelbase_suffix= SUFFIX,
          in_last_ownerpt= in_last_ownerpt
         ) %>% 
   mutate(parcelbase_parcelID= as.character(parcelbase_parcelID)) %>% 
