@@ -132,6 +132,73 @@ See how many we're filled in
 sum(is.na(vacant$arc_lotsize_sf)) - sum(is.na(vacant$lotsize_sf))
 ```
 
+### Assessment values
+
+The difference between the land value, improvement value, and total value can help us determine if lots are really vacant.
+
+```{r check-assess}
+
+vacant %>% 
+  group_by(category_detail) %>% 
+  summarize(nprops = n(),
+            imp_zero = sum(assessedimprovementvalue == 0, na.rm = TRUE),
+            imp_na = sum(is.na(assessedimprovementvalue))) %>% 
+  mutate(imp_none = imp_zero + imp_na,
+         percent_none = imp_none / nprops) %>% 
+  knitr::kable()
+  
+
+```
+Most of the vacant properties have either a 0 or a missing value for the improvement value, which is what we would expect. We can take a closer look at properties that have a non-zero value and decide if we need to re-categorize them as not really vacant- if there is a structure there, we do not want to include it in this calculation.
+
+```{r not-so-vacant}
+
+vacant %>% 
+  filter(assessedimprovementvalue > 0, 
+         !is.na(assessedimprovementvalue)) %>% 
+  mutate(p_total = assessedimprovementvalue / totalassessedvalue) %>% 
+  group_by(category_detail) %>% 
+  summarize(n = n(),
+            mean = mean(assessedimprovementvalue),
+            median = median(assessedimprovementvalue),
+            min = min(assessedimprovementvalue),
+            max = max(assessedimprovementvalue),
+            p_total = median(p_total)) %>% 
+  knitr::kable()
+
+```
+
+Look at the distribution of improved value as a percent of total value.
+
+```{r scatter-not-vacant, echo=FALSE}
+vacant %>% 
+  filter(assessedimprovementvalue > 0, 
+         !is.na(assessedimprovementvalue)) %>% 
+  mutate(p_total = assessedimprovementvalue / totalassessedvalue) %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(p_total),
+                 bins = 30) +
+  scale_x_continuous(labels = scales::percent,
+                     breaks = c(0:10 *.1)) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "Percent of total assessed value that is derived from improvement value",
+       y = NULL)
+```
+
+We can recategorize these observations as "vacant with structure", and will not include these in the calculation.
+```{r not-vacant-recat}
+
+vacant <- vacant %>% 
+  mutate(category = ifelse(assessedimprovementvalue > 0 & 
+                           !is.na(assessedimprovementvalue),
+                           "vacant with structure",
+                           category))
+
+vacant1 <- vacant %>% 
+  filter(category == "vacant")
+
+```
+
 ### Missing zoning variables
 
 To determine zoning codes for addresses that have a missing zoning designation or multiple zoning designations, we will use a spatial join to the county's zoning layer.
@@ -242,7 +309,7 @@ vacant1 <- vacant1 %>%
                          ZN_DESIG, 
                          zoning),
          zoning = ifelse(str_detect(zoning, "/") == TRUE &
-                           str_detect(zoning_bk, ZN_DESIG == TRUE),
+                           str_detect(zoning_bk, ZN_DESIG) == TRUE,
                          ZN_DESIG,
                          zoning)) %>% 
   select(-c(OBJECTID, ZONECODE, LABEL, SYMBOL, ZN_DESIG_6, GZDC))
