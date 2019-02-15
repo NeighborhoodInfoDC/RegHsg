@@ -73,7 +73,7 @@ filepath <- "arlington"
 
 ```
 
-Load in Black Knight data for the region, select jurisdiction and standard variables
+Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
 
 ```{r read}
 if (!exists("jur")) {
@@ -100,11 +100,12 @@ See how many lots have missing key variables
 ```{r missing}
 
 vacant %>% 
+  mutate(num = NA) %>% 
   group_by(category_detail) %>% 
-  summarize_at(vars(propaddress, lotsize_sf, zoning),
+  summarize_at(vars(propaddress, lotsize_sf, zoning, num),
                ~ sum(is.na(.))) %>% 
   mutate_at(vars(propaddress, lotsize_sf, zoning),
-            .funs = funs(percent = scales::percent(. / nrow(vacant)))) %>% 
+            .funs = funs(percent = scales::percent(. / num))) %>% 
   knitr::kable(caption = "Number and percent of missing values")
 
 ```
@@ -231,7 +232,7 @@ vacant1 %>%
 
 ```
 
-If the zoning is missing OR the zoning contains a slash, we replace with spatial joined zoning. Archive Black Knight zoning variable for future reference.
+If the zoning is missing OR the zoning contains a slash and the spatially joined zoning designation is one of the dual descriptions, we replace with spatial joined zoning. Archive Black Knight zoning variable for future reference.
 
 ```{r zoning-swap}
 
@@ -240,7 +241,8 @@ vacant1 <- vacant1 %>%
          zoning = ifelse(is.na(zoning), 
                          ZN_DESIG, 
                          zoning),
-         zoning = ifelse(str_detect(zoning, "/") == TRUE,
+         zoning = ifelse(str_detect(zoning, "/") == TRUE &
+                           str_detect(zoning_bk, ZN_DESIG == TRUE),
                          ZN_DESIG,
                          zoning)) %>% 
   select(-c(OBJECTID, ZONECODE, LABEL, SYMBOL, ZN_DESIG_6, GZDC))
@@ -251,12 +253,12 @@ Recombine with observations with missing coordinates, check that number of rows 
 
 ```{r get-final}
 
-vacantfinal <- vacant %>% 
+vacanttotal <- vacant %>% 
   filter(is.na(lat) | is.na(long)) %>% 
   mutate(zoning_bk = zoning) %>% 
   bind_rows(vacant1)
 
-stopifnot(nrow(vacantfinal) == nrow(vacant))
+stopifnot(nrow(vacanttotal) == nrow(vacant))
 
 ```
 
@@ -347,14 +349,36 @@ First, we look at all the options, and filter out all the observations marked as
 zoningcode %>% 
   count(dwelling_type) %>% 
   knitr::kable()
+```
 
-zoningcode <- zoningcode %>% 
-  filter(!dwelling_type %in% c("All",
-                               "All Other",
-                               "Duplex; share a lot line with RA, C, or M",
-                               "Semi-detatched; share a lot line with RA, C, or M"))
+Count the number of unique zoning codes to make sure we won't get rid of any codes entirely.
+
+```{r count-zoning}
+length(unique(zoningcode$zoning_code))
 
 ```
+Filter out dwelling_types of "All", "All Other", and those that are dependent on a shared boundary.
+
+```{r purge}
+zoningcode1 <- zoningcode %>% 
+  group_by(zoning_code) %>% 
+  filter(!(dwelling_type %in% c("All",
+                               "All Other",
+                               "Duplex; share a lot line with RA, C, or M",
+                               "Semi-detatched; share a lot line with RA, C, or M")
+           & n() > 1)) %>% 
+  ungroup()
+
+```
+
+ Make sure we did not lose any zoning codes entirely.
+```{r responsible-purge}
+
+stopifnot(length(unique(zoningcode$zoning_code))
+          == length(unique(zoningcode1$zoning_code)))
+
+```
+
 Since the variables are not always comparable, the following order, from most to least dense, applies:
 
 1. Multiple-family
@@ -398,6 +422,7 @@ Now that we have selected the correct records from the zoning code file, we can 
 vacantfinal <- vacantfinal %>% 
   mutate(zoning_code = case_when(
     zoning == "RC" ~ "R-C",
+    zoning == "C-0 Crystal City" ~ "C-O Crystal City",
     zoning %in% c("C-O-ROSSLYN", "C-O-ROSS") ~ "C-O Rosslyn",
     zoning == "RA-H-3.2" ~ "RA-H 3.2",
     TRUE ~ zoning
