@@ -857,7 +857,7 @@ There are a few variables needed:
 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)
 
 ```{r lot-vars}
-nested <- nested %>% 
+nested1 <- nested %>% 
   mutate(nprops = as.integer(nprops),
          lotsize_sf_sum = as.integer(lotsize_sf_sum),
          unique_lots = map(lotsize_sf_list, function(x) length(unique(x))),
@@ -873,7 +873,7 @@ nested <- nested %>%
 Based on these variables, we can identify when`sum()` is definitely the right function (when the number of unique values in `lotsize_sf_list` is the same as `nprops`), and when we want to take the first argument is definitely the right function (there is only one unique value in `lotsize_sf_list`).
 
 ```{r fx-choice}
-nested <- nested %>% 
+nested2 <- nested1 %>% 
   mutate(fxn = case_when(
     lotsize_sf_sum < 1 ~ "missing",
     nprops == unique_lots ~ "sum",
@@ -881,9 +881,9 @@ nested <- nested %>%
     TRUE ~ "other"
   ))
 
-nested %>% count(fxn)
+nested2 %>% count(fxn)
 
-nested_done <- nested %>% 
+nested_done <- nested2 %>% 
   filter(fxn != "other")
 
 ```
@@ -899,7 +899,7 @@ In a few instances we take the maximum value for properties with few enough unit
 First, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
 
 ```{r fx-choice2}
-nested_other <- nested %>% 
+nested_other <- nested2 %>% 
   filter(fxn == "other") %>% 
   mutate(lsmode_num = ifelse(map(lsmode, length) > 1, NA, lsmode),
          lsmode_num = as.integer(lsmode_num),
@@ -939,9 +939,9 @@ count(nested_all, is.na(lotsize_sf_final))
 Lastly, the number of rows should be the same as before we split and re-combined.
 
 ```{r row-check}
-stopifnot(nrow(nested_all) == nrow(nested))
+stopifnot(nrow(nested_all) == nrow(nested2))
 
-rm(nested, nested_done, nested_other)
+rm(nested2, nested1, nested_done, nested_other)
 ```
 #### Ties
 
