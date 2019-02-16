@@ -293,6 +293,8 @@ vacant %>%
   
 
 ```
+
+
 Most of the vacant properties have either a 0 or a missing value for the improvement value, which is what we would expect. We can take a closer look at properties that have a non-zero value and decide if we need to re-categorize them as not really vacant- if there is a structure there, we do not want to include it in this calculation.
 
 ```{r not-so-vacant}
@@ -541,7 +543,7 @@ vacantweird2 <- vacantweird2 %>%
                               ""))
 ```
 
-Priotize codes that are purely residential (begin with R). If there are more than 1 "R" zoning codes, we want to take the one with the higher number. 
+Priotize codes that are purely residential (begin with R). If there are more than 1 "R" zoning codes, we want to take the one with the lower number (take the lower density code, so we do not overestimate, since part of the building will be in the lower density area). We do this by extracting the numbers from the zoning codes, taking the minimum, and then selecting the element that contains that number.
 
 ```{r true2}
 
@@ -557,17 +559,40 @@ vacantweird2 <- vacantweird2 %>%
                                                na.rm = TRUE)),
                               zoning_true),
          zoning_true = ifelse(r_count == 2,
-                              map(zlist, ~ max(.[str_detect(., num4)],
-                                               na.rm = TRUE)),
+                              map2(zlist, num4, ~ max(.[str_detect(.x, .y)],
+                                                      na.rm = TRUE)),
                               zoning_true))
-
-
-x <- c("r5", "r6")
-
-str_extract(x, "[:digit:]")
 
 ```
 
+The remaining codes only allow for one dwelling districts, so we will just take the first code.
+
+```{r true-last}
+
+vacantweird3 <- vacantweird2 %>% 
+  mutate(zoning_true = ifelse(zoning_true == "",
+                       map(zlist, 1),
+                       zoning_true),
+         zoning_true = as.character(zoning_true))
+
+stopifnot(sum(is.na(vacantweird3$zoning_true)) == 0)
+```
+
+Select only the clean zoning variable, merge back into main dataset, and replace zoning variable. Initial Black Knight variable will still be archived.
+
+```{r recomb}
+
+vacantfinal <- vacanttotal %>% 
+  left_join(select(vacantweird3,
+                   assessorsparcelnumberapnpin, zoning = zoning_true),
+            by = "assessorsparcelnumberapnpin") %>% 
+  rename(zoning= zoning.x) %>% 
+  mutate(zoning = ifelse(!is.na(zoning.y),
+                         zoning.y,
+                         zoning)) %>% 
+  select(-zoning.y)
+
+```
 
 ## Merge with cleaned data
 
