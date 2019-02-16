@@ -422,11 +422,11 @@ Parcels that have the same address do not share the same parcel ID, but they do 
 
 First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace `parcel_address` with `NA`.  Notice parcel base id should always be the same for blackknight and parcelbase data because of the merge. 
 ```{r parcel}
-jur <- jur %>% 
-  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6),
-         parcelbase_address= substr(parcelbase_parcelID, 1, 6)) 
+jurparcel <- jur %>% 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 8),
+         parcelbase_address= substr(parcelbase_parcelID, 1, 8)) 
 
-bad_parcels <- jur %>% 
+bad_parcels <- jurparcel %>% 
   group_by(propaddress) %>% 
   summarize(parcel = list(parcel_address),
             parcelbase= list(parcelbase_address)) %>% 
@@ -437,7 +437,7 @@ bad_parcels <- jur %>%
 bad_addresses <- bad_parcels %>% 
   pull(propaddress)
 
-jur <- jur %>% 
+jur <- jurparcel %>% 
   mutate(parcel_address = ifelse(propaddress %in% bad_addresses,
                                  NA,
                                  parcel_address))
