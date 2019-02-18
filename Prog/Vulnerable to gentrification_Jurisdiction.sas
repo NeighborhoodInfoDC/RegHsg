@@ -49,7 +49,7 @@ set ACS.Acs_&_years._dc_sum_tr_tr10 ACS.Acs_&_years._md_sum_tr_tr10 ACS.Acs_&_ye
 keep geo2010 county Jurisdiction percentrenter_20&endyr. percentwhite_20&endyr. percentcollege_20&endyr. avghhinc_20&endyr. popwhitenonhispbridge_&_years. 
 	 popwithrace_&_years. numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years. 
 	agghshldincome_&_years.  numhshlds_&_years. medianhomevalue_&_years. percentinclt75000 hshldincunder15000_&_years. hshldinc15000to34999_&_years.
-	hshldinc35000to49999_&_years.  hshldinc50000to74999_&_years. medfamincm_&_years. MedHHIncm_&_years. numowneroccupiedhu_&_years.;
+	hshldinc35000to49999_&_years.  hshldinc50000to74999_&_years. medfamincm_&_years. MedHHIncm_&_years. numowneroccupiedhu_&_years. percentrenter_20&endyr. percentwhite_20&endyr. percentcollege_20&endyr. avghhinc_20&endyr.;
 
 	county= substr(geo2010,1,5);
 	percentrenter_20&endyr.= numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.);
@@ -385,10 +385,15 @@ if rank20&endyr. ~=. and rank00_&endyr. ~=. then do;
 	end;
 else if rank20&endyr.=. or rank00_&endyr.=. then potentialADJ=.n;
 
+if rank20&endyr. ~=. and appre00_&endyr.~=. then do;
+    if rank20&endyr.>=3 or appre00_&endyr.>=3 then adjacentbase=1; else adjacentbase=0;
+	end;
+else if rank20&endyr. ~=. or appre00_&endyr.~=. then adjacentbase=0;
+
 run;
 
 proc freq data=appreciationtracts;
-tables appreciated accelerating potentialADJ;
+tables appreciated accelerating potentialADJ adjacentbase;
 run;
 
 proc export data = appreciationtracts
