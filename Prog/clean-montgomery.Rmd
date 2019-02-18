@@ -541,9 +541,9 @@ rm(garden, highrise, other, condo, mixeduse, apartment)
 
 Overwrite jur with new categorizations, remove intermediate data frames
 ```{r category write}
-jur <- jurcodes4
+jur2 <- jurcodes4
 
-rm(jurcodes, jurcodes2, jurcodes3, jurcodes4)
+rm(jurcodes, jurcodes2, jurcodes3)
 
 ```
 
@@ -553,10 +553,10 @@ These checks make sure that all county land use codes recieved new classificatio
 #### {.tabset .tabset.fade}
 ##### `residential`
 ```{r res-check}
-count(jur, residential)
-count(jur, is.na(residential))
+count(jur2, residential)
+count(jur2, is.na(residential))
 
-if (TRUE %in% is.na(jur$residential)) {
+if (TRUE %in% is.na(jur2$residential)) {
   warning("NAs introduced")
 }
 
@@ -564,10 +564,10 @@ if (TRUE %in% is.na(jur$residential)) {
 
 ##### `category`
 ```{r cat-check}
-count(jur, category)
-count(jur, is.na(category))
+count(jur2, category)
+count(jur2, is.na(category))
 
-if (TRUE %in% is.na(jur$category)) {
+if (TRUE %in% is.na(jur2$category)) {
   warning("NAs introduced")
 }
 
@@ -575,10 +575,10 @@ if (TRUE %in% is.na(jur$category)) {
 
 ##### `category_detail`
 ```{r catd-check}
-count(jur, category_detail)
-count(jur, is.na(category_detail))
+count(jur2, category_detail)
+count(jur2, is.na(category_detail))
 
-if (TRUE %in% is.na(jur$category_detail)) {
+if (TRUE %in% is.na(jur2$category_detail)) {
   warning("NAs introduced")
 }
 
@@ -586,8 +586,8 @@ if (TRUE %in% is.na(jur$category_detail)) {
 ##### `building_type`
 Here, we expect NAs since `building_type` is only for MF properties- but we should have the same number of non-missing values as we do MF observations
 ```{r bt-check}
-newcat <- sum(!is.na(jur$building_type))
-mf <- nrow(filter(jur, category == "mf"))
+newcat <- sum(!is.na(jur2$building_type))
+mf <- nrow(filter(jur2, category == "mf"))
 
 if (mf != newcat) {
   warning(newcat, " observations categorized, expecting ", mf)
@@ -603,11 +603,11 @@ There are errors in the different Black Knight lot size variables that make it i
 *PS Notes* There are a lot of missing lot size - especially for multifamily properties. We do have an alternative lot size metric from the shape file, however, multifamily homes do not have the same parcel id numbers as the blacknight data. This merge would have to happen post collapse, so I continue with the data cleaning and will do a spatial join after the black knight data is cleaned.
 
 ```{r count}
-count(jur, lotsizeareaunit)
+count(jur2, lotsizeareaunit)
 ```
 
 ```{r lot}
-jur <- jur %>% 
+jur3 <- jur2 %>% 
   mutate(lotsize_acres = case_when(lotsizeareaunit == "AC" ~ lotsizeorarea ,
                                    lotsizeareaunit == "SF" ~ lotsizeorarea / 43560,
                                    is.na(lotsizeareaunit) ~ 0),
@@ -616,16 +616,16 @@ jur <- jur %>%
   mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA))
 
 
-jur <- jur %>% 
+jur3 <- jur3 %>% 
   mutate(buildingarea = ifelse(buildingarea==0, NA, buildingarea))
 
 
-count(jur, category)
+count(jur3, category)
 
-filter(jur, is.na(lotsize_sf)) %>% 
+filter(jur3, is.na(lotsize_sf)) %>% 
   count(category)
 
-filter(jur, is.na(buildingarea)) %>% 
+filter(jur3, is.na(buildingarea)) %>% 
   count(category)
 
 
@@ -641,7 +641,7 @@ Parcels that have the same address do not share the same parcel ID, but they do 
 
 First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 8-digit parcel ID for the building, we replace `parcel_address` with `NA`.  
 ```{r parcel}
-jurtest <- jur %>% 
+jurtest <- jur3 %>% 
   mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 8)) 
 
 bad_parcels <- jurtest %>% 
@@ -654,7 +654,7 @@ bad_parcels <- jurtest %>%
 bad_addresses <- bad_parcels %>% 
   pull(propaddress)
 
-jur1 <- jurtest %>% 
+jur4 <- jurtest %>% 
   mutate(parcel_address = ifelse(propaddress %in% bad_addresses,
                                  NA,
                                  parcel_address))
@@ -666,13 +666,13 @@ rm(bad_addresses, bad_parcels)
 We can do a quick check to make sure that there are no properties that have the same address but different parcel IDs by seeing if the number of rows are the same when we group by address and parcel ID, vs. just grouping by address.
 
 ```{r check-parcel}
-x <- jur1 %>% 
+x <- jur4 %>% 
   filter(residential == 1) %>% 
   group_by(propaddress) %>% 
   count() %>% 
   nrow()
 
-y <- jur1 %>% 
+y <- jur4 %>% 
   filter(residential == 1) %>% 
   group_by(propaddress, parcel_address) %>% 
   count() %>% 
@@ -695,7 +695,7 @@ This will also recategorize properties that have a missing house number as prope
 Overwrite jur and remove intermediate data frames
 
 ```{r letters}
-jur <- jur1 %>% 
+jur5 <- jur4 %>% 
   mutate(house_letter = ifelse(str_detect(prophouseno, "[:alpha:]") == 1, 1, 0),
          oldadd = propaddress,
          new_houseno = ifelse(house_letter == 1,
@@ -708,13 +708,13 @@ jur <- jur1 %>%
                                     sep = " "),
                               propaddress))
 
-rm(jur1, jurtest)
+
 
 ```
 
  Compare the first 20 addresses to check
 ```{r letters-check}
-jur %>% 
+jur5 %>% 
   filter(house_letter == 1) %>% 
   select(oldadd, propaddress, category_detail) %>% 
   head(20)
@@ -724,7 +724,7 @@ jur %>%
 
 After this change, the number of NAs in the address variable should be the same as the number of observations that previously had either a missing address, missing house number, or both.
 ```{r letters-check2}
-stopifnot(sum(is.na(jur$propaddress)) == nrow(filter(jur, 
+stopifnot(sum(is.na(jur5$propaddress)) == nrow(filter(jur5, 
             is.na(propaddress) | is.na(prophouseno))))
 ```
 
@@ -732,12 +732,12 @@ stopifnot(sum(is.na(jur$propaddress)) == nrow(filter(jur,
 In order to do the collapse, we first identify addresses with more than one observation, and filter out those with a missing house number or address to avoid an improper collapse. Then, run a quick check to make sure there are no NAs.
 
 ```{r sep}
-jur <- jur %>% 
+jur6 <- jur5 %>% 
   classify_addresses()
 
-count(jur, address_type)
+count(jur6, address_type)
 
-if (TRUE %in% is.na(jur$address_type)) {
+if (TRUE %in% is.na(jur6$address_type)) {
   warning("NAs in address_type")
 }
 
@@ -747,7 +747,7 @@ For townhouses and other forms of attached housing, we do not want a collapse, s
 
 ```{r th}
 
-jur <- jur %>% 
+jur6 <- jur6 %>% 
   mutate(address_type = ifelse(category_detail %in% c("townhouse", "sf attached"),
                                   "single",
                                   address_type))
@@ -757,13 +757,13 @@ jur <- jur %>%
 Seperate the address types for different operations.
 
 ```{r mlt}
-multiples <- jur %>% 
+multiples <- jur6 %>% 
   filter(address_type == "multiple")
 
-singles <- jur %>% 
+singles <- jur6 %>% 
   filter(address_type == "single")
 
-missing <- jur %>% 
+missing <- jur6 %>% 
   filter(address_type == "missing")
 
 ```
@@ -1207,7 +1207,7 @@ mult <- finaljur %>%
 other <- finaljur %>% 
   filter(address_type != "multiple")
 
-stopifnot(mult + nrow(other) == nrow(jur) - 
+stopifnot(mult + nrow(other) == nrow(jur6) - 
             (nunits - nrow(filter(cdties, test_vacant == 1))))
 
 rm(mult, other, nunits, cdties)
