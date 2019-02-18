@@ -102,9 +102,6 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
-summary {
-  display: list-item;
-}
 </style>
 
 
@@ -112,70 +109,9 @@ summary {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
-
-<style type="text/css">
-.tabset-dropdown > .nav-tabs {
-  display: inline-table;
-  max-height: 500px;
-  min-height: 44px;
-  overflow-y: auto;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
-  font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
-  font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
-}
-
-.tabset-dropdown > .nav-tabs > li.active {
-  display: block;
-}
-
-.tabset-dropdown > .nav-tabs > li > a,
-.tabset-dropdown > .nav-tabs > li > a:focus,
-.tabset-dropdown > .nav-tabs > li > a:hover {
-  border: none;
-  display: inline-block;
-  border-radius: 4px;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
-  display: block;
-  float: none;
-}
-
-.tabset-dropdown > .nav-tabs > li {
-  display: none;
-}
-</style>
-
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
 });
 </script>
 
@@ -188,6 +124,7 @@ $(document).ready(function () {
   window.initializeCodeFolding("show" === "show");
 });
 </script>
+
 
 
 
@@ -301,7 +238,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Regional Housing Framework</h1>
-<h3 class="subtitle"><em>Clean Arlington County public records data</em></h3>
+<h3 class="subtitle"><em>Clean Montgomery County public records data</em></h3>
 <h4 class="author"><em>Patrick Spauster and Sarah Strochak</em></h4>
 
 </div>
@@ -310,13 +247,13 @@ div.tocify {
 <p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv14%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
-<p>Author: Sarah Strochak</p>
+<p>Author: Patrick Spauster</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 15, 2019</p>
+<p>Last updated February 18, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
-<p>There are three main goals of the jurisdiction level cleaning process:</p>
+<p>Adapted from clean_arlington.rmd There are three main goals of the jurisdiction level cleaning process:</p>
 <ol style="list-style-type: decimal">
 <li><p>Recategorize the county land use codes into more general codes</p></li>
 <li><p>Collapse observations at the address level</p></li>
@@ -424,7 +361,7 @@ rm(currentjur_county)</code></pre>
     &quot;VACANT RESIDENTIAL&quot;
  )
 
-jur &lt;- jur %&gt;% 
+jurcodes &lt;- jur %&gt;% 
   mutate(residential =
            ifelse(countylandusedescription %in% res_codes, 1, 0))
 
@@ -577,7 +514,7 @@ other &lt;- c(&quot;WAREHOUSE CONDOMINIUM&quot;,
            )
            
             
-jur &lt;- jur %&gt;% 
+jurcodes2 &lt;- jurcodes %&gt;% 
   mutate(category = case_when(
            countylandusedescription %in% mf ~ &quot;mf&quot;,
            countylandusedescription %in% sf ~ &quot;sf&quot;,
@@ -741,7 +678,7 @@ other &lt;- c(&quot;WAREHOUSE CONDOMINIUM&quot;,
            )
 
 
-jur &lt;- jur %&gt;% 
+jurcodes3 &lt;- jurcodes2 %&gt;% 
   mutate(category_detail = case_when(
            countylandusedescription %in% apartment ~ &quot;apartment&quot;,
            countylandusedescription %in% condo ~ &quot;condo&quot;,
@@ -786,7 +723,7 @@ other &lt;- c(&quot;MULTIPLE RESIDENCE&quot;)
 
  
                
-jur &lt;- jur %&gt;% 
+jurcodes4 &lt;- jurcodes3 %&gt;% 
   mutate(building_type = case_when(
            countylandusedescription %in% garden ~ &quot;garden&quot;,
            countylandusedescription %in% highrise  ~ &quot;high-rise&quot;,
@@ -796,6 +733,10 @@ jur &lt;- jur %&gt;%
            countylandusedescription %in% other ~ &quot;other&quot;))
 
 rm(garden, highrise, other, condo, mixeduse, apartment)           </code></pre>
+<p>Overwrite jur with new categorizations, remove intermediate data frames</p>
+<pre class="r"><code>jur &lt;- jurcodes4
+
+rm(jurcodes, jurcodes2, jurcodes3, jurcodes4)</code></pre>
 </div>
 </div>
 </div>
@@ -936,12 +877,12 @@ count(jur, category)</code></pre>
 <p>Next, we need to collapse parcels to the number of units per acre, primarily due to condos habing seperate parcel numbers.</p>
 <div id="preserving-parcel-numbers" class="section level3">
 <h3>Preserving parcel numbers</h3>
-<p>Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.</p>
-<p>First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace <code>parcel_address</code> with <code>NA</code>.</p>
-<pre class="r"><code>jur &lt;- jur %&gt;% 
-  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6)) 
+<p>Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 8 digits in case there is a need to later combine with another parcel-level dataset.</p>
+<p>First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 8-digit parcel ID for the building, we replace <code>parcel_address</code> with <code>NA</code>.</p>
+<pre class="r"><code>jurtest &lt;- jur %&gt;% 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 8)) 
 
-bad_parcels &lt;- jur %&gt;% 
+bad_parcels &lt;- jurtest %&gt;% 
   group_by(propaddress) %&gt;% 
   summarize(parcel = list(parcel_address)) %&gt;% 
   mutate(unq_parcels = as.integer(map(parcel, 
@@ -951,20 +892,20 @@ bad_parcels &lt;- jur %&gt;%
 bad_addresses &lt;- bad_parcels %&gt;% 
   pull(propaddress)
 
-jur &lt;- jur %&gt;% 
+jur1 &lt;- jurtest %&gt;% 
   mutate(parcel_address = ifelse(propaddress %in% bad_addresses,
                                  NA,
                                  parcel_address))
 
 rm(bad_addresses, bad_parcels)</code></pre>
 <p>We can do a quick check to make sure that there are no properties that have the same address but different parcel IDs by seeing if the number of rows are the same when we group by address and parcel ID, vs. just grouping by address.</p>
-<pre class="r"><code>x &lt;- jur %&gt;% 
+<pre class="r"><code>x &lt;- jur1 %&gt;% 
   filter(residential == 1) %&gt;% 
   group_by(propaddress) %&gt;% 
   count() %&gt;% 
   nrow()
 
-y &lt;- jur %&gt;% 
+y &lt;- jur1 %&gt;% 
   filter(residential == 1) %&gt;% 
   group_by(propaddress, parcel_address) %&gt;% 
   count() %&gt;% 
@@ -981,7 +922,8 @@ if (x == y) {
 <div id="house-number-cleaning" class="section level3">
 <h3>House number cleaning</h3>
 <p>There are a number of properties that have numbers or symbols in their house numbers that prevent a collapse. This next step removes those characters so the collapse is clean. This will also recategorize properties that have a missing house number as properties that have a missing address. This is important for the collapse because it could cause us to combine two observations that would otherwise be seperate.</p>
-<pre class="r"><code>jur &lt;- jur %&gt;% 
+<p>Overwrite jur and remove intermediate data frames</p>
+<pre class="r"><code>jur &lt;- jur1 %&gt;% 
   mutate(house_letter = ifelse(str_detect(prophouseno, &quot;[:alpha:]&quot;) == 1, 1, 0),
          oldadd = propaddress,
          new_houseno = ifelse(house_letter == 1,
@@ -992,7 +934,9 @@ if (x == y) {
                                     propstreetname, 
                                     propstreetsuffix,
                                     sep = &quot; &quot;),
-                              propaddress))</code></pre>
+                              propaddress))
+
+rm(jur1, jurtest)</code></pre>
 <p>Compare the first 20 addresses to check</p>
 <pre class="r"><code>jur %&gt;% 
   filter(house_letter == 1) %&gt;% 
@@ -1153,7 +1097,6 @@ missing &lt;- jur %&gt;%
                                 NA),
          long = map(long_list, median),
          lat = map(lat_list, median),
-         # year built handled differently due to missing values
          yearbuilt_list = map(yearbuilt_list, max_narm))</code></pre>
 <div id="lot-size" class="section level4">
 <h4>Lot size</h4>
@@ -1165,8 +1108,8 @@ missing &lt;- jur %&gt;%
 <li>In the fourth instance, there are the same number of unique values as there are properties- sum is the correct function.</li>
 <li>In the fifth instance, we need to replace the lot size of 0 with <code>NA</code>, so future operations will also return <code>NA</code>.</li>
 </ul>
-<p>First, filter out all the observations where the function is known. Then, re-examine the remaining observations. There are a few variables needed: 1. The number of unique observations in the <code>lotsize_sf_list</code> nested list 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)</p>
-<pre class="r"><code>nested &lt;- nested %&gt;% 
+<p>First, filter out all the observations where the function is known. Then, re-examine the remaining observations. There are a few variables needed: 1. The number of unique observations in the <code>lotsize_sf_list</code> nested list 2. The sum, Mode (if unique), and a list of the modes if there is a tie in the mode 3. The max value</p>
+<pre class="r"><code>nested1 &lt;- nested %&gt;% 
   mutate(nprops = as.integer(nprops),
          lotsize_sf_sum = as.integer(lotsize_sf_sum),
          unique_lots = map(lotsize_sf_list, function(x) length(unique(x))),
@@ -1178,7 +1121,7 @@ missing &lt;- jur %&gt;%
          ) %&gt;% 
   ungroup()</code></pre>
 <p>Based on these variables, we can identify when<code>sum()</code> is definitely the right function (when the number of unique values in <code>lotsize_sf_list</code> is the same as <code>nprops</code>), and when we want to take the first argument is definitely the right function (there is only one unique value in <code>lotsize_sf_list</code>).</p>
-<pre class="r"><code>nested &lt;- nested %&gt;% 
+<pre class="r"><code>nested2 &lt;- nested1 %&gt;% 
   mutate(fxn = case_when(
     lotsize_sf_sum &lt; 1 ~ &quot;missing&quot;,
     nprops == unique_lots ~ &quot;sum&quot;,
@@ -1186,19 +1129,19 @@ missing &lt;- jur %&gt;%
     TRUE ~ &quot;other&quot;
   ))
 
-nested %&gt;% count(fxn)</code></pre>
+nested2 %&gt;% count(fxn)</code></pre>
 <pre><code>## # A tibble: 4 x 2
 ##   fxn         n
 ##   &lt;chr&gt;   &lt;int&gt;
 ## 1 first     170
-## 2 missing  2506
+## 2 missing  2510
 ## 3 other     215
-## 4 sum      2886</code></pre>
-<pre class="r"><code>nested_done &lt;- nested %&gt;% 
+## 4 sum      2888</code></pre>
+<pre class="r"><code>nested_done &lt;- nested2 %&gt;% 
   filter(fxn != &quot;other&quot;)</code></pre>
-<p><em>PS Notes</em> Based on examining the 218 addressess with different criteria, we develop these assumptions: <em>By default, we sum the lot size in this dataset.</em> In a few instances we take the maximum value for properties with few enough units that the sum does not seem reasonable. -For parcels with sums greater than 100,000 sf, but fewer than 50 units, we take the maximum value from the list -For parcels where the mode value is sufficiently large, we assume that the max value is the sum of lot sizes. -If the sum of lot size is less than 100,000 sf we take a simple sum -If there are NAs, we sum any remaining lot size numbers</p>
+<p><em>PS Notes</em> Based on examining the 215 addressess with different criteria, we develop these assumptions: <em>By default, we sum the lot size in this dataset.</em> In a few instances we take the maximum value for properties with few enough units that the sum does not seem reasonable. -For parcels with sums greater than 100,000 sf, but fewer than 50 units, we take the maximum value from the list -For parcels where the mode value is sufficiently large, we assume that the max value is the sum of lot sizes. -If the sum of lot size is less than 100,000 sf we take a simple sum -If there are NAs, we sum any remaining lot size numbers</p>
 <p>First, we coerce the <code>lsmode</code> variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.</p>
-<pre class="r"><code>nested_other &lt;- nested %&gt;% 
+<pre class="r"><code>nested_other &lt;- nested2 %&gt;% 
   filter(fxn == &quot;other&quot;) %&gt;% 
   mutate(lsmode_num = ifelse(map(lsmode, length) &gt; 1, NA, lsmode),
          lsmode_num = as.integer(lsmode_num),
@@ -1216,8 +1159,8 @@ count(nested_other, fxn)</code></pre>
 <pre><code>## # A tibble: 2 x 2
 ##   fxn       n
 ##   &lt;chr&gt; &lt;int&gt;
-## 1 max      38
-## 2 sum     177</code></pre>
+## 1 max      37
+## 2 sum     178</code></pre>
 <pre class="r"><code>count(nested_other, nprops)</code></pre>
 <pre><code>## # A tibble: 68 x 2
 ##    nprops     n
@@ -1246,18 +1189,18 @@ count(nested_other, fxn)</code></pre>
 <pre><code>## # A tibble: 2 x 2
 ##   `fxn == &quot;missing&quot;`     n
 ##   &lt;lgl&gt;              &lt;int&gt;
-## 1 FALSE               3271
-## 2 TRUE                2506</code></pre>
+## 1 FALSE               3273
+## 2 TRUE                2510</code></pre>
 <pre class="r"><code>count(nested_all, is.na(lotsize_sf_final))</code></pre>
 <pre><code>## # A tibble: 2 x 2
 ##   `is.na(lotsize_sf_final)`     n
 ##   &lt;lgl&gt;                     &lt;int&gt;
-## 1 FALSE                      3271
-## 2 TRUE                       2506</code></pre>
+## 1 FALSE                      3273
+## 2 TRUE                       2510</code></pre>
 <p>Lastly, the number of rows should be the same as before we split and re-combined.</p>
-<pre class="r"><code>stopifnot(nrow(nested_all) == nrow(nested))
+<pre class="r"><code>stopifnot(nrow(nested_all) == nrow(nested2))
 
-rm(nested, nested_done, nested_other)</code></pre>
+rm(nested2, nested1, nested_done, nested_other)</code></pre>
 </div>
 <div id="ties" class="section level4">
 <h4>Ties</h4>
@@ -1386,7 +1329,7 @@ count(cdties, test_vacant) %&gt;%
   select(-test_res1, -test_res2, -argnum)</code></pre>
 <p><strong>If one value is vacant:</strong> - We want to select the non-vacant observation. We can test which argument is vacant using <code>str_detect</code> and then select the other value.</p>
 <p>Since one of these is vacant, we also want to adjust the <code>nprops</code> variable- which will become the our measure of determining number of units once we bind the multiple addresses back to the single addresses- back to <code>1</code>.</p>
-<p><em>PS Notes</em> I test if the the first two in the list are the non-vacant value. If neither is non-vacant, I assume it’s the third value</p>
+<p><em>PS Notes</em> I filter all of the ties that have at least one vacancy. Then I test if the the first two in the list are the non-vacant value. If neither is non-vacant, I keep the third value, the vacant one.</p>
 <pre class="r"><code>onevac &lt;- cdties %&gt;% 
   filter(test_vacant == 1) %&gt;% 
   mutate(vac1 = str_detect(map(category_detail_list, 1), &quot;vacant&quot;))  %&gt;% 

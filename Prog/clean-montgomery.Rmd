@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Clean Arlington County public records data"
+subtitle: "Clean Montgomery County public records data"
 author: "Patrick Spauster and Sarah Strochak"
 output:
   html_document:
@@ -20,7 +20,7 @@ Library: RegHsg
 
 Project: Regional Housing Framework
 
-Author: Sarah Strochak
+Author: Patrick Spauster
 
 Version: R 3.5.1, RStudio 1.1.423
 
@@ -36,7 +36,7 @@ knitr::opts_chunk$set(message = FALSE)
 ```
 
 ## Description
-
+Adapted from clean_arlington.rmd
 There are three main goals of the jurisdiction level cleaning process:
 
 1. Recategorize the county land use codes into more general codes
@@ -157,7 +157,7 @@ res_codes <-
     "VACANT RESIDENTIAL"
  )
 
-jur <- jur %>% 
+jurcodes <- jur %>% 
   mutate(residential =
            ifelse(countylandusedescription %in% res_codes, 1, 0))
 
@@ -313,7 +313,7 @@ other <- c("WAREHOUSE CONDOMINIUM",
            )
            
             
-jur <- jur %>% 
+jurcodes2 <- jurcodes %>% 
   mutate(category = case_when(
            countylandusedescription %in% mf ~ "mf",
            countylandusedescription %in% sf ~ "sf",
@@ -478,7 +478,7 @@ other <- c("WAREHOUSE CONDOMINIUM",
            )
 
 
-jur <- jur %>% 
+jurcodes3 <- jurcodes2 %>% 
   mutate(category_detail = case_when(
            countylandusedescription %in% apartment ~ "apartment",
            countylandusedescription %in% condo ~ "condo",
@@ -526,7 +526,7 @@ other <- c("MULTIPLE RESIDENCE")
 
  
                
-jur <- jur %>% 
+jurcodes4 <- jurcodes3 %>% 
   mutate(building_type = case_when(
            countylandusedescription %in% garden ~ "garden",
            countylandusedescription %in% highrise  ~ "high-rise",
@@ -536,6 +536,15 @@ jur <- jur %>%
            countylandusedescription %in% other ~ "other"))
 
 rm(garden, highrise, other, condo, mixeduse, apartment)           
+```
+
+
+Overwrite jur with new categorizations, remove intermediate data frames
+```{r category write}
+jur <- jurcodes4
+
+rm(jurcodes, jurcodes2, jurcodes3, jurcodes4)
+
 ```
 
 ### Check variable classifications
@@ -683,6 +692,8 @@ rm(x, y)
 There are a number of properties that have numbers or symbols in their house numbers that prevent a collapse. This next step removes those characters so the collapse is clean.
 This will also recategorize properties that have a missing house number as properties that have a missing address. This is important for the collapse because it could cause us to combine two observations that would otherwise be seperate.
 
+Overwrite jur and remove intermediate data frames
+
 ```{r letters}
 jur <- jur1 %>% 
   mutate(house_letter = ifelse(str_detect(prophouseno, "[:alpha:]") == 1, 1, 0),
@@ -696,6 +707,9 @@ jur <- jur1 %>%
                                     propstreetsuffix,
                                     sep = " "),
                               propaddress))
+
+rm(jur1, jurtest)
+
 ```
 
  Compare the first 20 addresses to check
@@ -834,7 +848,6 @@ nested <- multiples %>%
                                 NA),
          long = map(long_list, median),
          lat = map(lat_list, median),
-         # year built handled differently due to missing values
          yearbuilt_list = map(yearbuilt_list, max_narm))
                       
 
@@ -844,17 +857,15 @@ nested <- multiples %>%
 
 Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following five cases that we have to reconcile.
 
-- In the first instance, the lot size is repeated- the number of unique lot sizes is 1, so mode is the right function.
-- In the second instance, the sum of the lot size is the incorrect lot size, and the mode is a better function- but there is more than one unique value.
-- In the third example, the mode would give is a lot size of 0, which is also incorrect- but again, every value is not unique. 
-- In the fourth instance, there are the same number of unique values as there are properties- sum is the correct function. 
-- In the fifth instance, we need to replace the lot size of 0 with `NA`, so future operations will also return `NA`. 
-
+- all missing except for one value 
+- a list of small unit size values values and one outlier large value
+- a list of smaller unit size values
+- a list with several duplicate unit size values and one outlier value that is larger than the rest
 
 First, filter out all the observations where the function is known. Then, re-examine the remaining observations.
 There are a few variables needed:
 1. The number of unique observations in the `lotsize_sf_list` nested list
-2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)
+2. The sum, max, Mode (if unique), and a list of the modes if there is a tie in the mode
 
 ```{r lot-vars}
 nested1 <- nested %>% 
@@ -888,7 +899,7 @@ nested_done <- nested2 %>%
 
 ```
 *PS Notes*
-Based on examining the 218 addressess with different criteria, we develop these assumptions:
+Based on examining the 215 addressess with different criteria, we develop these assumptions:
 *By default, we sum the lot size in this dataset.*
 In a few instances we take the maximum value for properties with few enough units that the sum does not seem reasonable.
 -For parcels with sums greater than 100,000 sf, but fewer than 50 units, we take the maximum value from the list
@@ -1061,7 +1072,7 @@ We can test which argument is vacant using `str_detect` and then select the othe
 
 Since one of these is vacant, we also want to adjust the `nprops` variable- which will become the our measure of determining number of units once we bind the multiple addresses back to the single addresses- back to `1`.
 
-*PS Notes* I test if the the first two in the list are the non-vacant value. If neither is non-vacant, I assume it's the third value
+*PS Notes* I filter all of the ties that have at least one vacancy. Then I test if the the first two in the list are the non-vacant value. If neither is non-vacant, I keep the third value, the vacant one.
 
 ```{r one-vac}
 onevac <- cdties %>% 
@@ -1181,6 +1192,11 @@ finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>%
 ```
 
 Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were `r nrow(filter(cdties, test_vacant == 1))` multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, `r nunits`,  minus `r nrow(filter(cdties, test_vacant == 1))`.
+
+Final Jur: 343220 bk parcels 
+          - 59406 multiples = 283864
+                            + 5783 nested properties
+                            = 289597 parcels
 
 ```{r fin-check}
 mult <- finaljur %>% 
