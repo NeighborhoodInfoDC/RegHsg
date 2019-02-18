@@ -491,7 +491,7 @@ There are a number of properties that have numbers or symbols in their house num
 
 This will also recategorize properties that have a missing house number as properties that have a missing address. This is important for the collapse because it could cause us to combine two observations that would otherwise be seperate.
 
-This code only applies to blackknight data because parcelbase dataset don't have a prophouse variable.So if we are using address from parcel base dataset the step below don't really apply but keeping it for now. 
+This code only applies to blackknight data because parcelbase dataset don't have a prophouse variable.So if we are using address from parcel base dataset the step below don't really apply.
 
 ```{r letters}
 jur2 <- jur2 %>% 
@@ -510,7 +510,8 @@ jur2 <- jur2 %>%
 
 ```
 
-Compare the first 20 addresses . Leah-- I'm not sure if we need to clean up the parcelbase_address again. It seems like using propaddress is better in this case for collapsing. We can replace propaddress NAs with parcelbase_address
+Compare the first 20 addresses . Leah-- I'm not sure if we need to clean up the parcelbase_address again. It seems like using propaddress is better in this case for collapsing. We can replace propaddress NAs with parcelbase_address.
+
 ```{r letters-check}
 jur2 %>% 
   filter(house_letter == 1) %>% 
@@ -518,17 +519,53 @@ jur2 %>%
   head(20)
 
 
+#replace NA propaddress with parcelbase_address, need to trim several times sometimes before clean, also need to exclude street number and see if housenumber is available. (note a lot of parcelbasee_address missing either houseno or street number, notice how a lot of the address that appears more than once shou't be collapsed without a house number. )
+
+parceladdress <- jur2 %>% 
+  mutate(firstcharacter=str_sub(parcelbase_address,1,1),
+         wrongaddress = ifelse(str_detect(firstcharacter, "[:digit:]")==1,0,1)) %>% 
+    filter (is.na(propaddress)) %>% 
+    mutate(propaddress2= str_remove(parcelbase_address, "^0+"),
+         propaddress3= str_replace(propaddress2, "[0-9]$", ""),
+         propaddress4= str_replace(propaddress3, "[0-9]$", ""),
+         propaddress5= str_replace(propaddress4, "[0-9]$", ""),
+         propaddress6= str_replace(propaddress5, "[0-9]$", ""),
+         propaddress7= str_replace(propaddress6, "[0-9]$", ""),
+         streetnew= str_replace(propaddress7, "\\w*[0-9]+\\w*\\s*", "" ),
+         wrongaddress2= ifelse(str_detect(streetnew, "[:digit:]")==1,0,1)) 
+
+
+alladdress <- parceladdress %>% 
+  group_by (propaddress7) %>% 
+  count()
+
+    
+cleanparceladdress <- parceladdress %>% 
+  filter(wrongaddress2==0 & wrongaddress==0 ) %>% 
+  mutate(propaddress_new= propaddress7,
+         usecleanparceladdress =1) %>% 
+  select(parcelbase_parcelID, propaddress_new, usecleanparceladdress)
+ 
+jur3 <- left_join(x = jur2, y= cleanparceladdress, by ="parcelbase_parcelID") %>%
+        mutate(propaddress_bk = propaddress,
+               propaddress = ifelse(usecleanparceladdress == 1 & !is.na(usecleanparceladdress),  
+                                    propaddress_new, 
+                                    propaddress_bk))
+
+
+test <- jur3 %>% 
+  select(parcelbase_parcelID, propaddress, propaddress_bk, propaddress_new)
+
 ```
 
-After this change, the number of NAs in the address variable should be the same as the number of observations that previously had either a missing address, missing house number, or both.
+After this change, the number of NAs in the address variable should be less than the number of observations that previously had either a missing address, missing house number, or both. Because we 
 ```{r letters-check2}
-stopifnot(sum(is.na(jur$propaddress)) == nrow(filter(jur, 
+stopifnot(sum(is.na(jur$propaddress)) <= nrow(filter(jur, 
             is.na(propaddress) | is.na(prophouseno))))
 ```
 
 ### Address break out
 In order to do the collapse, we first identify addresses with more than one observation, and filter out those with a missing house number or address to avoid an improper collapse. Then, run a quick check to make sure there are no NAs.
-
 
 
 ```{r sep}
@@ -557,29 +594,22 @@ classify_parceladdresses <- function(dataset) {
   
 }
 
-jur2 <- jur2 %>% 
-  classify_parceladdresses()
 
 ```
 
-Using parcelbase address actually make the collapse not clean. Jurtest dataset shows addresses are classified as NA from blackknight are almost identical to parcelbase dataset before cleaning. Which means unless we clean the parcelbase address, collapsing by parcelbase address would be wrong in a lot of cases. And parcelbase_address is harder to clean because we don't have each element of address broken out already. But open to suggestion. ---?
+Using parcelbase address actually make the collapse not clean. Jurtest dataset shows addresses are classified as NA from blackknight are almost identical to parcelbase dataset before cleaning. Which means unless we clean the parcelbase address, collapsing by parcelbase address would be wrong in a lot of cases. I've replaced NA blackknight data with parcelbase address and cleaned where possible
 ```{r comparison of address}
-jurtest<-jur2 %>% 
-    classify_addresses() %>% 
+jurtest<- jur3 %>% 
+  classify_addresses() %>% 
   filter (address_type=="missing") %>% 
   select(oldadd, propaddress, category_detail,parcelbase_address) %>% 
   head(20)
 
-
-# this count shows by using parcelbase_address as is for collasing, we are having much more single addresses that should not be collapsed.
-count(jur2, address_type)
-
-#create jur3 from blackknight address
-
-jur3 <- jur2 %>% 
+#create jur4 from blackknight address
+jur4 <- jur3 %>% 
   classify_addresses()
 
-if (TRUE %in% is.na(jur$address_type)) {
+if (TRUE %in% is.na(jur4$address_type)) {
   warning("NAs in address_type")
 }
 
@@ -595,13 +625,13 @@ For townhouses and other forms of attached housing, we do not want a collapse, s
 Seperate the address types for different operations.
 
 ```{r mlt}
-multiples <- jur3 %>% 
+multiples <- jur4 %>% 
   filter(address_type == "multiple")
 
-singles <- jur3 %>% 
+singles <- jur4 %>% 
   filter(address_type == "single")
 
-missing <- jur3 %>% 
+missing <- jur4 %>% 
   filter(address_type == "missing")
 
 ```
@@ -723,7 +753,7 @@ weird1 <- nested %>%
 rm(weird, weird1)
 ```
 
-- IN the case of when the lot size is repeated (Instance 3)- the number of unique lot sizes is 1, so mode is the right function.
+- IN the case of when the lot size is repeated - the number of unique lot sizes is 1, so mode is the right function.
 - In the case of when there are the same number of unique values as there are properties- sum is the correct function. 
 - In the fourth instance, two smaller number add up to the third. I looked up several online and it seems like best to keep the total, summing all will double count the lot size
 
@@ -866,10 +896,7 @@ nested_all <- nested_all %>%
   mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
   mutate(zoning = ifelse(ties_z == 1,
                          NA,
-                         zoning),
-         countylandusedescription = ifelse(ties_z == 1,
-                                           NA,
-                                           countylandusedescription)) %>% 
+                         zoning)) %>% 
   select(-ties_z)
 
 ```
