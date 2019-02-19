@@ -613,7 +613,7 @@ if (TRUE %in% is.na(jur4$address_type)) {
   warning("NAs in address_type")
 }
 
-
+#aftercleaning the missing category dropped from 9562 to 8715, dropped 847 which matches the total observation of cleanparceladdress dataset
 count(jur4, address_type)
 
 
