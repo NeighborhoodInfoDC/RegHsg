@@ -262,7 +262,7 @@ data Cen_population_estimates ;
 	ucounty = put(county,z5.);
 	state = put(state,z2.);
 
-	drop county_fips state_fips ;
+	drop county state ;
 
     if county in ("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685");
 
