@@ -551,10 +551,10 @@ jur3 <- left_join(x = jur2, y= cleanparceladdress, by ="parcelbase_parcelID") %>
                                     propaddress_new, 
                                     propaddress_bk))
 
-test2 <- count(jur3, is.na(propaddress))
+count(jur3, is.na(propaddress))
 
 test <- jur3 %>% 
-  select(parcelbase_parcelID, propaddress, propaddress_bk, propaddress_new)
+  select(parcelbase_parcelID,parcelbase_address, propaddress, propaddress_bk, propaddress_new)
 
 ```
 
