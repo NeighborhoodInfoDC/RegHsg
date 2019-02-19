@@ -101,6 +101,9 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
+summary {
+  display: list-item;
+}
 </style>
 
 
@@ -108,9 +111,70 @@ button.code-folding-btn:focus {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
 });
 </script>
 
@@ -123,7 +187,6 @@ $(document).ready(function () {
   window.initializeCodeFolding("show" === "show");
 });
 </script>
-
 
 
 
@@ -247,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Yipeng Su adapted from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 06, 2019</p>
+<p>Last updated February 19, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -302,13 +365,24 @@ jdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Data/&quot;, filepath, &quot;/&quot;
 <li>building_type: this indicates the building type for multifamily parcels (condos and apartments)</li>
 </ol>
 <p>Export county land use codes for manual classification</p>
+<p>Since we are keeping all parcel_base observations, this caused missing county land use descriptions in cases where blackknight data is not available. So instead of manual classifying county land use code, we will actually use the usecode and uiproptype for the next step. But we are still exporting a crosstab spread sheet where you can see the landusedescription and usecode.</p>
 <pre class="r"><code>currentjur_county &lt;- jur %&gt;% 
   group_by(countylandusedescription) %&gt;% 
   count()
 
-if (!file.exists(paste0(&quot;../Data/&quot;, filepath, &quot;-county-land-use.csv&quot;))) {
+crosstab_category &lt;- jur %&gt;% 
+  group_by(countylandusedescription, parcelbase_usecode) %&gt;% 
+  count()
+
+if (!file.exists(paste0(&quot;../Data/&quot;, filepath, &quot;-county-land-use-new.csv&quot;))) {
   write_csv(currentjur_county,
-            paste0(&quot;../Data/&quot;, filepath, &quot;-county-land-use.csv&quot;))
+            paste0(&quot;../Data/&quot;, filepath, &quot;-county-land-use-new.csv&quot;))
+}
+
+
+if (!file.exists(paste0(&quot;../Data/&quot;, filepath, &quot;-county-land-use-crosstab-new.csv&quot;))) {
+  write_csv(crosstab_category,
+            paste0(&quot;../Data/&quot;, filepath, &quot;-county-land-use-crosstab-new.csv&quot;))
 }
 
 rm(currentjur_county)</code></pre>
@@ -321,337 +395,230 @@ rm(currentjur_county)</code></pre>
 <div id="residential" class="section level5">
 <h5><code>residential</code></h5>
 <pre class="r"><code>res_codes &lt;- 
-  c(&quot;CONDO - VERTICAL&quot;,
-      &quot;CONDO HORIZONTAL&quot;,
-      &quot;CONDO HORIZONTAL COMBINED&quot;,
-      &quot;CONDO VERTICAL&quot;,
-      &quot;CONDO VERTICAL COMBINED&quot;,
-      &quot;CONDO, INVESTMENT, HORIZONTAL&quot;,
-      &quot;CONDO, INVESTMENT, VERTICAL&quot;,
-      &quot;COOPERATIVE - HORIZONTAL - MIXED USE&quot;,
-      &quot;COOPERATIVE - VERTICAL - MIXED USE&quot;,
-      &quot;ELEVATOR APT&quot;,
-      &quot;RES - CONVERSIONS - MORE THAN 5 UNITS&quot;,
-      &quot;RES - COOPERATIVE - VERTICAL&quot;,
-      &quot;RES CONVERSIONS - 5 UNITS&quot;,
-      &quot;RES CONVERSIONS - LESS THAN 5 UNITS&quot;,
-      &quot;RES COOPERATIVE - HORIZONTAL&quot;,
-      &quot;RES FLATS - LESS THAN 5 UNITS&quot;,
-      &quot;RES MIXED USE&quot;,
-      &quot;RES SINGLE FAMILY DETACHED&quot;,
-      &quot;RES SINGLE FAMILY GARAGE&quot;,
-      &quot;RES SINGLE FAMILY MISC&quot;,
-      &quot;RES SINGLE FAMILY ROW&quot;,
-      &quot;RES SINGLE FAMILY SEMI-DETACHED&quot;,
-      &quot;RESIDENTIAL - MULTIFAMILY MISC&quot;,
-      &quot;RESIDENTIAL TRANSIENT MISC&quot;,
-      &quot;SINGLE FAMILY - RES - NON CONFORMING&quot;,
-      &quot;WALK UP APT&quot;
- )
+  c(&quot;10&quot;, &quot;11&quot;, &quot;12&quot;, &quot;13&quot;, &quot;14&quot;)
 
 jur &lt;- jur %&gt;% 
   mutate(residential =
-           ifelse(countylandusedescription %in% res_codes, 1, 0))
+           ifelse(parcelbase_UIproptype %in% res_codes, 1, 0))
 
 rm(res_codes)</code></pre>
 </div>
 <div id="category" class="section level5">
 <h5><code>category</code></h5>
-<pre class="r"><code>mf &lt;- c(&quot;CONDO - VERTICAL&quot;,
-        &quot;CONDO HORIZONTAL&quot;,
-        &quot;CONDO HORIZONTAL COMBINED&quot;,
-        &quot;CONDO VERTICAL&quot;,
-        &quot;CONDO VERTICAL COMBINED&quot;,
-        &quot;CONDO, INVESTMENT, HORIZONTAL&quot;,
-        &quot;CONDO, INVESTMENT, VERTICAL&quot;,
-        &quot;COOPERATIVE - HORIZONTAL - MIXED USE&quot;,
-        &quot;COOPERATIVE - VERTICAL - MIXED USE&quot;,
-        &quot;ELEVATOR APT&quot;,
-        &quot;RES - CONVERSIONS - MORE THAN 5 UNITS&quot;,
-        &quot;RES - COOPERATIVE - VERTICAL&quot;,
-        &quot;RES CONVERSIONS - 5 UNITS&quot;,
-        &quot;RES CONVERSIONS - LESS THAN 5 UNITS&quot;,
-        &quot;RES COOPERATIVE - HORIZONTAL&quot;,
-        &quot;RES FLATS - LESS THAN 5 UNITS&quot;,
-        &quot;RES MIXED USE&quot;,
-        &quot;RESIDENTIAL - MULTIFAMILY MISC&quot;,
-        &quot;WALK UP APT&quot;)
+<p>I used this code to check some of the confusing ones in the parcel base data to assign the right category. May not need this step if we are identifying vacant lots/structures based on the ui_proptype</p>
+<pre class="r"><code>## some Flase vacant are actually not vacant
+jur %&gt;% 
+ filter(countylandusedescription == &quot;FALSE VACANT&quot;) %&gt;% 
+  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuilt) %&gt;% 
+    arrange(desc(parcelbase_phasebuilt)) %&gt;% 
+  head(20)</code></pre>
+<pre><code>## # A tibble: 20 x 4
+##    assessorsparcelnu~ parcelbase_address owneroccupiedres~ parcelbase_phas~
+##    &lt;chr&gt;              &lt;chr&gt;              &lt;chr&gt;                        &lt;dbl&gt;
+##  1 0701      0870     1277  1ST ST SE    &lt;NA&gt;                       3914620
+##  2 0340      0831     1013-1015  M ST NW &lt;NA&gt;                       1470320
+##  3 0363      0807     1714  9TH ST NW    &lt;NA&gt;                        608040
+##  4 1452      0842     POTOMAC AV NW      &lt;NA&gt;                         52500
+##  5 1856      0814     3815 KANAWHA ST NW &lt;NA&gt;                          9910
+##  6 3056      0004     0534 HARVARD ST NW &lt;NA&gt;                          7930
+##  7 0204      0848     U ST NW            &lt;NA&gt;                          3550
+##  8 0054      7013     2200  PENNSYLVANI~ &lt;NA&gt;                          1000
+##  9 0054      7014     2200  PENNSYLVANI~ &lt;NA&gt;                          1000
+## 10 0054      7015     2200  PENNSYLVANI~ &lt;NA&gt;                          1000
+## 11 2610      0756     NEWTON ST          &lt;NA&gt;                           830
+## 12 3535      0052     2020 SUMMIT ST NE  &lt;NA&gt;                           750
+## 13 2850      0815     IRVING ST NW       &lt;NA&gt;                           320
+## 14 2906      7002     GEORGIA AVE NW     &lt;NA&gt;                           100
+## 15 2906      7005     GEORGIA AVE NW     &lt;NA&gt;                           100
+## 16 2906      7006     GEORGIA AVE NW     &lt;NA&gt;                           100
+## 17 2906      7007     GEORGIA AVE NW     &lt;NA&gt;                           100
+## 18 2906      7009     GEORGIA AVE NW     &lt;NA&gt;                           100
+## 19 2906      7011     GEORGIA AVE NW     &lt;NA&gt;                           100
+## 20 2906      7012     GEORGIA AVE NW     &lt;NA&gt;                           100</code></pre>
+<pre class="r"><code>mf &lt;- c(&quot;002&quot;,
+        &quot;003&quot;,
+        &quot;016&quot;,
+        &quot;017&quot;,
+        &quot;021&quot;,
+        &quot;022&quot;,
+        &quot;023&quot;,
+        &quot;024&quot;,
+        &quot;025&quot;,
+        &quot;026&quot;,
+        &quot;027&quot;,
+        &quot;028&quot;,
+        &quot;029&quot;,
+        &quot;116&quot;,
+        &quot;117&quot;,
+        &quot;126&quot;,
+        &quot;127&quot;,
+        &quot;216&quot;,
+        &quot;217&quot;,
+        &quot;316&quot;,
+        &quot;516&quot;,
+        &quot;995&quot;
+        )
 
-sf &lt;- c(&quot;RES SINGLE FAMILY DETACHED&quot;,
-        &quot;RES SINGLE FAMILY MISC&quot;,
-        &quot;RES SINGLE FAMILY ROW&quot;,
-        &quot;RES SINGLE FAMILY SEMI-DETACHED&quot;,
-        &quot;SINGLE FAMILY - RES - NON CONFORMING&quot;)
+sf &lt;- c(&quot;001&quot;,
+        &quot;011&quot;,
+        &quot;012&quot;,
+        &quot;013&quot;,
+        &quot;015&quot;,
+        &quot;019&quot;
+        )
 
-vacant &lt;- c(&quot;FALSE VACANT&quot;,
-            &quot;FALSE VACANT ABUTTING LOT (RES)&quot;,
-            &quot;IMPROVED-USE NOT SPECIFIED&quot;,
-            &quot;IMPROVED W/ PERMIT COMMERCIAL&quot;,
-            &quot;TRUE VACANT&quot;,
-            &quot;VACANT - UNIMPROVED PARKING&quot;,
-            &quot;VACANT COMM USE, MISC COMM IMPRS&quot;,
-            &quot;VACANT COMM W/ ZONING LIMITATIONS&quot;,
-            &quot;VACANT W/ PERMIT COMMERCIAL&quot;,
-            &quot;VACANT W/COMMERCIAL USE&quot;,
-            &quot;VACANT W/PERMIT&quot;,
-            &quot;VACANT W/ZONING LIMITS&quot;,
-            &quot;UNIMPROVED-USE NOT SPECIFIED&quot;)
+vacant &lt;- c(&quot;091&quot;,
+            &quot;092&quot;,
+            &quot;093&quot;,
+            &quot;094&quot;,
+            &quot;095&quot;,
+            &quot;096&quot;,
+            &quot;097&quot;,
+            &quot;191&quot;,
+            &quot;192&quot;,
+            &quot;193&quot;,
+            &quot;194&quot;,
+            &quot;195&quot;,
+            &quot;196&quot;,
+            &quot;197&quot;
+            )
 
-allother &lt;- c(&quot;BANKS/FINANCIAL&quot;,
-                &quot;CLUB PRIVATE&quot;,
-                &quot;COMMERCIAL - OFFICE CONDOMINIUM&quot;,
-                &quot;COMMERCIAL - OFFICE MISC&quot;,
-                &quot;COMMERCIAL - RETAIL - CONDOMINIUM&quot;,
-                &quot;COMMERCIAL - RETAIL - MISC&quot;,
-                &quot;COMMERCIAL USE&quot;,
-                &quot;CONDO GARAGE&quot;,
-                &quot;DORMITORY&quot;,
-                &quot;EDUCATIONAL&quot;,
-                &quot;EMBASSIES/CHANCERIES/ETC&quot;,
-                &quot;FAST FOOD RESTAURANTS&quot;,
-                &quot;FRATERNITY/SORORITY HOUSE&quot;,
-                &quot;GARAGE, MULTIFAMILY&quot;,
-                &quot;GARAGE/VEHICLE SALES&quot;,
-                &quot;HEALTH CARE FACILITY&quot;,
-                &quot;HOTEL LARGE&quot;,
-                &quot;HOTEL SMALL&quot;,
-                &quot;INDUSTRIAL - MISC&quot;,
-                &quot;INN&quot;,
-                &quot;LIGHT INDUSTRIAL&quot;,
-                &quot;MEDICAL&quot;,
-                &quot;MOTEL&quot;,
-                &quot;MUSEUMS/LIBRARIES/GALLERIES&quot;,
-                &quot;OFFICE - CONDOMINIUM HORIZONTAL&quot;,
-                &quot;OFFICE - CONDOMINIUM VERTICAL&quot;,
-                &quot;OFFICE - LARGE&quot;,
-                &quot;OFFICE - SMALL&quot;,
-                &quot;PARKING GARAGE&quot;,
-                &quot;PARKING LOT&quot;,
-                &quot;PLANNED COMMERCIAL DEVELOPMENT&quot;,
-                &quot;PUBLIC SERVICE&quot;,
-                &quot;RAW MATERIAL HANDLING&quot;,
-                &quot;RECREATIONAL&quot;,
-                &quot;RELIGIOUS&quot;,
-                &quot;RES SINGLE FAMILY GARAGE&quot;,
-                &quot;RESIDENTIAL TRANSIENT MISC&quot;,
-                &quot;RESTAURANTS&quot;,
-                &quot;SPECIAL PURPOSE - MISC&quot;,
-                &quot;SPECIAL PURPOSE MEMORIAL&quot;,
-                &quot;STORE - BARBER/BEAUTY SHOP&quot;,
-                &quot;STORE - DEPARTMENT&quot;,
-                &quot;STORE - MISC&quot;,
-                &quot;STORE - RESTAURANT&quot;,
-                &quot;STORE - SHOPPING CENTER/MALL&quot;,
-                &quot;STORE - SMALL/1 STORY&quot;,
-                &quot;STORE - SUPER MARKET&quot;,
-                &quot;THEATERS/ENTERTAINMENT&quot;,
-                &quot;TOURIST HOMES&quot;,
-                &quot;TRUCK TERMINAL&quot;,
-                &quot;TRUE VACANT COMMERCIAL&quot;,
-                &quot;UNIMPROVED PARKING LOT&quot;,
-                &quot;VEHICLE SERVICE STATION - KIOSK&quot;,
-                &quot;VEHICLE SERVICE STATION - KIOSK/OTHER&quot;,
-                &quot;VEHICLE SERVICE STATION - MARKET/OTHER&quot;,
-                &quot;VEHICLE SERVICE STATION - VINTAGE&quot;,
-                &quot;VEHICLE SERVICE STATION, MARKET&quot;,
-                &quot;WAREHOUSE - CONDOMINIUM&quot;,
-                &quot;WAREHOUSING - 1 STORY&quot;,
-                &quot;WAREHOUSING - MULTI-STORY&quot;
-                )
+allother &lt;- c(&quot;000&quot;,
+              &quot;004&quot;,
+              &quot;005&quot;,
+              &quot;006&quot;,
+              &quot;007&quot;,
+              &quot;008&quot;,
+              &quot;014&quot;,
+              &quot;018&quot;,
+              &quot;031&quot;,
+              &quot;032&quot;,
+              &quot;033&quot;,
+              &quot;034&quot;,
+              &quot;035&quot;,
+              &quot;036&quot;,
+              &quot;037&quot;,
+              &quot;038&quot;,
+              &quot;039&quot;,
+              &quot;041&quot;,
+              &quot;042&quot;,
+              &quot;043&quot;,
+              &quot;044&quot;,
+              &quot;045&quot;,
+              &quot;046&quot;,
+              &quot;047&quot;,
+              &quot;048&quot;,
+              &quot;049&quot;,
+              &quot;051&quot;,
+              &quot;052&quot;,
+              &quot;053&quot;,
+              &quot;056&quot;,
+              &quot;057&quot;,
+              &quot;058&quot;,
+              &quot;059&quot;,
+              &quot;061&quot;,
+              &quot;062&quot;,
+              &quot;063&quot;,
+              &quot;064&quot;,
+              &quot;065&quot;,
+              &quot;066&quot;,
+              &quot;067&quot;,
+              &quot;068&quot;,
+              &quot;069&quot;,
+              &quot;071&quot;,
+              &quot;072&quot;,
+              &quot;073&quot;,
+              &quot;074&quot;,
+              &quot;075&quot;,
+              &quot;076&quot;,
+              &quot;078&quot;,
+              &quot;079&quot;,
+              &quot;081&quot;,
+              &quot;082&quot;,
+              &quot;083&quot;,
+              &quot;084&quot;,
+              &quot;085&quot;,
+              &quot;086&quot;,
+              &quot;087&quot;,
+              &quot;088&quot;,
+              &quot;089&quot;,
+              &quot;165&quot;,
+              &quot;189&quot;,
+              &quot;214&quot;,
+              &quot;265&quot;,
+              &quot;365&quot;,
+              &quot;416&quot;,
+              &quot;417&quot;,
+              &quot;465&quot;
+              )
 
 
 jur &lt;- jur %&gt;% 
   mutate(category = case_when(
-           countylandusedescription %in% mf ~ &quot;mf&quot;,
-           countylandusedescription %in% allother ~ &quot;all other category&quot;,
-           countylandusedescription %in% sf ~ &quot;sf&quot;,
-           countylandusedescription %in% vacant ~ &quot;vacant&quot;))
+           parcelbase_usecode %in% mf ~ &quot;mf&quot;,
+           parcelbase_usecode %in% allother ~ &quot;all other category&quot;,
+           parcelbase_usecode %in% sf ~ &quot;sf&quot;,
+           parcelbase_usecode %in% vacant ~ &quot;vacant&quot;))
 
 rm(mf, sf, vacant, allother)</code></pre>
 </div>
 <div id="category_detail" class="section level5">
 <h5><code>category_detail</code></h5>
-<pre class="r"><code>sfd &lt;- c(&quot;RES SINGLE FAMILY DETACHED&quot;,
-         &quot;RES SINGLE FAMILY SEMI-DETACHED&quot;)
-
-sfa &lt;- c(&quot;RES SINGLE FAMILY ROW&quot;)
-
-condo &lt;- c(&quot;CONDO - VERTICAL&quot;,
-          &quot;CONDO GARAGE&quot;,
-          &quot;CONDO HORIZONTAL&quot;,
-          &quot;CONDO HORIZONTAL COMBINED&quot;,
-          &quot;CONDO VERTICAL&quot;,
-          &quot;CONDO VERTICAL COMBINED&quot;,
-          &quot;CONDO, INVESTMENT, HORIZONTAL&quot;,
-          &quot;CONDO, INVESTMENT, VERTICAL&quot;,
-          &quot;RES - CONVERSIONS - MORE THAN 5 UNITS&quot;,
-          &quot;RES - COOPERATIVE - VERTICAL&quot;,
-          &quot;RES CONVERSIONS - 5 UNITS&quot;,
-          &quot;RES CONVERSIONS - LESS THAN 5 UNITS&quot;,
-          &quot;RES COOPERATIVE - HORIZONTAL&quot;)
-
-apt &lt;- c(&quot;ELEVATOR APT&quot;,
-        &quot;RES FLATS - LESS THAN 5 UNITS&quot;,
-        &quot;WALK UP APT&quot;,
-        &quot;COOPERATIVE - HORIZONTAL - MIXED USE&quot;,
-        &quot;COOPERATIVE - VERTICAL - MIXED USE&quot;)
-
-com &lt;- c(&quot;BANKS/FINANCIAL&quot;,
-          &quot;CLUB PRIVATE&quot;,
-          &quot;COMMERCIAL - OFFICE CONDOMINIUM&quot;,
-          &quot;COMMERCIAL - OFFICE MISC&quot;,
-          &quot;COMMERCIAL - RETAIL - CONDOMINIUM&quot;,
-          &quot;COMMERCIAL - RETAIL - MISC&quot;,
-          &quot;COMMERCIAL USE&quot;,
-          &quot;FAST FOOD RESTAURANTS&quot;,
-          &quot;GARAGE/VEHICLE SALES&quot;,
-          &quot;HEALTH CARE FACILITY&quot;,
-          &quot;HOTEL LARGE&quot;,
-          &quot;HOTEL SMALL&quot;,
-          &quot;IMPROVED W/ PERMIT COMMERCIAL&quot;,
-          &quot;INDUSTRIAL - MISC&quot;,
-          &quot;INN&quot;,
-          &quot;LIGHT INDUSTRIAL&quot;,
-          &quot;MEDICAL&quot;,
-          &quot;MOTEL&quot;,
-          &quot;PARKING GARAGE&quot;,
-          &quot;PARKING LOT&quot;,
-          &quot;PLANNED COMMERCIAL DEVELOPMENT&quot;,
-          &quot;RAW MATERIAL HANDLING&quot;,
-          &quot;RECREATIONAL&quot;,
-          &quot;RESTAURANTS&quot;,
-          &quot;STORE - BARBER/BEAUTY SHOP&quot;,
-          &quot;STORE - DEPARTMENT&quot;,
-          &quot;STORE - MISC&quot;,
-          &quot;STORE - RESTAURANT&quot;,
-          &quot;STORE - SHOPPING CENTER/MALL&quot;,
-          &quot;STORE - SMALL/1 STORY&quot;,
-          &quot;STORE - SUPER MARKET&quot;,
-          &quot;THEATERS/ENTERTAINMENT&quot;,
-          &quot;TOURIST HOMES&quot;,
-          &quot;VEHICLE SERVICE STATION - MARKET/OTHER&quot;,
-          &quot;VEHICLE SERVICE STATION - VINTAGE&quot;,
-          &quot;VEHICLE SERVICE STATION, MARKET&quot;,
-          &quot;WAREHOUSE - CONDOMINIUM&quot;,
-          &quot;WAREHOUSING - 1 STORY&quot;,
-          &quot;WAREHOUSING - MULTI-STORY&quot;)
-
-office &lt;- c(&quot;OFFICE - CONDOMINIUM HORIZONTAL&quot;,
-          &quot;OFFICE - CONDOMINIUM VERTICAL&quot;,
-          &quot;OFFICE - LARGE&quot;,
-          &quot;OFFICE - SMALL&quot;)
-
-vacantcom &lt;- c(&quot;TRUE VACANT COMMERCIAL&quot;,
-              &quot;VACANT COMM USE, MISC COMM IMPRS&quot;,
-              &quot;VACANT COMM W/ ZONING LIMITATIONS&quot;,
-              &quot;VACANT W/ PERMIT COMMERCIAL&quot;,
-              &quot;VACANT W/COMMERCIAL USE&quot;)
-
-vacantother &lt;- c(&quot;FALSE VACANT&quot;,
-              &quot;FALSE VACANT ABUTTING LOT (RES)&quot;,
-              &quot;IMPROVED-USE NOT SPECIFIED&quot;,
-              &quot;UNIMPROVED-USE NOT SPECIFIED&quot;,
-              &quot;TRUE VACANT&quot;,
-              &quot;VACANT - UNIMPROVED PARKING&quot;,
-              &quot;VACANT W/PERMIT&quot;,
-              &quot;VACANT W/ZONING LIMITS&quot;)
-
-otherres &lt;-  c(&quot;RES MIXED USE&quot;,
-              &quot;RES SINGLE FAMILY MISC&quot;,
-              &quot;RESIDENTIAL - MULTIFAMILY MISC&quot;,
-              &quot;RESIDENTIAL TRANSIENT MISC&quot;,
-              &quot;SINGLE FAMILY - RES - NON CONFORMING&quot;) 
-
-othernonres &lt;- c(&quot;DORMITORY&quot;,
-                &quot;EDUCATIONAL&quot;,
-                &quot;EMBASSIES/CHANCERIES/ETC&quot;,
-                &quot;FRATERNITY/SORORITY HOUSE&quot;,
-                &quot;GARAGE, MULTIFAMILY&quot;,
-                &quot;MUSEUMS/LIBRARIES/GALLERIES&quot;,
-                &quot;PUBLIC SERVICE&quot;,
-                &quot;RELIGIOUS&quot;,
-                &quot;SPECIAL PURPOSE - MISC&quot;,
-                &quot;SPECIAL PURPOSE MEMORIAL&quot;,
-                &quot;TRUCK TERMINAL&quot;,
-                &quot;UNIMPROVED PARKING LOT&quot;,
-                &quot;VEHICLE SERVICE STATION - KIOSK&quot;,
-                &quot;VEHICLE SERVICE STATION - KIOSK/OTHER&quot;,
-                &quot;RES SINGLE FAMILY GARAGE&quot;) 
-
-jur &lt;- jur %&gt;% 
+<pre class="r"><code>jur &lt;- jur %&gt;% 
   mutate(category_detail = case_when(
-           countylandusedescription %in% sfd ~ &quot;single family detached&quot;,
-           countylandusedescription %in% sfa ~ &quot;single family attached&quot;,
-           countylandusedescription %in% condo ~ &quot;condo&quot;,
-           countylandusedescription %in% apt ~ &quot;rental apartment&quot;,
-           countylandusedescription %in% com ~ &quot;commerical&quot;,
-           countylandusedescription %in% office ~ &quot;office&quot;,
-           countylandusedescription %in% vacantcom ~ &quot;vacant commercial&quot;,
-           countylandusedescription %in% vacantother ~ &quot;vacant all other&quot;,
-           countylandusedescription %in% otherres ~ &quot;all other residential&quot;,
-           countylandusedescription %in% othernonres ~ &quot;all other non residential&quot;))
-
-rm(sfd, sfa, condo,apt,com,office,vacantcom,vacantother,otherres,othernonres)</code></pre>
+           parcelbase_UIproptype == 10 ~ &quot;Single-family home&quot;,
+           parcelbase_UIproptype == 11 ~ &quot;Condominium unit&quot;,
+           parcelbase_UIproptype == 12  ~ &quot;Cooperative building&quot;,
+           parcelbase_UIproptype == 13 ~ &quot;Rental apartment building&quot;,
+           parcelbase_UIproptype == 19 ~ &quot;Residential: Other&quot;,
+           parcelbase_UIproptype == 20  ~ &quot;Retail&quot;,
+           parcelbase_UIproptype == 21  ~ &quot;Office&quot;,
+           parcelbase_UIproptype == 22 ~ &quot;Parking&quot;,
+           parcelbase_UIproptype == 23  ~ &quot;Industrial&quot;,
+           parcelbase_UIproptype == 24  ~ &quot;Hotel/motel&quot;,
+           parcelbase_UIproptype == 29  ~ &quot;Other commerical&quot;,
+           parcelbase_UIproptype == 30  ~ &quot;Group quarters&quot;,
+           parcelbase_UIproptype == 40  ~ &quot;Garage&quot;,
+           parcelbase_UIproptype == 50  ~ &quot;Vacant unimproved&quot;,
+           parcelbase_UIproptype == 51  ~ &quot;Vacant with structures&quot;,
+           parcelbase_UIproptype == 99  ~ &quot;unknown&quot;
+           ))</code></pre>
 </div>
 <div id="building_type" class="section level5">
 <h5><code>building_type</code></h5>
-<pre class="r"><code>vertical &lt;- c(&quot;CONDO - VERTICAL&quot;,
-              &quot;CONDO VERTICAL COMBINED&quot;,
-              &quot;CONDO, INVESTMENT, VERTICAL&quot;,
-              &quot;COOPERATIVE - VERTICAL - MIXED USE&quot;,
-              &quot;ELEVATOR APT&quot;,
-              &quot;RES - CONVERSIONS - MORE THAN 5 UNITS&quot;,
-              &quot;RES - COOPERATIVE - VERTICAL&quot;)
+<pre class="r"><code>vertical &lt;- c(&quot;017&quot;,
+            &quot;022&quot;,
+            &quot;027&quot;,
+            &quot;028&quot;,
+            &quot;117&quot;,
+            &quot;126&quot;,
+            &quot;127&quot;,
+            &quot;217&quot;
+            )
                
-horizontal &lt;- c(&quot;CONDO HORIZONTAL&quot;,
-                &quot;CONDO HORIZONTAL COMBINED&quot;,
-                &quot;CONDO VERTICAL&quot;,
-                &quot;CONDO, INVESTMENT, HORIZONTAL&quot;,
-                &quot;RES COOPERATIVE - HORIZONTAL&quot;,
-                &quot;COOPERATIVE - HORIZONTAL - MIXED USE&quot;,
-                &quot;WALK UP APT&quot;)
+horizontal &lt;- c(&quot;016&quot;,
+              &quot;021&quot;,
+              &quot;023&quot;,
+              &quot;024&quot;,
+              &quot;025&quot;,
+              &quot;026&quot;,
+              &quot;116&quot;,
+              &quot;216&quot;,
+              &quot;316&quot;,
+              &quot;516&quot;)
 
-othermf &lt;- c(&quot;RES CONVERSIONS - 5 UNITS&quot;,
-            &quot;RES CONVERSIONS - LESS THAN 5 UNITS&quot;,
-            &quot;RES FLATS - LESS THAN 5 UNITS&quot;,
-            &quot;RES MIXED USE&quot;,
-            &quot;RESIDENTIAL - MULTIFAMILY MISC&quot;)
+othermf &lt;- c(&quot;002&quot;,
+            &quot;003&quot;,
+            &quot;029&quot;,
+            &quot;995&quot;)
 
 jur &lt;- jur %&gt;% 
   mutate(building_type = case_when(
-           countylandusedescription %in% vertical ~ &quot;vertical&quot;,
-           countylandusedescription %in% horizontal ~ &quot;horizontal&quot;,
-           countylandusedescription %in% othermf ~ &quot;other multi family structure&quot;))
+           parcelbase_usecode %in% vertical ~ &quot;vertical&quot;,
+           parcelbase_usecode %in% horizontal ~ &quot;horizontal&quot;,
+           parcelbase_usecode %in% othermf ~ &quot;other multi family structure&quot;))
                            
 rm(vertical, horizontal, othermf )           </code></pre>
-<p>I used this code to check some of the confusing ones in the parcel base data to assign the right category</p>
-<pre class="r"><code>jur %&gt;% 
- filter(countylandusedescription == &quot;FALSE VACANT&quot;) %&gt;% 
-  select(assessorsparcelnumberapnpin, propstreetname, owneroccupiedresidential) %&gt;% 
-  head(20)</code></pre>
-<pre><code>## # A tibble: 20 x 3
-##    assessorsparcelnumberapnpin propstreetname owneroccupiedresidential
-##    &lt;chr&gt;                       &lt;chr&gt;          &lt;chr&gt;                   
-##  1 0049      0004              N              &lt;NA&gt;                    
-##  2 0054      7013              PENNSYLVANIA   &lt;NA&gt;                    
-##  3 0054      7014              PENNSYLVANIA   &lt;NA&gt;                    
-##  4 0054      7015              PENNSYLVANIA   &lt;NA&gt;                    
-##  5 0055      0028              23RD           &lt;NA&gt;                    
-##  6 0068      0847              O              &lt;NA&gt;                    
-##  7 0069      0829              22ND ST        &lt;NA&gt;                    
-##  8 0150      0812              SEATON         &lt;NA&gt;                    
-##  9 0151      0804              T ST           &lt;NA&gt;                    
-## 10 0204      0848              U              &lt;NA&gt;                    
-## 11 0204      0849              U              &lt;NA&gt;                    
-## 12 0204      0850              V              &lt;NA&gt;                    
-## 13 0206      0829              S ST           &lt;NA&gt;                    
-## 14 0206      0832              S ST           &lt;NA&gt;                    
-## 15 0239      0027              13TH           &lt;NA&gt;                    
-## 16 0274      0838              13TH ST        &lt;NA&gt;                    
-## 17 0278      0808              12TH ST        &lt;NA&gt;                    
-## 18 0278      0809              12TH ST        &lt;NA&gt;                    
-## 19 0278      0812              12TH ST        &lt;NA&gt;                    
-## 20 0278      0813              12TH ST        &lt;NA&gt;</code></pre>
 </div>
 </div>
 </div>
@@ -666,13 +633,13 @@ rm(vertical, horizontal, othermf )           </code></pre>
 <pre><code>## # A tibble: 2 x 2
 ##   residential      n
 ##         &lt;dbl&gt;  &lt;int&gt;
-## 1           0  44609
-## 2           1 179421</code></pre>
+## 1           0  35623
+## 2           1 170807</code></pre>
 <pre class="r"><code>count(jur, is.na(residential))</code></pre>
 <pre><code>## # A tibble: 1 x 2
 ##   `is.na(residential)`      n
 ##   &lt;lgl&gt;                 &lt;int&gt;
-## 1 FALSE                224030</code></pre>
+## 1 FALSE                206430</code></pre>
 <pre class="r"><code>if (TRUE %in% is.na(jur$residential)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
@@ -683,15 +650,15 @@ rm(vertical, horizontal, othermf )           </code></pre>
 <pre><code>## # A tibble: 4 x 2
 ##   category               n
 ##   &lt;chr&gt;              &lt;int&gt;
-## 1 all other category 33522
-## 2 mf                 79802
-## 3 sf                 98923
-## 4 vacant             11783</code></pre>
+## 1 all other category 23542
+## 2 mf                 76926
+## 3 sf                 94155
+## 4 vacant             11807</code></pre>
 <pre class="r"><code>count(jur, is.na(category))</code></pre>
 <pre><code>## # A tibble: 1 x 2
 ##   `is.na(category)`      n
 ##   &lt;lgl&gt;              &lt;int&gt;
-## 1 FALSE             224030</code></pre>
+## 1 FALSE             206430</code></pre>
 <pre class="r"><code>if (TRUE %in% is.na(jur$category)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
@@ -699,24 +666,29 @@ rm(vertical, horizontal, othermf )           </code></pre>
 <div id="category_detail-1" class="section level5">
 <h5><code>category_detail</code></h5>
 <pre class="r"><code>count(jur, category_detail)</code></pre>
-<pre><code>## # A tibble: 10 x 2
+<pre><code>## # A tibble: 15 x 2
 ##    category_detail               n
 ##    &lt;chr&gt;                     &lt;int&gt;
-##  1 all other non residential  3478
-##  2 all other residential       590
-##  3 commerical                 9739
-##  4 condo                     82731
-##  5 office                     3491
-##  6 rental apartment           9103
-##  7 single family attached    47745
-##  8 single family detached    51000
-##  9 vacant all other          10846
-## 10 vacant commercial          5307</code></pre>
+##  1 Condominium unit          60172
+##  2 Cooperative building        340
+##  3 Garage                    13120
+##  4 Group quarters              109
+##  5 Hotel/motel                 209
+##  6 Industrial                  473
+##  7 Office                     2509
+##  8 Other commerical           2716
+##  9 Parking                     867
+## 10 Rental apartment building 16218
+## 11 Residential: Other          275
+## 12 Retail                     3538
+## 13 Single-family home        94077
+## 14 Vacant unimproved         11565
+## 15 Vacant with structures      242</code></pre>
 <pre class="r"><code>count(jur, is.na(category_detail))</code></pre>
 <pre><code>## # A tibble: 1 x 2
 ##   `is.na(category_detail)`      n
 ##   &lt;lgl&gt;                     &lt;int&gt;
-## 1 FALSE                    224030</code></pre>
+## 1 FALSE                    206430</code></pre>
 <pre class="r"><code>if (TRUE %in% is.na(jur$category_detail)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
@@ -738,18 +710,32 @@ rm(newcat, mf)</code></pre>
 <div id="recreate-lot-size" class="section level3">
 <h3>Recreate lot size</h3>
 <p>There are errors in the different Black Knight lot size variables that make it impossible to compare lot size when reported in acres and square feet. Here, we create two new variables, <code>lotsize_acres</code> and <code>lotsize_sf</code> that standardize the unit of measurement. These variables will also convert values of 0 to <code>NA</code>, which will simplify calculations down the line.</p>
+<p>Note the parcelbase source file also has a landarea variable, but that’s the square footage of property so we can’t use it for calculating lot sizes.</p>
 <pre class="r"><code>count(jur, lotsizeareaunit)</code></pre>
 <pre><code>## # A tibble: 3 x 2
 ##   lotsizeareaunit      n
 ##   &lt;chr&gt;            &lt;int&gt;
-## 1 AC                3404
-## 2 SF              200283
-## 3 &lt;NA&gt;             20343</code></pre>
+## 1 AC                2395
+## 2 SF              183127
+## 3 &lt;NA&gt;             20908</code></pre>
 <pre class="r"><code>jur &lt;- jur %&gt;% 
   mutate(lotsize_acres = case_when(lotsizeareaunit == &quot;AC&quot; ~ lotsizeorarea ,
                                    lotsizeareaunit == &quot;SF&quot; ~ lotsizeorarea / 43560),
          lotsize_sf = lotsize_acres * 43560) %&gt;% 
-  mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA))</code></pre>
+  mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA))
+
+jurarea &lt;- jur %&gt;% 
+  filter(!is.na(lotsize_sf ))
+
+
+jurarea2 &lt;- jur %&gt;% 
+  filter(is.na(lotsize_sf )) %&gt;% 
+  mutate(lotsize_sf= parcelbase_proparea,
+         lotsize_acres= parcelbase_proparea/43560) %&gt;% 
+    mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA))
+
+jur1 &lt;- bind_rows(
+  jurarea, jurarea2) </code></pre>
 </div>
 </div>
 <div id="collapsing-properties" class="section level2">
@@ -757,37 +743,38 @@ rm(newcat, mf)</code></pre>
 <p>Next, we need to collapse parcels to the number of units per acre, primarily due to condos habing seperate parcel numbers.</p>
 <div id="preserving-parcel-numbers" class="section level3">
 <h3>Preserving parcel numbers</h3>
-<p>Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.</p>
-<p>First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace <code>parcel_address</code> with <code>NA</code>.</p>
-<pre class="r"><code>jur &lt;- jur %&gt;% 
-  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6)) 
+<p>Parcels that have the same address do not share the same parcel ID, but they do share the same first 8 digits. We can clean up the parcel ID and preserve the square and suffix in case there is a need to later combine with another parcel-level dataset.</p>
+<p>First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace <code>parcel_address</code> with <code>NA</code>. Notice parcel base id should always be the same for blackknight and parcelbase data because of the merge.</p>
+<pre class="r"><code>jurparcel &lt;- jur1 %&gt;% 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 8),
+         parcelbase_parceladdress= substr(parcelbase_parcelID, 1, 8)) 
 
-bad_parcels &lt;- jur %&gt;% 
-  group_by(propaddress) %&gt;% 
-  summarize(parcel = list(parcel_address)) %&gt;% 
-  mutate(unq_parcels = as.integer(map(parcel, 
+bad_parcels &lt;- jurparcel %&gt;% 
+  group_by(parcelbase_address) %&gt;% 
+  summarize(parcelbase= list(parcelbase_parceladdress)) %&gt;% 
+  mutate(unq_parcels = as.integer(map(parcelbase, 
                                   function(x) length(unique(x))))) %&gt;% 
   filter(unq_parcels &gt; 1)
 
 bad_addresses &lt;- bad_parcels %&gt;% 
-  pull(propaddress)
+  pull(parcelbase_address)
 
-jur &lt;- jur %&gt;% 
-  mutate(parcel_address = ifelse(propaddress %in% bad_addresses,
+jur2 &lt;- jurparcel %&gt;% 
+  mutate(parcelbase_parceladdress = ifelse(parcelbase_address %in% bad_addresses,
                                  NA,
-                                 parcel_address))
+                                 parcelbase_parceladdress))
 
 rm(bad_addresses, bad_parcels)</code></pre>
 <p>We can do a quick check to make sure that there are no properties that have the same address but different parcel IDs by seeing if the number of rows are the same when we group by address and parcel ID, vs. just grouping by address.</p>
-<pre class="r"><code>x &lt;- jur %&gt;% 
+<pre class="r"><code>x &lt;- jur2 %&gt;% 
   filter(residential == 1) %&gt;% 
-  group_by(propaddress) %&gt;% 
+  group_by(parcelbase_address) %&gt;% 
   count() %&gt;% 
   nrow()
 
-y &lt;- jur %&gt;% 
+y &lt;- jur2 %&gt;% 
   filter(residential == 1) %&gt;% 
-  group_by(propaddress, parcel_address) %&gt;% 
+  group_by(parcelbase_address, parcelbase_parceladdress) %&gt;% 
   count() %&gt;% 
   nrow()
 
@@ -796,13 +783,15 @@ if (x == y) {
   } else if (y &gt; x) {
     warning(&quot;additional observations introduced&quot;)
 }</code></pre>
-<pre><code>## [1] &quot;118593 = 118593: clean collapse&quot;</code></pre>
+<pre><code>## [1] &quot;170305 = 170305: clean collapse&quot;</code></pre>
 <pre class="r"><code>rm(x,y)</code></pre>
 </div>
 <div id="house-number-cleaning" class="section level3">
 <h3>House number cleaning</h3>
-<p>There are a number of properties that have numbers or symbols in their house numbers that prevent a collapse. This next step removes those characters so the collapse is clean. This will also recategorize properties that have a missing house number as properties that have a missing address. This is important for the collapse because it could cause us to combine two observations that would otherwise be seperate.</p>
-<pre class="r"><code>jur &lt;- jur %&gt;% 
+<p>There are a number of properties that have numbers or symbols in their house numbers that prevent a collapse. This next step removes those characters so the collapse is clean.</p>
+<p>This will also recategorize properties that have a missing house number as properties that have a missing address. This is important for the collapse because it could cause us to combine two observations that would otherwise be seperate.</p>
+<p>This code only applies to blackknight data because parcelbase dataset don’t have a prophouse variable.So if we are using address from parcel base dataset the step below don’t really apply.</p>
+<pre class="r"><code>jur2 &lt;- jur2 %&gt;% 
   mutate(house_letter = ifelse(str_detect(prophouseno, &quot;[:alpha:]&quot;) == 1, 1, 0),
          oldadd = propaddress,
          new_houseno = ifelse(house_letter == 1,
@@ -814,52 +803,108 @@ if (x == y) {
                                     propstreetsuffix,
                                     sep = &quot; &quot;),
                               propaddress))</code></pre>
-<p>Compare the first 20 addresses to check</p>
-<pre class="r"><code>jur %&gt;% 
+<p>Compare the first 20 addresses . Leah– I’m not sure if we need to clean up the parcelbase_address again. It seems like using propaddress is better in this case for collapsing. We can replace propaddress NAs with parcelbase_address.</p>
+<pre class="r"><code>jur2 %&gt;% 
   filter(house_letter == 1) %&gt;% 
-  select(oldadd, propaddress, category_detail) %&gt;% 
+  select(oldadd, propaddress, category_detail,parcelbase_address) %&gt;% 
   head(20)</code></pre>
-<pre><code>## # A tibble: 5 x 3
-##   oldadd    propaddress category_detail       
-##   &lt;chr&gt;     &lt;chr&gt;       &lt;chr&gt;                 
-## 1 2114 N ST 2114 N ST   single family attached
-## 2 2108 N ST 2108 N ST   single family attached
-## 3 2106 N ST 2106 N ST   single family attached
-## 4 2104 N ST 2104 N ST   single family attached
-## 5 6 N ST    6 N ST      single family attached</code></pre>
-<p>After this change, the number of NAs in the address variable should be the same as the number of observations that previously had either a missing address, missing house number, or both.</p>
-<pre class="r"><code>stopifnot(sum(is.na(jur$propaddress)) == nrow(filter(jur, 
+<pre><code>## # A tibble: 5 x 4
+##   oldadd        propaddress category_detail    parcelbase_address
+##   &lt;chr&gt;         &lt;chr&gt;       &lt;chr&gt;              &lt;chr&gt;             
+## 1 2114R N ST NW 2114 N ST   Single-family home 2114R V ST NW     
+## 2 2108V N ST NW 2108 N ST   Single-family home 2108R V ST NW     
+## 3 2106R N ST NW 2106 N ST   Single-family home 2106R V ST NW     
+## 4 2104V N ST NW 2104 N ST   Single-family home 2104R V ST NW     
+## 5 6A N ST SW    6 N ST      Single-family home 6 A N ST SW</code></pre>
+<pre class="r"><code>#replace NA propaddress with parcelbase_address, need to trim several times sometimes before clean, also need to exclude street number and see if housenumber is available. (note a lot of parcelbasee_address missing either houseno or street number, notice how a lot of the address that appears more than once shou't be collapsed without a house number. )
+
+parceladdress &lt;- jur2 %&gt;% 
+  mutate(firstcharacter=str_sub(parcelbase_address,1,1),
+         wrongaddress = ifelse(str_detect(firstcharacter, &quot;[:digit:]&quot;)==1,0,1)) %&gt;% 
+    filter (is.na(propaddress)) %&gt;% 
+    mutate(propaddress2= str_remove(parcelbase_address, &quot;^0+&quot;),
+         propaddress3= str_replace(propaddress2, &quot;[0-9]$&quot;, &quot;&quot;),
+         propaddress4= str_replace(propaddress3, &quot;[0-9]$&quot;, &quot;&quot;),
+         propaddress5= str_replace(propaddress4, &quot;[0-9]$&quot;, &quot;&quot;),
+         propaddress6= str_replace(propaddress5, &quot;[0-9]$&quot;, &quot;&quot;),
+         propaddress7= str_replace(propaddress6, &quot;[0-9]$&quot;, &quot;&quot;),
+         streetnew= str_replace(propaddress7, &quot;\\w*[0-9]+\\w*\\s*&quot;, &quot;&quot; ),
+         wrongaddress2= ifelse(str_detect(streetnew, &quot;[:digit:]&quot;)==1,0,1)) 
+
+
+alladdress &lt;- parceladdress %&gt;% 
+  group_by (propaddress7) %&gt;% 
+  count()
+
+    
+cleanparceladdress &lt;- parceladdress %&gt;% 
+  filter(wrongaddress2==0 &amp; wrongaddress==0 ) %&gt;% 
+  mutate(propaddress_new= propaddress7,
+         usecleanparceladdress =1) %&gt;% 
+  select(parcelbase_parcelID, propaddress_new, usecleanparceladdress)
+ 
+jur3 &lt;- left_join(x = jur2, y= cleanparceladdress, by =&quot;parcelbase_parcelID&quot;) %&gt;%
+        mutate(propaddress_bk = propaddress,
+               propaddress = ifelse(usecleanparceladdress == 1 &amp; !is.na(usecleanparceladdress),  
+                                    propaddress_new, 
+                                    propaddress_bk))
+
+
+test &lt;- jur3 %&gt;% 
+  select(parcelbase_parcelID, propaddress, propaddress_bk, propaddress_new)</code></pre>
+<p>After this change, the number of NAs in the address variable should be less than the number of observations that previously had either a missing address, missing house number, or both. Because we</p>
+<pre class="r"><code>stopifnot(sum(is.na(jur$propaddress)) &lt;= nrow(filter(jur, 
             is.na(propaddress) | is.na(prophouseno))))</code></pre>
 </div>
 <div id="address-break-out" class="section level3">
 <h3>Address break out</h3>
 <p>In order to do the collapse, we first identify addresses with more than one observation, and filter out those with a missing house number or address to avoid an improper collapse. Then, run a quick check to make sure there are no NAs.</p>
-<pre class="r"><code>jur &lt;- jur %&gt;% 
+<pre class="r"><code>#Sarahs macro is fixed and we can't use it if the address variable is different. So had to copy paste the macro and modify it here to create another macro called classify_parceladdress
+
+classify_parceladdresses &lt;- function(dataset) {
+  
+  group &lt;- dataset %&gt;% 
+    group_by(parcelbase_address) %&gt;% 
+    count()
+  
+  singles &lt;- group %&gt;% 
+    filter(n == 1) %&gt;% 
+    pull(parcelbase_address)
+  
+  multiples &lt;- group %&gt;% 
+    filter(n &gt; 1) %&gt;% 
+    pull(parcelbase_address)
+  
+  dataset %&gt;% 
+    mutate(address_type = case_when(
+      is.na(parcelbase_address) ~ &quot;missing&quot;,
+      parcelbase_address %in% singles ~ &quot;single&quot;,
+      parcelbase_address %in% multiples ~ &quot;multiple&quot;))
+  
+}</code></pre>
+<p>Using parcelbase address actually make the collapse not clean. Jurtest dataset shows addresses are classified as NA from blackknight are almost identical to parcelbase dataset before cleaning. Which means unless we clean the parcelbase address, collapsing by parcelbase address would be wrong in a lot of cases. I’ve replaced NA blackknight data with parcelbase address and cleaned where possible</p>
+<pre class="r"><code>jurtest&lt;- jur3 %&gt;% 
+  classify_addresses() %&gt;% 
+  filter (address_type==&quot;missing&quot;) %&gt;% 
+  select(oldadd, propaddress, category_detail,parcelbase_address) %&gt;% 
+  head(20)
+
+#create jur4 from blackknight address
+jur4 &lt;- jur3 %&gt;% 
   classify_addresses()
 
-count(jur, address_type)</code></pre>
-<pre><code>## # A tibble: 3 x 2
-##   address_type      n
-##   &lt;chr&gt;         &lt;int&gt;
-## 1 missing       11280
-## 2 multiple      94562
-## 3 single       118188</code></pre>
-<pre class="r"><code>if (TRUE %in% is.na(jur$address_type)) {
+if (TRUE %in% is.na(jur4$address_type)) {
   warning(&quot;NAs in address_type&quot;)
 }</code></pre>
-<p>For townhouses and other forms of attached housing, we do not want a collapse, since this is a function of addressing and not the unit type. We will reclassify the address type as <code>single</code> for properties that have a value of <code>sf attached</code> and <code>townhouse</code> for the <code>category_detail</code> variable.</p>
-<pre class="r"><code>jur &lt;- jur %&gt;% 
-  mutate(address_type = ifelse(category_detail %in% c(&quot;single family attached&quot; ),
-                                  &quot;single&quot;,
-                                  address_type))</code></pre>
+<p>For townhouses and other forms of attached housing, we do not want a collapse, since this is a function of addressing and not the unit type. We will reclassify the address type as <code>single</code> for properties that have a value of <code>sf attached</code> and <code>townhouse</code> for the <code>category_detail</code> variable. For parcel base data we have already precleaned the type so don’t need more cleaning here.</p>
 <p>Seperate the address types for different operations.</p>
-<pre class="r"><code>multiples &lt;- jur %&gt;% 
+<pre class="r"><code>multiples &lt;- jur4 %&gt;% 
   filter(address_type == &quot;multiple&quot;)
 
-singles &lt;- jur %&gt;% 
+singles &lt;- jur4 %&gt;% 
   filter(address_type == &quot;single&quot;)
 
-missing &lt;- jur %&gt;% 
+missing &lt;- jur4 %&gt;% 
   filter(address_type == &quot;missing&quot;)</code></pre>
 <p>For addresses that have some records with missing zoning, but others that have a zoning designation: we need to fill the NAs with the appropriate zoning code. <code>group_by()</code> means that zoning codes will not be passed on to observations with a different address, and using <code>fill()</code> in both directions means that the NAs will be filled regardless of their position.</p>
 </div>
@@ -870,7 +915,7 @@ missing &lt;- jur %&gt;%
   fill(zoning) %&gt;% 
   fill(zoning, .direction = &quot;up&quot;) %&gt;% 
   ungroup()</code></pre>
-<p>Next, we summarize the data using nested lists, which allow us to preserve all the details from each record and apply the right function to each. The table below describes each variable, which function to use, and what to do in the case of a tie. Lot size is a unique case, detail provided in the next section.</p>
+<p>Next, we summarize the data using nested lists, which allow us to preserve all the details from each record and apply the right function to each. The table below describes each variable, which function to use, and what to do in the case of a tie. Lot size is a unique case, detail provided in the next section. We don’t have yearbuilt in the parcelbase data.</p>
 <table>
 <thead>
 <tr class="header">
@@ -938,27 +983,28 @@ missing &lt;- jur %&gt;%
 </tbody>
 </table>
 <p><strong>Note:</strong> there are some instances where there are no non-<code>NA</code> values, so this next step will throw some warning messages.</p>
+<p>Again, because propaddress is better than parcelbase dataset address, I will keep the propaddress variable.</p>
 <pre class="r"><code>nested &lt;- multiples %&gt;% 
-  group_by(propaddress, parcel_address) %&gt;%
+  group_by(propaddress, parcelbase_parceladdress) %&gt;%
   summarize_at(vars(zoning,lotsize_sf,
-                    buildingarea, countylandusedescription,
+                    buildingarea, parcelbase_usecode,
                     residential, category, category_detail, building_type,
-                    yearbuilt, long, lat), list) %&gt;% 
+                    yearbuilt, parcelgeo_x, parcelgeo_y), list) %&gt;% 
   
-  rename_at(vars(-propaddress, -parcel_address), ~ paste0(., &quot;_list&quot;)) %&gt;% 
+  rename_at(vars(-propaddress, parcelbase_parceladdress), ~ paste0(., &quot;_list&quot;)) %&gt;% 
   mutate(nprops = map(zoning_list, length),
                   zoning = map(zoning_list, Mode),
          lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
          buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
-         countylandusedescription = map(countylandusedescription_list, Mode),
+         usecode = map(parcelbase_usecode_list, Mode),
          residential = map(residential_list, max, na.rm = TRUE),
          category = map(category_list, Mode),
          category_detail = map(category_detail_list, Mode),
          building_type = ifelse(category == &quot;mf&quot;,
                                 map(building_type_list, Mode),
                                 NA),
-         long = map(long_list, median),
-         lat = map(lat_list, median),
+         Xcoord = map(parcelgeo_x_list, median),
+         Ycoord = map(parcelgeo_y_list, median),
          # year built handled differently due to missing values
          yearbuilt_list = ifelse(as.integer(map(yearbuilt_list, function(x) sum(!is.na(x)))) == 0,
                                  NA,
@@ -987,57 +1033,43 @@ missing &lt;- jur %&gt;%
 <td align="right">1</td>
 <td align="left">1 SCOTT CIR NW</td>
 <td align="left">181</td>
-<td align="left">c(105, NA, NA, NA, NA, NA, NA, 115, 102, NA, NA, NA, NA, 104, 105, NA, NA, NA, NA, NA, NA, 115, 102, 102, NA, NA, NA, NA, NA, NA, NA, NA, 104, 105, NA, NA, NA, NA, NA, NA, 115, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 104, 105, NA, NA, NA, NA, NA, NA, 115, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 104, 105, NA, NA, NA, NA, NA, NA, 115, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 104, 105, NA, NA, NA, NA, NA, NA, 115, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 104, 105, NA, NA,</td>
+<td align="left">c(105, 115, 102, 104, 105, 115, 102, 102, 104, 105, 115, 104, 105, 115, 104, 105, 115, 104, 105, 115, 104, 105, 115, 104, 105, 115, 104, 105, 115, 104, 122, 94, 82, 82, 85, 85, 85, 82, 82, 94, 80, 94, 82, 85, 85, 85, 85, 87, 68, 78, 81, 82, 82, 94, 80, 94, 82, 85, 85, 85, 85, 76, 86, 84, 82, 87, 68, 78, 81, 82, 82, 94, 80, 94, 82, 85, 85, 85, 85, 76, 86, 84, 82, 87, 68, 78, 81, 82, 82, 94, 80, 94, 82, 85, 85, 85, 85, 76, 86, 84, 82, 87, 68, 78, 81, 82, 82, 94, 80, 94, 82, 85, 85, 85, 85, 76, 86,</td>
 <td align="right"></td>
 </tr>
 <tr class="even">
-<td align="right">NA, NA, NA,</td>
-<td align="left">NA, 115, NA, NA, NA, NA, N</td>
-<td align="left">A, NA, NA</td>
-<td align="left">, NA, NA, NA, NA, NA, 104, 105, NA, NA, NA, NA, NA, NA, 115, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 104, 105, NA, NA, NA, NA, NA, NA, 115, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 104, 122) 3344.00</td>
+<td align="right">84, 81, 87,</td>
+<td align="left">68, 78, 81, 82, 82,</td>
+<td align="left">94, 80, 9</td>
+<td align="left">4, 82, 85, 85, 85, 85, 76, 86, 84, 82, 87, 68, 78, 81, 82, 82, 94, 80, 94, 82, 85, 85, 85, 85, 76, 86, 84, 82, 87, 68, 78, 81, 82, 82, 94, 80, 94, 82, 85, 85, 85, 85, 76, 86, 84, 82, 87, 68, 78, 81, 82, 82, 94, 80) 15834.00</td>
 <td align="right"></td>
 </tr>
 <tr class="odd">
 <td align="right">2</td>
-<td align="left">10 G ST NE</td>
-<td align="left">2</td>
-<td align="left">c(42922, 42922)</td>
-<td align="right">85844.00</td>
+<td align="left">100 FLORIDA AVE NE</td>
+<td align="left">4</td>
+<td align="left">c(45215.28, NA, NA, NA)</td>
+<td align="right">45215.28</td>
 </tr>
 <tr class="even">
 <td align="right">3</td>
-<td align="left">100 FLORIDA AVE NE</td>
-<td align="left">7</td>
-<td align="left">c(45215.28, NA, NA, NA, 45215.28, NA, NA)</td>
-<td align="right">90430.56</td>
+<td align="left">1007 OTIS PL NW</td>
+<td align="left">2</td>
+<td align="left">c(686, 686)</td>
+<td align="right">1372.00</td>
 </tr>
 <tr class="odd">
 <td align="right">4</td>
-<td align="left">1000 CONSTITUTION AVE NW</td>
-<td align="left">2</td>
-<td align="left">c(3946361.80356, NA)</td>
-<td align="right">3946361.80</td>
-</tr>
-<tr class="even">
-<td align="right">5</td>
-<td align="left">1007 OTIS PL NW</td>
+<td align="left">816 8TH ST NE</td>
 <td align="left">3</td>
-<td align="left">c(1372, 686, 686)</td>
-<td align="right">2744.00</td>
-</tr>
-<tr class="odd">
-<td align="right">6</td>
-<td align="left">1003 50TH ST NE</td>
-<td align="left">3</td>
-<td align="left">c(2500, 2500, 5000)</td>
-<td align="right">10000.00</td>
+<td align="left">c(2204, 1102, 1102)</td>
+<td align="right">4408.00</td>
 </tr>
 </tbody>
 </table>
 <ul>
-<li>IN the case of when the lot size is repeated (Instance 2)- the number of unique lot sizes is 1, so mode is the right function.</li>
+<li>IN the case of when the lot size is repeated - the number of unique lot sizes is 1, so mode is the right function.</li>
 <li>In the case of when there are the same number of unique values as there are properties- sum is the correct function.</li>
-<li>In the fifth and sixth instance, two smaller number add up to the third. I looked up several online and it seems like best to keep the total, summing all will double count the lot size</li>
+<li>In the fourth instance, two smaller number add up to the third. I looked up several online and it seems like best to keep the total, summing all will double count the lot size</li>
 </ul>
 <p>First, filter out all the observations where the function is known. Then, re-examine the remaining observations. There are a few variables needed: 1. The number of unique observations in the <code>lotsize_sf_list</code> nested list 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)</p>
 <pre class="r"><code>nested &lt;- nested %&gt;% 
@@ -1063,13 +1095,13 @@ nested %&gt;% count(fxn)</code></pre>
 <pre><code>## # A tibble: 4 x 2
 ##   fxn         n
 ##   &lt;chr&gt;   &lt;int&gt;
-## 1 first    3556
-## 2 missing    94
-## 3 other    3225
-## 4 sum      5232</code></pre>
+## 1 first    1123
+## 2 missing    36
+## 3 other    2392
+## 4 sum      5485</code></pre>
 <pre class="r"><code>nested_done &lt;- nested %&gt;% 
   filter(fxn != &quot;other&quot;)</code></pre>
-<p>There are a total of 3225 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah’s logic, but had some with the nprops one.</p>
+<p>There are a total of 2392 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah’s logic, but had some with the nprops one.</p>
 <ol style="list-style-type: decimal">
 <li>The lotsize seems reasonable, but the nprop is double the actual value. Not sure how to deal with this</li>
 <li>In addition, I found a case (also presented in the table above) where one lotzie equals the sum of all other lotsize in the same address. I’m not sure how to programmatically detect all cases like this.</li>
@@ -1081,14 +1113,14 @@ nested %&gt;% count(fxn)</code></pre>
          lsmode_num = as.integer(lsmode_num))
 
 summary(nested_other$lotsize_sf_sum)</code></pre>
-<pre><code>##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-##      144     3841     7181    31337    15854 10954846</code></pre>
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##     167    2702    5330   14826   10320 3499203</code></pre>
 <pre class="r"><code>summary(nested_other$lsmode_num)</code></pre>
-<pre><code>##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max.     NA's 
-##    100.0    381.5    701.0   5141.2   1198.0 482819.0      926</code></pre>
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+##       1      83     332    1201     727  201290     655</code></pre>
 <pre class="r"><code>summary(nested_other$nprops)</code></pre>
 <pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##    3.00    4.00    7.00   21.93   16.00 1090.00</code></pre>
+##    3.00    5.00    9.00   26.09   20.00 1089.00</code></pre>
 <pre class="r"><code>nested_other &lt;- nested %&gt;% 
   filter(fxn == &quot;other&quot;) %&gt;% 
   mutate(lsmode_num = ifelse(map(lsmode, length) &gt; 1, NA, lsmode),
@@ -1105,18 +1137,18 @@ nested_other %&gt;% count(fxn)</code></pre>
 <pre><code>## # A tibble: 4 x 2
 ##   fxn         n
 ##   &lt;chr&gt;   &lt;int&gt;
-## 1 max       136
+## 1 max        10
 ## 2 missing     1
-## 3 mode      172
-## 4 sum      2916</code></pre>
+## 3 mode       21
+## 4 sum      2360</code></pre>
 <pre class="r"><code>count(nested_other, fxn)</code></pre>
 <pre><code>## # A tibble: 4 x 2
 ##   fxn         n
 ##   &lt;chr&gt;   &lt;int&gt;
-## 1 max       136
+## 1 max        10
 ## 2 missing     1
-## 3 mode      172
-## 4 sum      2916</code></pre>
+## 3 mode       21
+## 4 sum      2360</code></pre>
 <p>Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot size.</p>
 <pre class="r"><code>nested_all &lt;- bind_rows(nested_done, nested_other) %&gt;% 
   mutate_at(vars(lotsize_sf_sum, lsfirst, lsmode_num), as.double) %&gt;% 
@@ -1131,14 +1163,14 @@ nested_other %&gt;% count(fxn)</code></pre>
 <pre><code>## # A tibble: 2 x 2
 ##   `fxn == &quot;missing&quot;`     n
 ##   &lt;lgl&gt;              &lt;int&gt;
-## 1 FALSE              12012
-## 2 TRUE                  95</code></pre>
+## 1 FALSE               8999
+## 2 TRUE                  37</code></pre>
 <pre class="r"><code>count(nested_all, is.na(lotsize_sf_final))</code></pre>
 <pre><code>## # A tibble: 2 x 2
 ##   `is.na(lotsize_sf_final)`     n
 ##   &lt;lgl&gt;                     &lt;int&gt;
-## 1 FALSE                     12012
-## 2 TRUE                         95</code></pre>
+## 1 FALSE                      8999
+## 2 TRUE                         37</code></pre>
 <p>Lastly, the number of rows should be the same as before we split and re-combined.</p>
 <pre class="r"><code>stopifnot(nrow(nested_all) == nrow(nested))
 
@@ -1148,7 +1180,7 @@ rm(nested, nested_done, nested_other)</code></pre>
 <h4>Ties</h4>
 <div id="zoning" class="section level5">
 <h5>Zoning</h5>
-<p>There are 154 instances where there is a tie in the zoning code- examples below.</p>
+<p>There are 208 instances where there is a tie in the zoning code- examples below.</p>
 <pre class="r"><code>tiescount &lt;- nested_all %&gt;% 
   mutate(ties_z = ifelse(map(zoning, length) &gt; 1, &quot;tie&quot;, &quot;not tie&quot;)) 
 
@@ -1156,42 +1188,39 @@ tiescount %&gt;% count(ties_z)</code></pre>
 <pre><code>## # A tibble: 2 x 2
 ##   ties_z      n
 ##   &lt;chr&gt;   &lt;int&gt;
-## 1 not tie 11953
-## 2 tie       154</code></pre>
+## 1 not tie  8945
+## 2 tie        91</code></pre>
 <pre class="r"><code>ties &lt;- nested_all %&gt;% 
   mutate(ties_z = ifelse(map(zoning, length) &gt; 1, 1, 0)) %&gt;% 
   filter(ties_z == 1) %&gt;% 
   mutate(z1 = map(zoning, 1),
          z2 = map(zoning, 2),
          z3 = map(zoning, 3),
-         cl1 = map(countylandusedescription, 1),
-         cl2 = map(countylandusedescription, 2),
-         cl3 = map(countylandusedescription, 3)) %&gt;% 
+         cl1 = map(usecode, 1),
+         cl2 = map(usecode, 2),
+         cl3 = map(usecode, 3)) %&gt;% 
   select(propaddress, nprops,
          z1, z2, z3,
          cl1, cl2, cl3) %&gt;% 
   mutate_all(as.character)
 
 ties %&gt;%
-  select(propaddress, z1, z2) %&gt;% 
+  select(propaddress, z1, z2, cl1, cl2) %&gt;% 
   head(5)</code></pre>
-<pre><code>## # A tibble: 5 x 3
-##   propaddress            z1    z2         
-##   &lt;chr&gt;                  &lt;chr&gt; &lt;chr&gt;      
-## 1 1000 U ST NW           C-2-A C-2-A,R-4  
-## 2 101 XENIA ST SE        R-2   R-3        
-## 3 1060 BLADENSBURG RD NE C-2-A C-2-A,R-4  
-## 4 1110 9TH ST NW         C-2-A C-2-A,C-2-C
-## 5 1125 16TH ST NW        R-1-B R-5-B</code></pre>
-<p>Since there is no definitive way to break these ties, we replace the <code>zoning</code> variable with <code>NA</code>.</p>
+<pre><code>## # A tibble: 5 x 5
+##   propaddress            z1              z2        cl1   cl2  
+##   &lt;chr&gt;                  &lt;chr&gt;           &lt;chr&gt;     &lt;chr&gt; &lt;chr&gt;
+## 1 1000 U ST NW           C-2-A           C-2-A,R-4 034   194  
+## 2 1100 NEW JERSEY AVE SE R-3,C-2-B,R-5-A R-5-A     093   NULL 
+## 3 1111 14TH ST NW        R-1-B           R-5-B,R-4 094   NULL 
+## 4 1125 16TH ST NW        R-1-B           R-5-B     064   094  
+## 5 1128 16TH ST NW        C-4,SP-2        SP-2      051   194</code></pre>
+<p>Since there is no definitive way to break these ties, we replace the <code>zoning</code> variable with <code>NA</code>. Here Sarah replaced the countyland description to NA when zoning is NA, but I don’t think we need to do the same for usecode because usecode is pretty reliable in this case?</p>
 <pre class="r"><code>nested_all &lt;- nested_all %&gt;% 
   mutate(ties_z = ifelse(map(zoning, length) &gt; 1, 1, 0)) %&gt;% 
   mutate(zoning = ifelse(ties_z == 1,
                          NA,
-                         zoning),
-         countylandusedescription = ifelse(ties_z == 1,
-                                           NA,
-                                           countylandusedescription)) %&gt;% 
+                         zoning)) %&gt;% 
   select(-ties_z)</code></pre>
 </div>
 <div id="category_detail-2" class="section level5">
@@ -1206,25 +1235,25 @@ cdties %&gt;%
   group_by(category_detail_chr) %&gt;% 
   count() %&gt;% 
   arrange(desc(n))</code></pre>
-<pre><code>## # A tibble: 73 x 2
-## # Groups:   category_detail_chr [73]
-##    category_detail_chr                                                n
-##    &lt;chr&gt;                                                          &lt;int&gt;
-##  1 &quot;c(\&quot;single family detached\&quot;, \&quot;vacant all other\&quot;)&quot;           1373
-##  2 &quot;c(\&quot;all other non residential\&quot;, \&quot;single family detached\&quot;)&quot;   134
-##  3 &quot;c(\&quot;commerical\&quot;, \&quot;office\&quot;)&quot;                                  134
-##  4 &quot;c(\&quot;condo\&quot;, \&quot;vacant all other\&quot;)&quot;                             114
-##  5 &quot;c(\&quot;rental apartment\&quot;, \&quot;vacant all other\&quot;)&quot;                   86
-##  6 &quot;c(\&quot;all other non residential\&quot;, \&quot;vacant all other\&quot;)&quot;          57
-##  7 &quot;c(\&quot;commerical\&quot;, \&quot;condo\&quot;)&quot;                                    53
-##  8 &quot;c(\&quot;commerical\&quot;, \&quot;vacant commercial\&quot;)&quot;                        53
-##  9 &quot;c(\&quot;all other non residential\&quot;, \&quot;commerical\&quot;)&quot;                51
-## 10 &quot;c(\&quot;commerical\&quot;, \&quot;vacant all other\&quot;)&quot;                         48
-## # ... with 63 more rows</code></pre>
+<pre><code>## # A tibble: 65 x 2
+## # Groups:   category_detail_chr [65]
+##    category_detail_chr                                            n
+##    &lt;chr&gt;                                                      &lt;int&gt;
+##  1 &quot;c(\&quot;Single-family home\&quot;, \&quot;Vacant unimproved\&quot;)&quot;           300
+##  2 &quot;c(\&quot;Garage\&quot;, \&quot;Single-family home\&quot;)&quot;                      192
+##  3 &quot;c(\&quot;Condominium unit\&quot;, \&quot;Garage\&quot;)&quot;                        159
+##  4 &quot;c(\&quot;Garage\&quot;, \&quot;Rental apartment building\&quot;)&quot;                29
+##  5 &quot;c(\&quot;Rental apartment building\&quot;, \&quot;Vacant unimproved\&quot;)&quot;     28
+##  6 &quot;c(\&quot;Rental apartment building\&quot;, \&quot;Single-family home\&quot;)&quot;    23
+##  7 &quot;c(\&quot;Other commerical\&quot;, \&quot;Vacant unimproved\&quot;)&quot;              17
+##  8 &quot;c(\&quot;Office\&quot;, \&quot;Vacant unimproved\&quot;)&quot;                        16
+##  9 &quot;c(\&quot;Other commerical\&quot;, \&quot;Single-family home\&quot;)&quot;             14
+## 10 &quot;c(\&quot;Garage\&quot;, \&quot;Vacant unimproved\&quot;)&quot;                         8
+## # ... with 55 more rows</code></pre>
 <p>Here, we create a variable to indicate how many of the values in <code>category_detail</code> are one of the vacant designations.</p>
 <pre class="r"><code>cdties &lt;- cdties %&gt;% 
   mutate(test_vacant = as.integer(map(category_detail, 
-                                      ~ sum(str_detect(., &quot;vacant&quot;)))))
+                                      ~ sum(str_detect(., &quot;Vacant&quot;)))))
 
 count(cdties, test_vacant) %&gt;% 
   rename(`Number of vacant categories` = test_vacant,
@@ -1244,17 +1273,17 @@ count(cdties, test_vacant) %&gt;%
 <tbody>
 <tr class="odd">
 <td align="right">0</td>
-<td align="right">735</td>
+<td align="right">508</td>
 <td align="left">Take the residential code</td>
 </tr>
 <tr class="even">
 <td align="right">1</td>
-<td align="right">1939</td>
+<td align="right">407</td>
 <td align="left">Take the non-vacant categoty</td>
 </tr>
 <tr class="odd">
 <td align="right">2</td>
-<td align="right">33</td>
+<td align="right">1</td>
 <td align="left">Pick the more general vacant category</td>
 </tr>
 </tbody>
@@ -1278,9 +1307,9 @@ count(cdties, test_vacant) %&gt;%
          building_type = ifelse(argnum == 1,
                            map(building_type_list, 1),
                            map(building_type_list, 2)),
-         countylandusedescription = ifelse(argnum == 1,
-                           map(countylandusedescription_list, 1),
-                           map(countylandusedescription_list, 2))) %&gt;% 
+         parcelbase_usecode = ifelse(argnum == 1,
+                           map(parcelbase_usecode_list, 1),
+                           map(parcelbase_usecode_list, 2))) %&gt;% 
   select(-test_res1, -test_res2, -argnum)</code></pre>
 <p><strong>If one value is vacant:</strong> - We want to select the non-vacant observation. We can test which argument is vacant using <code>str_detect</code> and then select the other value.</p>
 <p>Since one of these is vacant, we also want to adjust the <code>nprops</code> variable- which will become the our measure of determining number of units once we bind the multiple addresses back to the single addresses- back to <code>1</code>.</p>
@@ -1296,9 +1325,9 @@ count(cdties, test_vacant) %&gt;%
          building_type = ifelse(vac1 == FALSE,
                            map(building_type_list, 1),
                            map(building_type_list, 2)),
-         countylandusedescription = ifelse(vac1 == FALSE,
-                           map(countylandusedescription_list, 1),
-                           map(countylandusedescription_list, 2))) %&gt;% 
+         parcelbase_usecode = ifelse(vac1 == FALSE,
+                           map(parcelbase_usecode_list, 1),
+                           map(parcelbase_usecode_list, 2))) %&gt;% 
   mutate(nprops = 1,
          vacant_flag = 1) %&gt;% 
   select(-vac1)
@@ -1308,7 +1337,7 @@ nunits &lt;- cdties %&gt;% filter(test_vacant == 1) %&gt;% summarize(sum(nprops)
 <p><strong>If both values are vacant:</strong> There are few examples of this, but in each case we want to default to the more general case.</p>
 <pre class="r"><code>bothvac &lt;- cdties %&gt;% 
   filter(test_vacant == 2) %&gt;% 
-  mutate(countylandusedescription = map(countylandusedescription, 1),
+  mutate(parcelbase_usecode = map(parcelbase_usecode_list, 1),
          category_detail = map(category_detail, 1))</code></pre>
 <p>Bind all instances back together, check that no observations have gone missing, and then bind back to full dataset.</p>
 <pre class="r"><code>stopifnot(
@@ -1330,33 +1359,44 @@ rm(novac, onevac, bothvac, nested_all)</code></pre>
 <h3>Single addresses</h3>
 <p>For single addresses, we have to reclassify condos that have a unique observation as single-family structures, since condos are listed seperately for each unit</p>
 <pre class="r"><code>count(singles, category_detail)</code></pre>
-<pre><code>## # A tibble: 10 x 2
+<pre><code>## # A tibble: 15 x 2
 ##    category_detail               n
 ##    &lt;chr&gt;                     &lt;int&gt;
-##  1 all other non residential  1798
-##  2 all other residential       367
-##  3 commerical                 4218
-##  4 condo                     11140
-##  5 office                      974
-##  6 rental apartment           7446
-##  7 single family attached    47745
-##  8 single family detached    45372
-##  9 vacant all other           1572
-## 10 vacant commercial           722</code></pre>
+##  1 Condominium unit           2373
+##  2 Cooperative building        323
+##  3 Garage                      117
+##  4 Group quarters              101
+##  5 Hotel/motel                 145
+##  6 Industrial                  417
+##  7 Office                     1679
+##  8 Other commerical           2223
+##  9 Parking                     274
+## 10 Rental apartment building 15722
+## 11 Residential: Other          254
+## 12 Retail                     3054
+## 13 Single-family home        91502
+## 14 Vacant unimproved          1725
+## 15 Vacant with structures       17</code></pre>
 <pre class="r"><code>count(singles, category)</code></pre>
 <pre><code>## # A tibble: 4 x 2
 ##   category               n
 ##   &lt;chr&gt;              &lt;int&gt;
-## 1 all other category  7722
-## 2 mf                 18736
-## 3 sf                 93226
-## 4 vacant              1670</code></pre>
+## 1 all other category  8010
+## 2 mf                 18597
+## 3 sf                 91577
+## 4 vacant              1742</code></pre>
 <pre class="r"><code>singles &lt;- singles %&gt;% 
-  mutate(category = ifelse(category_detail == &quot;condo&quot;,
+  mutate(category = ifelse(category_detail == &quot;Condominium unit&quot;,
                            &quot;sf&quot;,
                            category),
-         category_detail = ifelse(category_detail == &quot;condo&quot;,
-                                  &quot;single family attached&quot;,
+         category_detail = ifelse(category_detail == &quot;Condominium unit&quot;,
+                                  &quot;Single-family home&quot;,
+                                  category_detail),
+         category = ifelse(category_detail ==&quot;Cooperative building&quot;,
+                           &quot;sf&quot;,
+                           category),
+         category_detail = ifelse(category_detail == &quot;Cooperative building&quot;,
+                                  &quot;Single-family home&quot;,
                                   category_detail))</code></pre>
 </div>
 </div>
@@ -1365,45 +1405,48 @@ rm(novac, onevac, bothvac, nested_all)</code></pre>
 <p>The final outputted dataset should not contain nested lists, but should capture all other relevant information from single and multiple address properties. First, select approptiate variables from the singles file. Then, re-introduce rename and transform variables from multiple addressess and bind dataframes.</p>
 <pre class="r"><code>singles_f &lt;- singles %&gt;% 
   select(county_fips, county_name,
-         assessorsparcelnumberapnpin, 
+         parcelbase_SSL, 
          propaddress, propcity, propstate, propzip,
          propunitno, prophouseno, propstreetname, propstreetsuffix,
          lat, long, tract, owneroccupiedresidential,
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type)
+         category, category_detail, residential, building_type,
+         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y)
 
 missing_f &lt;- missing %&gt;% 
   select(county_fips, county_name,
-         assessorsparcelnumberapnpin, 
+         parcelbase_SSL, 
          propaddress, propcity, propstate, propzip,
          propunitno, prophouseno, propstreetname, propstreetsuffix,
          lat, long, tract, owneroccupiedresidential,
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type)
+         category, category_detail, residential, building_type,
+         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y)
 
 multiples_f &lt;- nested_final %&gt;% 
   select(-ends_with(&quot;_list&quot;), -lsmode, -lsfirst, 
          -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %&gt;% 
-  mutate_at(vars(countylandusedescription, zoning,
-                 category, category_detail, building_type, yearbuilt),
+  mutate_at(vars(category, category_detail, building_type, yearbuilt, zoning, parcelbase_usecode),
             as.character) %&gt;% 
-  mutate_at(vars(buildingarea, lat, long, residential), as.double) %&gt;% 
+  mutate_at(vars(buildingarea, residential), as.double) %&gt;% 
   rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops) %&gt;% 
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = &quot;multiple&quot;)
 
 finaljur &lt;- bind_rows(singles_f, multiples_f, missing_f) %&gt;% 
   fill(county_fips) %&gt;% 
-  fill(county_name)
+  fill(county_name) %&gt;% 
+  select(-Xcoord, -Ycoord, -usecode) 
+
 
 
 finaljur[finaljur == &quot;NULL&quot;] = NA
 finaljur[finaljur == &quot;character(0)&quot;] = NA</code></pre>
-<p>Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were 1939 multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, 4012, minus 1939.</p>
+<p>Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were 407 multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, 857, minus 407.</p>
 <pre class="r"><code>mult &lt;- finaljur %&gt;% 
   filter(address_type == &quot;multiple&quot;) %&gt;% 
   summarize(num = sum(numberofunits)) %&gt;% 

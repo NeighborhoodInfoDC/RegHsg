@@ -515,7 +515,7 @@ Compare the first 20 addresses . Leah-- I'm not sure if we need to clean up the 
 ```{r letters-check}
 jur2 %>% 
   filter(house_letter == 1) %>% 
-  select(oldadd, propaddress, category_detail,parcelbase_address) %>% 
+  select(oldadd, propaddress, category_detail,parcelbase_address, parcelbase_parcelID) %>% 
   head(20)
 
 
@@ -612,6 +612,8 @@ jur4 <- jur3 %>%
 if (TRUE %in% is.na(jur4$address_type)) {
   warning("NAs in address_type")
 }
+
+count(jur4, address_type)
 
 ```
 
