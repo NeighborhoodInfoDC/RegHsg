@@ -485,6 +485,8 @@ stopifnot(nrow(vacanttotal) == nrow(vacant1))
 
 ```
 
+### Dual zoning codes
+
 The last step is to identify a zoning designation for observations that either...
 
 1. Have missing coordinates and have a dual zoning designation from Black Knight
@@ -495,7 +497,7 @@ First, isolate these observations and separate each zoning code into its own obs
 
 ```{r real-final}
 
-vacantweird <- vacanttotal %>% 
+dual <- vacanttotal %>% 
   filter((str_detect(zoning, "/") == TRUE & 
             str_detect(zoning_bk, ZN_DESIG) == FALSE) |
           (str_detect(zoning, "/") == TRUE &
@@ -510,7 +512,7 @@ Get rid of values that are NOT in the cleaned zoning code data. These codes do n
 
 ```{r no-non-res}
 
-vacantweird <- vacantweird %>% 
+dual <- dual %>% 
   mutate_at(vars(z1, z2, z3, z4),
             ~ ifelse(!. %in% zoningcode1$zoning_code,
                      NA,
@@ -522,21 +524,21 @@ Convert to long so that we can list the zoning variables- then `group_by` the pa
 
 ```{r long}
 
-vacantlong <- vacantweird %>% 
+vacantlong <- dual %>% 
   gather(key = "position", value = "code", -c(1:46, 51))
 
-vacantweird2 <- vacantlong %>% 
+dual2 <- vacantlong %>% 
   group_by(assessorsparcelnumberapnpin) %>% 
   summarize(zlist = list(code))
 
-stopifnot(nrow(vacantweird) == nrow(vacantweird2))
+stopifnot(nrow(dual) == nrow(dual2))
 
 ```
 
 If there is only one code left after getting rid of the ones that don't allow for residential codes, take that code.
 
 ```{r true1}
-vacantweird2 <- vacantweird2 %>% 
+dual2 <- dual2 %>% 
   mutate(count = map(zlist, ~ sum(!is.na(.)))) %>% 
   mutate(zoning_true = ifelse(count == 1,
                               map(zlist, max, na.rm = TRUE),
@@ -545,21 +547,22 @@ vacantweird2 <- vacantweird2 %>%
 
 Priotize codes that are purely residential (begin with R). If there are more than 1 "R" zoning codes, we want to take the one with the lower number (take the lower density code, so we do not overestimate, since part of the building will be in the lower density area). We do this by extracting the numbers from the zoning codes, taking the minimum, and then selecting the element that contains that number.
 
-```{r true2}
+```{r true2, warning=FALSE}
 
-vacantweird2 <- vacantweird2 %>% 
+dual2 <- dual2 %>% 
   mutate(res = map(zlist, ~ substr(., 1, 1)),
+         reslist = map(zlist, ~ .[str_detect(., "R")]),
          num1 = map(zlist, parse_number),
          num2 = map(num1, abs),
          num3 = map(num2, ~ round(min(., na.rm = TRUE), 0)),
          num4 = as.character(num3),
          r_count = map(res, ~ sum(. == "R", na.rm = TRUE)),
          zoning_true = ifelse(r_count == 1 & zoning_true == "",
-                              map(zlist, ~ max(.[str_detect(., "R")], 
+                              map(zlist, ~ max(.[str_detect(., "R")],
                                                na.rm = TRUE)),
                               zoning_true),
          zoning_true = ifelse(r_count == 2,
-                              map2(zlist, num4, ~ max(.[str_detect(.x, .y)],
+                              map2(reslist, num4, ~ max(.[str_detect(.x, c(.y, "R"))],
                                                       na.rm = TRUE)),
                               zoning_true))
 
@@ -569,13 +572,24 @@ The remaining codes only allow for one dwelling districts, so we will just take 
 
 ```{r true-last}
 
-vacantweird3 <- vacantweird2 %>% 
+dual3 <- dual2 %>% 
   mutate(zoning_true = ifelse(zoning_true == "",
                        map(zlist, 1),
                        zoning_true),
          zoning_true = as.character(zoning_true))
 
-stopifnot(sum(is.na(vacantweird3$zoning_true)) == 0)
+stopifnot(sum(is.na(dual3$zoning_true)) == 0)
+```
+
+Look at a few observations to confirm.
+
+```{r sample-weird}
+
+dual3 %>% 
+  sample_n(10) %>% 
+  select(parcel = assessorsparcelnumberapnpin, zlist, zoning_true) %>% 
+  knitr::kable()
+
 ```
 
 Select only the clean zoning variable, merge back into main dataset, and replace zoning variable. Initial Black Knight variable will still be archived.
@@ -583,7 +597,7 @@ Select only the clean zoning variable, merge back into main dataset, and replace
 ```{r recomb}
 
 vacantfinal <- vacanttotal %>% 
-  left_join(select(vacantweird3,
+  left_join(select(dual3,
                    assessorsparcelnumberapnpin, zoning = zoning_true),
             by = "assessorsparcelnumberapnpin") %>% 
   rename(zoning= zoning.x) %>% 
