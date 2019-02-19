@@ -25,40 +25,60 @@ filepath <- "DC"
 jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
 
 
-#### Load in precleaned Black Knight data for the region, select jurisdiction and standard variables
+#### Load in CG region shapefile
 library(rgdal)
+
+library(sf)
 shp= "L:/Libraries/RegHsg/Maps/COG_region.shp"
 datashp="L:/Libraries/RegHsg/Maps/Export_Output.shp"
-COGregion <- readOGR(dsn=shp,layer= basename(strsplit(shp, "\\.")[[1]])[1])
+COGregion_sf <- read_sf(dsn=shp,layer= basename(strsplit(shp, "\\.")[[1]])[1])
 
-plot(COGregion_proj)
+plot(COGregion)
 
-
-# Convert to lat long
-COGregion_proj = spTransform(COGregion, CRS("+proj=longlat +datum=WGS84"))
-
-
+# load in typology dataset output from SAS program
 library(readcsv)
+Typology <- read.csv(paste0(jdir,"Neighborhood typology for mapping.csv")) 
 
-Typology <- read.csv(paste0(jdir,"Neighborhood typology for mapping.csv")) %>% 
-   mutate(GEOID=geoid)
+Typology_df <- Typology  %>% 
+         mutate(GEOID=as.character(geoid),
+                missing= ifelse(vulnerable=="", 1,0)) %>% 
+         filter(missing==0)
+  
 
-Typologymap <- left_join (Typology, COGregion_proj, by = ("GEOID"="GEOID"))
+#spatial join
+Typologymap <- left_join (Typology_df, COGregion_sf, by = c("GEOID"="GEOID")) %>% 
+  
+Typologymap$neighborhoodtypeHH[Typologymap$neighborhoodtypeHH==""] <- "NA"
 
+Typologymap$neighborhoodtypeFAM[Typologymap$neighborhoodtypeFAM==""] <- "NA"
 
+install.packages("colorspace")
+library(colorspace)
+library(ggplot2)
+install.packages("devtools")
+devtools::install_github("UI-Research/urbnthemes")
+library(urbnmapr)
+
+#Typology by HH income 
 ggplot() +
-  geom_sf(ctracts,  mapping = aes(),
-          fill = NA, color = "#5c5859", size = .1) +
-  geom_sf(acsgeotest, mapping = aes(fill = pctearningover75K)) +
-  geom_point(dc_bikeshare, mapping = aes(long, lat, color = "Bikeshare station"),
-             alpha = .5, color="#ec008b", size=1.1) +
-  scale_color_manual(values = "black",
-                     guide = guide_legend()) +
-  scale_fill_gradientn(labels = scales::percent) +
+  geom_sf(Typologymap,  mapping = aes(),
+          fill = NA, color = "#9d9d9d", size = .05) +
+  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHH)))+
+  scale_fill_manual(values = c ("#46ABDB", "#0A4C6A", "#e88e2d", "#e54096" )) +
   theme_urbn_map() +
-  labs(fill = "Percent population with\n earning over 75K", color = NULL) +
-  #labs(title = "Stations are clustered in higher income neighborhoods") + 
+  labs(fill = "Type", color = NULL) +
+  labs(title = "Neighborhood Gentrification Typology by HH") + 
   theme(legend.box = "vertical") +
   coord_sf(crs = 4269, datum = NA)
 
-
+#Typology by FAM income
+ggplot() +
+  geom_sf(Typologymap,  mapping = aes(),
+          fill = NA, color = "#9d9d9d", size = .05) +
+  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAM)))+
+  scale_fill_manual(values = c ("#46ABDB", "#0A4C6A", "#e88e2d", "#e54096" )) +
+  theme_urbn_map() +
+  labs(fill = "Neighborhood Gentrification Typology by Family", color = NULL) +
+  labs(title = "Type") + 
+  theme(legend.box = "vertical") +
+  coord_sf(crs = 4269, datum = NA)
