@@ -62,6 +62,9 @@ if (!dir.exists("../Data")) {
   dir.create("../Data")
 }
 
+if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
+  dir.create("L:/Libraries/RegHsg/Prog/Tables")
+}
 ```
 
 Set FIPS code and filepath name
@@ -831,6 +834,23 @@ zoningdata1 %>%
   theme(plot.margin = margin(t = 20,
                              r = 20))
 
+
+
+```
+
+## Write out results
+
+Write out the results to a csv. Include jurisdiction name in the title.
+
+```{r write-results}
+
+get_unit_summary(dataset = zoningdata1,
+                 construction_efficiency = .7,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE) %>% 
+  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
+                   filepath,
+                   "-vacant-lots-analysis.csv"))
 
 
 ```
