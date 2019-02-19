@@ -57,12 +57,12 @@ library(colorspace)
 library(ggplot2)
 install.packages("devtools")
 devtools::install_github("UI-Research/urbnthemes")
-library(urbnmapr)
+library(urbnthemes)
 
 #Typology by HH income 
 ggplot() +
   geom_sf(Typologymap,  mapping = aes(),
-          fill = NA, color = "#9d9d9d", size = .05) +
+          fill = NA, color = "#5c5859", size = .01) +
   geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHH)))+
   scale_fill_manual(values = c ("#46ABDB", "#0A4C6A", "#e88e2d", "#e54096" )) +
   theme_urbn_map() +
@@ -78,7 +78,7 @@ ggplot() +
   geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAM)))+
   scale_fill_manual(values = c ("#46ABDB", "#0A4C6A", "#e88e2d", "#e54096" )) +
   theme_urbn_map() +
-  labs(fill = "Neighborhood Gentrification Typology by Family", color = NULL) +
-  labs(title = "Type") + 
+  labs(fill = "Type", color = NULL) +
+  labs(title = "Neighborhood Gentrification Typology by Family") + 
   theme(legend.box = "vertical") +
   coord_sf(crs = 4269, datum = NA)
