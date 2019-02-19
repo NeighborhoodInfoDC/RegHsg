@@ -520,43 +520,65 @@ jur2 %>%
 
 #replace NA propaddress with parcelbase_address, need to trim several times sometimes before clean, also need to exclude street number and see if housenumber is available. (note a lot of parcelbasee_address missing either houseno or street number, notice how a lot of the address that appears more than once shou't be collapsed without a house number. )
 
-parceladdress <- jur2 %>% 
+
+parceladdress1 <- jur2 %>% 
   mutate(firstcharacter=str_sub(parcelbase_address,1,1),
          wrongaddress = ifelse(str_detect(firstcharacter, "[:digit:]")==1,0,1)) %>% 
-    filter (is.na(propaddress)) %>% 
+    filter(is.na(propaddress)) %>% 
     mutate(propaddress2= str_remove(parcelbase_address, "^0+"),
          propaddress3= str_replace(propaddress2, "[0-9]$", ""),
          propaddress4= str_replace(propaddress3, "[0-9]$", ""),
          propaddress5= str_replace(propaddress4, "[0-9]$", ""),
          propaddress6= str_replace(propaddress5, "[0-9]$", ""),
-         propaddress7= str_replace(propaddress6, "[0-9]$", ""),
-         streettest= str_trim(propaddress7, side=c("both")),
-         streetnew1= str_extract(streettest, "[[:digit:]]+"),
-         streetnew= str_replace(propaddress7, "\\w*[0-9]+\\w*\\s*", "" ),
-         wrongaddress2= ifelse(str_detect(streetnew, "[:digit:]")==1,0,1)) 
+         propaddress7= str_replace(propaddress6, "[0-9]$", "")) %>% 
+         separate(parcelbase_address, sep = " ", remove = FALSE,
+           into = c("a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8")) %>% 
+        mutate(n1=ifelse(str_detect(str_trim(a1,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(n2=ifelse(str_detect(str_trim(a2,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(n3=ifelse(str_detect(str_trim(a3,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(n4=ifelse(str_detect(str_trim(a4,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(n5=ifelse(str_detect(str_trim(a5,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(n6=ifelse(str_detect(str_trim(a6,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(totalflag=n1+n2+n3+n4+n5+n6) %>% 
+        filter(totalflag<1) %>% #if the address don't has a street name that is numbered
+        mutate(wrongaddress2=ifelse(str_detect(propaddress7, "[:digit:]")==1,0,1)) %>% 
+        filter(wrongaddress2==0 & wrongaddress==0 ) %>% 
+        mutate(propaddress_new= propaddress7,
+               usecleanparceladdress =1) %>% 
+        select(parcelbase_parcelID, propaddress_new, usecleanparceladdress)
 
-  
-test4 <- parceladdress %>% 
- filter(parcelbase_parcelID=="4445    2018") %>% 
-  mutate(idlength= str_length(parcelbase_parcelID))
-
-test5 <- parceladdress %>% 
-  select(parcelbase_parcelID, parcelbase_address) %>% 
-  separate(parcelbase_address, sep = " ", remove = FALSE,
-           into = c("a1", "a2", "a3", "a4", "a5", "a6")) 
-
-
-test5 %>% pull(parcelbase_address)
-
-alladdress <- parceladdress %>% 
-  group_by (propaddress7) 
-
+        
+parceladdress2 <- jur2 %>% 
+  mutate(firstcharacter=str_sub(parcelbase_address,1,1),
+         wrongaddress = ifelse(str_detect(firstcharacter, "[:digit:]")==1,0,1)) %>% 
+    filter(is.na(propaddress)) %>% 
+    mutate(propaddress2= str_remove(parcelbase_address, "^0+"),
+         propaddress3= str_replace(propaddress2, "[0-9]$", ""),
+         propaddress4= str_replace(propaddress3, "[0-9]$", ""),
+         propaddress5= str_replace(propaddress4, "[0-9]$", ""),
+         propaddress6= str_replace(propaddress5, "[0-9]$", ""),
+         propaddress7= str_replace(propaddress6, "[0-9]$", "")) %>% 
+         separate(parcelbase_address, sep = " ", remove = FALSE,
+           into = c("a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8")) %>% 
+        mutate(n1=ifelse(str_detect(str_trim(a1,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(n2=ifelse(str_detect(str_trim(a2,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(n3=ifelse(str_detect(str_trim(a3,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(n4=ifelse(str_detect(str_trim(a4,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(n5=ifelse(str_detect(str_trim(a5,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(n6=ifelse(str_detect(str_trim(a6,side="both"), "^[[:digit:]]+\\TH" )==1, 1, 0)) %>% 
+        mutate(totalflag=n1+n2+n3+n4+n5+n6) %>% 
+        filter(totalflag>=1) %>%  #if the address has a street name that is numbered
+        mutate(restaddress= str_replace(parcelbase_address, "^[[:digit:]]+\\TH", "--" )) %>% 
+        mutate(wrongaddress2= ifelse(str_detect(restaddress, "[:digit:]")==1,0,1)) %>% 
+        filter(wrongaddress2==0 & wrongaddress==0 ) %>% 
+        mutate(propaddress_new= propaddress7,
+               usecleanparceladdress =1) %>% 
+        select(parcelbase_parcelID, propaddress_new, usecleanparceladdress)
     
-cleanparceladdress <- parceladdress %>% 
-  filter(wrongaddress2==0 & wrongaddress==0 ) %>% 
-  mutate(propaddress_new= propaddress7,
-         usecleanparceladdress =1) %>% 
-  select(parcelbase_parcelID, propaddress_new, usecleanparceladdress)
+#The code above separate out each element of address, I'm detecting each new element if there's a digit+"TH" combinition. I filtered those out and then look for digit again in the full address. So we will be keeping both cases like "1234 M str" and "5678 14th street"
+
+cleanparceladdress <- bind_rows(parceladdress1, parceladdress2)
+
  
 jur3 <- left_join(x = jur2, y= cleanparceladdress, by ="parcelbase_parcelID") %>%
         mutate(propaddress_bk = propaddress,
@@ -612,21 +634,17 @@ classify_parceladdresses <- function(dataset) {
 
 Using parcelbase address actually make the collapse not clean. Jurtest dataset shows addresses are classified as NA from blackknight are almost identical to parcelbase dataset before cleaning. Which means unless we clean the parcelbase address, collapsing by parcelbase address would be wrong in a lot of cases. I've replaced NA blackknight data with parcelbase address and cleaned where possible
 ```{r comparison of address}
-jurtest<- jur3 %>% 
-  classify_addresses() %>% 
-  filter (address_type=="missing") %>% 
-  select(oldadd, propaddress, category_detail,parcelbase_address) %>% 
-  head(20)
 
 #create jur4 from blackknight address
 jur4 <- jur3 %>% 
-  classify_parceladdresses()
+  classify_parceladdresses() %>% 
+  filter(category_detail!="Garage")
 
 if (TRUE %in% is.na(jur4$address_type)) {
   warning("NAs in address_type")
 }
 
-#aftercleaning the missing category dropped from 9562 to 8715, dropped 847 which matches the total observation of cleanparceladdress dataset
+#aftercleaning the missing category dropped from 9562 to 7429, dropped 2030 from parcelbase address plus 103 garage cases, which matches the total observation of cleanparceladdress dataset
 count(jur4, address_type)
 
 
@@ -714,20 +732,20 @@ Again, because propaddress is better than parcelbase dataset address, I will kee
 
 ``` {r nest}
 
-nested <- multiples %>% 
+   
+  nested <- multiples %>% 
   group_by(propaddress, parcelbase_parceladdress) %>%
   summarize_at(vars(zoning,lotsize_sf,
-                    buildingarea, parcelbase_usecode,
+                    buildingarea, parcelbase_usecode, 
                     residential, category, category_detail, building_type,
                     yearbuilt, parcelgeo_x, parcelgeo_y), list) %>% 
-  
-  rename_at(vars(-propaddress, parcelbase_parceladdress), ~ paste0(., "_list")) %>% 
+  rename_at(vars(-propaddress, -parcelbase_parceladdress), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
-                  zoning = map(zoning_list, Mode),
+         zoning = map(zoning_list, Mode),
          lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
          buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
          usecode = map(parcelbase_usecode_list, Mode),
-         residential = map(residential_list, max, na.rm = TRUE),
+         residential = map(residential_list, max, na.rm = FALSE),
          category = map(category_list, Mode),
          category_detail = map(category_detail_list, Mode),
          building_type = ifelse(category == "mf",
@@ -742,8 +760,13 @@ nested <- multiples %>%
          yearbuilt = ifelse(!is.na(yearbuilt_list),
                       map(yearbuilt_list, max, na.rm = TRUE),
                       NA))
-
-
+         
+         
+         
+         
+         
+         
+         
 #sum(is.na(nested$long_list))
 ```
 
@@ -753,8 +776,7 @@ Lot size cannot be summarized with one operation, because it is reported differe
 
 ``` {r lot-ex, echo=FALSE}
 
-weird <- tibble(propaddress = c( "1 SCOTT CIR NW", "100 FLORIDA AVE NE","1007 OTIS PL NW", "816 8TH ST NE"),
-                instance = 1:4)
+weird <- tibble(propaddress = c( "1 SCOTT CIR NW", "100 FLORIDA AVE NE","1007 OTIS PL NW", "816 8TH ST NE"),instance = 1:4)
 
 case <- nested %>% 
   filter(propaddress=="1007 OTIS PL NW")
@@ -793,16 +815,18 @@ nested <- nested %>%
   ungroup()
 ```
 
-Based on these variables, we can identify when`sum()` is definitely the right function (when the number of unique values in `lotsize_sf_list` is the same as `nprops`), and when we want to take the first argument is definitely the right function (there is only one unique value in `lotsize_sf_list`).
+Based on these variables, we can identify when`sum()` is definitely the right function (when the number of unique values in `lotsize_sf_list` is the same as `nprops`), and when we want to take the first argument is definitely the right function (there is only one unique value in `lotsize_sf_list`). In addition, we want a threshold for when we are using the "first" because sometimes even if all properties have the same lot size we still want to sum them. Here threshold is 8000. 
 
 ``` {r fx-choice}
 nested <- nested %>% 
   mutate(fxn = case_when(
-    lotsize_sf_sum < 1 ~ "missing",
+    lotsize_sf_sum < 1 ~ "missing",   
+    unique_lots == 1& lsfirst > 8000  ~ "first",
+    unique_lots == 1& lsfirst <= 8000  ~ "sum",
     nprops == unique_lots ~ "sum",
-    unique_lots == 1 ~ "first",
     TRUE ~ "other"
   ))
+
 
 nested %>% count(fxn)
 
@@ -1132,7 +1156,7 @@ mult <- finaljur %>%
 other <- finaljur %>% 
   filter(address_type != "multiple")
 
-stopifnot(mult + nrow(other) == nrow(jur) - 
+stopifnot(mult + nrow(other) == nrow(jur4) - 
             (nunits - nrow(filter(cdties, test_vacant == 1))))
 
 rm(mult, other, nunits, cdties)
