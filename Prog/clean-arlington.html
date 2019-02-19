@@ -101,6 +101,9 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
+summary {
+  display: list-item;
+}
 </style>
 
 
@@ -108,9 +111,70 @@ button.code-folding-btn:focus {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
 });
 </script>
 
@@ -123,7 +187,6 @@ $(document).ready(function () {
   window.initializeCodeFolding("show" === "show");
 });
 </script>
-
 
 
 
@@ -247,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated January 31, 2019</p>
+<p>Last updated February 15, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -893,7 +956,8 @@ missing &lt;- jur %&gt;%
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
                     yearbuilt, long, lat,
-                    parcel_area, parcel_length), list) %&gt;% 
+                    parcel_area, parcel_length,
+                    assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %&gt;% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., &quot;_list&quot;)) %&gt;% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
@@ -909,14 +973,20 @@ missing &lt;- jur %&gt;%
          long = map(long_list, median),
          lat = map(lat_list, median),
          # year built handled differently due to missing values
-         yearbuilt_list = ifelse(as.integer(map(yearbuilt_list, function(x) sum(!is.na(x)))) == 0,
+         yearbuilt_list = ifelse(as.integer(map(yearbuilt_list, 
+                                                function(x) 
+                                                  sum(!is.na(x)))) == 0,
                                  NA,
                                  yearbuilt_list),
          yearbuilt = ifelse(!is.na(yearbuilt_list),
                       map(yearbuilt_list, max, na.rm = TRUE),
                       NA),
          parcel_area = map_dbl(parcel_area_list, sum, na.rm = TRUE),
-         parcel_length = map_dbl(parcel_length_list, sum, na.rm = TRUE))</code></pre>
+         parcel_length = map_dbl(parcel_length_list, sum, na.rm = TRUE),
+         totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
+         assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
+                                            sum, na.rm = TRUE),
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))</code></pre>
 <div id="lot-size" class="section level4">
 <h4>Lot size</h4>
 <p><strong>Note: This entire section may not hold accross jurisdictions. Visually confirm that this applies. Some thresholds may need to be adjusted.</strong></p>
@@ -1273,6 +1343,7 @@ rm(novac, onevac, bothvac, nested_all)</code></pre>
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
          ends_with(&quot;prop&quot;),
          parcel_area, parcel_length,
          raw_parcelid_par)
