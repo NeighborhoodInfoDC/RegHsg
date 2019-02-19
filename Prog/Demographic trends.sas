@@ -259,8 +259,9 @@ data Cen_population_estimates ;
 
 	;
 
-	ucounty = put(county,z5.);
+	county = put(county,z3.);
 	state = put(state,z2.);
+	ucounty= county || state;
 
 	drop county state ;
 
