@@ -518,7 +518,6 @@ jur2 %>%
   select(oldadd, propaddress, category_detail,parcelbase_address, parcelbase_parcelID) %>% 
   head(20)
 
-
 #replace NA propaddress with parcelbase_address, need to trim several times sometimes before clean, also need to exclude street number and see if housenumber is available. (note a lot of parcelbasee_address missing either houseno or street number, notice how a lot of the address that appears more than once shou't be collapsed without a house number. )
 
 parceladdress <- jur2 %>% 
@@ -552,6 +551,7 @@ jur3 <- left_join(x = jur2, y= cleanparceladdress, by ="parcelbase_parcelID") %>
                                     propaddress_new, 
                                     propaddress_bk))
 
+test2 <- count(jur3, is.na(propaddress))
 
 test <- jur3 %>% 
   select(parcelbase_parcelID, propaddress, propaddress_bk, propaddress_new)
@@ -575,22 +575,22 @@ In order to do the collapse, we first identify addresses with more than one obse
 classify_parceladdresses <- function(dataset) {
   
   group <- dataset %>% 
-    group_by(parcelbase_address) %>% 
+    group_by(propaddress) %>% 
     count()
   
   singles <- group %>% 
     filter(n == 1) %>% 
-    pull(parcelbase_address)
+    pull(propaddress)
   
   multiples <- group %>% 
     filter(n > 1) %>% 
-    pull(parcelbase_address)
+    pull(propaddress)
   
   dataset %>% 
     mutate(address_type = case_when(
-      is.na(parcelbase_address) ~ "missing",
-      parcelbase_address %in% singles ~ "single",
-      parcelbase_address %in% multiples ~ "multiple"))
+      is.na(propaddress) ~ "missing",
+      propaddress %in% singles ~ "single",
+      propaddress %in% multiples ~ "multiple"))
   
 }
 
@@ -607,13 +607,15 @@ jurtest<- jur3 %>%
 
 #create jur4 from blackknight address
 jur4 <- jur3 %>% 
-  classify_addresses()
+  classify_parceladdresses()
 
 if (TRUE %in% is.na(jur4$address_type)) {
   warning("NAs in address_type")
 }
 
+
 count(jur4, address_type)
+
 
 ```
 
