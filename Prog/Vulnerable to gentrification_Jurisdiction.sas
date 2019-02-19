@@ -457,12 +457,18 @@ proc import out=adjacentflag  datafile="L:\Libraries\RegHsg\Maps\adjacent flag.C
 			GUESSINGROWS=MAX;
 RUN;
 
-data adjacentflag2 (rename=(geoid3=geoid));
+data adjacentflag2 ;
 set adjacentflag;
-keep geoid3 DCMetroArea2015_tr10_adjacent;
-length geoid3 $11.;
-geoid3 = geoid;
+rename DCMetroArea2015_tr10_geo2010 = geoid2;
+length geoid2 $11.;
 run;
+
+data adjacentflag2 ;
+set adjacentflag2 ;
+keep geoid adjacentflag;
+geoid= geoid2+1;
+run;
+
 proc sort data= adjacentflag2;
 by geoid;
 run;
@@ -471,6 +477,7 @@ data allflags;
 merge completetypology adjacentflag2;
 by geoid;
 run;
+
 proc freq data=allflags;
 tables potentialADJ*DCMetroArea2015_tr10_adjacent/missprint;
 run;
@@ -500,8 +507,8 @@ proc format;
 run;
 data gentrificationstage;
 set allflags;
-keep Geo2010 geoid Jurisdiction vulnerable demographicchange_MHH demographicchange_MFAM accelerating appreciated potentialADJ DCMetroArea2015_tr10_adjacent neighborhoodtypeFAM 
-neighborhoodtypeHH numhshlds_&_years. hhunder75000;
+keep Geo2010 geoid Jurisdiction vulnerable demographicchange_MHH demographicchange_MFAM accelerating appreciated potentialADJ adjacentflag DCMetroArea2015_tr10_adjacent neighborhoodtypeFAM 
+neighborhoodtypeHH neighborhoodtypeFAMcode neighborhoodtypeHHcode numhshlds_&_years. hhunder75000 ;
 
 if vulnerable=1 and demographicchange_MHH=0 and DCMetroArea2015_tr10_adjacent=1 then neighborhoodtypeHH=1;
 if vulnerable=1 and demographicchange_MHH=0 and accelerating=1 then neighborhoodtypeHH=2;
@@ -518,6 +525,10 @@ if vulnerable=1 and demographicchange_MFAM=1 and appreciated=1 then neighborhood
 if vulnerable=0 and gentrifier_white=1 and gentrifier_college=1 and appreciated=1 then neighborhoodtypeFAM=6;
 
 format neighborhoodtypeFAM neighborhoodtypeHH type. Jurisdiction Jurisdiction. ;
+
+neighborhoodtypeFAMcode= neighborhoodtypeFAM;
+neighborhoodtypeHHcode= neighborhoodtypeHH;
+
 run;
 proc print data=gentrificationstage;
 where jurisdiction=.;
