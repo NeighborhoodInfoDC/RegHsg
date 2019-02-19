@@ -1095,7 +1095,9 @@ multiples_f <- nested_final %>%
 
 finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>% 
   fill(county_fips) %>% 
-  fill(county_name)
+  fill(county_name) %>% 
+  select(-Xcoord, -Ycoord, -usecode) 
+
 
 
 finaljur[finaljur == "NULL"] = NA
