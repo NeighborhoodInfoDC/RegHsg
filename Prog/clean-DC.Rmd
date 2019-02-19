@@ -530,13 +530,26 @@ parceladdress <- jur2 %>%
          propaddress5= str_replace(propaddress4, "[0-9]$", ""),
          propaddress6= str_replace(propaddress5, "[0-9]$", ""),
          propaddress7= str_replace(propaddress6, "[0-9]$", ""),
+         streettest= str_trim(propaddress7, side=c("both")),
+         streetnew1= str_extract(streettest, "[[:digit:]]+"),
          streetnew= str_replace(propaddress7, "\\w*[0-9]+\\w*\\s*", "" ),
          wrongaddress2= ifelse(str_detect(streetnew, "[:digit:]")==1,0,1)) 
 
+  
+test4 <- parceladdress %>% 
+ filter(parcelbase_parcelID=="4445    2018") %>% 
+  mutate(idlength= str_length(parcelbase_parcelID))
+
+test5 <- parceladdress %>% 
+  select(parcelbase_parcelID, parcelbase_address) %>% 
+  separate(parcelbase_address, sep = " ", remove = FALSE,
+           into = c("a1", "a2", "a3", "a4", "a5", "a6")) 
+
+
+test5 %>% pull(parcelbase_address)
 
 alladdress <- parceladdress %>% 
-  group_by (propaddress7) %>% 
-  count()
+  group_by (propaddress7) 
 
     
 cleanparceladdress <- parceladdress %>% 
