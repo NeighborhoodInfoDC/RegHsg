@@ -46,7 +46,7 @@ Typology_df <- Typology  %>%
   
 
 #spatial join
-Typologymap <- left_join (Typology_df, COGregion_sf, by = c("GEOID"="GEOID")) %>% 
+Typologymap <- left_join (Typology_df, COGregion_sf, by = c("GEOID"="GEOID")) 
   
 Typologymap$neighborhoodtypeHH[Typologymap$neighborhoodtypeHH==""] <- "NA"
 
@@ -62,8 +62,8 @@ library(urbnthemes)
 #Typology by HH income 
 ggplot() +
   geom_sf(Typologymap,  mapping = aes(),
-          fill = NA, color = "#5c5859", size = .01) +
-  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHH)))+
+          fill = NA, color = "white", size = .05) +
+  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHH)), size = .05)+
   scale_fill_manual(values = c ("#46ABDB", "#0A4C6A", "#e88e2d", "#e54096" )) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
@@ -75,7 +75,7 @@ ggplot() +
 ggplot() +
   geom_sf(Typologymap,  mapping = aes(),
           fill = NA, color = "#9d9d9d", size = .05) +
-  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAM)))+
+  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAM)), size = .05)+
   scale_fill_manual(values = c ("#46ABDB", "#0A4C6A", "#e88e2d", "#e54096" )) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
