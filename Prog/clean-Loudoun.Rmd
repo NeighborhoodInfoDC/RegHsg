@@ -55,9 +55,6 @@ library(tidyverse)
 library(DescTools)
 library(purrr)
 
-source("../Macros/read-bk.R")
-source("../Macros/filter-bk.R")
-source("../Macros/select-vars.R")
 source("../Macros/sample-properties.R")
 source("../Macros/classify-addresses.R")
 ```
@@ -188,12 +185,13 @@ other <- c("AUTO SALES",
                 "WAREHOUSE",
                 "WINERY")
 
-mf <- c("DUPLEX",
-        "MULTI-FAMILY",
+mf <- c("MULTI-FAMILY",
         "MULTIPLE OCCUPANCIES",
         "RESIDENTIAL CONDOS",
         "CONDOMINIUM (RESIDENTIAL)",
         "RES CONDO GARAGE UNIT")
+
+duplex <- "DUPLEX" 
 
 sf <- c("RURAL RESIDENCE (AGRICULTURAL)",
         "RURAL RESIDENCE AGRICULTURAL",
@@ -228,9 +226,10 @@ jur <- jur %>%
            countylandusedescription %in% mf ~ "mf",
            countylandusedescription %in% sf ~ "sf",
            countylandusedescription %in% vacant ~ "vacant",
+           countylandusedescription %in% duplex ~ "duplex",
            is.na(countylandusedescription) ~ "missing"))
 
-rm(other, mf, sf, vacant)
+rm(other, mf, sf, vacant, duplex)
 ```
 
 ##### `category_detail`
@@ -276,9 +275,6 @@ duplex <- c("DUPLEX")
 
 office <- c("OFFICE BUILDING",
             "OFFICE/RETAIL")
-
-mfattached <- c("MULTI-FAMILY",
-                "MULTIPLE OCCUPANCIES")
 
 sfdetached <- c("SINGLE FAMILY",
                 "RURAL RESIDENCE (AGRICULTURAL)",
@@ -337,7 +333,6 @@ jur <- jur %>%
            countylandusedescription %in% condo ~ "condo",
            countylandusedescription %in% duplex ~ "duplex",
            countylandusedescription %in% office ~ "office",
-           countylandusedescription %in% mfattached ~ "mf attached",
            countylandusedescription %in% sfdetached ~ "sf detached",
            countylandusedescription %in% trailer ~ "trailer",
            countylandusedescription %in% townhouse ~ "townhouse",
@@ -356,7 +351,7 @@ jur <- jur %>%
            is.na(countylandusedescription) ~ "missing"))
 
 rm(apartment, commercial, condo, duplex,
-   office, mfattached, sfdetached, trailer, townhouse,
+   office, sfdetached, trailer, townhouse,
    educational, firedepartment, recreational, govt, otheruse, vacantcom, vacantother, vacantmf,
    vacantoffice, vacantsf, vacanttownhouse, vacanttrailer)
 
@@ -406,8 +401,8 @@ if (TRUE %in% is.na(jur$category_detail)) {
 
 ```
 ##### `building_type`
-Here, we expect NAs since `building_type` is only for MF properties- but we should have the same number of non-missing values as we do MF observations
-```{r bt-check}
+Here, we expect NAs since we do not create a specific `building_type` for Loudon.
+```{r bt-check, eval=F}
 newcat <- sum(!is.na(jur$building_type))
 mf <- nrow(filter(jur, category == "mf"))
 
@@ -539,12 +534,12 @@ if (TRUE %in% is.na(jur$address_type)) {
 
 ```
 
-For townhouses and other forms of attached housing, we do not want a collapse, since this is a function of addressing and not the unit type. We will reclassify the address type as `single` for properties that have a value of `sf attached` and `townhouse` for the `category_detail` variable.
+For townhouses and other forms of attached housing, we do not want a collapse, since this is a function of addressing and not the unit type. We will reclassify the address type as `single` for properties that have a value of `sf attached`(none in Loudoun) and `townhouse` for the `category_detail` variable.
 
 ```{r th}
 
 jur <- jur %>% 
-  mutate(address_type = ifelse(category_detail %in% c("townhouse", "sf attached"),
+  mutate(address_type = ifelse(category_detail %in% c("townhouse"),
                                   "single",
                                   address_type))
 
@@ -621,13 +616,13 @@ rm(v)
 
 **Note:** there are some instances where there are no non-`NA` values, so this next step will throw some warning messages.
 
-``` {r nest}
+```{r nest}
 nested <- multiples %>% 
   group_by(propaddress, parcel_address) %>%
   summarize_at(vars(zoning, lotsize_sf,
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
-                    yearbuilt, long, lat), list) %>% 
+                    yearbuilt, long, lat, parcel_area, parcel_length, lotsize_acres_prop, numberofunits_prop, propertytype_par, landusetype_prop), list) %>% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
@@ -669,7 +664,7 @@ There are a few variables needed:
 1. The number of unique observations in the `lotsize_sf_list` nested list
 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)
 
-``` {r lot-vars}
+```{r lot-vars}
 nested <- nested %>% 
   mutate(nprops = as.integer(nprops),
          lotsiz_sf_sum = as.integer(lotsize_sf_sum),
@@ -684,7 +679,7 @@ nested <- nested %>%
 
 Based on these variables, we can identify when`sum()` is definitely the right function (when the number of unique values in `lotsize_sf_list` is the same as `nprops`), and when we want to take the first argument is definitely the right function (there is only one unique value in `lotsize_sf_list`).
 
-``` {r fx-choice}
+```{r fx-choice}
 nested <- nested %>% 
   mutate(fxn = case_when(
     lotsize_sf_sum < 1 ~ "missing",
@@ -753,7 +748,7 @@ rm(nested, nested_done, nested_other)
 ##### Zoning
 There are 21 instances where there is a tie in the zoning code- examples below.
 
-``` {r ties}
+```{r ties}
 ties <- nested_all %>% 
   mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
   filter(ties_z == 1) %>% 
@@ -775,7 +770,7 @@ ties %>%
 
 Since there is no definitive way to break these ties, we replace the `zoning` variable with `NA`.
 
-``` {r write-ties}
+```{r write-ties}
 
 nested_all <- nested_all %>% 
   mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
@@ -887,7 +882,7 @@ nunits <- cdties %>% filter(test_vacant == 1) %>% summarize(sum(nprops)) %>% pul
 ```
 
 **If both values are vacant:**
-There are few examples of this, but in each case we want to default to the more general case.
+There are no examples of this in Loudoun, but in each case we want to default to the more general case.
 
 ```{r both-vac}
 bothvac <- cdties %>% 
@@ -948,7 +943,7 @@ singles_f <- singles %>%
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type)
+         category, category_detail, residential, building_type, parcel_area, parcel_length, lotsize_acres_prop, numberofunits_prop, propertytype_par, landusetype_prop)
 
 missing_f <- missing %>% 
   select(county_fips, county_name,
@@ -959,7 +954,7 @@ missing_f <- missing %>%
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type)
+         category, category_detail, residential, building_type, parcel_area, parcel_length, lotsize_acres_prop, numberofunits_prop, propertytype_par, landusetype_prop)
 
 multiples_f <- nested_final %>% 
   select(-ends_with("_list"), -lsmode, -lsfirst, 
