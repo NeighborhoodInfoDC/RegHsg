@@ -577,18 +577,52 @@ parceladdress2 <- jur2 %>%
     
 #The code above separate out each element of address, I'm detecting each new element if there's a digit+"TH" combinition. I filtered those out and then look for digit again in the full address. So we will be keeping both cases like "1234 M str" and "5678 14th street"
 
-cleanparceladdress <- bind_rows(parceladdress1, parceladdress2)
+cleanparceladdress <- bind_rows(parceladdress1, parceladdress2) %>% 
+        mutate(propaddress_new2=str_trim(propaddress_new, side="both"),
+               strlen= str_length(propaddress_new2),
+               lasttwo= str_sub(propaddress_new2, strlen-2, strlen),
+               removeflag= ifelse(str_detect(lasttwo, "P|G|A|B|C|D")==1,1,0),
+               propaddress_new3= ifelse(removeflag==1,str_sub(propaddress_new2,1,strlen-3) ,propaddress_new2))
+
 
  
 jur3 <- left_join(x = jur2, y= cleanparceladdress, by ="parcelbase_parcelID") %>%
         mutate(propaddress_bk = propaddress,
                propaddress = ifelse(usecleanparceladdress == 1 & !is.na(usecleanparceladdress),  
-                                    propaddress_new, 
+                                    propaddress_new3, 
                                     propaddress_bk))
 
 count(jur3, is.na(propaddress))
 
-test <- jur3 %>% 
+
+#redo the check address step to make sure the same new address don't have different partial parcel IDs, if so need to remove those address again.
+jurparcel2 <- jur3 %>% 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 8),
+         parcelbase_parceladdress= substr(parcelbase_parcelID, 1, 8)) 
+
+bad_parcels2 <- jurparcel2 %>% 
+  group_by(propaddress) %>% 
+  summarize(parcelbase= list(parcelbase_parceladdress)) %>% 
+  mutate(unq_parcels = as.integer(map(parcelbase, 
+                                  function(x) length(unique(x))))) %>% 
+  filter(unq_parcels > 1)
+
+bad_addresses2 <- bad_parcels2 %>% 
+  pull(propaddress)
+
+jur4 <- jur3 %>% 
+  mutate(parcelbase_parceladdress = ifelse(propaddress %in% bad_addresses2,
+                                 NA,
+                                 parcelbase_parceladdress),
+         parcelbase_parcelID = ifelse(propaddress %in% bad_addresses2, 
+                                     NA,
+                                     parcelbase_parcelID))
+
+
+rm(bad_addresses2, bad_parcels2)
+
+
+test <- jur4 %>% 
   select(parcelbase_parcelID,parcelbase_address, propaddress, propaddress_bk, propaddress_new)
 
 ```
@@ -636,16 +670,17 @@ Using parcelbase address actually make the collapse not clean. Jurtest dataset s
 ```{r comparison of address}
 
 #create jur4 from blackknight address
-jur4 <- jur3 %>% 
+jur5 <- jur4 %>% 
   classify_parceladdresses() %>% 
-  filter(category_detail!="Garage")
+  filter(category_detail!="Garage") %>%
+  mutate(ID = row_number())
 
 if (TRUE %in% is.na(jur4$address_type)) {
   warning("NAs in address_type")
 }
 
 #aftercleaning the missing category dropped from 9562 to 7429, dropped 2030 from parcelbase address plus 103 garage cases, which matches the total observation of cleanparceladdress dataset
-count(jur4, address_type)
+count(jur5, address_type)
 
 
 ```
@@ -660,13 +695,13 @@ For townhouses and other forms of attached housing, we do not want a collapse, s
 Seperate the address types for different operations.
 
 ```{r mlt}
-multiples <- jur4 %>% 
+multiples <- jur5 %>% 
   filter(address_type == "multiple")
 
-singles <- jur4 %>% 
+singles <- jur5 %>% 
   filter(address_type == "single")
 
-missing <- jur4 %>% 
+missing <- jur5 %>% 
   filter(address_type == "missing")
 
 ```
@@ -732,15 +767,17 @@ Again, because propaddress is better than parcelbase dataset address, I will kee
 
 ``` {r nest}
 
-   
-  nested <- multiples %>% 
+rm(length)   
+
+  nested1 <- multiples %>% 
   group_by(propaddress, parcelbase_parceladdress) %>%
   summarize_at(vars(zoning,lotsize_sf,
                     buildingarea, parcelbase_usecode, 
                     residential, category, category_detail, building_type,
                     yearbuilt, parcelgeo_x, parcelgeo_y), list) %>% 
+  summarize_at(ID, n_distinct())%>% 
   rename_at(vars(-propaddress, -parcelbase_parceladdress), ~ paste0(., "_list")) %>% 
-  mutate(nprops = map(zoning_list, length),
+  mutate(nprop = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
          lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
          buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
@@ -761,11 +798,8 @@ Again, because propaddress is better than parcelbase dataset address, I will kee
                       map(yearbuilt_list, max, na.rm = TRUE),
                       NA))
          
-         
-         
-         
-         
-         
+nestedtest<- nested %>%
+  filter(nprops==1)
          
 #sum(is.na(nested$long_list))
 ```
@@ -794,13 +828,14 @@ rm(weird, weird1)
 
 - IN the case of when the lot size is repeated - the number of unique lot sizes is 1, so mode is the right function.
 - In the case of when there are the same number of unique values as there are properties- sum is the correct function. 
-- In the fourth instance, two smaller number add up to the third. I looked up several online and it seems like best to keep the total, summing all will double count the lot size
+- In the fourth instance, two smaller number add up to the third. I looked up several online and it seems like best to keep the total, summing all will double count the lot size. Per Leah's comment, this rule does not always hold, maybe cause by wrong address. 
 
 
 First, filter out all the observations where the function is known. Then, re-examine the remaining observations.
 There are a few variables needed:
 1. The number of unique observations in the `lotsize_sf_list` nested list
-2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)
+2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode and mode is larger than 8000).
+3. The max, this is for dealing with the fourth instance in the table above
 
 ``` {r lot-vars}
 nested <- nested %>% 
@@ -813,6 +848,10 @@ nested <- nested %>%
                          map(lotsize_sf_list, Mode, na.rm = TRUE))
          ) %>% 
   ungroup()
+
+
+nested1 <- nested %>%
+  filter(nprops==1)
 ```
 
 Based on these variables, we can identify when`sum()` is definitely the right function (when the number of unique values in `lotsize_sf_list` is the same as `nprops`), and when we want to take the first argument is definitely the right function (there is only one unique value in `lotsize_sf_list`). In addition, we want a threshold for when we are using the "first" because sometimes even if all properties have the same lot size we still want to sum them. Here threshold is 8000. 
@@ -835,10 +874,10 @@ nested_done <- nested %>%
 
 ```
 
-There are a total of 2392 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah's logic, but had some with the nprops one. 
+There are a total of 1963 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah's logic, but had some with the nprops one. 
 
 1. The lotsize seems reasonable, but the nprop is double the actual value. Not sure how to deal with this
-2. In addition, I found a case (also presented in the table above) where one lotzie equals the sum of all other lotsize in the same address. I'm not sure how to programmatically detect all cases like this. 
+2. In addition, For cases (also presented in the table above) where one lotzie equals the sum of all other lotsize in the same address, use the max for now, even if it is not true for all cases, shouldn't change the result too much since I was only to identiy 9 cases. 
 
 Other than the two issues, following sarah's instruction, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
 
