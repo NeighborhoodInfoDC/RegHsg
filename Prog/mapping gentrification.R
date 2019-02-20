@@ -33,7 +33,7 @@ shp= "L:/Libraries/RegHsg/Maps/COG_region.shp"
 datashp="L:/Libraries/RegHsg/Maps/Export_Output.shp"
 COGregion_sf <- read_sf(dsn=shp,layer= basename(strsplit(shp, "\\.")[[1]])[1])
 
-plot(COGregion)
+plot(COGregion_sf)
 
 # load in typology dataset output from SAS program
 library(readcsv)
