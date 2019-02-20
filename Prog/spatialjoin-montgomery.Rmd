@@ -107,11 +107,44 @@ jur <- readRDS(paste0(jdir,
 Spatial Join
 
 ```{r spatial join}
+st_geometry(parcel_sf)
 
-join <- st_join(lat, geometry, join = st_contains, left = TRUE, largest = TRUE)
+parcel_sf <- st_transform(parcel_sf, crs = 4326)
+
+```
+
+##### parcel map
+```{r par-map}
+
+plot(st_geometry(parcel_sf))
 
 
 
+ggplot(parcel_sf) +
+  geom_sf(mapping = aes())
+
+```
+
+
+
+```{r clean}
+jur1 <- jur %>% 
+  mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
+                                1,
+                                0))
+jur_sf <- jur1 %>% 
+  filter(missing_coord == 0) %>% 
+  st_as_sf(coords = c("long", "lat")) %>% 
+  st_set_crs(st_crs(parcel_sf))
+
+```
+
+
+
+
+```{r join}
+
+join <- st_join(jur_sf, parcel_sf, join = st_intersects)
 
 ```
 
