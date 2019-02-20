@@ -63,8 +63,9 @@ library(urbnthemes)
 ggplot() +
   geom_sf(Typologymap,  mapping = aes(),
           fill = NA, color = "white", size = .05) +
-  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHH)), size = .05)+
-  scale_fill_manual(values = c ("#46ABDB", "#0A4C6A", "#e88e2d", "#e54096" )) +
+  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHHcode)), size = .05)+
+  scale_fill_manual(values = c ("#a2d4ec", "#fce39e", "#fccb41", "#eb99c2", "#e9807d", "#db2b27" ),
+                    labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Not at risk")) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
   labs(title = "Neighborhood Gentrification Typology by HH") + 
@@ -75,8 +76,9 @@ ggplot() +
 ggplot() +
   geom_sf(Typologymap,  mapping = aes(),
           fill = NA, color = "#9d9d9d", size = .05) +
-  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAM)), size = .05)+
-  scale_fill_manual(values = c ("#46ABDB", "#0A4C6A", "#e88e2d", "#e54096" )) +
+  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAMcode)), size = .05)+
+  scale_fill_manual(values = c ("#a2d4ec", "#fce39e", "#fccb41", "#eb99c2", "#e9807d", "#db2b27" ),
+                    labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Not at risk")) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
   labs(title = "Neighborhood Gentrification Typology by Family") + 

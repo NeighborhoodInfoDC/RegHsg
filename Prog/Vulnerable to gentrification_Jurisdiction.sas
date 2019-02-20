@@ -458,15 +458,14 @@ proc import out=adjacentflag  datafile="L:\Libraries\RegHsg\Maps\adjacent flag.C
 RUN;
 
 data adjacentflag2 ;
-set adjacentflag;
-rename DCMetroArea2015_tr10_geo2010 = geoid2;
-length geoid2 $11.;
+set adjacentflag(drop=GEOID);
+geo2010char= put(geo2010, 11.);
 run;
 
 data adjacentflag2 ;
 set adjacentflag2 ;
-keep geoid adjacentflag;
-geoid= geoid2+1;
+keep geoid DCMetroArea2015_tr10_adjacent;
+geoid= geo2010char;
 run;
 
 proc sort data= adjacentflag2;
@@ -507,7 +506,7 @@ proc format;
 run;
 data gentrificationstage;
 set allflags;
-keep Geo2010 geoid Jurisdiction vulnerable demographicchange_MHH demographicchange_MFAM accelerating appreciated potentialADJ adjacentflag DCMetroArea2015_tr10_adjacent neighborhoodtypeFAM 
+keep Geo2010 geoid Jurisdiction vulnerable demographicchange_MHH demographicchange_MFAM accelerating appreciated potentialADJ DCMetroArea2015_tr10_adjacent neighborhoodtypeFAM 
 neighborhoodtypeHH neighborhoodtypeFAMcode neighborhoodtypeHHcode numhshlds_&_years. hhunder75000 ;
 
 if vulnerable=1 and demographicchange_MHH=0 and DCMetroArea2015_tr10_adjacent=1 then neighborhoodtypeHH=1;
