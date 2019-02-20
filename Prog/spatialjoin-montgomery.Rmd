@@ -1,0 +1,175 @@
+---
+title: "postclean-montgomery"
+author: "Patrick Spauster"
+date: "February 13, 2019"
+output: html_document
+---
+
+---
+title: "Regional Housing Framework"
+subtitle: "Pre Clean Arlington County public records data"
+author: "Patrick Spauster and Sarah Strochak"
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Patrick Spauster
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+## Set-up
+#### Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(DescTools)
+library(purrr)
+library(sf)
+
+source("../Macros/read-bk.R")
+source("../Macros/filter-bk.R")
+source("../Macros/select-vars.R")
+source("../Macros/sample-properties.R")
+source("../Macros/classify-addresses.R")
+```
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+#### Set FIPS code and filepath name
+```{r fips}
+currentfips <- "24031"
+filepath <- "montgomery"
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
+```
+
+####Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
+  dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))
+}
+if (!dir.exists(paste0("L:/Libraries/RegHsg/Data/", filepath))) {
+  dir.create(paste0("L:/Libraries/RegHsg/Data/", filepath))
+}
+```
+
+
+
+```{r readin}
+pfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels'), end = -5) %>% unique()
+parcel_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
+                     layer = pfile[1])
+
+  #jur_par <- jur %>% 
+  #  mutate(first2 = substr(assessorsparcelnumberapnpin, 1, 2),
+  #         pnlength = str_length(assessorsparcelnumberapnpin))
+  #
+  #count(jur_par, first2)
+  #parcel_f_par <- parcel_sf %>% 
+  #  st_set_geometry(NULL) %>% 
+  #  mutate(first2 = substr(ACCT, 1, 2),
+  #         pnlength = str_length(ACCT))
+  #count(parcel_f_par, DISTRICT)
+
+```
+
+#### Load in Black Knight data for the region, select jurisdiction and standard variables
+```{r read}
+jur <- readRDS(paste0(jdir, 
+               "cleaned-",
+               filepath,
+               "-data.Rdata"))
+```
+
+Spatial Join
+
+```{r spatial join}
+
+join <- st_join(lat, geometry, join = st_contains, left = TRUE, largest = TRUE)
+
+
+
+
+```
+
+
+
+
+```
+
+##Clean and merge
+
+
+
+Select variables from each dataset that we want to keep.
+
+From the parcel file, we will keep the area of the parcel shapefile to use in the event that the Black Knight lot size is unavailable or incorrect.
+We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.
+
+```{r select-parcel}
+parcel_clean <- parcel_sf %>% 
+  select(raw_parcelid_par = ACCT,
+         parcel_area = SHAPE_AREA, 
+         parcel_length = SHAPE_LEN,
+         raw_parcelid_d = DISTRICT,
+         parcel_category= LU_CATEGOR) %>% 
+  mutate(parcel_id = paste0(raw_parcelid_d,
+                            "-",
+                            raw_parcelid_par)) %>% 
+  filter(!is.na(raw_parcelid_par))
+
+
+```
+
+```{r strip the geometry}
+parcel_cleandf <- st_set_geometry(parcel_clean, NULL)
+
+```
+
+There are `r parcel %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once on the parcel file. We combine these by taking the average area and width. 
+
+```{r dups-parcel}
+parcel_cleandf <- parcel_cleandf %>% 
+  group_by(parcel_id, raw_parcelid_par) %>% 
+  summarize(parcel_area = mean(parcel_area),
+            parcel_length = mean(parcel_area)) %>% 
+  ungroup()
+
+count(parcel_cleandf, parcel_category)
+```
+
+
+Merge
+
+```{r merge}
+jur <- left_join(jur, parcel_cleandf, 
+                 by = c("assessorsparcelnumberapnpin" = "parcel_id"))
+
+test <- anti_join(jur, parcel_cleandf, 
+                 by = c("assessorsparcelnumberapnpin" = "parcel_id"))
+
+
+```
