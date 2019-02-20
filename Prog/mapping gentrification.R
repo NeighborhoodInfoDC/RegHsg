@@ -33,6 +33,14 @@ shp= "L:/Libraries/RegHsg/Maps/COG_region.shp"
 datashp="L:/Libraries/RegHsg/Maps/Export_Output.shp"
 COGregion_sf <- read_sf(dsn=shp,layer= basename(strsplit(shp, "\\.")[[1]])[1])
 
+countyshp= "L:/Libraries/General/Maps/DMVCounties.shp"
+
+county_sf <- read_sf(dsn= countyshp, layer= "DMVCounties")
+
+COGcounty_sf <- county_sf %>% 
+      filter(GEOID %in% c(11001, 24017, 24021, 24031, 24033, 51013, 
+                          51059, 51107, 51153, 51510, 51600, 51610, 51683,51685))
+
 plot(COGregion_sf)
 
 # load in typology dataset output from SAS program
@@ -59,28 +67,42 @@ install.packages("devtools")
 devtools::install_github("UI-Research/urbnthemes")
 library(urbnthemes)
 
+boundary <- ggplot()+
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#98cf90", size=0.5)+
+  theme_urbn_map() +
+  coord_sf(crs = 4269, datum = NA)
+
+
 #Typology by HH income 
 ggplot() +
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#98cf90", size=0.5)+
   geom_sf(Typologymap,  mapping = aes(),
           fill = NA, color = "white", size = .05) +
-  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHHcode)), size = .05)+
+  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHHcode)), color= "#dcdbdb", size = .05)+
   scale_fill_manual(values = c ("#a2d4ec", "#fce39e", "#fccb41", "#eb99c2", "#e9807d", "#db2b27" ),
                     labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Not at risk")) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
   labs(title = "Neighborhood Gentrification Typology by HH") + 
   theme(legend.box = "vertical") +
+  coord_sf(crs = 4269, datum = NA)+
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.5, alpha=0.5)+
+  theme_urbn_map() +
   coord_sf(crs = 4269, datum = NA)
+
 
 #Typology by FAM income
 ggplot() +
-  geom_sf(Typologymap,  mapping = aes(),
+  geom_sf(COGcounty_sf,  mapping = aes(),
           fill = NA, color = "#9d9d9d", size = .05) +
-  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAMcode)), size = .05)+
+  geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAMcode)), color= "#dcdbdb", size = .05)+
   scale_fill_manual(values = c ("#a2d4ec", "#fce39e", "#fccb41", "#eb99c2", "#e9807d", "#db2b27" ),
                     labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Not at risk")) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
   labs(title = "Neighborhood Gentrification Typology by Family") + 
   theme(legend.box = "vertical") +
+  coord_sf(crs = 4269, datum = NA)+
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.5, alpha=0.8)+
+  theme_urbn_map() +
   coord_sf(crs = 4269, datum = NA)
