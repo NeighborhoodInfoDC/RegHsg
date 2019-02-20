@@ -388,7 +388,7 @@ else if rank20&endyr.=. or rank00_&endyr.=. then potentialADJ=.n;
 if rank20&endyr. ~=. and appre00_&endyr.~=. then do;
     if rank20&endyr.>=3 or appre00_&endyr.>=3 then adjacentbase=1; else adjacentbase=0;
 	end;
-else if rank20&endyr. ~=. or appre00_&endyr.~=. then adjacentbase=0;
+else if rank20&endyr. ~=. or appre00_&endyr.~=. then adjacentbase=.n;
 
 run;
 
