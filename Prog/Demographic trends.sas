@@ -886,7 +886,7 @@ run;
 %macro hhbytype(year);
 data hhtype_1_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;
 set Ipums.ACS_&year._dc(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._md(where=(pernum=1 and gq in (1,2)));
-keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME NUMPERHH HHTYPE relate hud_inc;
+keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE relate hud_inc;
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
@@ -970,7 +970,7 @@ data hhtype_1_2000 (where=(upuma in ("1100101",
 "5100200"
 )));
 set Ipums.Ipums_2000_dc(where=(pernum=1 and gq in (1,2))) Ipums.Ipums_2000_va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_Ipums_2000_md(where=(pernum=1 and gq in (1,2)));
-keep pernum upuma gq Jurisdiction hhwt perwt year serial numprec HHINCOME NUMPERHH HHTYPE hud_inc;
+keep pernum upuma gq Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE hud_inc;
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
@@ -1016,7 +1016,7 @@ run;
 
 
 proc summary data = hhtype_&year. ;
-	class Jurisdiction NUMPERHH hud_inc nonrelatehh;
+	class Jurisdiction numprec hud_inc nonrelatehh;
 	var HHnumber_&year.;
 	weight perwt;
 	output out = HH_size_inc_type_&year.  sum=;
