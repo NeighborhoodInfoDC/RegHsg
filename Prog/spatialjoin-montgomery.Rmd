@@ -93,23 +93,35 @@ parcel_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel
   #  mutate(first2 = substr(ACCT, 1, 2),
   #         pnlength = str_length(ACCT))
   #count(parcel_f_par, DISTRICT)
+```
+
+
+```{r find bad geometries}
+
+parcel_sf1 <- parcel_sf %>% 
+  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
+                                1,
+                                0))
+
+parcel_sf1 %>% as.data.frame() %>% 
+  count(validgeo)
+
+
+#count(parcel_sf1, validgeo == 0)
+
+
+parcel_sf1 <- parcel_sf1 %>% 
+  filter(validgeo == 1 & !is.na(validgeo))
 
 ```
 
-#### Load in Black Knight data for the region, select jurisdiction and standard variables
-```{r read}
-jur <- readRDS(paste0(jdir, 
-               "cleaned-",
-               filepath,
-               "-data.Rdata"))
-```
 
 Spatial Join
 
-```{r spatial join}
-st_geometry(parcel_sf)
+```{r clean}
+st_geometry(parcel_sf1)
 
-parcel_sf <- st_transform(parcel_sf, crs = 4326)
+parcel_sf1 <- st_transform(parcel_sf, crs = 4326)
 
 ```
 
@@ -125,6 +137,13 @@ ggplot(parcel_sf) +
 
 ```
 
+#### Load in Black Knight data for the region, select jurisdiction and standard variables
+```{r read}
+jur <- readRDS(paste0(jdir, 
+               "cleaned-",
+               filepath,
+               "-data.Rdata"))
+```
 
 
 ```{r clean}
@@ -135,7 +154,14 @@ jur1 <- jur %>%
 jur_sf <- jur1 %>% 
   filter(missing_coord == 0) %>% 
   st_as_sf(coords = c("long", "lat")) %>% 
-  st_set_crs(st_crs(parcel_sf))
+  st_set_crs(st_crs(parcel_sf1))
+
+jur_sf1 <- jur_sf %>% 
+  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
+                                1,
+                                0))
+jur_sf1 %>% as.data.frame() %>% 
+  count(validgeo)
 
 ```
 
@@ -144,11 +170,50 @@ jur_sf <- jur1 %>%
 
 ```{r join}
 
-join <- st_join(jur_sf, parcel_sf, join = st_intersects)
+join <- st_join(jur_sf1, parcel_sf1, join = st_intersects)
+
+```
+
+After the join, we convert back to a dataframe, for ease of computations.
+```{r back-to-df}
+
+join_df <- st_set_geometry(join, NULL)
+
+```
+
+Count how many observations did not join. This will throw an error if more than 5% did not match- in this case, check the underlying shapefiles for compatability.
+
+```{r count-spatial}
+
+paste0(sum(is.na(join_df$validgeo)), " observations didn't join- ",
+      round(sum(is.na(join_df$validgeo)) / nrow(join_df) * 100, 2), "%")
+
+if (sum(is.na(join_df$validgeo)) / nrow(join_df) > .05) {
+  stop("More than 5% of observations could not be spatially joined.")
+}
+
+paste0(sum(is.na(join_df$ACCT)), " observations didn't join- ",
+      round(sum(is.na(join_df$ACCT)) / nrow(join_df) * 100, 2), "%")
+
+if (sum(is.na(join_df$ACCT)) / nrow(join_df) > .05) {
+  stop("More than 5% of observations could not be spatially joined.")
+}
 
 ```
 
 
+--- left off 2/21/19  ----
+
+
+Test how many have different results from the Black Knight zoning variable.
+
+```{r test-spatial}
+
+vacant2 %>% 
+  group_by(is.na(zoning)) %>% 
+  count(zoning == ZN_DESIG)
+
+```
 
 
 ```
