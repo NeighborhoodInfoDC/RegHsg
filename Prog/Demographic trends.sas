@@ -760,21 +760,9 @@ run;
 data vacantunits;
 merge COGvacant2017_sum COGSarea_2017_sum;
 by upuma;
+	%assign_jurisdiction; 
 run;
 
-data vacantunits;
-set vacantunits;
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
-  if upuma in ("2401600") then Jurisdiction =2;
-  if upuma in ("2400300") then Jurisdiction =3;
-  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
-  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
-  if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
-  if upuma in ("5100600") then Jurisdiction =8;
-  if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
-  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
-run;
 
 proc summary data= vacantunits;
 	class Jurisdiction;
@@ -783,7 +771,7 @@ proc summary data= vacantunits;
 	format Jurisdiction Jurisdiction. ;
 	run;
 
-data vacancyrate;  /*? why are there only 5 jurisdictions after this calculation*/
+data vacancyrate2;  
 set vacancyrate;
 keep Jurisdiction vacrate;
 vacrate= vacunit/totalunits;
@@ -794,7 +782,7 @@ by Jurisdiction;
 run;
 
 data hh_housing;
-merge COGSarea_2017 vacancyrate;
+merge COGSarea_2017 vacancyrate2;
 by Jurisdiction;
 run;
 
@@ -814,7 +802,7 @@ proc summary data=hhestimates17;
 	class Jurisdiction ;
 	var hhestimate17;
 	weight hhwt;
-	output out = HH17 (where=(_TYPE_=1)) sum=;
+	output out = HH17 (where=(_TYPE_=1))sum=;
 	format Jurisdiction Jurisdiction. ;
 run;
 
