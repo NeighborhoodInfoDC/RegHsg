@@ -34,7 +34,7 @@ COGS region:
 %DCData_lib( NCDB )
 %DCData_lib( ACS )
 %DCData_lib( RegHsg )
-%DCData_lib( Census );
+%DCData_lib( Census )
 %DCData_lib( Ipums );
 proc format;
 
@@ -487,6 +487,12 @@ proc summary data= populationtrend;
 	output out= populationbyjur sum=;
 run;
 
+proc export data = populationbyjur
+   outfile="&_dcdata_default_path\RegHsg\Prog\populationbyjur.csv"
+   dbms=csv
+   replace;
+run;
+
 
 /*component of population change*/
 data changecomponent;
@@ -609,14 +615,14 @@ keep upuma racgen00 hispand age pernum gq Jurisdiction hhwt perwt year serial nu
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
-  if upuma in ("2400301", "2400302") then Jurisdiction =3;
+  if upuma in ("2400300") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
   if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
   if upuma in ("5101301", "5101302") then Jurisdiction =6;
-  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
-  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
-  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
-  if upuma in ("5151255") then Jurisdiction =10; 
+  if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
+  if upuma in ("5100600") then Jurisdiction =8;
+  if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
+  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
 
 if hispand=0 then do;
 
@@ -667,6 +673,12 @@ run;
 data popbreakdown;
 merge agegroup_race_immigration_00 agegroup_race_immigration_2010 agegroup_race_immigration_2017;
 by Jurisdiction age0 race1 foreignborn;
+run;
+
+proc export data = popbreakdown
+   outfile="&_dcdata_default_path\RegHsg\Prog\popbreakdown.csv"
+   dbms=csv
+   replace;
 run;
 
 /*household number*/
@@ -785,11 +797,18 @@ merge NCDBhouseholds HH17;
 by Jurisdiction;
 run;
 
-/*hh by size, tupe and income*/
+proc export data = totalhouseholdtrend
+   outfile="&_dcdata_default_path\RegHsg\Prog\totalhouseholdtrend.csv"
+   dbms=csv
+   replace;
+run;
+
+
+/*hh by size, type and income*/
 %macro hhnonrelate(year);
-data hhrelate_&year. ;
+data hhrelate_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;;
 set Ipums.ACS_&year._dc(where=(gq in (1,2))) Ipums.ACS_&year._va(where=(gq in (1,2))) Ipums.ACS_&year._md(where=(gq in (1,2)));
-keep pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 HHINCOME NUMPERHH numprec HHTYPE relate nonrelate;
+keep pernum gq hhwt perwt year serial numprec relate related notnonrelate;
 if relate in (11,12,13) then notnonrelate=0;
 else if relate in (1,2,3,4,5,6,7,8,9,10) then notnonrelate=1;
 run;
@@ -811,12 +830,63 @@ run;
 %hhnonrelate(2010);
 %hhnonrelate(2017);
 
+data hhrelate_2000(where=(upuma in ("1100101",
+"1100102",
+"1100103",
+"1100104",
+"1100105",
+"2401600",
+"2400300",
+"2401001",
+"2401002",
+"2401003",
+"2401004",
+"2401005",
+"2401006",
+"2401007",
+"2401101",
+"2401102",
+"2401103",
+"2401104",
+"2401105",
+"2401106",
+"2401107",
+"5100101",
+"5100100",
+"5100301",
+"5100302",
+"5100303",
+"5100304",
+"5100305",
+"5100600",
+"5100501",
+"5100502",
+"5100200"
+)));;
+set Ipums.Ipums_2000_dc(where=(gq in (1,2))) Ipums.Ipums_2000_va(where=(gq in (1,2))) Ipums.Ipums_2000_md(where=(gq in (1,2)));
+keep pernum gq upuma hhwt perwt year serial numprec related notnonrelate;
+if related in (1113, 1115, 1241, 1260, 1270, 1301) then notnonrelate=0;
+else if related in (201, 301, 302, 303, 401, 501, 601, 701, 801, 901, 1001, 1011, 1021, 1031, 1041, 1242) then notnonrelate=1;
+run;
+
+PROC MEANS DATA=hhrelate_2000;
+  CLASS serial;
+  VAR notnonrelate;
+  OUTPUT OUT=aaa_2000 SUM= ;
+RUN;
+
+data nonrelatehh_2000 ;
+set aaa_2000;
+if notnonrelate>=1 then nonrelatehh=0;
+else if notnonrelate=0 then nonrelatehh=1;
+else nonrelatehh=.;
+run;
 
 
 %macro hhbytype(year);
-data hhtype_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;
+data hhtype_1_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;
 set Ipums.ACS_&year._dc(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._md(where=(pernum=1 and gq in (1,2)));
-keep pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 HHINCOME NUMPERHH numprec HHTYPE relate;
+keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME NUMPERHH HHTYPE relate hud_inc;
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
@@ -836,16 +906,29 @@ keep pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 HHINCOME N
 	*create HUD_inc - uses 2016 limits but has categories for 120-200% and 200%+ AMI; 
 
 		%Hud_inc_RegHsg( hhinc=hhincome_a, hhsize=numprec )
+run;
 
+data hhtype_&year.;
+merge hhtype_1_&year. nonrelatehh_&year. ;
+by serial;
 if hhtype in (4,5,6,7) then do;  /*non family*/
 	if numprec=1 then HHcat=1 ; /*single*/
 end;
 
-if hhtype in (1,2,3) then do;
+if hhtype in (1,2,3) then do; /*family household*/
     if hhtype=1 & numprec=2 then HHcat=2 ; /*couple without kid*/
 	else HHcar=3; /*other family*/
 end;
- 
+
+if nonrelatehh=1 then HHcat=3; /* non relate households*/
+
+if hhtype in (0, 9) then HHcat=.;
+
+else HHcat=4;
+
+retain HHnumber_&year.=1;
+
+run; 
 
 %mend popbyrace;
 
@@ -853,100 +936,101 @@ end;
 %popbyrace(2017);
 
 
+data hhtype_1_2000 (where=(upuma in ("1100101",
+"1100102",
+"1100103",
+"1100104",
+"1100105",
+"2401600",
+"2400300",
+"2401001",
+"2401002",
+"2401003",
+"2401004",
+"2401005",
+"2401006",
+"2401007",
+"2401101",
+"2401102",
+"2401103",
+"2401104",
+"2401105",
+"2401106",
+"2401107",
+"5100101",
+"5100100",
+"5100301",
+"5100302",
+"5100303",
+"5100304",
+"5100305",
+"5100600",
+"5100501",
+"5100502",
+"5100200"
+)));
+set Ipums.Ipums_2000_dc(where=(pernum=1 and gq in (1,2))) Ipums.Ipums_2000_va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_Ipums_2000_md(where=(pernum=1 and gq in (1,2)));
+keep pernum upuma gq Jurisdiction hhwt perwt year serial numprec HHINCOME NUMPERHH HHTYPE hud_inc;
+
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400301", "2400302") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
+  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
+  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
+  if upuma in ("5151255") then Jurisdiction =10; 
+
+	  if hhincome ~=.n or hhincome ~=9999999 then do; 
+		 %dollar_convert( hhincome, hhincome_a, &year., 2017, series=CUUR0000SA0 )
+	   end; 
+  
+	*create HUD_inc - uses 2016 limits but has categories for 120-200% and 200%+ AMI; 
+
+		%Hud_inc_RegHsg( hhinc=hhincome_a, hhsize=numprec )
+run;
+%macro summarizehh(year);
+data hhtype_2000;
+merge hhtype_1_2000 nonrelatehh_2000 ;
+by serial;
+if hhtype in (4,5,6,7) then do;  /*non family*/
+	if numprec=1 then HHcat=1 ; /*single*/
+end;
+
+if hhtype in (1,2,3) then do; /*family household*/
+    if hhtype=1 & numprec=2 then HHcat=2 ; /*couple without kid*/
+	else HHcar=3; /*other family*/
+end;
+
+if nonrelatehh=1 then HHcat=3; /* non relate households*/
+
+if hhtype in (0, 9) then HHcat=.;
+
+else HHcat=4;
+
+retain HHnumber_2000 =1;
+
+run; 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-proc summary data = persons_&year. ;
-	class Jurisdiction age0 race1 foreignborn;
-	var totpop_&year.;
+proc summary data = hhtype_&year. ;
+	class Jurisdiction NUMPERHH hud_inc nonrelatehh;
+	var HHnumber_&year.;
 	weight perwt;
-	output out = agegroup_race_immigration_&year.  sum=;
-	format race1 racenew. age0 agegroup. Jurisdiction Jurisdiction. ;
+	output out = HH_size_inc_type_&year.  sum=;
+	format Jurisdiction Jurisdiction. hud_inc inc_cat. ;
 run;
 
 proc sort data=agegroup_race_immigration_&year.;
-by Jurisdiction age0 race1 foreignborn;
+by Jurisdiction;
 run;
 
+%mend summarizehh;
+
+%summarizehh(2000);
+%summarizehh(2010);
+%summarizehh(2017);
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* Combine all data into a single file */
-
-data table_city_stack;
-	set table1980_city table1990_city table2000_city Table2006_10_city Table2012_16_city Table_ch_city 
-		Table2006_10_rent_city Table2012_16_rent_city table2006_10_fam_city table2012_16_fam_city;
-	SortNo + 1;
-run;
-
-data table_ward2012_stack;
-	set table1980_ward2012 table1990_ward2012 table2000_ward2012 Table2006_10_ward2012 Table2012_16_ward2012 Table_ch_ward2012 
-		Table2006_10_rent_ward2012 Table2012_16_rent_ward2012 table2006_10_fam_ward2012 table2012_16_fam_ward2012;
-	SortNo + 1;
-run;
-
-proc sort data = table_city_stack; by SortNo; run;
-proc sort data = table_ward2012_stack; by SortNo; run;
-
-data table_all_final;
-	merge table_city_stack table_ward2012_stack;
-	by SortNo;
-	drop SortNo;
-run;
-
-
-/* Export final file */
-
-proc export data = table_all_final
-   outfile="&_dcdata_default_path.\DMPED\Prog\table1a_raw.csv"
-   dbms=csv
-   replace;
-run;
-
-
-
-/* End of program */
-
-
-data COGSarea_2017 (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
-set Ipums.Acs_2017_dc Ipums.Acs_2017_md Ipums.Acs_2017_va;
-	%assign_jurisdiction; 
-totalunits=1;
-	run;
-
-proc data vacancyrate;
-merge COGSvacant_2017 COGSarea_2017;
-by upuma;
-run;
-
-proc summary data=vacancyrate;
-class Jurisdiction;
-var totalunits totalvacant;
-output out= vacancy2017 sum=;
-run;
