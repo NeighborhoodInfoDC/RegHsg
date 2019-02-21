@@ -618,9 +618,7 @@ jur4 <- jur3 %>%
                                      NA,
                                      parcelbase_parcelID))
 
-
 rm(bad_addresses2, bad_parcels2)
-
 
 test <- jur4 %>% 
   select(parcelbase_parcelID,parcelbase_address, propaddress, propaddress_bk, propaddress_new)
@@ -671,8 +669,8 @@ Using parcelbase address actually make the collapse not clean. Jurtest dataset s
 
 #create jur4 from blackknight address
 jur5 <- jur4 %>% 
-  classify_parceladdresses() %>% 
   filter(category_detail!="Garage") %>%
+  classify_parceladdresses() %>% 
   mutate(ID = row_number())
 
 if (TRUE %in% is.na(jur4$address_type)) {
@@ -769,15 +767,14 @@ Again, because propaddress is better than parcelbase dataset address, I will kee
 
 rm(length)   
 
-  nested1 <- multiples %>% 
-  group_by(propaddress, parcelbase_parceladdress) %>%
+  nested <- multiples %>% 
+  group_by(propaddress) %>%
   summarize_at(vars(zoning,lotsize_sf,
                     buildingarea, parcelbase_usecode, 
                     residential, category, category_detail, building_type,
                     yearbuilt, parcelgeo_x, parcelgeo_y), list) %>% 
-  summarize_at(ID, n_distinct())%>% 
-  rename_at(vars(-propaddress, -parcelbase_parceladdress), ~ paste0(., "_list")) %>% 
-  mutate(nprop = map(zoning_list, length),
+  rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
+  mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
          lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
          buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
@@ -797,7 +794,8 @@ rm(length)
          yearbuilt = ifelse(!is.na(yearbuilt_list),
                       map(yearbuilt_list, max, na.rm = TRUE),
                       NA))
-         
+
+#nestedtest should have 0 observation
 nestedtest<- nested %>%
   filter(nprops==1)
          
@@ -849,9 +847,6 @@ nested <- nested %>%
          ) %>% 
   ungroup()
 
-
-nested1 <- nested %>%
-  filter(nprops==1)
 ```
 
 Based on these variables, we can identify when`sum()` is definitely the right function (when the number of unique values in `lotsize_sf_list` is the same as `nprops`), and when we want to take the first argument is definitely the right function (there is only one unique value in `lotsize_sf_list`). In addition, we want a threshold for when we are using the "first" because sometimes even if all properties have the same lot size we still want to sum them. Here threshold is 8000. 
@@ -874,10 +869,10 @@ nested_done <- nested %>%
 
 ```
 
-There are a total of 1963 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah's logic, but had some with the nprops one. 
+There are a total of 2032 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah's logic, but had some with the nprops one. 
 
-1. The lotsize seems reasonable, but the nprop is double the actual value. Not sure how to deal with this
-2. In addition, For cases (also presented in the table above) where one lotzie equals the sum of all other lotsize in the same address, use the max for now, even if it is not true for all cases, shouldn't change the result too much since I was only to identiy 9 cases. 
+1. The lotsize seems reasonable, the nprop is extremely large.
+2. In addition, For cases (also presented in the table above) where one lotzie equals the sum of all other lotsize in the same address, use the max for now, even if it is not true for all cases, shouldn't change the result too much since I was only to identiy 13 cases. 
 
 Other than the two issues, following sarah's instruction, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
 
@@ -1195,7 +1190,7 @@ mult <- finaljur %>%
 other <- finaljur %>% 
   filter(address_type != "multiple")
 
-stopifnot(mult + nrow(other) == nrow(jur4) - 
+stopifnot(mult + nrow(other) == nrow(jur5) - 
             (nunits - nrow(filter(cdties, test_vacant == 1))))
 
 rm(mult, other, nunits, cdties)
