@@ -839,7 +839,7 @@ data hhrelate_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104
 set Ipums.ACS_&year._dc(where=(gq in (1,2))) Ipums.ACS_&year._va(where=(gq in (1,2))) Ipums.ACS_&year._md(where=(gq in (1,2)));
 keep upuma pernum gq hhwt perwt year serial numprec relate related notnonrelate;
 if relate in (11,12,13) then notnonrelate=0;
-else if relate in (1,2,3,4,5,6,7,8,9,10) then notnonrelate=1;
+else if relate in (2,3,4,5,6,7,8,9,10) then notnonrelate=1;
 run;
 
 proc summary data=hhrelate_&year.;
