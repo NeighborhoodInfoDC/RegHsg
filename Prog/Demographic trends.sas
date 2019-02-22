@@ -998,7 +998,7 @@ data hhtype_1_2000 (where=(upuma in ("1100101",
 "5100502",
 "5100200"
 )));
-set Ipums.Ipums_2000_dc(where=(pernum=1 and gq in (1,2))) Ipums.Ipums_2000_va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_Ipums_2000_md(where=(pernum=1 and gq in (1,2)));
+set Ipums.Ipums_2000_dc(where=(pernum=1 and gq in (1,2))) Ipums.Ipums_2000_va(where=(pernum=1 and gq in (1,2))) Ipums.Ipums_2000_md(where=(pernum=1 and gq in (1,2)));
 keep pernum upuma gq Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE hud_inc;
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
@@ -1013,7 +1013,7 @@ keep pernum upuma gq Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE
   if upuma in ("5151255") then Jurisdiction =10; 
 
 	  if hhincome ~=.n or hhincome ~=9999999 then do; 
-		 %dollar_convert( hhincome, hhincome_a, &year., 2017, series=CUUR0000SA0 )
+		 %dollar_convert( hhincome, hhincome_a, 2000, 2017, series=CUUR0000SA0 )
 	   end; 
   
 	*create HUD_inc - uses 2016 limits but has categories for 120-200% and 200%+ AMI; 
@@ -1039,7 +1039,7 @@ if hhtype in (0, 9) then HHcat=.;
 
 else HHcat=4;
 
-retain HHnumber_2000 =1;
+HHnumber_2000 =1;
 
 run; 
 
