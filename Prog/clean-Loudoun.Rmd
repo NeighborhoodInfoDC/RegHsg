@@ -22,7 +22,7 @@ Library: RegHsg
 
 Project: Regional Housing Framework
 
-Author: Sarah Strochak
+Author: Sarah Strochak, Adapted by Kassie Scott, Rob Pitingolo and Chris Davis
 
 Version: R 3.5.1, RStudio 1.1.423
 
@@ -38,6 +38,8 @@ knitr::opts_chunk$set(message = FALSE)
 ```
 
 ## Description
+
+Adapted from clean-arlington.rmd.
 
 There are three main goals of the jurisdiction level cleaning process:
 
@@ -123,7 +125,6 @@ res_codes <-
     "MULTI-FAMILY",
     "MULTI-FAMILY - VACANT",
     "MULTIPLE OCCUPANCIES",
-    "RES CONDO GARAGE UNIT",
     "RESIDENTIAL CONDOS",
     "RURAL RESIDENCE (AGRICULTURAL)",
     "RURAL RESIDENCE AGRICULTURAL",
@@ -143,7 +144,8 @@ rm(res_codes)
 
 ##### `category`
 ```{r cr-cat}
-other <- c("AUTO SALES",
+other <- c("RES CONDO GARAGE UNIT",
+                "AUTO SALES",
                 "AUTOMOTIVE BUILDINGS",
                 "BANK",
                 "CEMETERY",
@@ -188,8 +190,7 @@ other <- c("AUTO SALES",
 mf <- c("MULTI-FAMILY",
         "MULTIPLE OCCUPANCIES",
         "RESIDENTIAL CONDOS",
-        "CONDOMINIUM (RESIDENTIAL)",
-        "RES CONDO GARAGE UNIT")
+        "CONDOMINIUM (RESIDENTIAL)")
 
 duplex <- "DUPLEX" 
 
@@ -268,8 +269,8 @@ commercial <- c("AUTO SALES",
                 "WINERY")
 
 condo <- c("RESIDENTIAL CONDOS",
-           "CONDOMINIUM (RESIDENTIAL)",
-           "RES CONDO GARAGE UNIT")
+           "CONDOMINIUM (RESIDENTIAL)"
+           )
 
 duplex <- c("DUPLEX")
 
@@ -298,7 +299,8 @@ otheruse <- c("HANGER",
               "IMPROVED, USE NOT SPECIFIED",
               "LEASEHOLD RIGHTS (MISC)",
               "MISC IMPROVEMENTS",
-              "MISCELLANEOUS (GENERAL)")
+              "MISCELLANEOUS (GENERAL)",
+              "RES CONDO GARAGE UNIT")
 
 vacantcom <- c("AUTOMOTIVE BUILDINGS - VACANT",
                "COMMERCIAL CONDOS - VACANT",
@@ -310,11 +312,11 @@ vacantcom <- c("AUTOMOTIVE BUILDINGS - VACANT",
                "RETAIL STORE - VACANT",
                "SHOPPING CENTER - VACANT",
                "WAREHOUSE - VACANT",
-               "WINERY - VACANT")
+               "WINERY - VACANT",
+               "RECREATIONAL - VACANT")
 
 vacantother <- c("VACANT LAND",
-                 "MISC IMPROVEMENTS - VACANT",
-                 "RECREATIONAL - VACANT")
+                 "MISC IMPROVEMENTS - VACANT")
 
 vacantmf <- c("MULTI-FAMILY - VACANT")
 
