@@ -912,7 +912,7 @@ else nonrelatehh=.;
 run;
 
 
-%macro hhbytype(year);
+%macro popbyrace(year);
 data hhtype_1_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;
 set Ipums.ACS_&year._dc(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._md(where=(pernum=1 and gq in (1,2)));
 keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE relate hud_inc;
