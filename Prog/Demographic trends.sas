@@ -477,7 +477,7 @@ by ucounty;
 run;
 
 data populationtrend;
-merge population pop17;
+merge NCDBpopulation pop17;
 by ucounty;
 format Jurisdiction Jurisdiction. ;
 run;
