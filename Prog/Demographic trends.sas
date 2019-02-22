@@ -837,7 +837,7 @@ run;
 %macro hhnonrelate(year);
 data hhrelate_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;;
 set Ipums.ACS_&year._dc(where=(gq in (1,2))) Ipums.ACS_&year._va(where=(gq in (1,2))) Ipums.ACS_&year._md(where=(gq in (1,2)));
-keep pernum gq hhwt perwt year serial numprec relate related notnonrelate;
+keep upuma pernum gq hhwt perwt year serial numprec relate related notnonrelate;
 if relate in (11,12,13) then notnonrelate=0;
 else if relate in (1,2,3,4,5,6,7,8,9,10) then notnonrelate=1;
 run;
