@@ -842,11 +842,11 @@ if relate in (11,12,13) then notnonrelate=0;
 else if relate in (1,2,3,4,5,6,7,8,9,10) then notnonrelate=1;
 run;
 
-PROC MEANS DATA=hhrelate_&year.;
-  CLASS serial;
-  VAR notnonrelate;
-  OUTPUT OUT=aaa_&year. SUM= ;
-RUN;
+proc summary data=hhrelate_&year.;
+  class serial;
+  var notnonrelate;
+  output out =aaa_&year. sum= ;
+run;
 
 data nonrelatehh_&year. ;
 set aaa_&year.;
@@ -898,11 +898,11 @@ if related in (1113, 1115, 1241, 1260, 1270, 1301) then notnonrelate=0;
 else if related in (201, 301, 302, 303, 401, 501, 601, 701, 801, 901, 1001, 1011, 1021, 1031, 1041, 1242) then notnonrelate=1;
 run;
 
-PROC MEANS DATA=hhrelate_2000;
-  CLASS serial;
-  VAR notnonrelate;
-  OUTPUT OUT=aaa_2000 SUM= ;
-RUN;
+proc summary DATA=hhrelate_2000;
+  class serial;
+  var notnonrelate;
+  output out =aaa_2000 sum= ;
+run;
 
 data nonrelatehh_2000 ;
 set aaa_2000;
