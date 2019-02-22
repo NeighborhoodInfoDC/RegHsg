@@ -912,7 +912,7 @@ else nonrelatehh=.;
 run;
 
 
-%macro popbyrace(year);
+%macro hhtype_1(year);
 data hhtype_1_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;
 set Ipums.ACS_&year._dc(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._md(where=(pernum=1 and gq in (1,2)));
 keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE relate hud_inc;
@@ -937,6 +937,14 @@ keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE
 		%Hud_inc_RegHsg( hhinc=hhincome_a, hhsize=numprec )
 run;
 
+proc sort data= hhtype_1_&year.;
+by serial;
+run;
+
+proc sort data= nonrelatehh_&year.;
+by serial;
+run;
+
 data hhtype_&year.;
 merge hhtype_1_&year. nonrelatehh_&year. ;
 by serial;
@@ -946,24 +954,23 @@ end;
 
 if hhtype in (1,2,3) then do; /*family household*/
     if hhtype=1 & numprec=2 then HHcat=2 ; /*couple without kid*/
-	else HHcar=3; /*other family*/
+	else HHcat=3; /*other family*/
 end;
 
-if nonrelatehh=1 then HHcat=3; /* non relate households*/
+if nonrelatehh=1 then HHcat=3; /* non relate households*/ 
 
 if hhtype in (0, 9) then HHcat=.;
 
 else HHcat=4;
 
-retain HHnumber_&year.=1;
+HHnumber_&year.=1;
 
 run; 
 
-%mend popbyrace;
+%mend hhtype_1;
 
-%popbyrace(2010);
-%popbyrace(2017);
-
+%hhtype_1(2010);
+%hhtype_1(2017);
 
 data hhtype_1_2000 (where=(upuma in ("1100101",
 "1100102",
@@ -999,7 +1006,7 @@ data hhtype_1_2000 (where=(upuma in ("1100101",
 "5100200"
 )));
 set Ipums.Ipums_2000_dc(where=(pernum=1 and gq in (1,2))) Ipums.Ipums_2000_va(where=(pernum=1 and gq in (1,2))) Ipums.Ipums_2000_md(where=(pernum=1 and gq in (1,2)));
-keep pernum upuma gq Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE hud_inc;
+keep pernum upuma gq Jurisdiction hhwt perwt year serial numprec HHINCOME hud_inc;
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
@@ -1017,10 +1024,18 @@ keep pernum upuma gq Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE
 	   end; 
   
 	*create HUD_inc - uses 2016 limits but has categories for 120-200% and 200%+ AMI; 
+	   /*Yipeng comment: do we have a create a new macro for the 2017 limits? Or I should just dollar convert to 2016*/
 
 		%Hud_inc_RegHsg( hhinc=hhincome_a, hhsize=numprec )
 run;
-%macro summarizehh(year);
+proc sort data=hhtype_1_2000;
+by serial;
+run;
+
+proc sort data=nonrelatehh_2000 ;
+by serial;
+run;
+
 data hhtype_2000;
 merge hhtype_1_2000 nonrelatehh_2000 ;
 by serial;
@@ -1044,6 +1059,8 @@ HHnumber_2000 =1;
 run; 
 
 
+%macro summarizehh(year);
+
 proc summary data = hhtype_&year. ;
 	class Jurisdiction numprec hud_inc nonrelatehh;
 	var HHnumber_&year.;
@@ -1061,5 +1078,16 @@ run;
 %summarizehh(2000);
 %summarizehh(2010);
 %summarizehh(2017);
+
+data hhbytypeallyears;
+merge HH_size_inc_type_2000 HH_size_inc_type_2010 HH_size_inc_type_2017;
+by Jurisdiction nuprec hud_inc nonrelatehh;
+run;
+
+proc export data = hhbytypeallyears
+   outfile="&_dcdata_default_path\RegHsg\Prog\hhbytypeallyears.csv"
+   dbms=csv
+   replace;
+run;
 
 
