@@ -480,6 +480,7 @@ data populationtrend;
 merge NCDBpopulation pop17;
 by ucounty;
 format Jurisdiction Jurisdiction. ;
+COG=1;
 run;
 
 proc sort data = populationtrend;
@@ -496,6 +497,12 @@ proc export data = populationbyjur
    outfile="&_dcdata_default_path\RegHsg\Prog\populationbyjur.csv"
    dbms=csv
    replace;
+run;
+
+proc summary data=populationtrend;
+class COG;
+var POPESTIMATE2017;
+output out= censes17 sum=;
 run;
 
 
@@ -518,7 +525,7 @@ run;
 %macro popbyrace(year);
 data persons_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;
 set Ipums.ACS_&year._dc Ipums.ACS_&year._va Ipums.ACS_&year._md;
-keep upuma race hispan age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_&year. foreignborn;
+keep upuma race hispan age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_&year. foreignborn COG;
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
@@ -563,6 +570,7 @@ if citizen = 3 then foreignborn=1;
 if citizen in (0 1 2) then foreignborn=2;
 
 totpop_&year. = 1;
+COG=1;
 run;
 
 proc summary data = persons_&year. ;
@@ -581,6 +589,15 @@ run;
 
 %popbyrace(2010);
 %popbyrace(2017);
+
+proc summary data = persons_2017 ;
+	class COG;
+	var totpop_2017;
+	weight perwt;
+	output out = ACS17 sum=;
+run;
+
+/*From census17 totalpop= 5578568 from ACS17 totalpop= 5579320 the new weight for IPUMS2017: 5578568/5579320*hhwt= 1*hhwt Don't need to calibrate*/
 
 data persons_2000(where=(upuma in ("1100101",
 "1100102",
@@ -840,19 +857,22 @@ set Ipums.ACS_&year._dc(where=(gq in (1,2))) Ipums.ACS_&year._va(where=(gq in (1
 keep upuma pernum gq hhwt perwt year serial numprec relate related notnonrelate;
 if relate in (11,12,13) then notnonrelate=0;
 else if relate in (2,3,4,5,6,7,8,9,10) then notnonrelate=1;
+totnumpop=1;
 run;
 
 proc summary data=hhrelate_&year.;
   class serial;
-  var notnonrelate;
+  var notnonrelate totnumpop;
   output out =aaa_&year. sum= ;
 run;
 
 data nonrelatehh_&year. ;
 set aaa_&year.;
-if notnonrelate>=1 then nonrelatehh=0;
-else if notnonrelate=0 then nonrelatehh=1;
-else nonrelatehh=.;
+if totnumpop>=2 then do;
+	if notnonrelate>=1 then nonrelatehh=0;
+	else if notnonrelate=0 then nonrelatehh=1;
+	else nonrelatehh=.;
+end;
 run;
 
 %mend hhnonrelate;
@@ -893,22 +913,36 @@ data hhrelate_2000(where=(upuma in ("1100101",
 "5100200"
 )));;
 set Ipums.Ipums_2000_dc(where=(gq in (1,2))) Ipums.Ipums_2000_va(where=(gq in (1,2))) Ipums.Ipums_2000_md(where=(gq in (1,2)));
-keep pernum gq upuma hhwt perwt year serial numprec related notnonrelate;
+keep pernum gq upuma hhwt perwt year serial numprec related notnonrelate numberofpop spouse;
+
 if related in (1113, 1115, 1241, 1260, 1270, 1301) then notnonrelate=0;
 else if related in (201, 301, 302, 303, 401, 501, 601, 701, 801, 901, 1001, 1011, 1021, 1031, 1041, 1242) then notnonrelate=1;
+
+if related in ( 201) then spouse=1;
+
+numberofpop=1;
+
 run;
 
 proc summary DATA=hhrelate_2000;
   class serial;
-  var notnonrelate;
+  var notnonrelate numberofpop spouse;
   output out =aaa_2000 sum= ;
 run;
 
 data nonrelatehh_2000 ;
 set aaa_2000;
-if notnonrelate>=1 then nonrelatehh=0;
-else if notnonrelate=0 then nonrelatehh=1;
-else nonrelatehh=.;
+if numberofpop>=2 then do;
+	if notnonrelate>=1 then nonrelatehh=0;
+	else if notnonrelate=0 then nonrelatehh=1;
+	else nonrelatehh=.;
+end;
+if numberofpop=1 then single=1;
+else single=0;
+
+if numberofpop=2 & spouse=1 then couplefam=1;
+else couplefam=0;
+
 run;
 
 
@@ -957,11 +991,11 @@ if hhtype in (1,2,3) then do; /*family household*/
 	else HHcat=3; /*other family*/
 end;
 
-if nonrelatehh=1 then HHcat=3; /* non relate households*/ 
+if nonrelatehh=1 then HHcat=4; /* non relate households*/ 
 
 if hhtype in (0, 9) then HHcat=.;
 
-else HHcat=4;
+else HHcat=5;
 
 HHnumber_&year.=1;
 
@@ -1039,37 +1073,28 @@ run;
 data hhtype_2000;
 merge hhtype_1_2000 nonrelatehh_2000 ;
 by serial;
-if hhtype in (4,5,6,7) then do;  /*non family*/
-	if numprec=1 then HHcat=1 ; /*single*/
-end;
 
-if hhtype in (1,2,3) then do; /*family household*/
-    if hhtype=1 & numprec=2 then HHcat=2 ; /*couple without kid*/
-	else HHcar=3; /*other family*/
-end;
-
-if nonrelatehh=1 then HHcat=3; /* non relate households*/
-
-if hhtype in (0, 9) then HHcat=.;
-
-else HHcat=4;
+if single=1 then HHcat=1;
+if couplefam=1 then HHcat= 2;
+if nonrelatehh=0 & couplefam=0 then HHcat=3;
+if nonrelatehh=1 then HHcat=4;
+else HHcat=5;
 
 HHnumber_2000 =1;
 
 run; 
 
-
 %macro summarizehh(year);
 
 proc summary data = hhtype_&year. ;
-	class Jurisdiction numprec hud_inc nonrelatehh;
+	class Jurisdiction numprec hud_inc HHcat;
 	var HHnumber_&year.;
 	weight perwt;
-	output out = HH_size_inc_type_&year.  sum=;
+	output out = HH_size_inc_type_&year.(keep=where=(_TYPE_=15))  sum=;
 	format Jurisdiction Jurisdiction. hud_inc inc_cat. ;
 run;
 
-proc sort data=agegroup_race_immigration_&year.;
+proc sort data=HH_size_inc_type_&year.;
 by Jurisdiction;
 run;
 
@@ -1081,8 +1106,10 @@ run;
 
 data hhbytypeallyears;
 merge HH_size_inc_type_2000 HH_size_inc_type_2010 HH_size_inc_type_2017;
-by Jurisdiction nuprec hud_inc nonrelatehh;
+by Jurisdiction numprec hud_inc HHcat;
 run;
+
+/*Yipeng comment: some jurisdiction, numprec hud_inc and hhcat is 0, how should I fill in 0*/
 
 proc export data = hhbytypeallyears
    outfile="&_dcdata_default_path\RegHsg\Prog\hhbytypeallyears.csv"
