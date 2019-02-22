@@ -101,6 +101,9 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
+summary {
+  display: list-item;
+}
 </style>
 
 
@@ -108,9 +111,70 @@ button.code-folding-btn:focus {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
 });
 </script>
 
@@ -123,7 +187,6 @@ $(document).ready(function () {
   window.initializeCodeFolding("show" === "show");
 });
 </script>
-
 
 
 
@@ -245,9 +308,9 @@ div.tocify {
 <p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv14%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
-<p>Author: Sarah Strochak</p>
+<p>Author: Sarah Strochak, Adapted by Kassie Scott, Rob Pitingolo and Chris Davis</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 09, 2019</p>
+<p>Last updated February 22, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -391,18 +454,18 @@ rm(prfile, pafile)</code></pre>
                             &quot;-&quot;,
                             substr(prop_idz, 10, 12)))</code></pre>
 <p>Merge</p>
-<pre class="r"><code>jur &lt;- left_join(jur, parcel_clean, 
+<pre class="r"><code>jur1 &lt;- left_join(jur, parcel_clean, 
                  by = c(&quot;assessorsparcelnumberapnpin&quot; = &quot;parcel_id&quot;))
 
-jur &lt;- left_join(jur, property, 
+jur2 &lt;- left_join(jur1, property, 
                  by = c(&quot;assessorsparcelnumberapnpin&quot; = &quot;parcel_id&quot;))
 
-jur &lt;- jur %&gt;% select(-prop_idz)</code></pre>
+jurfin &lt;- jur2 %&gt;% select(-prop_idz)</code></pre>
 </div>
 <div id="save" class="section level2">
 <h2>Save</h2>
 <p>Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.</p>
-<pre class="r"><code>saveRDS(jur,
+<pre class="r"><code>saveRDS(jurfin,
         paste0(jdir, 
                &quot;precleaned-&quot;,
                filepath,

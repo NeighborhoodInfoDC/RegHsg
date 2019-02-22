@@ -22,7 +22,7 @@ Library: RegHsg
 
 Project: Regional Housing Framework
 
-Author: Sarah Strochak
+Author: Sarah Strochak, Adapted by Kassie Scott, Rob Pitingolo and Chris Davis
 
 Version: R 3.5.1, RStudio 1.1.423
 
@@ -225,13 +225,13 @@ Merge
 ```{r merge}
 
 
-jur <- left_join(jur, parcel_clean, 
+jur1 <- left_join(jur, parcel_clean, 
                  by = c("assessorsparcelnumberapnpin" = "parcel_id"))
 
-jur <- left_join(jur, property, 
+jur2 <- left_join(jur1, property, 
                  by = c("assessorsparcelnumberapnpin" = "parcel_id"))
 
-jur <- jur %>% select(-prop_idz)
+jurfin <- jur2 %>% select(-prop_idz)
 
 ```
 
@@ -240,7 +240,7 @@ jur <- jur %>% select(-prop_idz)
 Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.
 
 ```{r save}
-saveRDS(jur,
+saveRDS(jurfin,
         paste0(jdir, 
                "precleaned-",
                filepath,
