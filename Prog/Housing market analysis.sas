@@ -33,9 +33,35 @@
 %DCData_lib( Ipums)
 %DCData_lib( Census);
 
+proc format;
+
+  value tenure
+  1= "Renter household"
+  2= "Owner household"
+	;
+  value Jurisdiction
+    1= "DC"
+	2= "Charles County"
+	3= "Frederick County "
+	4="Montgomery County"
+	5="Prince Georges "
+	6="Arlington"
+	7="Fairfax, Fairfax city and Falls Church"
+	8="Loudoun"
+	9="Prince William, Manassas and Manassas Park"
+    10="Alexandria"
+  	;
+value structure
+  1= "Single family"
+  2= "Duplex"
+  3= "Small multifamily"
+  4= "Large multifamily"
+  .n= "Other"
+  ;
+run;
 /*Housing units*/
 %macro COGunits(year);
-data COGSvacant_&year.(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
+data COGSvacant_&year.(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and gq in (1,2) and vacancy in (1,2)));
 set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
 	%assign_jurisdiction; 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
@@ -43,8 +69,10 @@ if UNITSSTR =05 then structuretype=2; /*duplex*/
 if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
 if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
 
-if ownershpd in (21, 22) then Tenure = 1; /*renter*/
-if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
+if vacancy=1 then Tenure = 1; /*renter*/
+if vacancy=2 then Tenure = 2; /*owner*/
+
+vacantunit_&year.=1;
 run;
 
 proc summary data= COGSvacant_&year.;
@@ -86,16 +114,62 @@ run;
 %COGunits(2010);
 %COGunits(2017);
 
-data COGSvacant_2000(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
-set Ipums.Acs_2000_vacant_dc Ipums.Acs_2000_vacant_md Ipums.Acs_2000_vacant_va ;
-	%assign_jurisdiction; 
+data COGSvacant_2000(where=(upuma in ("1100101",
+"1100102",
+"1100103",
+"1100104",
+"1100105",
+"2401600",
+"2400300",
+"2401001",
+"2401002",
+"2401003",
+"2401004",
+"2401005",
+"2401006",
+"2401007",
+"2401101",
+"2401102",
+"2401103",
+"2401104",
+"2401105",
+"2401106",
+"2401107",
+"5100101",
+"5100100",
+"5100301",
+"5100302",
+"5100303",
+"5100304",
+"5100305",
+"5100600",
+"5100501",
+"5100502",
+"5100200") and gq in (1,2) and vacancy in (1,2)));
+set Ipums.Ipums_2000_vacant_dc Ipums.Ipums_2000_vacant_md Ipums.Ipums_2000_vacant_va ;
+
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400300") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
+  if upuma in ("5100600") then Jurisdiction =8;
+  if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
+  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
+
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
 if UNITSSTR =05 then structuretype=2; /*duplex*/
 if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
 if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
 
-if ownershd in (21, 22) then Tenure = 1; /*renter*/
-if ownershd in ( 12,13 ) then Tenure = 2; /*owner*/
+if vacancy =1 then Tenure = 1; /*renter*/
+if vacancy =2 then Tenure = 2; /*owner*/
+
+format Jurisdiction Jurisdiction.;
+
+vacantunit_2000=1;
 run;
 
 proc summary data= COGSvacant_2000;
@@ -108,18 +182,62 @@ proc sort data= COGSvacant_2000;
 by Jurisdiction structuretype bedrooms Tenure;
 run;
 
-data COGSarea_2000(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
-set Ipums.Acs_2000_dc Ipums.Acs_2000_md Ipums.Acs_2000_va;
+data COGSarea_2000(where=(upuma in ("1100101",
+"1100102",
+"1100103",
+"1100104",
+"1100105",
+"2401600",
+"2400300",
+"2401001",
+"2401002",
+"2401003",
+"2401004",
+"2401005",
+"2401006",
+"2401007",
+"2401101",
+"2401102",
+"2401103",
+"2401104",
+"2401105",
+"2401106",
+"2401107",
+"5100101",
+"5100100",
+"5100301",
+"5100302",
+"5100303",
+"5100304",
+"5100305",
+"5100600",
+"5100501",
+"5100502",
+"5100200" )and pernum=1 and gq in (1,2) and ownershd in ( 12,13,21,22 )));
+set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
 
-	%assign_jurisdiction; 
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400300") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
+  if upuma in ("5100600") then Jurisdiction =8;
+  if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
+  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
 if UNITSSTR =05 then structuretype=2; /*duplex*/
 if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
 if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
+
 if ownershd in (21, 22) then Tenure = 1; /*renter*/
 if ownershd in ( 12,13 ) then Tenure = 2; /*owner*/
+
 unit_2000=1;
+format Jurisdiction Jurisdiction.;
+
 run;
 
 proc summary data= COGSarea_2000;
@@ -138,11 +256,18 @@ by Jurisdiction structuretype bedrooms Tenure;
 vacancyrate2010= vacantunit_2010/(vacantunit_2010+ unit_2010);
 vacancyrate2017= vacantunit_2017/(vacantunit_2017+ unit_2017);
 vacancyrate2000= vacantunit_2000/(vacantunit_2000+ unit_2000);
+format structuretype sturcture. Tenure tenure.;
+run;
+
+proc export data = COGSunits
+   outfile="&_dcdata_default_path\RegHsg\Prog\Housing and dwelling characteristics.csv"
+   dbms=csv
+   replace;
 run;
 
 %macro renterburden(year);
 data rentercostburden_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
-set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
+set Ipums.Ipums_&year._dc Ipums.Ipums_&year._md Ipums.Ipums_&year._va;
 
 	%assign_jurisdiction; 
 
