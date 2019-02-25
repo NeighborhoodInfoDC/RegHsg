@@ -1,0 +1,372 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Clean node geographies"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.2, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The purpose of this program is to walk through the process of creating the buffered geographical data layers that will be used in the upzoning analysis.
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(sf)
+library(urbnthemes)
+library(units)
+```
+
+## Geospatial data-wrangling
+
+Read in the COG boundary, and set the CRS to 4326.
+
+```{r read-cog, results='hide'}
+regdir <- "L:/Libraries/Region/Maps"
+
+bound <- st_read(dsn = regdir,
+                 layer = "Mapping_Boundaries__COG_Members") %>% 
+  st_transform(crs = 4326)
+
+```
+
+### Transit
+
+Read in VRE, MARC, Metro, Amtrak, Purple line, and Loudoun metro expansion stations. Reproject them into CRS 4326. Standardize them so they all have the same variables:
+
+* `type` indicates which type of rail they are (Metro vs. MARC vs. VRE, etc)
+* `name` is the station name
+* `line` indicates which line- this could be important if we want to distinguish routes, or between stations that are built vs. lines that are planned.
+
+```{r read-trains, message=FALSE, results='hide'}
+rhfdir <- "L:/Libraries/RegHsg/Maps"
+
+metro <- st_read(dsn = rhfdir,
+                 layer = "Metro__Rail_Stations") %>% 
+  st_transform(crs = 4326) %>% 
+  mutate(type = "Metro") %>% 
+  select(type, 
+         name = NAME,
+         line = LINE)
+
+vre <- st_read(dsn = rhfdir,
+               layer = "Virginia_Railway_Express_Stations") %>% 
+  st_transform(crs = 4326) %>% 
+  mutate(type = "VRE") %>% 
+  select(type, 
+         name = NAME,
+         line = LINE)
+
+pl <- st_read(dsn = rhfdir,
+              layer = "purple_line_stops") %>% 
+  st_transform(crs = 4326) %>% 
+  mutate(type = "Purple line",
+         line = "Purple") %>% 
+  select(type, 
+         name = NAME,
+         line)
+
+marc <- st_read(dsn = rhfdir,
+                layer = "Maryland_Transit__MARC_Train_Stops") %>% 
+  st_transform(crs = 4326) %>% 
+  mutate(type = "MARC") %>% 
+  select(type, 
+         name = Name,
+         line = Line_Name)
+
+amtrak <- st_read(dsn = rhfdir,
+                  layer = "Maryland_Transit__Amtrak_Rail_Stops") %>% 
+  st_transform(crs = 4326) %>% 
+  mutate(type = "Amtrak",
+         line = "Amtrak") %>% 
+  select(type, 
+         name = STNNAME,
+         line)
+
+loud <- st_read(dsn = rhfdir,
+                layer = "Loudoun_Metrorail_Stations_Planned") %>% 
+  st_transform(crs = 4326) %>% 
+  mutate(type = "Loudoun Metro extension",
+         line = "Loudoun Metro extension") %>% 
+  select(type, 
+         name = MN_NAME,
+         line)
+
+```
+
+Merge all the transit lines together into one object.
+
+```{r merge-trains}
+
+transit <- rbind(amtrak,
+                 loud,
+                 marc,
+                 metro,
+                 pl,
+                 vre) %>% 
+  mutate(type = factor(type,
+                       levels = c("Metro",
+                                  "VRE",
+                                  "MARC",
+                                  "Amtrak",
+                                  "Purple line",
+                                  "Loudoun Metro extension")))
+
+```
+
+
+```{r trains-map, echo=FALSE}
+
+ggplot() +
+  geom_sf(data = bound, mapping = aes(),
+          fill = NA, color = "#5c5859") +
+  geom_sf(transit, mapping = aes(color = type),
+          show.legend = "point")  +
+  scale_fill_manual(values = c("#1696d2", "#ec008b", "#d2d2d2",
+                               "#fdbf11", "#55b748", "#0a4c6a")) +
+  theme_urbn_map() +
+  theme(legend.position = "top",
+        legend.direction = "horizontal") +
+  coord_sf(datum = NA) +
+  labs(fill = NULL)
+
+```
+
+
+Create buffer around the stations. To do this, we re-project to feet, create the buffer, then re-project back to CRS = 4326. Note that the buffer for the train stations is half a mile, as opposed to a mile for the activity centers.
+
+```{r buff-trains}
+# convert one mile to feet and set units
+radius <- set_units(.5, mi) %>% set_units(ft)
+
+# project to MD state plane in feet
+transit_proj <- st_transform(transit, crs = 2248)
+
+# calculate buffer, set CRS back to standard 4326
+transit_buffer <- st_buffer(transit_proj, radius) %>% 
+  st_transform(crs = 4326)
+
+# map activity centers back on top of buffer to visually confirm
+ggplot() +
+  geom_sf(data = bound, mapping = aes(),
+          fill = NA, color = "#5c5859") +
+  geom_sf(data = transit_buffer, mapping = aes(fill = type)) +
+  scale_fill_manual(values = c("#1696d2", "#ec008b", "#d2d2d2",
+                               "#fdbf11", "#55b748", "#0a4c6a")) +
+  geom_sf(data = transit, mapping = aes(),
+          color = "black", size = .25) +
+  theme_urbn_map() +
+  theme(legend.position = "top",
+        legend.direction = "horizontal") +
+  coord_sf(datum = NA) +
+  labs(fill = NULL)
+
+```
+
+Zoom in on Arlington for a better view.
+
+```{r arl-trains}
+
+arl <- bound %>% 
+  filter(COGNAME == "Arlington")
+
+ggplot() +
+  geom_sf(data = arl, mapping = aes(),
+          fill = NA, color = "#5c5859") +
+  geom_sf(data = st_intersection(transit_buffer, arl), 
+          mapping = aes(fill = type),
+          alpha = .5) +
+  scale_fill_manual(values = c("#1696d2", "#ec008b", "#d2d2d2",
+                               "#fdbf11", "#55b748", "#0a4c6a")) +
+  geom_sf(data = st_intersection(transit, arl), 
+          mapping = aes(),
+          color = "black", size = .25) +
+  theme_urbn_map() +
+  theme(legend.position = "top",
+        legend.direction = "horizontal") +
+  coord_sf(datum = NA) +
+  labs(fill = NULL)
+
+```
+
+
+### Activity centers
+
+We will repeat a similar process for activity centers. 
+
+Read in COG activity centers, set CRS. We want the variables to be consistent with the transit lines- so we create the same variables:
+
+* `type` will indicate "Activity"
+* `name` will be the Activity center name
+* `line` will be NA
+
+```{r rd-act, results='hide'}
+
+act <- st_centroid(st_read(dsn = regdir,
+               layer = "Activity_Centers")) %>% 
+  st_transform(crs = 4326) %>% 
+  mutate(type = "Activity",
+         line = NA) %>% 
+  select(name = Activity_C, type, line)
+
+```
+
+Map activity centers centroids.
+
+```{r map-act, echo=FALSE}
+
+ggplot() +
+  geom_sf(data = bound, mapping = aes(),
+          fill = NA, color = "#5c5859") +
+  geom_sf(data = act, mapping = aes(),
+          fill = "#ec008b", color = "#ec008b") +
+  theme_urbn_map() +
+  coord_sf(datum = NA)
+
+```
+
+Create buffer around activity centers. Note that the buffer for activity centers is 1 mile.
+
+```{r buff-act}
+# convert one mile to feet and set units
+radius <- set_units(1, mi) %>% set_units(ft)
+
+# project to MD state plane in feet
+act_proj <- st_transform(act, crs = 2248)
+
+# calculate buffer, set CRS back to standard 4326
+act_buffer <- st_buffer(act_proj, radius) %>% 
+  st_transform(crs = 4326)
+
+# map activity centers back on top of buffer to visually confirm
+ggplot() +
+  geom_sf(data = bound, mapping = aes(),
+          fill = NA, color = "#5c5859") +
+  geom_sf(data = act_buffer, mapping = aes(),
+          fill = "#ec008b", color = "#ec008b", alpha = 0.5) +
+  geom_sf(data = act, mapping = aes(),
+          color = "black", size = .4) +
+  theme_urbn_map() +
+  coord_sf(datum = NA)
+
+```
+
+
+### Merge buffered zones
+
+In the whole region, a lot of these zones will overlap, but we do not want to double count anything. 
+We need to merge all the buffered zones into one giant blob. 
+
+Map them seperately
+
+```{r map-sep}
+
+ggplot() +
+  geom_sf(data = bound, mapping = aes(),
+          fill = NA, color = "#5c5859") +
+  geom_sf(data = act_buffer, mapping = aes(),
+          fill = "#ec008b", color = NA, alpha = 0.5) +
+  geom_sf(data = transit_buffer, mapping = aes(),
+          fill = "#1696d2", color = NA, alpha = 0.5) +
+  theme_urbn_map() +
+  coord_sf(datum = NA)
+
+
+```
+
+Use `st_union()` to merge them into one giant shape
+
+```{r union}
+
+act_transit <- rbind(act_buffer, transit_buffer)
+
+upzone_area <- st_union(act_transit)
+
+```
+
+Plot for the whole region, zoom in on Arlington for more detail.
+
+#### {.tabset .tabset.fade}
+##### Region
+
+```{r buff-reg, echo=FALSE}
+ggplot() +
+  geom_sf(bound, mapping = aes()) +
+  geom_sf(upzone_area, mapping = aes(),
+          fill = "#1696d2", alpha = 0.5) +
+  theme_urbn_map() +
+  coord_sf(datum = NA)
+
+```
+
+##### Arlington
+```{r buff-arl, echo=FALSE}
+
+ggplot() +
+  geom_sf(arl, mapping = aes()) +
+  geom_sf(st_intersection(upzone_area, arl), mapping = aes(),
+          fill = "#1696d2", alpha = 0.5) +
+  theme_urbn_map() +
+  coord_sf(datum = NA)
+
+```
+
+## Parameterize buffer creation
+
+There are a number of combinations of buffer sizes that we will need. In order to accomodate this, we can parametrize the above process. See `"Macros/get_node_geography.R"`.
+```{r source}
+
+source("../Macros/get_node_geography.R")
+
+```
+
+#### Example function use
+
+The following examples show two of the many ways we can use this function to get the geographies we need.
+```{r ex}
+
+actvity_buffered <- get_node_geography(node_type = "activity",
+                                       style = "buffer",
+                                       activity_buffer = 1)
+
+get_node_geography(node_type = "joint",
+                   style = "buffer-union",
+                   activity_buffer = 1,
+                   transit_buffer = 1) %>% 
+  ggplot() +
+  geom_sf(mapping = aes()) +
+  theme_urbn_map() +
+  coord_sf(datum = NA)
+
+```
