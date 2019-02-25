@@ -105,7 +105,7 @@ get_node_geography <- function(node_type,
   
   sink(type = "message")
   
-  log <- capture.output({
+  capture.output({
     
   metro <- sf::st_read(dsn = rhfdir,
                    layer = "Metro__Rail_Stations") %>% 
@@ -181,7 +181,7 @@ get_node_geography <- function(node_type,
   
   regdir <- "L:/Libraries/Region/Maps"
   
-  log2 <- capture.output({
+  capture.output({
   act <- suppressWarnings(sf::st_centroid(sf::st_read(dsn = regdir,
                              layer = "Activity_Centers"))) %>% 
     sf::st_transform(crs = 4326) %>% 
