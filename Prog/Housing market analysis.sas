@@ -31,6 +31,7 @@
 ** Define libraries **;
 %DCData_lib( RegHsg)
 %DCData_lib( Ipums)
+%DCData_lib( Census);
 
 /*Housing units*/
 %macro COGunits(year);
@@ -60,6 +61,7 @@ data COGSarea_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104
 set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
 
 	%assign_jurisdiction; 
+
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
 if UNITSSTR =05 then structuretype=2; /*duplex*/
 if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
@@ -91,3 +93,5 @@ vacancyrate2010= vacantunit_2010/(vacantunit_2010+ unit_2010);
 vacancyrate2017= vacantunit_2017/(vacantunit_2017+ unit_2017);
 run;
 
+data permits (where=ucounty in ());
+set Census.Cen_building_permits_dc_md_va_wv;
