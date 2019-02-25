@@ -363,6 +363,32 @@ set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
 
 run;
 
+libname raw "L:\Libraries\IPUMS\Raw\usa_00026.sas7bdat\";
+
+data usa_00026;
+set raw.usa_00026;
+run;
+
+data rentercostburden_2000_new;
+merge rentercostburden_2000(in=1) usa_00026;
+by serial;
+keep if in=1;
+run;
+
+data rentercostburden_2000_new;
+set rentercostburden_2000_new;
+
+    if ownershd in (21, 22) then do; /*renter*/
+		if rentgrs*12>= HHINCOME*0.3 then rentburdened=1;
+	    else if HHIncome~=. then rentburdened=0;
+	end;
+
+    if ownershd in ( 12,13 ) then do; /*owner*/
+		if owncost*12>= HHINCOME*0.3 then ownerburdened=1;
+	    else if HHIncome~=. then ownerburdened=0;
+	end;
+run;
+
 proc sort data=rentercostburden_2000;
 by Jurisdiction;
 run;
