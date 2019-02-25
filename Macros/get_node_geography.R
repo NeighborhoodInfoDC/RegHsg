@@ -20,6 +20,8 @@
 #' 
 #' The geographic data returned is in WGS 1984 (crs = 4326). 
 #' 
+#' This function requires `library(dplyr)`, `library(sf)`, and `library(units)`
+#' 
 #'
 #' @param node_type Options are "transit", "activity" and "joint". "joint" returns both 
 #' activity centers and transit hubs.
@@ -101,56 +103,62 @@ get_node_geography <- function(node_type,
   
   rhfdir <- "L:/Libraries/RegHsg/Maps"
   
-  metro <- st_read(dsn = rhfdir,
+  sink(type = "message")
+  
+  log <- capture.output({
+    
+  metro <- sf::st_read(dsn = rhfdir,
                    layer = "Metro__Rail_Stations") %>% 
-    st_transform(crs = 4326) %>% 
+    sf::st_transform(crs = 4326) %>% 
     mutate(type = "Metro") %>% 
     select(type, 
            name = NAME,
            line = LINE)
   
-  vre <- st_read(dsn = rhfdir,
+  vre <- sf::st_read(dsn = rhfdir,
                  layer = "Virginia_Railway_Express_Stations") %>% 
-    st_transform(crs = 4326) %>% 
+    sf::st_transform(crs = 4326) %>% 
     mutate(type = "VRE") %>% 
     select(type, 
            name = NAME,
            line = LINE)
   
-  pl <- st_read(dsn = rhfdir,
+  pl <- sf::st_read(dsn = rhfdir,
                 layer = "purple_line_stops") %>% 
-    st_transform(crs = 4326) %>% 
+    sf::st_transform(crs = 4326) %>% 
     mutate(type = "Purple line",
            line = "Purple") %>% 
     select(type, 
            name = NAME,
            line)
   
-  marc <- st_read(dsn = rhfdir,
+  marc <- sf::st_read(dsn = rhfdir,
                   layer = "Maryland_Transit__MARC_Train_Stops") %>% 
-    st_transform(crs = 4326) %>% 
+    sf::st_transform(crs = 4326) %>% 
     mutate(type = "MARC") %>% 
     select(type, 
            name = Name,
            line = Line_Name)
   
-  amtrak <- st_read(dsn = rhfdir,
+  amtrak <- sf::st_read(dsn = rhfdir,
                     layer = "Maryland_Transit__Amtrak_Rail_Stops") %>% 
-    st_transform(crs = 4326) %>% 
+    sf::st_transform(crs = 4326) %>% 
     mutate(type = "Amtrak",
            line = "Amtrak") %>% 
     select(type, 
            name = STNNAME,
            line)
   
-  loud <- st_read(dsn = rhfdir,
+  loud <- sf::st_read(dsn = rhfdir,
                   layer = "Loudoun_Metrorail_Stations_Planned") %>% 
-    st_transform(crs = 4326) %>% 
+    sf::st_transform(crs = 4326) %>% 
     mutate(type = "Loudoun Metro extension",
            line = "Loudoun Metro extension") %>% 
     select(type, 
            name = MN_NAME,
            line)
+  })
+  
   
   ##### Combine transit shapefiles ##### ####
   
@@ -167,17 +175,20 @@ get_node_geography <- function(node_type,
                                     "Amtrak",
                                     "Purple line",
                                     "Loudoun Metro extension")))
+
   
   ##### Read in activity centers #####
   
   regdir <- "L:/Libraries/Region/Maps"
   
-  act <- suppressWarnings(st_centroid(st_read(dsn = regdir,
+  log2 <- capture.output({
+  act <- suppressWarnings(sf::st_centroid(sf::st_read(dsn = regdir,
                              layer = "Activity_Centers"))) %>% 
-    st_transform(crs = 4326) %>% 
+    sf::st_transform(crs = 4326) %>% 
     mutate(type = "Activity",
            line = NA) %>% 
     select(name = Activity_C, type, line)
+  })
   
   ##### Return point data ##### 
   
@@ -202,18 +213,18 @@ get_node_geography <- function(node_type,
       ##### Create buffers #####
     
       # set radius
-      radius_a <- set_units(activity_buffer, mi) %>% set_units(ft)
-      radius_t <- set_units(transit_buffer, mi) %>% set_units(ft)
+      radius_a <- units::set_units(activity_buffer, mi) %>% units::set_units(ft)
+      radius_t <- units::set_units(transit_buffer, mi) %>% units::set_units(ft)
     
       # project to MD state plane in feet
-      proj_a <- st_transform(act, crs = 2248)
-      proj_t <- st_transform(transit, crs = 2248)
+      proj_a <- sf::st_transform(act, crs = 2248)
+      proj_t <- sf::st_transform(transit, crs = 2248)
       
       # calculate buffer, set CRS back to standard 4326
-      buff_a <- st_buffer(proj_a, radius_a) %>% 
-        st_transform(crs = 4326) 
-      buff_t <- st_buffer(proj_t, radius_t) %>% 
-        st_transform(crs = 4326) 
+      buff_a <- sf::st_buffer(proj_a, radius_a) %>% 
+        sf::st_transform(crs = 4326) 
+      buff_t <- sf::st_buffer(proj_t, radius_t) %>% 
+        sf::st_transform(crs = 4326) 
       buff_ta <- rbind(buff_a, buff_t) 
       
       if (style == "buffer") {
@@ -239,15 +250,15 @@ get_node_geography <- function(node_type,
         
         if (node_type == "transit") {
           
-          buff_t %>% st_union()
+          buff_t %>% sf::st_union()
           
         } else if (node_type == "activity") {
           
-          buff_a %>% st_union() 
+          buff_a %>% sf::st_union() 
           
         } else if (node_type == "joint") {
           
-          buff_ta %>% st_union()
+          buff_ta %>% sf::st_union()
           
         }
       }

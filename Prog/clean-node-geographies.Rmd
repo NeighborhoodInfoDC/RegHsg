@@ -164,7 +164,7 @@ ggplot() +
 ```
 
 
-Create buffer around the stations. To do this, we re-project to feet, create the buffer, then re-project back to CRS = 4326. Note that the buffer for the train stations is half a mile, as opposed to a mile for the activity centers.
+Create buffer around the stations. To do this, we re-project to feet, create the buffer, then re-project back to CRS = 4326. Test this out with a half mile buffer.
 
 ```{r buff-trains}
 # convert one mile to feet and set units
@@ -256,7 +256,7 @@ ggplot() +
 
 ```
 
-Create buffer around activity centers. Note that the buffer for activity centers is 1 mile.
+Create buffer around activity centers. Test this out with a 1 mile buffer.
 
 ```{r buff-act}
 # convert one mile to feet and set units
