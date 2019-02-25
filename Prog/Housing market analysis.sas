@@ -61,7 +61,7 @@ value structure
 run;
 /*Housing units*/
 %macro COGunits(year);
-data COGSvacant_&year.(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and gq in (1,2) and vacancy in (1,2)));
+data COGSvacant_&year.(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and vacancy in (1,2)));
 set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
 	%assign_jurisdiction; 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
@@ -145,7 +145,7 @@ data COGSvacant_2000(where=(upuma in ("1100101",
 "5100600",
 "5100501",
 "5100502",
-"5100200") and gq in (1,2) and vacancy in (1,2)));
+"5100200") and vacancy in (1,2)));
 set Ipums.Ipums_2000_vacant_dc Ipums.Ipums_2000_vacant_md Ipums.Ipums_2000_vacant_va ;
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
@@ -267,7 +267,7 @@ run;
 
 %macro renterburden(year);
 data rentercostburden_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
-set Ipums.Ipums_&year._dc Ipums.Ipums_&year._md Ipums.Ipums_&year._va;
+set Ipums.ACS_&year._dc Ipums.ACS_&year._md Ipums.ACS_&year._va;
 
 	%assign_jurisdiction; 
 
@@ -291,24 +291,95 @@ proc sort data=rentercostburden_&year.;
 by Jurisdiction;
 run;
 
-proc summary data = rentercostburden_&year. (where=(ownershp = 2));
+proc summary data = rentercostburden_&year. (where=(ownershpd in (21, 22)));
 	class Jurisdiction;
 	var rentburdened tothh_&year.;
 	weight hhwt;
-	output out = rentburdened_2017 sum=;
+	output out = rentburdened_&year. sum=;
 run;
 
-proc summary data = rentercostburden_&year.  (where=(ownershp = 1));
+proc summary data = rentercostburden_&year.  (where=(ownershpd in (12, 13)));
 	class Jurisdiction;
 	var ownerburdened tothh_&year.;
 	weight hhwt;
-	output out = ownerburdened_2017  sum=;
+	output out = ownerburdened_&year.  sum=;
 run;
 
 %mend renterburden; 
 
 %renterburden(2010);
 %renterburden(2017);
+
+data rentercostburden_2000 (where=(upuma in ("1100101",
+"1100102",
+"1100103",
+"1100104",
+"1100105",
+"2401600",
+"2400300",
+"2401001",
+"2401002",
+"2401003",
+"2401004",
+"2401005",
+"2401006",
+"2401007",
+"2401101",
+"2401102",
+"2401103",
+"2401104",
+"2401105",
+"2401106",
+"2401107",
+"5100101",
+"5100100",
+"5100301",
+"5100302",
+"5100303",
+"5100304",
+"5100305",
+"5100600",
+"5100501",
+"5100502",
+"5100200" ) and pernum=1 and gq in (1,2) and ownershd in ( 12,13,21,22 )));
+set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
+
+	%assign_jurisdiction; 
+
+	if gq in (1,2);
+	if pernum = 1;
+
+    if ownershd in (21, 22) then do; /*renter*/
+		if rentgrs*12>= HHINCOME*0.3 then rentburdened=1;
+	    else if HHIncome~=. then rentburdened=0;
+	end;
+
+    if ownershd in ( 12,13 ) then do; /*owner*/
+		if owncost*12>= HHINCOME*0.3 then ownerburdened=1;
+	    else if HHIncome~=. then ownerburdened=0;
+	end;
+
+	tothh_2000 = 1;
+
+run;
+
+proc sort data=rentercostburden_2000;
+by Jurisdiction;
+run;
+
+proc summary data = rentercostburden_2000 (where=(ownershd in (21, 22)));
+	class Jurisdiction;
+	var rentburdened tothh_2000;
+	weight hhwt;
+	output out = rentburdened_2000 sum=;
+run;
+
+proc summary data = rentercostburden_&year.  (where=(ownershd in (12, 13)));
+	class Jurisdiction;
+	var ownerburdened tothh_2000;
+	weight hhwt;
+	output out = ownerburdened_2000 sum=;
+run;
 
 /*building permit by building type*/
 
