@@ -7,7 +7,7 @@
  Version:  SAS 9.4
  Environment:  Local Windows session
  
- Description:  
+ Description:  Calculate employment trends for the Washington MSA. 
 
 **************************************************************************/
 
@@ -138,4 +138,4 @@ run;
 
 
 
-  /* End of program */
+/* End of program */
