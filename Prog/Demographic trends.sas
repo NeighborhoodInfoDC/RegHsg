@@ -545,7 +545,7 @@ if hispan=0 then do;
  else race1=4;
 end;
 
-if hispan in(1 2 3 4) then race1=3;
+if hispan in(1, 2, 3, 4) then race1=3;
 
 if 0<=age<5 then age0=1;
 else if 5<=age<10 then age0=2;
@@ -567,7 +567,7 @@ else if 80<=age<85 then age0=17;
 else if age>=85 then age0=18;
 
 if citizen = 3 then foreignborn=1;
-if citizen in (0 1 2) then foreignborn=2;
+if citizen in (0, 1, 2) then foreignborn=2;
 
 totpop_&year. = 1;
 COG=1;
@@ -675,7 +675,7 @@ else if 80<=age<85 then age0=17;
 else if age>=85 then age0=18;
 
 if citizen = 3 then foreignborn=1;
-if citizen in (0 1 2) then foreignborn=2;
+if citizen in (0, 1, 2) then foreignborn=2;
 
 totpop_00 = 1;
 run;
@@ -780,7 +780,6 @@ by upuma;
 	%assign_jurisdiction; 
 run;
 
-
 proc summary data= vacantunits;
 	class Jurisdiction;
 	var totalunits vacunit;
@@ -848,7 +847,6 @@ proc export data = totalhouseholdtrend
    dbms=csv
    replace;
 run;
-
 
 /*hh by size, type and income*/
 %macro hhnonrelate(year);
@@ -944,7 +942,6 @@ if numberofpop=2 & spouse=1 then couplefam=1;
 else couplefam=0;
 
 run;
-
 
 %macro hhtype_1(year);
 data hhtype_1_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;
@@ -1044,19 +1041,19 @@ keep pernum upuma gq Jurisdiction hhwt perwt year serial numprec HHINCOME hud_in
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
-  if upuma in ("2400301", "2400302") then Jurisdiction =3;
+  if upuma in ("2400300") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
-  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
-  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
-  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
-  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
-  if upuma in ("5151255") then Jurisdiction =10; 
+  if upuma in ("2401101","2401102","2401103","2401104","2401105","2401106","2401107") then Jurisdiction =5;
+  if upuma in ("5100100") then Jurisdiction =6;
+  if upuma in ("5101301", "5101302", "5100303", "5100304", "5100305") then Jurisdiction =7;
+  if upuma in ("5100600") then Jurisdiction =8;
+  if upuma in ("5100501", "5100502") then Jurisdiction =9; 
+  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
 
 	  if hhincome ~=.n or hhincome ~=9999999 then do; 
 		 %dollar_convert( hhincome, hhincome_a, 2000, 2017, series=CUUR0000SA0 )
 	   end; 
-  
+
 	*create HUD_inc - uses 2016 limits but has categories for 120-200% and 200%+ AMI; 
 	   /*Yipeng comment: do we have a create a new macro for the 2017 limits? Or I should just dollar convert to 2016*/
 
@@ -1099,13 +1096,28 @@ by Jurisdiction;
 run;
 
 %mend summarizehh;
-
 %summarizehh(2000);
 %summarizehh(2010);
 %summarizehh(2017);
 
+/*have to adjust the Loudon number for 2000 because it took a portion of a PUMA, according to NCDB Loudon hh in 2000 is 59921, the PUMA containing LOUdon has 96994*/
+data Loudon2000 (where=(ucounty= "51107"));
+set NCDBpopulation;
+run;
+
+proc summary data=HH_size_inc_type_2000;
+by Jurisdiction;
+var HHnumber_2000;
+output out=loudonPUMA sum=;
+run;
+
+data HH_size_inc_type_2000_new;
+set HH_size_inc_type_2000;
+if Jurisdiction= 9 then HHnumber_2000_new = HHnumber_2000*0.62;
+run;
+
 data hhbytypeallyears;
-merge HH_size_inc_type_2000 HH_size_inc_type_2010 HH_size_inc_type_2017;
+merge HH_size_inc_type_2000_new HH_size_inc_type_2010 HH_size_inc_type_2017;
 by Jurisdiction numprec hud_inc HHcat;
 run;
 
