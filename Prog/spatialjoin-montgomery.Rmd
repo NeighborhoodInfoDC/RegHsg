@@ -8,7 +8,7 @@ output: html_document
 ---
 title: "Regional Housing Framework"
 subtitle: "Pre Clean Arlington County public records data"
-author: "Patrick Spauster and Sarah Strochak"
+author: "Patrick Spauster"
 output:
   html_document:
     number_sections: FALSE
@@ -77,7 +77,7 @@ if (!dir.exists(paste0("L:/Libraries/RegHsg/Data/", filepath))) {
 ```
 
 
-
+##Read in the parcel file
 ```{r readin}
 pfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels'), end = -5) %>% unique()
 parcel_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
@@ -95,7 +95,7 @@ parcel_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel
   #count(parcel_f_par, DISTRICT)
 ```
 
-
+####Find the invalid geometries
 ```{r find bad geometries}
 
 parcel_sf1 <- parcel_sf %>% 
@@ -116,8 +116,7 @@ parcel_sf1 <- parcel_sf1 %>%
 ```
 
 
-Spatial Join
-
+###clean the dataset and filter out the bad geometries to faciltate a join
 ```{r clean}
 st_geometry(parcel_sf1)
 
@@ -137,7 +136,7 @@ ggplot(parcel_sf) +
 
 ```
 
-#### Load in Black Knight data for the region, select jurisdiction and standard variables
+## Load in Cleaned Black Knight data and clean the dataset.
 ```{r read}
 jur <- readRDS(paste0(jdir, 
                "cleaned-",
@@ -145,7 +144,7 @@ jur <- readRDS(paste0(jdir,
                "-data.Rdata"))
 ```
 
-
+####clean and set geometries
 ```{r clean}
 jur1 <- jur %>% 
   mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
@@ -167,13 +166,13 @@ jur_sf1 %>% as.data.frame() %>%
 
 
 
-
+##Spatial Join!
 ```{r join}
 
 join <- st_join(jur_sf1, parcel_sf1, join = st_intersects)
 
 ```
-
+##Test Join
 After the join, we convert back to a dataframe, for ease of computations.
 ```{r back-to-df}
 
