@@ -20,7 +20,6 @@
 /* Update parameters for data updates */
 %let start_yr = 1990;
 %let end_yr = 2017;
-%let revisions = New File;
 
 /* List of MSAs for comparison */
 %let msalist = 	"C1206", 	/* Atlanta-Sandy Springs-Roswell */
@@ -125,11 +124,16 @@ data industryjobs;
 run;
 
 proc summary data = industryjobs;
-	class industry;
+	class naics;
 	var Annual_Average_Employment_: ;
 	output out = industryjobs_t sum=;
 run;
 
+data industryjobs_byyear;
+	set industryjobs_t;
+	drop _type_ _freq_;
+	if naics = " " then delete;
+run;
 
 
 
