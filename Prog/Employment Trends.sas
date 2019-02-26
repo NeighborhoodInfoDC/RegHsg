@@ -66,6 +66,12 @@
 data msajobs;
 	set bls.bls_allgeos_country;
 
+	/* LA MSA code changed in 2013 */
+	if year in ("2013","2014","2015","2016","2017") then do;
+		if Area_Code = "C3108" then Area = "Los Angeles-Long Beach-Santa Ana, CA MSA";
+		if Area_Code = "C3108" then Area_Code = "C3110";
+	end;
+
 	if area_type = "MSA";
 	if Area_Code in (&msalist.); *MSAs from list above ;
 	if own = 0; * Total covered jobs *;
@@ -80,7 +86,7 @@ data msajobs;
 run;
 
 proc summary data = msajobs;
-	class area;
+	class Area;
 	var Annual_Average_Employment_: ;
 	output out = msajobs_t sum=;
 run;
@@ -116,7 +122,7 @@ data sectorjobs;
 run;
 
 proc summary data = sectorjobs;
-	class own ucounty;
+	class own;
 	var Annual_Average_Employment_: ;
 	output out = sectorjobs_t sum=;
 run;
@@ -151,7 +157,7 @@ data industryjobs;
 run;
 
 proc summary data = industryjobs;
-	class naics ucounty;
+	class naics;
 	var Annual_Average_Employment_: ;
 	output out = industryjobs_t sum=;
 run;
