@@ -107,7 +107,7 @@ run;
 
 /* Jobs by private, federal gov't, local/state gov't, 1990 - 2017 */
 proc format;
-	value own2
+	value ownc
 		0 = "Total Covered"
 		1 = "Federal Government"
 		2 = "State and Local Government"
@@ -130,7 +130,7 @@ data sectorjobs;
 	if own in (2,3) then own2 = 2;
 		else own2 = own;
 
-	format own2 own2.;
+	format own2 ownc.;
 
 run;
 
