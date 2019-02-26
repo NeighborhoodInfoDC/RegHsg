@@ -374,12 +374,12 @@ set rawnew.usa_00027;
 if pernum=1;
 run;
 
-proc sort data = usa_00026; by serial; run;
+proc sort data = usa_00027; by serial; run;
 
 data rentercostburden_2000_new;
 	merge rentercostburden_2000(in=a) usa_00027 (in=b) ;
 	by serial;
-	if a;
+	if a and b;
 
 if owncost=99999 then owncost=.;
 
@@ -415,6 +415,7 @@ run;
 data allhousingburden;
 merge rentercostburden_2010 ownerburdened_2010 rentercostburden_2017 ownerburdened_2017 rentercostburden_2000_new rentercostburden_2000_new;
 by Jurisdiction;
+format Jurisdiction Jurisdiction.;
 run;
 
 proc export data = allhousingburden
