@@ -1,0 +1,153 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Vacant lots analysis for DC"
+author: "YS"
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Yipeng adapted from Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The goal of this analysis is to determine how many units could be added by filling vacant lots with the most-dense developments allowed under the current zoning codes.
+The two steps are:
+
+1. Merge cleaned vacant lots data with zoning code data.
+2. Calculate how many units are allowed one each vacant lot.
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(urbnthemes)
+library(sf)
+
+set_urbn_defaults("print")
+
+source("../Macros/read-arlington.R")
+
+```
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+
+if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
+  dir.create("L:/Libraries/RegHsg/Prog/Tables")
+}
+```
+
+Set FIPS code and filepath name
+```{r fips}
+
+currentfips <- "11001"
+filepath <- "DC"
+```
+
+
+Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
+
+```{r read}
+if (!exists("jur")) {
+  jur <- read_arlington()
+} else {
+  warning(filepath, " data already read in")r
+}
+
+```
+
+## Clean zoning code information
+
+### Move file 
+
+First- **manually** move file from Box to the `zoning-codes` directory in the `Doc` folder on the L drive. Name file accordingly:
+"jursidiction-zoning-code.csv"
+
+### Read file
+
+Read in zoning code, rename variables so that they are machine readable
+
+```{r file-check}
+
+if (!file.exists(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              filepath,
+                              "-zoning-code.csv"))) {
+  
+  stop("Move zoning file for jurisdiction to L:/Libraries/RegHsg/Doc/zoning-codes directory")
+}
+
+```
+
+
+```{r read-zoning-csv}
+z <- cols(
+  Code = col_character(),
+  `District Type` = col_character(),
+  `Type of Dwelling` = col_character(),
+  `Site Area` = col_number(),
+  `Lot area` = col_number(),
+  `Lot area per dwelling unit (sq. ft.) (minimum)` = col_number(),
+  `Lot Width (average minimum, ft)` = col_character(),
+  `Height (ft)` = col_double(),
+  `Height (stories)` = col_double(),
+  `Lot coverage maximum` = col_number(),
+  `Floor area minimum` = col_double(),
+  `Maximum Density of Floor-Area-Ratio (FAR)` = col_character(),
+  `Setbacks (centerline)` = col_character(),
+  `Setbacks (right of way line)` = col_double(),
+  `Front/Side yard (ft)` = col_double(),
+  `Side yard (both sides: minimum percent of required width)` = col_number(),
+  Frontage = col_double(),
+  Comments = col_character()
+)
+
+zoningcode <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              filepath,
+                              "-zoning-code.csv"),
+                       col_types = z)
+
+names(zoningcode) <- 
+  c("zoning_code", "district_type", "dwelling_type",
+    "site_area", "lot_area_min", "lotarea_per_unit",
+    "lot_width", "height_ft", "height_stories",
+    "lot_coverage_max", "floor_area_min", "far_max",
+    "setbacks_center", "setbacks_row",
+    "front_side_yard", "side_yard", "frontage", "comments")
+
+# fix variables read in as whole numbers (should be percent)
+zoningcode <- zoningcode %>% 
+  mutate_at(vars(lot_coverage_max, side_yard),
+            ~ . / 100)
+rm(z)
+
+```
+
