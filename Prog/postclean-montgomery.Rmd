@@ -82,7 +82,8 @@ if (!dir.exists(paste0("L:/Libraries/RegHsg/Data/", filepath))) {
 pfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels'), end = -5) %>% unique()
 parcel_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
                      layer = pfile[1])
-
+zoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
+                     layer = pfile[2])
   #jur_par <- jur %>% 
   #  mutate(first2 = substr(assessorsparcelnumberapnpin, 1, 2),
   #         pnlength = str_length(assessorsparcelnumberapnpin))
@@ -120,20 +121,10 @@ parcel_sf1 <- parcel_sf1 %>%
 ```{r clean}
 st_geometry(parcel_sf1)
 
-parcel_sf1 <- st_transform(parcel_sf, crs = 4326)
+parcel_sf1 <- st_transform(parcel_sf1, crs = 4326)
 
 ```
-##### parcel map
-```{r par-map}
 
-plot(st_geometry(parcel_sf1))
-
-
-
-ggplot(parcel_sf1) +
-  geom_sf(mapping = aes())
-
-```
 
 
 ## Load in Cleaned Black Knight data and clean the dataset.
@@ -169,68 +160,111 @@ jur_sf1 %>% as.data.frame() %>%
 ##Spatial Join!
 ```{r join}
 
-join <- st_join(jur_sf1, parcel_sf1, join = st_intersects)
+pjoin <- st_join(jur_sf1, parcel_sf1, join = st_intersects)
 
 ```
-##Test Join
+
 After the join, we convert back to a dataframe, for ease of computations.
 ```{r back-to-df}
 
-join_df <- st_set_geometry(join, NULL)
+pjoin_df <- st_set_geometry(pjoin, NULL)
 
 ```
+
+Zoning Clean
+
+####Find the invalid geometries
+```{r find bad geometries}
+
+zoning_sf1 <- zoning_sf %>% 
+  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
+                                1,
+                                0))
+
+zoning_sf1 %>% as.data.frame() %>% 
+  count(validgeo)
+
+
+#count(parcel_sf1, validgeo == 0)
+
+
+zoning_sf1 <- zoning_sf1 %>% 
+  filter(validgeo == 1 & !is.na(validgeo))
+
+```
+
+
+###clean the dataset and filter out the bad geometries to faciltate a join
+```{r clean}
+st_geometry(zoning_sf1)
+
+zoning_sf1 <- st_transform(zoning_sf1, crs = 4326)
+
+```
+
+
+##Spatial Join!
+```{r join}
+
+zjoin <- st_join(jur_sf1, zoning_sf1, join = st_intersects)
+
+```
+
+After the join, we convert back to a dataframe, for ease of computations.
+```{r back-to-df}
+
+zjoin_df <- st_set_geometry(zjoin, NULL)
+
+```
+
+
+
+##Test Join
 
 Count how many observations did not join. This will throw an error if more than 5% did not match- in this case, check the underlying shapefiles for compatability.
 
-```{r count-spatial}
+```{r count-parcel}
 
-paste0(sum(is.na(join_df$validgeo)), " observations didn't join- ",
-      round(sum(is.na(join_df$validgeo)) / nrow(join_df) * 100, 2), "%")
+paste0(sum(is.na(pjoin_df$validgeo)), " observations didn't join- ",
+      round(sum(is.na(pjoin_df$validgeo)) / nrow(pjoin_df) * 100, 2), "%")
 
-if (sum(is.na(join_df$validgeo)) / nrow(join_df) > .05) {
+if (sum(is.na(pjoin_df$validgeo)) / nrow(pjoin_df) > .05) {
   stop("More than 5% of observations could not be spatially joined.")
 }
 
-paste0(sum(is.na(join_df$ACCT)), " observations didn't join- ",
-      round(sum(is.na(join_df$ACCT)) / nrow(join_df) * 100, 2), "%")
+paste0(sum(is.na(pjoin_df$ACCT)), " observations didn't join- ",
+      round(sum(is.na(pjoin_df$ACCT)) / nrow(pjoin_df) * 100, 2), "%")
 
-if (sum(is.na(join_df$ACCT)) / nrow(join_df) > .05) {
+if (sum(is.na(pjoin_df$ACCT)) / nrow(pjoin_df) > .05) {
   stop("More than 5% of observations could not be spatially joined.")
 }
 
 ```
 
 
-Test how many have different results from the Black Knight zoning variable.
+I remove a stop that Sarah put in because there will not be clean join because of missing prop data from Gaithersburg and Rockville.
+```{r count-zoning}
 
-```{r test-spatial}
+paste0(sum(is.na(zjoin_df$validgeo)), " observations didn't join- ",
+      round(sum(is.na(zjoin_df$validgeo)) / nrow(zjoin_df) * 100, 2), "%")
 
-vacant2 %>% 
-  group_by(is.na(zoning)) %>% 
-  count(zoning == ZN_DESIG)
+if (sum(is.na(zjoin_df$validgeo)) / nrow(zjoin_df) > .05) {
+  stop("More than 5% of observations could not be spatially joined.")
+}
 
+paste0(sum(is.na(zjoin_df$CODE)), " observations didn't join- ",
+      round(sum(is.na(zjoin_df$CODE)) / nrow(zjoin_df) * 100, 2), "%")
 ```
-
-
 
 -----
 
 ## Clean vacant lots data
 
-Select only vacant lots
-
-```{r res}
-
-vacant <- jur %>% 
-  filter(category == "vacant")
-  
-```
-
 See how many lots have missing key variables
 
 ```{r missing}
 
-vacant %>% 
+pjoin_df %>% 
   mutate(num = NA) %>% 
   group_by(category_detail) %>% 
   summarize_at(vars(propaddress, lotsize_sf, zoning, num),
@@ -246,103 +280,63 @@ We will fill in the missing lot size, when we can, with the area of the lot, obt
 
 ```{r fill-lots}
 
-vacant <- vacant %>% 
+pjoin_df1 <- pjoin_df %>% 
   mutate(arc_lotsize_sf = lotsize_sf, # archive the original lot size variable
          lotsize_sf = ifelse(is.na(lotsize_sf),
-                             parcel_area,
-                             lotsize_sf),
-         lotsize_sf = ifelse(is.na(lotsize_sf),
-                             lotsize_prop,
+                             SHAPE_AREA,
                              lotsize_sf))
+         #lotsize_sf = ifelse(is.na(lotsize_sf),
+         #                    lotsize_prop,
+         #                    lotsize_sf))
 
 ```
 
 See how many we're filled in
 
 ```{r count-lots}
-sum(is.na(vacant$arc_lotsize_sf)) - sum(is.na(vacant$lotsize_sf))
+sum(is.na(pjoin_df1$arc_lotsize_sf)) - sum(is.na(pjoin_df1$lotsize_sf))
 ```
 
-
 -----
-
-
 ### Missing zoning variables
 
 To determine zoning codes for addresses that have a missing zoning designation or multiple zoning designations, we will use a spatial join to the county's zoning layer.
 
-Read in zoning layer, set CRS
-```{r read-zoning}
-zdir <- paste0("L:/Libraries/RegHsg/Maps/",
-               filepath,
-               "-zoning-map")
-zfile <- str_sub(list.files(zdir), end = -5) %>% unique()
-
-zon <- read_sf(dsn = zdir,
-               layer = zfile)
-
-st_geometry(zon)
-zon <- st_transform(zon, crs = 4326)
-
-```
-
-Convert vacant lots to SF, set CRS. To convert to SF, we need to use only the observations with non-missing longitude and latitude. We separate these off and recombine after the spatial join.
-
-```{r convert-sf}
-
-vacantsf <- vacant1 %>% 
-  filter(missing_coord == 0) %>% 
-  st_as_sf(coords = c("long", "lat")) %>% 
-  st_set_crs(st_crs(zon))
-```
-
-Plot to make sure they are overlapping
-```{r make-map, echo=FALSE}
-ggplot() +
-  geom_sf(data = zon, mapping = aes(fill = GZDC)) +
-  scale_fill_manual(values = c("#1696d2", "#fdbf11", 
-                               "#d2d2d2", "#ec008b", 
-                               "#55b748")) +
-  geom_sf(data = vacantsf, mapping = aes(),
-          color = "black")
-
-```
-
-Spatial join
-
-```{r spatial-join}
-
-vacantjoin <- st_join(vacantsf, zon, join = st_intersects)
-
-```
-
-After the join, we convert back to a dataframe, for ease of computations.
-```{r back-to-df}
-
-vacant2 <- st_set_geometry(vacantjoin, NULL)
-
-```
 
 Count how many observations did not join. This will throw an error if more than 5% did not match- in this case, check the underlying shapefiles for compatability.
 
-```{r count-spatial}
 
-paste0(sum(is.na(vacant2$ZN_DESIG)), " observations didn't join- ",
-      round(sum(is.na(vacant2$ZN_DESIG)) / nrow(vacant2) * 100, 2), "%")
+### Missing lot size
+We will fill in the missing lot size, when we can, with the area of the lot, obtained from the parcel shapefile in the precleaning step. If that is also missing, we use the lot size variables from the property file. All variables are in square feet.
 
-if (sum(is.na(vacant2$ZN_DESIG)) / nrow(vacant2) > .05) {
-  stop("More than 5% of observations could not be spatially joined.")
-}
-      
+```{r fill-lots}
+
+zjoin_df1 <- zjoin_df %>% 
+  mutate(arc_zoning = zoning, # archive the original lot size variable
+         zoning = ifelse(is.na(zoning),
+                             CODE,
+                             zoning))
+         #lotsize_sf = ifelse(is.na(lotsize_sf),
+         #                    lotsize_prop,
+         #                    lotsize_sf))
+
 ```
+
+See how many we're filled in
+
+```{r count-lots}
+sum(is.na(zjoin_df1$arc_zoning)) - sum(is.na(zjoin_df1$zoning))
+```
+
+
 
 Test how many have different results from the Black Knight zoning variable.
 
 ```{r test-spatial}
 
-vacant2 %>% 
+zjoin_df1 %>% 
   group_by(is.na(zoning)) %>% 
-  count(zoning == ZN_DESIG)
+  count(zoning == CODE)
 
 ```
 
@@ -350,56 +344,76 @@ Take a closer look how many and what percent are different "just because"- not b
 
 ```{r test-spatial-again}
 
-vacant2 %>% 
+zjoin_df1 %>% 
   filter(!is.na(zoning), 
-         !is.na(ZN_DESIG), 
+         !is.na(CODE), 
          str_detect(zoning, "/") == FALSE) %>% 
-  mutate(different_flag = ifelse(zoning != ZN_DESIG,
+  mutate(different_flag = ifelse(zoning != CODE,
                                  1,
                                  0)) %>% 
   summarize(different = sum(different_flag, na.rm = TRUE)) %>% 
-  mutate(percent_different = paste0(round(different / nrow(vacant1) *100, 2), "%"))
+  mutate(percent_different = paste0(round(different / nrow(zjoin_df) *100, 2), "%"))
 
 ```
 
-Many are different because the Black Knight zoning has two zoning codes, separated by a slash. We can test how many of these instances have the spatially joined zoning designation in the Black Knight zoning variable.
 
-```{r slashes}
+```{r missing}
 
-vacant2 %>% 
-  filter(str_detect(zoning, "/")) %>% 
-  count(str_detect(zoning, ZN_DESIG))
-
-```
-
-If the zoning is missing OR the zoning contains a slash and the spatially joined zoning designation is one of the dual descriptions, we replace with spatial joined zoning. Archive Black Knight zoning variable for future reference.
-
-```{r zoning-swap}
-
-vacant3 <- vacant2 %>% 
-  mutate(zoning_bk = zoning,
-         zoning = ifelse(is.na(zoning), 
-                         ZN_DESIG, 
-                         zoning),
-         zoning = ifelse(str_detect(zoning, "/") == TRUE &
-                           str_detect(zoning_bk, ZN_DESIG) == TRUE,
-                         ZN_DESIG,
-                         zoning)) %>% 
-  select(-c(OBJECTID, ZONECODE, LABEL, SYMBOL, ZN_DESIG_6, GZDC))
+pjoin_df1 %>% 
+  mutate(num = NA) %>% 
+  group_by(category_detail) %>% 
+  summarize_at(vars(propaddress, lotsize_sf, zoning, num),
+               ~ sum(is.na(.))) %>% 
+  mutate_at(vars(propaddress, lotsize_sf, zoning),
+            .funs = funs(percent = scales::percent(. / num))) %>% 
+  knitr::kable(caption = "Number and percent of missing values")
 
 ```
 
-Recombine with observations with missing coordinates, check that number of rows is the same.
+```{r missing}
 
-```{r get-final}
-
-vacanttotal <- vacant1 %>% 
-  filter(is.na(lat) | is.na(long)) %>% 
-  mutate(zoning_bk = zoning) %>% 
-  bind_rows(vacant3)
-
-stopifnot(nrow(vacanttotal) == nrow(vacant1))
+zjoin_df1 %>% 
+  mutate(num = NA) %>% 
+  group_by(category_detail) %>% 
+  summarize_at(vars(propaddress, lotsize_sf, zoning, num),
+               ~ sum(is.na(.))) %>% 
+  mutate_at(vars(propaddress, lotsize_sf, zoning),
+            .funs = funs(percent = scales::percent(. / num))) %>% 
+  knitr::kable(caption = "Number and percent of missing values")
 
 ```
+
+
+
+
+
+```{r save}
+saveRDS(pjoin_df1,
+        paste0(jdir, 
+               "parceljoined-",
+               filepath,
+               "-data.Rdata"))
+```
+
+
+```{r save}
+saveRDS(zjoin_df1,
+        paste0(jdir, 
+               "zoningjoined-",
+               filepath,
+               "-data.Rdata"))
+```
+
+
+
+
+Write out clean data.
+
+```{r write}
+write_csv(finaljur, 
+          paste0(jdir, 
+               "cleaned-", filepath, "-data.csv"))
+```
+
 
 
