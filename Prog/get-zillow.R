@@ -2,179 +2,124 @@
 library(tidyverse)
 library(lubridate)
 
-# county indicators -------------------------------------------------------
+# Inventory -------------------------------------------------------
 
 
-inventory <- read_csv('http://files.zillowstatic.com/research/public/County/InventoryMeasure_SSA_County_Public.csv')
-
+inventory <- read_csv('http://files.zillowstatic.com/research/public/County/MonthlyListings_SSA_AllHomes_County.csv')
+inventoryMSA <- read_csv('http://files.zillowstatic.com/research/public/Metro/MonthlyListings_SSA_AllHomes_Metro.csv')
 
 #county %in% c('District of Columbia','Charles','Frederick','Montgomery','Prince Georges','Arlington', 'Fairfax', 'Fairfax City', 'Loudoun','Prince William', 'Alexandria City', 'Falls Church City', 'Manassas City', 'Manassas Park City')
 
-inventoryCOG <- inventory %>% 
-  select(-RegionName, -Metro, -DataTypeDescription) %>% 
-  rename(type = RegionType, name = CountyName, state = StateFullName) %>% 
-  gather(key = 'monthx', value = 'inventory', -type, -state, -name) %>% 
-  filter(state %in% c('District of Columbia', 'Maryland', 'Virginia'),
-         name %in% c('District of Columbia','Charles','Frederick','Montgomery','Prince Georges','Arlington', 'Fairfax', 'Fairfax City', 'Loudoun','Prince William', 'Alexandria City', 'Falls Church City', 'Manassas City', 'Manassas Park City')
+inventoryCOGmonth <- inventory %>% 
+  select(-RegionType, -SizeRank, -RegionID) %>% 
+  rename(county = RegionName, state = StateName) %>% 
+  gather(key = 'monthx', value = 'inventoryCOG', -state, -county) %>% 
+  filter(state %in% c('DC', 'MD', 'VA'),
+         county %in% c('District of Columbia','Charles County','Frederick County','Montgomery County','Prince Georges County','Arlington County', 'Fairfax County', 'Fairfax City', 'Loudoun County','Prince William County', 'Alexandria City', 'Falls Church City', 'Manassas City', 'Manassas Park City')
          ) %>%
-  arrange(name, monthx) %>% 
-  mutate(monthx = as_date(paste0(monthx, '-01')),
-         invyoy = lag(inventory, 12) / inventory - 1)
+  arrange(county, monthx) %>% 
+  mutate(month = substr(monthx, 6, 7),
+         year= substr(monthx, 1,4))
+
+inventoryMSAJuly <- inventoryMSA %>% 
+  select(-RegionType, -SizeRank, -RegionID, -StateName) %>% 
+  rename(Metro = RegionName) %>% 
+  gather(key = 'monthx', value = 'inventoryMetro', -Metro) %>% 
+  filter(Metro=="Washington, DC") %>% 
+  arrange(Metro, monthx) %>% 
+  mutate(month = substr(monthx, 6, 7),
+         year= substr(monthx, 1,4)) %>% 
+  filter(month=="07") %>% 
+  select(-monthx, -Metro, -month)
+
+#### inventory for COG region
+inventoryCOGJuly <- inventoryCOGmonth %>% 
+    filter(month=="07") %>% 
+    group_by(year) %>% 
+    summarize(JulyInventory= sum(inventory))
 
 
+# Sale prices --------------------------------------------------------
 
-inventorydc %>% 
-  ggplot(aes(monthx, rollinv, color = name)) +
-  geom_line() +
-  scale_y_continuous(expand = c(0,0),
-                     limits = c(-1, 1.5),
-                     labels = scales::percent) +
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y",
-               limits = as_date(c('2012-01-01', '2018-01-03'))) +
-  scale_color_discrete(guide = FALSE) +
-  labs(x = NULL, y = 'Change in inventory, year over year') +
-  theme_urban_web()
-ggsave("graphs/changeinventory_county.png",
-       width = 10, height = 6)
+price <- read_csv('http://files.zillowstatic.com/research/public/Metro/Sale_Prices_Msa.csv')
 
-
-pricecut <- read_csv('http://files.zillowstatic.com/research/public/County/County_Listings_PriceCut_SeasAdj_AllHomes.csv')
-
-pricecutdc <- pricecut %>% 
+priceMSAJuly <- price %>% 
   select(-RegionID, -SizeRank) %>% 
-  rename(name = RegionName, state = State) %>% 
-  mutate(type = 'county') %>% 
-  gather(key = 'monthx', value = 'pcshare', -type, -state, -name) %>% 
-  filter(name %in% mt$name,
-         state %in% c('DC', 'MD', 'VA')) %>%
-  mutate(monthx = as_date(paste0(monthx, '-01')),
-         pcrollavg = rollavg(pcshare)) %>% 
-  arrange(name, monthx) 
-
-pricecutdc %>% 
-  filter(type == "county") %>% 
-  ggplot(aes(monthx, pcrollavg, color = name)) +
-  geom_line() +
-  scale_y_continuous(limits = c(0, 17),
-                     expand = c(0,0)) +
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  scale_color_discrete(guide = FALSE) +
-  labs(x = NULL, y = 'Share of listing with a price cut') +
-  theme_urban_web()
-ggsave("graphs/pricecut_county.png",
-       width = 10, height = 6)
-
-
-# metro indicators --------------------------------------------------------
-
-ageinv <- read_csv('http://files.zillowstatic.com/research/public/Metro/AgeOfInventory_Metro_Public.csv')
-
-ageinv_metro <- ageinv %>% 
-  select(-RegionType, -StateFullName, -DataTypeDescription) %>% 
-  gather(key = "monthx", value = "ageinv", -RegionName) %>% 
-  filter(RegionName %in% c("United States", "Seattle, WA", "Washington, DC")) %>% 
-  arrange(RegionName, monthx) %>% 
-  mutate(monthx = as_date(paste0(monthx, '-01')),
-         rollage = rollavg(ageinv))
-         
-ageinv_metro %>% 
-  filter(monthx >= as_date("2013-01-01")) %>% 
-  ggplot(aes(monthx, rollage, color = RegionName)) +
-  geom_line() +
-  scale_y_continuous(expand = c(0,0), limits = c(0,100)) +
-  theme_urban_web() +
-  labs(x = NULL, y = "Age of inventory, 12-month rolling average")
-ggsave("graphs/age_inventory_metro.png", width = 10, height = 7)
-
-
-# rent trends -------------------------------------------------------------
-
-rent <- read_csv('http://files.zillowstatic.com/research/public/County/County_Zri_AllHomesPlusMultifamily.csv')
-
-region_codes <- c("11001", "24031", "24033", 
-                  "51013", "51059", "51600",
-                  "51510", "51107")
-
-rentdc <- rent %>% 
   rename(name = RegionName) %>% 
-  mutate(county_fips = paste0(StateCodeFIPS, MunicipalCodeFIPS)) %>% 
-  select(-RegionID, -Metro, -SizeRank, -StateCodeFIPS, - MunicipalCodeFIPS) %>% 
-  filter(county_fips %in% region_codes) %>% 
-  gather(key = 'datex', value = 'zri', -name, -county_fips, -State) %>% 
-  arrange(name, datex) %>% 
-  mutate(datex = as_date(paste0(datex, '-01')))
-  
-rentwide <- rent %>%
-  mutate(county_fips = paste0(StateCodeFIPS, MunicipalCodeFIPS)) %>% 
-  filter(county_fips %in% region_codes) %>% 
-  select(-RegionID, -Metro, -SizeRank, -StateCodeFIPS, - MunicipalCodeFIPS)
-  
-oldnames <- names(select(rentwide, -county_fips, -RegionName, -State))
-newnames <- paste0("zri", oldnames)
+  gather(key = 'monthx', value = 'Mediansaleprice', -name) %>% 
+  filter(name =="Washington, DC") %>%
+  mutate(month = substr(monthx, 6, 7), 
+         year= substr(monthx, 1,4)) %>% 
+  filter(month=="07") %>% 
+  select(-name, -monthx, -month)%>% 
+  arrange(year, Mediansaleprice, -month)
 
-rentwide <- rentwide %>%  
-  rename_at(vars(oldnames), ~newnames)
+# Rent for SF and MF residents --------------------------------------------------------
 
-rentdc %>% 
-  ggplot(aes(datex, zri, color = name)) +
-  geom_line() +
-  scale_y_continuous(expand = expand_scale(mult = c(0, .2)),
-                     limits = c(0,3000))
-
-countyrentovertime <- rentdc %>% 
-  select(-State, - county_fips, - rollrent) %>% 
-  spread(key = name, value = zri)
-
-rent_region <- read_csv('http://files.zillowstatic.com/research/public/Metro/Metro_Zri_SingleFamilyResidenceRental.csv')
-
-rentdcnational <- rent_region %>% 
-  filter(RegionName %in% c('Washington, DC', 'United States')) %>% 
-  select(-RegionID, -SizeRank, name = RegionName) %>% 
-  gather(key = 'datex', value = 'zri', -name) %>% 
-  arrange(name, datex) %>% 
-  mutate(datex = as_date(paste0(datex, '-01')))
-
-rentdcnational %>% 
-  ggplot(aes(datex, zri, color = name)) +
-  geom_line() +
-  theme_urban_web()
-
-rentovertime <- rent_region %>% 
-  filter(RegionName %in% c('Washington, DC', 'United States')) %>% 
-  select(-RegionID, -SizeRank, name = RegionName) %>% 
-  gather(key = 'datex', value = 'zri', -name) %>% 
-  arrange(name, datex) %>% 
-  mutate(datex = as_date(paste0(datex, '-01'))) %>% 
-  spread(key = name, value = zri)
+rentSF <- read_csv('http://files.zillowstatic.com/research/public/Metro/Metro_MedianRentalPrice_Sfr.csv')
+rentlargeMF <- read_csv('http://files.zillowstatic.com/research/public/Metro/Metro_MedianRentalPrice_Mfr5Plus.csv')
+rentcondo <-read_csv('http://files.zillowstatic.com/research/public/Metro/Metro_MedianRentalPrice_CondoCoop.csv')
+rentduplex <-read_csv('http://files.zillowstatic.com/research/public/Metro/Metro_MedianRentalPrice_DuplexTriplex.csv')
 
 
-rentMF <- read_csv("http://files.zillowstatic.com/research/public/County/County_Zri_AllHomesPlusMultifamily.csv")
+MetroRentSF <- rentSF %>% 
+  rename(Metro = RegionName) %>% 
+  select(-SizeRank) %>% 
+  filter(Metro=="Washington, DC") %>% 
+  gather(key = 'monthx', value = 'MedianSFRent', -Metro) %>% 
+  filter(Metro=="Washington, DC") %>% 
+  arrange(Metro, monthx) %>% 
+  mutate(month = substr(monthx, 6, 7),
+         year= substr(monthx, 1,4)) %>% 
+  filter(month=="07") %>% 
+  select(-monthx, -Metro, -month)
 
-region_codes <- c("11001", "24031", "24033", 
-                  "51013", "51059", "51600",
-                  "51510", "51107")
 
-rentdcmf <- rentMF %>% 
-  rename(name = RegionName) %>% 
-  mutate(county_fips = paste0(StateCodeFIPS, MunicipalCodeFIPS)) %>% 
-  select(-RegionID, -Metro, -SizeRank, -StateCodeFIPS, - MunicipalCodeFIPS) %>% 
-  filter(county_fips %in% region_codes) %>% 
-  gather(key = 'datex', value = 'zri', -name, -county_fips, -State) %>% 
-  arrange(name, datex) %>% 
-  mutate(datex = as_date(paste0(datex, '-01')),
-         rollrent = rollavg(zri))
+MetroRentMF <- rentlargeMF %>% 
+  rename(Metro = RegionName) %>% 
+  select(-SizeRank) %>% 
+  filter(Metro=="Washington, DC") %>% 
+  gather(key = 'monthx', value = 'MedianMFRent', -Metro) %>% 
+  filter(Metro=="Washington, DC") %>% 
+  arrange(Metro, monthx) %>% 
+  mutate(month = substr(monthx, 6, 7),
+         year= substr(monthx, 1,4)) %>% 
+  filter(month=="07") %>% 
+  select(-monthx, -Metro, -month)
 
-countyrentovertime <- rentdcmf %>% 
-  select(-State, -county_fips, -rollrent) %>% 
-  spread(key = name, value = zri)
+MetroRentCondo <- rentcondo %>% 
+  rename(Metro = RegionName) %>% 
+  select(-SizeRank) %>% 
+  filter(Metro=="Washington, DC") %>% 
+  gather(key = 'monthx', value = 'MedianCondoRent', -Metro) %>% 
+  filter(Metro=="Washington, DC") %>% 
+  arrange(Metro, monthx) %>% 
+  mutate(month = substr(monthx, 6, 7),
+         year= substr(monthx, 1,4)) %>% 
+  filter(month=="07") %>% 
+  select(-monthx, -Metro, -month)
 
-countyyoy <-  rentdcmf %>% 
-  mutate(yoyrent = chyoy(zri)) %>% 
-  select(-State, -county_fips, -rollrent, -zri) %>% 
-  spread(key = name, value = yoyrent)
+MetroRentduplex <- rentduplex %>% 
+  rename(Metro = RegionName) %>% 
+  select(-SizeRank) %>% 
+  filter(Metro=="Washington, DC") %>% 
+  gather(key = 'monthx', value = 'MedianDuplexRent', -Metro) %>% 
+  filter(Metro=="Washington, DC") %>% 
+  arrange(Metro, monthx) %>% 
+  mutate(month = substr(monthx, 6, 7),
+         year= substr(monthx, 1,4)) %>% 
+  filter(month=="07") %>% 
+  select(-monthx, -Metro, -month)
 
-rentdcmf %>% 
-  mutate(yoyrent = chyoy(zri)) %>% 
-  ggplot(aes(datex, zri, color = name)) +
-  geom_line() +
-  theme_urban_web()
+data1 <- full_join(inventoryMSAJuly, priceMSAJuly, by= c("year","year"))
+data2<- full_join(data1,  MetroRentSF,by= c("year","year") )
+data3<- full_join(data2,  MetroRentMF,by= c("year","year") )
+data4<- full_join(data3,  MetroRentCondo,by= c("year","year") )
+data5<- full_join(data4,  MetroRentduplex,by= c("year","year") )
+
+filepath <- paste0("L:/Libraries/RegHsg/Data/")
+
+write_csv(data5, 
+          paste0(filepath, "Housing market_Zillow data.csv"))
+
+
