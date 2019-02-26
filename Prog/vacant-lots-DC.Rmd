@@ -150,7 +150,7 @@ Read in zoning code, rename variables so that they are machine readable
 
 if (!file.exists(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
                               filepath,
-                              "-zoning-code.csv"))) {
+                              " zoning code.csv"))) {
   
   stop("Move zoning file for jurisdiction to L:/Libraries/RegHsg/Doc/zoning-codes directory")
 }
@@ -208,7 +208,7 @@ rm(z)
 
 For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most dense construction for that zone. 
 
-First, we look at all the options, and filter out all the observations marked as "other", since we cannot be sure what property type that refers to. We will also filter out categories that are dependent on adjacent lot lines.
+First, we look at all the options, these categories is not as helpful because attached and detached can mean so many different things plus we have a lot of NAs for residential code. So need to create a new dwelling type variable.
 
 ```{r tab-dwellings}
 zoningcode %>% 
@@ -222,13 +222,39 @@ Count the number of unique zoning codes to make sure we won't get rid of any cod
 length(unique(zoningcode$zoning_code))
 
 ```
+
+
+The DC dwelling type is missing for a lot of zoning, so it is difficult to follow the exact same method. I will here create a new dwelling type variable based on some other variables in there. 
+
+Since the variables are not always comparable, after the recoding, from most to least dense, order applies:
+
+1. MF
+2. RF3 (Residential Flat4)
+3. RF2 (Residential Flat2)
+4. RF1 (Residential Flat1)
+5. One Family 
+
+```{r recode dwelling}
+zoningcode1 <- zoningcode %>% 
+  mutate(newdwelling_type = case_when(
+    dwelling_units_allowed==1 ~ "One Family",
+    dwelling_units_allowed==2 ~ "RF1",
+    dwelling_units_allowed==3 ~ "RF2",
+    dwelling_units_allowed==4 ~ "RF3",
+    floor_area_ratio_max>1 & is.na(dwelling_units_allowed) ~ "MF",
+    is.na(floor_area_ratio_max) &is.na(dwelling_units_allowed) ~ "All Other",
+    floor_area_ratio_max <= 1 ~ "Other Mixed",
+    zoning_code=="RA-1"|zoning_code=="RA-6" ~ "RF1"
+  ))
+
+```
 Filter out dwelling_types of "All", "All Other", and those that are dependent on a shared boundary.
 
 ```{r purge}
-zoningcode1 <- zoningcode %>% 
+zoningcode2 <- zoningcode1 %>% 
   group_by(zoning_code) %>% 
-  filter(!(dwelling_type %in% c("All",
-                               "all other structures")
+  filter(!(newdwelling_type %in% c("All Other",
+                               "Other Mixed")
            & n() > 1)) %>% 
   ungroup()
 
@@ -242,18 +268,8 @@ stopifnot(length(unique(zoningcode$zoning_code))
 
 ```
 
-Since the variables are not always comparable, the following order, from most to least dense, applies:
-
-1. Multiple-family
-2. Townhouse
-3. Semi-detached
-4. Duplex
-5. Other Residential
-6. One Family Dwelling
-
-
 ### Create factor variable
-To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
+To use this hierarchy, we transform the `newdwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
 We will also create a designation for dwelling types that are restricted to a certain amount of units (one unit for "One Family Dwelling" and one for two units for "Duplex"). 
 
 **NOTE** This will be VERY jurisdiction specific.
@@ -263,17 +279,16 @@ We will also create a designation for dwelling types that are restricted to a ce
 ```{r dwelling-factor}
 
 zoningcode1 <- zoningcode1 %>% 
-  mutate(dwelling_type = factor(dwelling_type,
-                                levels = c("Multiple-family",
-                                           "Townhouse",
-                                           "Semi-detached",
-                                           "Duplex",
-                                           "Other Residential",
-                                           "One Family Dwelling")),
-         one_unit_flag = ifelse(dwelling_type == "One Family Dwelling",
+  mutate( newdwelling_type = factor(newdwelling_type,
+                                levels = c("MF",
+                                           "RF3",
+                                           "RF2",
+                                           "RF1",
+                                           "One Family")),
+         one_unit_flag = ifelse(newdwelling_type == "One Family",
                                 1,
                                 0),
-         two_unit_flag = ifelse(dwelling_type == "Duplex",
+         two_unit_flag = ifelse(newdwelling_type == "RF2"|newdwelling_type == "RF3",
                                 1,
                                 0))
 
