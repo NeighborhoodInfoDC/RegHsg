@@ -143,7 +143,7 @@ run;
 data sectorjobs_byyear;
 	set sectorjobs_t;
 	drop _type_ _freq_;
-	if own = " " then delete;
+	if own2 = " " then delete;
 run;
 
 proc export data = sectorjobs_byyear
