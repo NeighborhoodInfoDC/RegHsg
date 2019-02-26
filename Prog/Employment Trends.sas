@@ -91,6 +91,13 @@ data msajobs_byyear;
 	if area = " " then area = "Total";
 run;
 
+proc export data = msajobs_byyear
+	outfile = "&_dcdata_default_path.\reghsg\prog\msajobs_byyear.csv"
+	dbms=csv
+	replace;
+run;
+
+
 
 /* Jobs by private, federal gov't, local/state gov't, 1990 - 2017 */
 data sectorjobs;
@@ -109,7 +116,7 @@ data sectorjobs;
 run;
 
 proc summary data = sectorjobs;
-	class own;
+	class own ucounty;
 	var Annual_Average_Employment_: ;
 	output out = sectorjobs_t sum=;
 run;
@@ -118,6 +125,12 @@ data sectorjobs_byyear;
 	set sectorjobs_t;
 	drop _type_ _freq_;
 	if own = " " then delete;
+run;
+
+proc export data = sectorjobs_byyear
+	outfile = "&_dcdata_default_path.\reghsg\prog\sectorjobs_byyear.csv"
+	dbms=csv
+	replace;
 run;
 
 
@@ -138,7 +151,7 @@ data industryjobs;
 run;
 
 proc summary data = industryjobs;
-	class naics;
+	class naics ucounty;
 	var Annual_Average_Employment_: ;
 	output out = industryjobs_t sum=;
 run;
@@ -149,7 +162,11 @@ data industryjobs_byyear;
 	if naics = " " then delete;
 run;
 
-
+proc export data = industryjobs_byyear
+	outfile = "&_dcdata_default_path.\reghsg\prog\industryjobs_byyear.csv"
+	dbms=csv
+	replace;
+run;
 
 
 /* End of program */
