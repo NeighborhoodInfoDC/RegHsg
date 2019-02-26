@@ -349,27 +349,18 @@ set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
 	if gq in (1,2);
 	if pernum = 1;
 
-    if ownershd in (21, 22) then do; /*renter*/
-		if rentgrs*12>= HHINCOME*0.3 then rentburdened=1;
-	    else if HHIncome~=. then rentburdened=0;
-	end;
-
-    if ownershd in ( 12,13 ) then do; /*owner*/
-		if owncost*12>= HHINCOME*0.3 then ownerburdened=1;
-	    else if HHIncome~=. then ownerburdened=0;
-	end;
-
 	tothh_2000 = 1;
 
 run;
 
 proc sort data = rentercostburden_2000; by serial; run;
 
-libname raw "L:\Libraries\IPUMS\Raw\usa_00026.sas7bdat\";
+libname rawnew "L:\Libraries\IPUMS\Raw\usa_00027.sas7bdat\";
 
-data usa_00026;
-	set raw.usa_00026;
-	if pernum = 1;
+
+data usa_00027;
+set rawnew.usa_00027;
+if pernum=1;
 run;
 
 proc sort data = usa_00026; by serial; run;
