@@ -1,0 +1,188 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Vacant lots analysis for Arlington County: special exceptions"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The goal of this analysis is to modify the previous vacant lots analysis to include special exceptions that are written into the zoning code. We will rely on two datasets that were created in `vacant-lots-arlington.Rmd` - the cleaned general zoning code, and the cleaned set of vacant lots.
+
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(urbnthemes)
+
+set_urbn_defaults("print")
+
+```
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+
+if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
+  dir.create("L:/Libraries/RegHsg/Prog/Tables")
+}
+```
+
+Set FIPS code and filepath name
+```{r fips}
+
+currentfips <- "51013"
+filepath <- "arlington"
+
+
+```
+
+Load in cleaned vacant lots and zoning code.
+
+```{r read}
+
+vacant <- readRDS("L:/Libraries/RegHsg/Data/arlington/arlington-vacant-lots.Rdata")
+zoningcode <- readRDS("L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.Rdata") %>% 
+  # create flag to indicate these do not come from the special exceptions file
+  mutate(special_exception = 0)
+
+```
+
+
+## Clean special exceptions.
+
+### Move file 
+
+First- **manually** move file from Box to the `zoning-codes` directory in the `Doc` folder on the L drive.
+
+### Read file
+
+```{r read-zoning-csv}
+
+z <- c("text", "text", "text", "numeric",
+       "numeric", "numeric", "text", "text",
+       "numeric", "numeric", "numeric", "text",
+       "text", "numeric", "numeric", "numeric",
+       "numeric", "text", "numeric")
+
+
+se <- readxl::read_excel("L:/Libraries/RegHsg/Doc/zoning-codes/Arlington Multiple Family Special Exceptions 2.19.19.xlsx", 
+                         range = "A1:S49", 
+                         col_types = z)
+
+names(se) <- 
+  c("zoning_code", "district_type", "dwelling_type",
+    "site_area", "lot_area_min", "lotarea_per_unit",
+    "lot_width", "height_ft", "height_stories",
+    "lot_coverage_max", "floor_area_min", "far_max",
+    "setbacks_center", "setbacks_row",
+    "front_side_yard", "side_yard", "frontage", "comments", "density_units_per_acre")
+
+rm(z)
+
+```
+
+### Clean up special exceptions
+
+A few cleaning tasks:
+
+* We need to extract the oddities in the height variable, and archive them in case we need them later. We reset these to NA, and convert the variable type back to numeric.
+* Create `special_exception` flag
+* Filter out `dwelling_type` values that we cannot use
+* Change `dwelling_type` values incorrectly recorded as "Multiple-family dwellings" to "Multiple-family"
+
+```{r height-problems}
+
+height_problems <- se %>% 
+  filter(str_detect(height_ft, "[:alpha:]"))
+
+se1 <- se %>% 
+  mutate(height_ft = ifelse(str_detect(height_ft, "[:alpha:]") == TRUE,
+                            NA,
+                            as.numeric(height_ft))) %>% 
+  mutate(special_exception = 1) %>% 
+  mutate(dwelling_type = ifelse(dwelling_type == "Multiple-family dwellings",
+                                "Multiple-family",
+                                dwelling_type)) %>% 
+  filter(dwelling_type != "Hotel")
+  
+  
+```
+
+Check to make sure there are no codes in the special exceptions that are NOT in the by-right zoning code, due to being entered incorrectly.
+
+```{r check-se-code}
+
+se1 %>% 
+  filter(!zoning_code %in% zoningcode$zoning_code) %>% 
+  nrow()
+
+```
+
+### Compare special exceptions with by-right
+
+In order to decide where special exceptions should be used, we need to compare those observations that have the same `dwelling_type` in the regular zoning code. 
+
+To simplify the process- select only the variables that are needed for the vacant lots calculation:
+`lot_area`, `lot_area_per_unit`, `height_ft`, and `lot_coverage_max`. Keep `zoning_code` and `dwelling_type` for identification. Also keep the `special_exception` flag we created.
+
+```{r fil}
+
+se_compare <- se1 %>% 
+  select(zoning_code, dwelling_type,
+         lot_area_min, lotarea_per_unit,
+         height_ft, lot_coverage_max,
+         special_exception) %>% 
+  bind_rows(select(zoningcode,
+         zoning_code, dwelling_type,
+         lot_area_min, lotarea_per_unit,
+         height_ft, lot_coverage_max, special_exception)) %>% 
+  group_by(zoning_code, dwelling_type)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+

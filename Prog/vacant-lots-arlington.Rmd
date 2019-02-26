@@ -615,8 +615,8 @@ Save the final vacant lots data so it can be used for the special exceptions (th
 
 ```{r save-vacant}
 
-saveRDS(vacantfinal, "L:/Libraries/RegHsg/Data/arlington/arlington-vacant-lots.csv")
-saveRDS(zoningcode1, "L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.csv")
+saveRDS(vacantfinal, "L:/Libraries/RegHsg/Data/arlington/arlington-vacant-lots.Rdata")
+saveRDS(zoningcode1, "L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.Rdata")
 
 ```
 
