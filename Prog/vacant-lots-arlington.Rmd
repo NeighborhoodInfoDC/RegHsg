@@ -611,6 +611,15 @@ vacantfinal <- vacanttotal %>%
 
 ```
 
+Save the final vacant lots data so it can be used for the special exceptions (this is only required for Arlington county).
+
+```{r save-vacant}
+
+saveRDS(vacantfinal, "L:/Libraries/RegHsg/Data/arlington/arlington-vacant-lots.csv")
+saveRDS(zoningcode1, "L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.csv")
+
+```
+
 ## Merge with cleaned data
 
 Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original `zoning` variable.

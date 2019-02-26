@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 19, 2019</p>
+<p>Last updated February 26, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -620,7 +620,7 @@ rm(z)</code></pre>
                              lotsize_sf))</code></pre>
 <p>See how many we’re filled in</p>
 <pre class="r"><code>sum(is.na(vacant$arc_lotsize_sf)) - sum(is.na(vacant$lotsize_sf))</code></pre>
-<pre><code>## [1] 14</code></pre>
+<pre><code>## [1] 130</code></pre>
 </div>
 <div id="assessment-values" class="section level3">
 <h3>Assessment values</h3>
@@ -648,56 +648,56 @@ rm(z)</code></pre>
 <tr class="odd">
 <td align="left">vacant commercial</td>
 <td align="right">747</td>
-<td align="right">160</td>
-<td align="right">583</td>
+<td align="right">743</td>
+<td align="right">0</td>
 <td align="right">743</td>
 <td align="right">0.9946452</td>
 </tr>
 <tr class="even">
 <td align="left">vacant exempt</td>
 <td align="right">69</td>
-<td align="right">15</td>
-<td align="right">54</td>
+<td align="right">69</td>
+<td align="right">0</td>
 <td align="right">69</td>
 <td align="right">1.0000000</td>
 </tr>
 <tr class="odd">
 <td align="left">vacant light industrial</td>
 <td align="right">4</td>
-<td align="right">1</td>
-<td align="right">3</td>
+<td align="right">4</td>
+<td align="right">0</td>
 <td align="right">4</td>
 <td align="right">1.0000000</td>
 </tr>
 <tr class="even">
 <td align="left">vacant mf</td>
 <td align="right">101</td>
-<td align="right">32</td>
-<td align="right">68</td>
+<td align="right">100</td>
+<td align="right">0</td>
 <td align="right">100</td>
 <td align="right">0.9900990</td>
 </tr>
 <tr class="odd">
 <td align="left">vacant office</td>
 <td align="right">95</td>
-<td align="right">28</td>
-<td align="right">64</td>
+<td align="right">92</td>
+<td align="right">0</td>
 <td align="right">92</td>
 <td align="right">0.9684211</td>
 </tr>
 <tr class="even">
 <td align="left">vacant residential</td>
 <td align="right">518</td>
-<td align="right">227</td>
-<td align="right">285</td>
+<td align="right">512</td>
+<td align="right">0</td>
 <td align="right">512</td>
 <td align="right">0.9884170</td>
 </tr>
 <tr class="odd">
 <td align="left">vacant sf</td>
 <td align="right">741</td>
-<td align="right">151</td>
-<td align="right">553</td>
+<td align="right">704</td>
+<td align="right">0</td>
 <td align="right">704</td>
 <td align="right">0.9500675</td>
 </tr>
@@ -965,44 +965,24 @@ stopifnot(sum(is.na(dual3$zoning_true)) == 0)</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">26-001-159</td>
-<td align="left">c(“R-5”, “C-2”, NA, NA)</td>
-<td align="left">R-5</td>
+<td align="left">34-024-463</td>
+<td align="left">c(“P-S”, “C-O-1.5”, NA, NA)</td>
+<td align="left">P-S</td>
 </tr>
 <tr class="even">
-<td align="left">14-060-084</td>
-<td align="left">c(“RA8-18”, NA, NA, NA)</td>
+<td align="left">34-024-464</td>
+<td align="left">c(“P-S”, “C-O-1.5”, NA, NA)</td>
+<td align="left">P-S</td>
+</tr>
+<tr class="odd">
+<td align="left">35-008-232</td>
+<td align="left">c(“RA7-16”, “C-O-2.5”, NA, NA)</td>
+<td align="left">RA7-16</td>
+</tr>
+<tr class="even">
+<td align="left">06-012-043</td>
+<td align="left">c(“RA8-18”, “C-O-1.0”, NA, NA)</td>
 <td align="left">RA8-18</td>
-</tr>
-<tr class="odd">
-<td align="left">10-031-023</td>
-<td align="left">c(“S-3A”, “R-6”, NA, NA)</td>
-<td align="left">R-6</td>
-</tr>
-<tr class="even">
-<td align="left">38-021-001</td>
-<td align="left">c(“S-3A”, “R2-7”, NA, NA)</td>
-<td align="left">R2-7</td>
-</tr>
-<tr class="odd">
-<td align="left">31-008-104</td>
-<td align="left">c(“R-10T”, “R2-7”, NA, NA)</td>
-<td align="left">R2-7</td>
-</tr>
-<tr class="even">
-<td align="left">01-020-052</td>
-<td align="left">c(“R-10”, “R-8”, NA, NA)</td>
-<td align="left">R-8</td>
-</tr>
-<tr class="odd">
-<td align="left">28-001-021</td>
-<td align="left">c(“S-3A”, “RA14-26”, NA, NA)</td>
-<td align="left">RA14-26</td>
-</tr>
-<tr class="even">
-<td align="left">04-029-031</td>
-<td align="left">c(“S-3A”, “R-6”, NA, NA)</td>
-<td align="left">R-6</td>
 </tr>
 <tr class="odd">
 <td align="left">05-005-176</td>
@@ -1013,6 +993,26 @@ stopifnot(sum(is.na(dual3$zoning_true)) == 0)</code></pre>
 <td align="left">11-065-001</td>
 <td align="left">c(“S-3A”, “R2-7”, NA, NA)</td>
 <td align="left">R2-7</td>
+</tr>
+<tr class="odd">
+<td align="left">10-031-023</td>
+<td align="left">c(“S-3A”, “R-6”, NA, NA)</td>
+<td align="left">R-6</td>
+</tr>
+<tr class="even">
+<td align="left">21-010-020</td>
+<td align="left">c(“S-3A”, NA, NA, NA)</td>
+<td align="left">S-3A</td>
+</tr>
+<tr class="odd">
+<td align="left">15-004-071</td>
+<td align="left">c(“S-3A”, “R-6”, “R-5”, NA)</td>
+<td align="left">R-5</td>
+</tr>
+<tr class="even">
+<td align="left">13-002-010</td>
+<td align="left">c(“S-3A”, “R2-7”, “RA8-18”, NA)</td>
+<td align="left">RA8-18</td>
 </tr>
 </tbody>
 </table>
@@ -1026,6 +1026,9 @@ stopifnot(sum(is.na(dual3$zoning_true)) == 0)</code></pre>
                          zoning.y,
                          zoning)) %&gt;% 
   select(-zoning.y)</code></pre>
+<p>Save the final vacant lots data so it can be used for the special exceptions (this is only required for Arlington county).</p>
+<pre class="r"><code>saveRDS(vacantfinal, &quot;L:/Libraries/RegHsg/Data/arlington/arlington-vacant-lots.csv&quot;)
+saveRDS(zoningcode1, &quot;L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.csv&quot;)</code></pre>
 </div>
 </div>
 <div id="merge-with-cleaned-data" class="section level2">
