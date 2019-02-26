@@ -94,7 +94,7 @@ run;
 data msajobs_byyear;
 	set msajobs_t;
 	drop _type_ _freq_;
-	if area = " " then area = "Total";
+	if area = " " then delete;
 run;
 
 proc export data = msajobs_byyear
@@ -106,6 +106,14 @@ run;
 
 
 /* Jobs by private, federal gov't, local/state gov't, 1990 - 2017 */
+proc format;
+	value own2
+		0 = "Total Covered"
+		1 = "Federal Government"
+		2 = "State and Local Government"
+		5 = "Private";
+quit;
+
 data sectorjobs;
 	set bls.bls_county_was15;
 
@@ -119,10 +127,15 @@ data sectorjobs;
 	%mend yearloop;
 	%yearloop;
 
+	if own in (2,3) then own2 = 2;
+		else own2 = own;
+
+	format own2 own2.;
+
 run;
 
 proc summary data = sectorjobs;
-	class own;
+	class own2;
 	var Annual_Average_Employment_: ;
 	output out = sectorjobs_t sum=;
 run;
