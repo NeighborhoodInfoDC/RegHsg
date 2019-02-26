@@ -413,7 +413,7 @@ proc summary data = rentercostburden_2000_new  (where=(ownershd in (12, 13)));
 run;
 
 data allhousingburden;
-merge rentercostburden_2010 ownerburdened_2010 rentercostburden_2017 ownerburdened_2017 rentercostburden_2000_new rentercostburden_2000_new;
+merge rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 rentburdened_2000 ownerburdened_2000;
 by Jurisdiction;
 format Jurisdiction Jurisdiction.;
 run;
