@@ -374,7 +374,6 @@ rm(z)</code></pre>
 <p>A few cleaning tasks:</p>
 <ul>
 <li>We need to extract the oddities in the height variable, and archive them in case we need them later. We reset these to NA, and convert the variable type back to numeric.</li>
-<li>Fix variables that are in whole numbers, but wil be used as percentages</li>
 <li>Create <code>special_exception</code> flag</li>
 <li>Filter out <code>dwelling_type</code> values that we cannot use</li>
 <li>Change <code>dwelling_type</code> values incorrectly recorded as “Multiple-family dwellings” to “Multiple-family”</li>
@@ -386,8 +385,6 @@ se1 &lt;- se %&gt;%
   mutate(height_ft = ifelse(str_detect(height_ft, &quot;[:alpha:]&quot;) == TRUE,
                             NA,
                             as.numeric(height_ft))) %&gt;% 
-  mutate_at(vars(lot_coverage_max, side_yard),
-            ~ . / 100) %&gt;% 
   mutate(special_exception = 1) %&gt;% 
   mutate(dwelling_type = ifelse(dwelling_type == &quot;Multiple-family dwellings&quot;,
                                 &quot;Multiple-family&quot;,
@@ -402,7 +399,31 @@ se1 &lt;- se %&gt;%
 <div id="compare-special-exceptions-with-by-right" class="section level3">
 <h3>Compare special exceptions with by-right</h3>
 <p>In order to decide where special exceptions should be used, we need to compare those observations that have the same <code>dwelling_type</code> in the regular zoning code.</p>
-<p>To simplify the process- select only the variables that are needed for the vacant lots calculation: <code>lot_area</code>, <code>lot_area_per_unit</code>, <code>height_ft</code>, and <code>lot_coverage</code>.</p>
+<p>To simplify the process- select only the variables that are needed for the vacant lots calculation: <code>lot_area</code>, <code>lot_area_per_unit</code>, <code>height_ft</code>, and <code>lot_coverage_max</code>. Keep <code>zoning_code</code> and <code>dwelling_type</code> for identification. Also keep the <code>special_exception</code> flag we created.</p>
+<pre class="r"><code>se_compare &lt;- se1 %&gt;% 
+  select(zoning_code, dwelling_type,
+         lot_area_min, lotarea_per_unit,
+         height_ft, lot_coverage_max,
+         special_exception) %&gt;% 
+  bind_rows(select(zoningcode,
+         zoning_code, dwelling_type,
+         lot_area_min, lotarea_per_unit,
+         height_ft, lot_coverage_max, special_exception)) %&gt;% 
+  group_by(zoning_code, dwelling_type)
+
+
+# how many observations are the same?
+
+se_compare %&gt;% nrow() -
+se_compare %&gt;% 
+  distinct(lot_area_min, lotarea_per_unit, height_ft, lot_coverage_max) %&gt;% 
+  nrow()</code></pre>
+<pre><code>## [1] 12</code></pre>
+<p>Except for multiple-family, the special exceptions, within a dwelling_type, were the same as the by-right zoning codes. For many zoning codes, additional dwelling types were added.</p>
+</div>
+<div id="dwelling-type-hierarchy" class="section level3">
+<h3>Dwelling type hierarchy</h3>
+<p>We can adjust the hierarchy we used to select the most dense zoning codes in the previous analysis by adding those that now occur, and prioritizing the multiple-family dwelling type from the special exception over the by-right.</p>
 </div>
 </div>
 

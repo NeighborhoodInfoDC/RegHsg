@@ -164,6 +164,7 @@ First, we look at all the options, and filter out all the observations marked as
 zoningcode %>% 
   count(dwelling_type) %>% 
   knitr::kable()
+
 ```
 
 Count the number of unique zoning codes to make sure we won't get rid of any codes entirely.
@@ -178,9 +179,9 @@ Filter out dwelling_types of "All", "All Other", and those that are dependent on
 zoningcode1 <- zoningcode %>% 
   group_by(zoning_code) %>% 
   filter(!(dwelling_type %in% c("All",
-                               "All Other",
-                               "Duplex; share a lot line with RA, C, or M",
-                               "Semi-detatched; share a lot line with RA, C, or M")
+                                "All Other",
+                                "Duplex; share a lot line with RA, C, or M",
+                                "Semi-detatched; share a lot line with RA, C, or M")
            & n() > 1)) %>% 
   ungroup()
 
@@ -678,7 +679,7 @@ There are several variables we will use to calculate how many units we can put o
 
 1. Buildable area: this is `lotsize_sf` x the coverage ratio (`lot_coverage_max`)
 2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
-3. Units per floor: this is the living area divided by the average unit size. We use 900 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
+3. Units per floor: this is the living area divided by the average unit size. We use 940 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
 4. Units allowed based on height limits: This is the units per floor x the number of stories.
 3. Units allowed based on lot size: this is the lot area divided by `lotarea_per_unit`
 

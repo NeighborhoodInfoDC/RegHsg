@@ -173,10 +173,56 @@ se_compare <- se1 %>%
   group_by(zoning_code, dwelling_type)
 
 
+# how many observations are the same?
+
+se_compare %>% nrow() -
+se_compare %>% 
+  distinct(lot_area_min, lotarea_per_unit, height_ft, lot_coverage_max) %>% 
+  nrow()
+
+se_compare %>% 
+  group_by(dwelling_type) %>% 
+  count()
+
 ```
+Except for multiple-family, the special exceptions, within a dwelling_type, were the same as the by-right zoning codes. For many zoning codes, additional dwelling types were added. 
 
+### Dwelling type hierarchy
 
+We can adjust the hierarchy we used to select the most dense zoning codes in the previous analysis by adding those that now occur, and prioritizing the multiple-family dwelling type from the special exception over the by-right. 
 
+First, remove dwelling types that are not possible to include.
+
+```{r hier-dwell}
+
+zoningcode_se <- se_compare %>% 
+  ungroup() %>% 
+  filter(dwelling_type != "Low or Moderate Income Housing") %>% 
+  filter(!(dwelling_type %in% c("All",
+                                "All Other",
+                                "Duplex; share a lot line with RA, C, or M",
+                                "Semi-detatched; share a lot line with RA, C, or M"))
+           & n() > 1) %>% 
+  mutate(dwelling_type = ifelse(dwelling_type %in% c("Multiple-family", "Apartment"),
+                                "Multiple-family special exception",
+                                dwelling_type)) %>% 
+  mutate(dwelling_type = factor(dwelling_type,
+                                levels = c("Multiple-family special exception",
+                                           "Multiple-family",
+                                           "Townhouse, semi-detached, and existing one-family dwellings",
+                                           "Townhouse",
+                                           "Semi-detached",
+                                           "Duplex",
+                                           "Other Residential",
+                                           "One Family Dwelling")),
+         one_unit_flag = ifelse(dwelling_type == "One Family Dwelling",
+                                1,
+                                0),
+         two_unit_flag = ifelse(dwelling_type == "Duplex",
+                                1,
+                                0))
+
+```
 
 
 
