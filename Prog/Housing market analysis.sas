@@ -275,13 +275,13 @@ set Ipums.ACS_&year._dc Ipums.ACS_&year._md Ipums.ACS_&year._va;
 	if pernum = 1;
 
     if ownershpd in (21, 22) then do; /*renter*/
-		if rentgrs*12>= HHINCOME*0.3 then rentburdened=1;
-	    else if HHIncome~=. then rentburdened=0;
+		if rentgrs*12>= HHINCOME*0.3 then rentburdened_&year.=1;
+	    else if HHIncome~=. then rentburdened_&year.=0;
 	end;
 
     if ownershpd in ( 12,13 ) then do; /*owner*/
-		if owncost*12>= HHINCOME*0.3 then ownerburdened=1;
-	    else if HHIncome~=. then ownerburdened=0;
+		if owncost*12>= HHINCOME*0.3 then ownerburdened_&year.=1;
+	    else if HHIncome~=. then ownerburdened_&year.=0;
 	end;
 
 	tothh_&year. = 1;
@@ -293,14 +293,14 @@ run;
 
 proc summary data = rentercostburden_&year. (where=(ownershpd in (21, 22)));
 	class Jurisdiction;
-	var rentburdened tothh_&year.;
+	var rentburdened_&year. tothh_&year.;
 	weight hhwt;
 	output out = rentburdened_&year. sum=;
 run;
 
 proc summary data = rentercostburden_&year.  (where=(ownershpd in (12, 13)));
 	class Jurisdiction;
-	var ownerburdened tothh_&year.;
+	var ownerburdened_&year. tothh_&year.;
 	weight hhwt;
 	output out = ownerburdened_&year.  sum=;
 run;
@@ -344,7 +344,18 @@ data rentercostburden_2000 (where=(upuma in ("1100101",
 "5100200" ) and pernum=1 and gq in (1,2) and ownershd in ( 12,13,21,22 )));
 set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
 
-	%assign_jurisdiction; 
+
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400300") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
+  if upuma in ("5100600") then Jurisdiction =8;
+  if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
+  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
+
 
 	if gq in (1,2);
 	if pernum = 1;
@@ -366,37 +377,50 @@ run;
 proc sort data = usa_00026; by serial; run;
 
 data rentercostburden_2000_new;
-	merge rentercostburden_2000(in=a) usa_00026 (in=b) ;
+	merge rentercostburden_2000(in=a) usa_00027 (in=b) ;
 	by serial;
 	if a;
 
+if owncost=99999 then owncost=.;
+
 	if ownershd in (21, 22) then do; /*renter*/
-		if rentgrs*12>= HHINCOME*0.3 then rentburdened=1;
-	    else if HHIncome~=. then rentburdened=0;
+		if rentgrs*12>= HHINCOME*0.3 then rentburdened_2000=1;
+	    else if HHIncome~=. then rentburdened_2000=0;
 	end;
 
     if ownershd in ( 12,13 ) then do; /*owner*/
-		if owncost*12>= HHINCOME*0.3 then ownerburdened=1;
-	    else if HHIncome~=. then ownerburdened=0;
+		if owncost*12>= HHINCOME*0.3 then ownerburdened_2000=1;
+	    else if HHIncome~=. then ownerburdened_2000=0;
 	end;
 run;
 
-proc sort data=rentercostburden_2000;
+proc sort data=rentercostburden_2000_new;
 by Jurisdiction;
 run;
 
-proc summary data = rentercostburden_2000 (where=(ownershd in (21, 22)));
+proc summary data = rentercostburden_2000_new (where=(ownershd in (21, 22)));
 	class Jurisdiction;
-	var rentburdened tothh_2000;
+	var rentburdened_2000 tothh_2000;
 	weight hhwt;
 	output out = rentburdened_2000 sum=;
 run;
 
-proc summary data = rentercostburden_&year.  (where=(ownershd in (12, 13)));
+proc summary data = rentercostburden_2000_new  (where=(ownershd in (12, 13)));
 	class Jurisdiction;
-	var ownerburdened tothh_2000;
+	var ownerburdened_2000 tothh_2000;
 	weight hhwt;
 	output out = ownerburdened_2000 sum=;
+run;
+
+data allhousingburden;
+merge rentercostburden_2010 ownerburdened_2010 rentercostburden_2017 ownerburdened_2017 rentercostburden_2000_new rentercostburden_2000_new;
+by Jurisdiction;
+run;
+
+proc export data = allhousingburden
+   outfile="&_dcdata_default_path\RegHsg\Prog\all_housing_burden.csv"
+   dbms=csv
+   replace;
 run;
 
 /*building permit by building type*/
