@@ -39,6 +39,22 @@
 				"C4790" 	/* Washington-Arlington-Alexandria */
 				;
 
+%let RHFregion = "11001", /* Washington DC */
+					"24017", /* Charles */
+					"24021", /* Frederick */
+					"24031", /* Montgomery */
+					"24033", /* Prince George's */
+					"51013", /* Arlington */
+					"51059", /* Fairfax */
+					"51107", /* Loudoun */
+					"51153", /* Prince William */
+					"51510", /* Alexandria */
+					"51600", /* Fairfax City */
+					"51610", /* Falls Church City */
+					"51683", /* Manassas */
+					"51685"  /* Manassas Park */
+					;
+
 
 /* Macro to tanspose by year */
 %macro byyear (var);
@@ -78,10 +94,9 @@ run;
 
 /* Jobs by private, federal gov't, local/state gov't, 1990 - 2017 */
 data sectorjobs;
-	set bls.bls_allgeos_country;
+	set bls.bls_county_was15;
 
-	if area_type = "MSA";
-	if Area_Code in ("C4790"); *Washington MSA ;
+	if ucounty in (&RHFregion.); *RHF Defined Region ;
 	if naics = "10"; *Total, all industries ;
 
 	%macro yearloop;
@@ -108,10 +123,9 @@ run;
 
 /* Private sector jobs by industry, 1990 - 2017 */
 data industryjobs;
-	set bls.bls_allgeos_country;
+	set bls.bls_county_was15;
 
-	if area_type = "MSA";
-	if Area_Code in ("C4790"); *Washington MSA ;
+	if ucounty in (&RHFregion.); *RHF Defined Region ;
 	if own = "5"; *Private ;
 
 	%macro yearloop;
