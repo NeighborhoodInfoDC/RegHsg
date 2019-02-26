@@ -77,11 +77,61 @@ filepath <- "DC"
 Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
 
 ```{r read}
-if (!exists("jur")) {
-  jur <- read_arlington()
-} else {
-  warning(filepath, " data already read in")r
+
+read_dc <- function(rmd = TRUE) {
+  
+  filename <- paste0("L:/Libraries/RegHsg/Data/", filepath,
+                     "/", filepath, "-cleaned-data.csv")
+  
+  if (!file.exists(filename)) {
+    stop("cleaned data not found in Data directory")
+  } else {
+    
+    read_csv(filename,
+             col_types = cols(county_fips = col_character(),
+                              county_name = col_character(),
+                              parcelbase_SSL = col_character(),
+                              propaddress = col_character(),
+                              propcity = col_character(),
+                              propstate = col_character(),
+                              propzip = col_character(),
+                              propunitno = col_character(),
+                              prophouseno = col_character(),
+                              propstreetname = col_character(),
+                              propstreetsuffix = col_character(),
+                              lat = col_double(),
+                              long = col_double(),
+                              tract = col_character(),
+                              owneroccupiedresidential = col_character(),
+                              countylandusedescription = col_character(),
+                              zoning = col_character(),
+                              buildingarea = col_double(),
+                              noofbuildings = col_character(),
+                              noofstories = col_character(),
+                              numberofunits = col_integer(),
+                              yearbuilt = col_integer(),
+                              lotsize_acres = col_double(),
+                              lotsize_sf = col_double(),
+                              address_type = col_character(),
+                              category = col_character(),
+                              category_detail = col_character(),
+                              residential = col_integer(),
+                              building_type = col_character(),
+                              parcelbase_address = col_character(),
+                              parcelbase_usecode = col_character(),
+                              parcelgeo_x = col_double(),
+                              parcelgeo_y = col_double(),
+                              vacant_flag = col_integer()))
+  }
 }
+
+
+if (!exists("jur")) {
+  jur <- read_dc()
+} else {
+  warning(filepath, " data already read in")
+}
+
 
 ```
 
@@ -110,9 +160,10 @@ if (!file.exists(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
 
 ```{r read-zoning-csv}
 z <- cols(
-  Code = col_character(),
+   `Code` = col_character(),
   `District Type` = col_character(),
   `Type of Dwelling` = col_character(),
+  `Number of Dwelling units allowed` = col_number(),
   `Site Area` = col_number(),
   `Lot area` = col_number(),
   `Lot area per dwelling unit (sq. ft.) (minimum)` = col_number(),
@@ -120,34 +171,110 @@ z <- cols(
   `Height (ft)` = col_double(),
   `Height (stories)` = col_double(),
   `Lot coverage maximum` = col_number(),
-  `Floor area minimum` = col_double(),
+  `Floor area ratio max`=col_double(),
   `Maximum Density of Floor-Area-Ratio (FAR)` = col_character(),
   `Setbacks (centerline)` = col_character(),
   `Setbacks (right of way line)` = col_double(),
-  `Front/Side yard (ft)` = col_double(),
+  `Side yard (ft)` = col_number(),
   `Side yard (both sides: minimum percent of required width)` = col_number(),
-  Frontage = col_double(),
-  Comments = col_character()
+  `Rear yard` = col_double(),
+  `Frontage` = col_double(),
+  `Comments` = col_character()
 )
+
 
 zoningcode <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
                               filepath,
-                              "-zoning-code.csv"),
+                              " zoning code.csv"),
                        col_types = z)
 
 names(zoningcode) <- 
-  c("zoning_code", "district_type", "dwelling_type",
+  c("zoning_code", "district_type", "dwelling_type","dwelling_units_allowed",
     "site_area", "lot_area_min", "lotarea_per_unit",
     "lot_width", "height_ft", "height_stories",
-    "lot_coverage_max", "floor_area_min", "far_max",
+    "lot_coverage_max","floor_area_ratio_max", "far_max",
     "setbacks_center", "setbacks_row",
-    "front_side_yard", "side_yard", "frontage", "comments")
+    "front_side_yard", "side_yard_bothside","rear_side_yard", "frontage", "comments")
 
 # fix variables read in as whole numbers (should be percent)
 zoningcode <- zoningcode %>% 
-  mutate_at(vars(lot_coverage_max, side_yard),
+  mutate_at(vars(lot_coverage_max, side_yard_bothside),
             ~ . / 100)
 rm(z)
 
 ```
 
+### Creating dwelling_type hierarchy
+
+For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most dense construction for that zone. 
+
+First, we look at all the options, and filter out all the observations marked as "other", since we cannot be sure what property type that refers to. We will also filter out categories that are dependent on adjacent lot lines.
+
+```{r tab-dwellings}
+zoningcode %>% 
+  count(dwelling_type) %>% 
+  knitr::kable()
+```
+
+Count the number of unique zoning codes to make sure we won't get rid of any codes entirely.
+
+```{r count-zoning}
+length(unique(zoningcode$zoning_code))
+
+```
+Filter out dwelling_types of "All", "All Other", and those that are dependent on a shared boundary.
+
+```{r purge}
+zoningcode1 <- zoningcode %>% 
+  group_by(zoning_code) %>% 
+  filter(!(dwelling_type %in% c("All",
+                               "all other structures")
+           & n() > 1)) %>% 
+  ungroup()
+
+```
+
+ Make sure we did not lose any zoning codes entirely.
+```{r responsible-purge}
+
+stopifnot(length(unique(zoningcode$zoning_code))
+          == length(unique(zoningcode1$zoning_code)))
+
+```
+
+Since the variables are not always comparable, the following order, from most to least dense, applies:
+
+1. Multiple-family
+2. Townhouse
+3. Semi-detached
+4. Duplex
+5. Other Residential
+6. One Family Dwelling
+
+
+### Create factor variable
+To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
+We will also create a designation for dwelling types that are restricted to a certain amount of units (one unit for "One Family Dwelling" and one for two units for "Duplex"). 
+
+**NOTE** This will be VERY jurisdiction specific.
+
+**NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
+
+```{r dwelling-factor}
+
+zoningcode1 <- zoningcode1 %>% 
+  mutate(dwelling_type = factor(dwelling_type,
+                                levels = c("Multiple-family",
+                                           "Townhouse",
+                                           "Semi-detached",
+                                           "Duplex",
+                                           "Other Residential",
+                                           "One Family Dwelling")),
+         one_unit_flag = ifelse(dwelling_type == "One Family Dwelling",
+                                1,
+                                0),
+         two_unit_flag = ifelse(dwelling_type == "Duplex",
+                                1,
+                                0))
+
+```
