@@ -1232,11 +1232,7 @@ saveRDS(finaljur,
 ```
 
 
-
+*Patrick* Removed writing out clean data step because will write out csv after merge
 Write out clean data.
 
-```{r write}
-write_csv(finaljur, 
-          paste0(jdir, 
-               "cleaned-", filepath, "-data.csv"))
-```
+
