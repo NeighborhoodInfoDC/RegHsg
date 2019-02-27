@@ -293,3 +293,272 @@ zoningcode1 <- zoningcode1 %>%
                                 0))
 
 ```
+
+## Clean vacant lots data
+
+Select only vacant lots
+
+```{r res}
+
+vacant <- jur %>% 
+  filter(category == "vacant")
+  
+```
+
+See how many lots have missing key variables
+
+```{r missing}
+vacant %>% 
+  mutate(num = NA) %>% 
+  group_by(category_detail) %>% 
+  summarize_at(vars(propaddress, lotsize_sf, zoning, num),
+               ~ sum(is.na(.))) %>% 
+  mutate_at(vars(propaddress, lotsize_sf, zoning),
+            .funs = list(percent = ~scales::percent(. / num))) %>% 
+  knitr::kable(caption = "Number and percent of missing values")
+
+```
+
+### Missing lot size
+We filled in the missing lot size, when we can, with the cleaned parcelbase lot area data in the clean DC step. So skip this step.
+
+
+We have 788 lotsize missing after the cleaning. 
+
+```{r count-lots}
+sum(is.na(vacant$lotsize_sf))
+```
+
+### Assessment values
+
+The difference between the land value, improvement value, and total value can help us determine if lots are really vacant.
+
+```{r check-assess}
+
+vacant %>% 
+  group_by(category_detail) %>% 
+  summarize(nprops = n(),
+            imp_zero = sum(assessedimprovementvalue == 0, na.rm = TRUE),
+            imp_na = sum(is.na(assessedimprovementvalue))) %>% 
+  mutate(imp_none = imp_zero + imp_na,
+         percent_none = imp_none / nprops) %>% 
+  knitr::kable()
+  
+
+
+```
+
+All of the vacant properties in DC have either a 0 or a missing value for the improvement value, which is what we would expect. 
+
+```{r not-so-vacant}
+
+vacantstructure <- vacant%>% 
+  filter(category_detail=="Vacant with structures") %>% 
+  group_by(countylandusedescription) %>% 
+  summarize(n=n()) 
+
+```
+
+We will not include these in the calculation. We can also make a flag for missing coordinates.
+
+```{r not-vacant-recat}
+
+vacant1 <- vacant %>% 
+  filter(category_detail == "Vacant unimproved") %>% 
+  mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
+                                1,
+                                0))
+```
+
+### Missing zoning variables
+
+To determine zoning codes for addresses that have a missing zoning designation or multiple zoning designations, we will use a spatial join to the county's zoning layer.
+
+Read in zoning layer, set CRS
+```{r read-zoning}
+zdir <- paste0("L:/Libraries/RegHsg/Maps/",
+               filepath,
+               "-zoning-map")
+zfile <- str_sub(list.files(zdir), end = -5) %>% unique()
+
+zon <- read_sf(dsn = zdir,
+               layer = zfile)
+
+st_geometry(zon)
+zon <- st_transform(zon, crs = 4326)
+
+```
+
+Convert vacant lots to SF, set CRS. To convert to SF, we need to use only the observations with non-missing longitude and latitude. We separate these off and recombine after the spatial join.
+
+```{r convert-sf}
+vacantsf <- vacant1 %>% 
+  filter(missing_coord == 0) %>% 
+  st_as_sf(coords = c("long", "lat")) %>% 
+  st_set_crs(st_crs(zon))
+```
+
+Plot to make sure they are overlapping
+```{r make-map, echo=FALSE}
+ggplot() +
+  geom_sf(data = zon, mapping = aes(fill = ZONE_DISTR)) +
+  scale_fill_manual(values = c("#1696d2", "#fdbf11", 
+                               "#d2d2d2", "#ec008b", 
+                               "#55b748", "red", "green", "yellow", "blue")) +
+  geom_sf(data = vacantsf, mapping = aes(),
+          color = "black", size=0.1)
+
+```
+
+Spatial join
+
+```{r spatial-join}
+
+vacantjoin <- st_join(vacantsf, zon, join = st_intersects)
+
+```
+
+After the join, we convert back to a dataframe, for ease of computations.
+```{r back-to-df}
+
+vacant2 <- st_set_geometry(vacantjoin, NULL)
+
+```
+
+Count how many observations did not join.(0) This will throw an error if more than 5% did not match- in this case, check the underlying shapefiles for compatability.
+
+```{r count-spatial}
+
+paste0(sum(is.na(vacant2$ZONING_LAB)), " observations didn't join- ",
+      round(sum(is.na(vacant2$ZONING_LAB)) / nrow(vacant2) * 100, 2), "%")
+
+if (sum(is.na(vacant2$ZONING_LAB)) / nrow(vacant2) > .05) {
+  stop("More than 5% of observations could not be spatially joined.")
+}
+      
+```
+
+Test how many have different results from the Black Knight zoning variable.
+
+```{r test-spatial}
+
+vacant2 %>% 
+  group_by(is.na(zoning)) %>% 
+  count(zoning == ZONING_LAB)
+
+```
+
+Take a closer look how many and what percent are different "just because"- not because they didn't merge, have missing values, or have duplicate values.
+
+```{r test-spatial-again}
+
+vacant2 %>% 
+  filter(!is.na(zoning), 
+         !is.na(ZONING_LAB), 
+         str_detect(zoning, "/") == FALSE) %>% 
+  mutate(different_flag = ifelse(zoning != ZONING_LAB,
+                                 1,
+                                 0)) %>% 
+  summarize(different = sum(different_flag, na.rm = TRUE)) %>% 
+  mutate(percent_different = paste0(round(different / nrow(vacant1) *100, 2), "%"))
+
+```
+Many are different because the Black Knight zoning has two zoning codes, separated by a slash. We can test how many of these instances have the spatially joined zoning designation in the Black Knight zoning variable. 
+
+```{r slashes}
+
+vacant2 %>% 
+  filter(str_detect(zoning, ",")) %>% 
+  count(str_detect(zoning, ZONING_LAB))
+
+
+```
+
+If the zoning is missing OR the zoning contains a slash and the spatially joined zoning designation is one of the dual descriptions, we replace with spatial joined zoning. Archive Black Knight zoning variable for future reference.
+
+```{r zoning-swap}
+
+vacant3 <- vacant2 %>% 
+  mutate(zoning_bk = zoning,
+         zoning = ifelse(is.na(zoning), 
+                         ZONING_LAB, 
+                         zoning),
+         zoning = ifelse(str_detect(zoning, "/") == TRUE &
+                           str_detect(zoning_bk, ZONING_LAB) == TRUE,
+                         ZONING_LAB,
+                         zoning)) 
+
+```
+
+Recombine with observations with missing coordinates, check that number of rows is the same.
+
+```{r get-final}
+
+vacanttotal <- vacant1 %>% 
+  filter(is.na(lat) | is.na(long)) %>% 
+  mutate(zoning_bk = zoning) %>% 
+  bind_rows(vacant3)
+
+stopifnot(nrow(vacanttotal) == nrow(vacant1))
+
+```
+
+### Dual zoning codes
+
+The last step is to identify a zoning designation for observations that either...
+
+1. Have missing coordinates and have a dual zoning designation from Black Knight
+2. Have a dual zoning designation from Black Knight but one of the zoning codes does not match the results from the spatial join. 
+
+First, isolate these observations and separate each zoning code into its own observation. 
+**NOTE:** For Arlington, the max codes was 4- adjust the `into = ` argument accordingly for each jurisdiction.
+
+```{r real-final}
+
+dual <- vacanttotal %>% 
+  filter((str_detect(zoning, ",") == TRUE & 
+            str_detect(zoning_bk, ZONING_LAB) == FALSE) |
+          (str_detect(zoning, ",") == TRUE &
+           missing_coord == TRUE)) %>% 
+  separate(zoning_bk, 
+           into = c("z1", "z2", "z3", "z4", "z5", "z6", "z7"),
+           sep = ",",
+           remove = FALSE)
+
+```
+Get rid of values that are NOT in the cleaned zoning code data. These codes do not allow for residential development. So all the zoning code from black knight data are different than the DC zoning code spreadsheet. ?????
+
+```{r no-non-res}
+
+dual <- dual %>% 
+  mutate_at(vars(z1, z2, z3, z4, z5, z6, z7),
+            ~ ifelse(!. %in% zoningcode1$zoning_code,
+                     NA,
+                     .))
+
+```
+
+Convert to long so that we can list the zoning variables- then `group_by` the parcel ID, and check the lengths to make sure that is unique, so that we can merge results back in.
+
+```{r long}
+
+vacantlong <- dual %>% 
+  gather(key = "position", value = "code", -c(1:74, 81:93))
+
+dual2 <- vacantlong %>% 
+  group_by(parcelbase_SSL) %>% 
+  summarize(zlist = list(code))
+
+stopifnot(nrow(dual) == nrow(dual2))
+
+```
+
+If there is only one code left after getting rid of the ones that don't allow for residential codes, take that code.
+
+```{r true1}
+dual2 <- dual2 %>% 
+  mutate(count = map(zlist, ~ sum(!is.na(.)))) %>% 
+  mutate(zoning_true = ifelse(count == 1,
+                              map(zlist, max, na.rm = TRUE),
+                              ""))
+```
