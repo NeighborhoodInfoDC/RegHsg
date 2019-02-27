@@ -371,8 +371,7 @@ vacant1 <- vacant %>%
 ```
 
 ### Missing zoning variables
-
-To determine zoning codes for addresses that have a missing zoning designation or multiple zoning designations, we will use a spatial join to the county's zoning layer.
+Blackknight zoning data for DC is outdated, making it complicated to crosswalk that to the new zoning code and our zoning statistics, we will use a spatial join to the county's zoning layer to get zoning information for all parcels. 
 
 Read in zoning layer, set CRS
 ```{r read-zoning}
@@ -438,13 +437,17 @@ if (sum(is.na(vacant2$ZONING_LAB)) / nrow(vacant2) > .05) {
       
 ```
 
-Test how many have different results from the Black Knight zoning variable.
+Test how many have different results from the Black Knight zoning variable. 3804 of 8661 were the same if using new zoning code. 5448 of 8661 were the same if using old zoning code in the shapefile.
 
 ```{r test-spatial}
 
 vacant2 %>% 
   group_by(is.na(zoning)) %>% 
   count(zoning == ZONING_LAB)
+
+vacant2 %>% 
+  group_by(is.na(zoning)) %>% 
+  count(zoning == OLD_ZONING)
 
 ```
 
@@ -454,41 +457,17 @@ Take a closer look how many and what percent are different "just because"- not b
 
 vacant2 %>% 
   filter(!is.na(zoning), 
-         !is.na(ZONING_LAB), 
-         str_detect(zoning, "/") == FALSE) %>% 
-  mutate(different_flag = ifelse(zoning != ZONING_LAB,
+         !is.na( OLD_ZONING), 
+         str_detect(zoning, ",") == FALSE) %>% 
+  mutate(different_flag = ifelse(zoning !=  OLD_ZONING,
                                  1,
                                  0)) %>% 
   summarize(different = sum(different_flag, na.rm = TRUE)) %>% 
   mutate(percent_different = paste0(round(different / nrow(vacant1) *100, 2), "%"))
 
 ```
-Many are different because the Black Knight zoning has two zoning codes, separated by a slash. We can test how many of these instances have the spatially joined zoning designation in the Black Knight zoning variable. 
 
-```{r slashes}
-
-vacant2 %>% 
-  filter(str_detect(zoning, ",")) %>% 
-  count(str_detect(zoning, ZONING_LAB))
-
-
-```
-
-If the zoning is missing OR the zoning contains a slash and the spatially joined zoning designation is one of the dual descriptions, we replace with spatial joined zoning. Archive Black Knight zoning variable for future reference.
-
-```{r zoning-swap}
-
-vacant3 <- vacant2 %>% 
-  mutate(zoning_bk = zoning,
-         zoning = ifelse(is.na(zoning), 
-                         ZONING_LAB, 
-                         zoning),
-         zoning = ifelse(str_detect(zoning, "/") == TRUE &
-                           str_detect(zoning_bk, ZONING_LAB) == TRUE,
-                         ZONING_LAB,
-                         zoning)) 
-
-```
+I'm skipping the comparing blacknight zoning with shapefile zoning because 1. We can only compare the old zoning data. 2. The crosswalk is one directional-- there's no way we can infer the new zoning code from old one, other than the spatial join. So I'm going to use zoning code from the spatial join and merge it with the zoning statistics spreadsheet. 
 
 Recombine with observations with missing coordinates, check that number of rows is the same.
 
@@ -497,7 +476,7 @@ Recombine with observations with missing coordinates, check that number of rows 
 vacanttotal <- vacant1 %>% 
   filter(is.na(lat) | is.na(long)) %>% 
   mutate(zoning_bk = zoning) %>% 
-  bind_rows(vacant3)
+  bind_rows(vacant2)
 
 stopifnot(nrow(vacanttotal) == nrow(vacant1))
 
@@ -505,60 +484,32 @@ stopifnot(nrow(vacanttotal) == nrow(vacant1))
 
 ### Dual zoning codes
 
-The last step is to identify a zoning designation for observations that either...
-
-1. Have missing coordinates and have a dual zoning designation from Black Knight
-2. Have a dual zoning designation from Black Knight but one of the zoning codes does not match the results from the spatial join. 
-
-First, isolate these observations and separate each zoning code into its own observation. 
-**NOTE:** For Arlington, the max codes was 4- adjust the `into = ` argument accordingly for each jurisdiction.
+The last step is to identify a zoning designation from shapefile that has more than 1 code. There's no dual zoning code from the shapefile. 
 
 ```{r real-final}
 
 dual <- vacanttotal %>% 
-  filter((str_detect(zoning, ",") == TRUE & 
-            str_detect(zoning_bk, ZONING_LAB) == FALSE) |
-          (str_detect(zoning, ",") == TRUE &
-           missing_coord == TRUE)) %>% 
-  separate(zoning_bk, 
-           into = c("z1", "z2", "z3", "z4", "z5", "z6", "z7"),
-           sep = ",",
-           remove = FALSE)
-
-```
-Get rid of values that are NOT in the cleaned zoning code data. These codes do not allow for residential development. So all the zoning code from black knight data are different than the DC zoning code spreadsheet. ?????
-
-```{r no-non-res}
-
-dual <- dual %>% 
-  mutate_at(vars(z1, z2, z3, z4, z5, z6, z7),
-            ~ ifelse(!. %in% zoningcode1$zoning_code,
-                     NA,
-                     .))
+  filter((str_detect(ZONING_LAB, ",") == TRUE)) 
 
 ```
 
-Convert to long so that we can list the zoning variables- then `group_by` the parcel ID, and check the lengths to make sure that is unique, so that we can merge results back in.
+## Merge with cleaned data
 
-```{r long}
+```{r zoning-merge}
 
-vacantlong <- dual %>% 
-  gather(key = "position", value = "code", -c(1:74, 81:93))
+vacantfinal <- vacanttotal %>% 
+        mutate(zoning_code=ZONING_LAB)
 
-dual2 <- vacantlong %>% 
-  group_by(parcelbase_SSL) %>% 
-  summarize(zlist = list(code))
-
-stopifnot(nrow(dual) == nrow(dual2))
+zoningdata <- left_join(vacantfinal, zoningcode1, by = "zoning_code")
 
 ```
 
-If there is only one code left after getting rid of the ones that don't allow for residential codes, take that code.
+There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the shapefile data but NOT in the zoning code data.We need to take out the dashes in the zoning code. 
 
-```{r true1}
-dual2 <- dual2 %>% 
-  mutate(count = map(zlist, ~ sum(!is.na(.)))) %>% 
-  mutate(zoning_true = ifelse(count == 1,
-                              map(zlist, max, na.rm = TRUE),
-                              ""))
+```{r antijoin}
+
+anti_join(vacantfinal, zoningcode1, by = c("zoning_code")) %>% 
+  count(ZONING_LAB) %>% 
+  knitr::kable()
+
 ```
