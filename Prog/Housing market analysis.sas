@@ -156,11 +156,11 @@ set Ipums.Acs_2010_vacant_dc Ipums.Acs_2010_vacant_md Ipums.Acs_2010_vacant_va ;
   if upuma in ("2400300") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
   if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5100100") then Jurisdiction =6;
   if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
   if upuma in ("5100600") then Jurisdiction =8;
   if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
-  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
+  if upuma in ("5100200") then Jurisdiction =10; 
 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
 if UNITSSTR =05 then structuretype=2; /*duplex*/
@@ -217,18 +217,16 @@ data COGSarea_2010 (where=(upuma in ("1100101",
 "5100200") and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 set Ipums.Acs_2010_dc Ipums.Acs_2010_md Ipums.Acs_2010_va;
 
-
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
   if upuma in ("2400300") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
   if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5100100") then Jurisdiction =6;
   if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
   if upuma in ("5100600") then Jurisdiction =8;
   if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
-  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
-
+  if upuma in ("5100200") then Jurisdiction =10; 
 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
 if UNITSSTR =05 then structuretype=2; /*duplex*/
@@ -289,11 +287,11 @@ set Ipums.Ipums_2000_vacant_dc Ipums.Ipums_2000_vacant_md Ipums.Ipums_2000_vacan
   if upuma in ("2400300") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
   if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5100100") then Jurisdiction =6;
   if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
   if upuma in ("5100600") then Jurisdiction =8;
   if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
-  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
+  if upuma in ("5100200") then Jurisdiction =10; 
 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
 if UNITSSTR =05 then structuretype=2; /*duplex*/
@@ -358,11 +356,11 @@ set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
   if upuma in ("2400300") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
   if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5100100") then Jurisdiction =6;
   if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
   if upuma in ("5100600") then Jurisdiction =8;
   if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
-  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
+  if upuma in ("5100200") then Jurisdiction =10; 
 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
 if UNITSSTR =05 then structuretype=2; /*duplex*/
@@ -388,6 +386,7 @@ proc sort data= COGSareaunits_2000;
 by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 run;
 
+/*don't have to reweight Loudoun vacancy rate because it is a rate*/
 data COGSunits;
 merge COGSareaunits_2000 COGSvacantunits_2000 COGSareaunits_2010 COGSvacantunits_2010 COGSareaunits_2017 COGSvacantunits_2017;
 by Jurisdiction structuretype bedrooms Tenure _TYPE_;
@@ -481,17 +480,16 @@ data rentercostburden_2010 (where=(upuma in ("1100101",
 "5100200" ) and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 set Ipums.ACS_2010_dc Ipums.ACS_2010_md Ipums.ACS_2010_va;
 
-
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
   if upuma in ("2400300") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
   if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5100100") then Jurisdiction =6;
   if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
   if upuma in ("5100600") then Jurisdiction =8;
   if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
-  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
+  if upuma in ("5100200") then Jurisdiction =10; 
 
 	if gq in (1,2);
 	if pernum = 1;
@@ -561,18 +559,16 @@ data rentercostburden_2000 (where=(upuma in ("1100101",
 "5100200" ) and pernum=1 and gq in (1,2) and ownershd in ( 12,13,21,22 )));
 set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
 
-
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
   if upuma in ("2400300") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
   if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5100100") then Jurisdiction =6;
   if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
   if upuma in ("5100600") then Jurisdiction =8;
   if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
-  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
-
+  if upuma in ("5100200") then Jurisdiction =10; 
 
 	if gq in (1,2);
 	if pernum = 1;
@@ -629,10 +625,24 @@ proc summary data = rentercostburden_2000_new  (where=(ownershd in (12, 13)));
 	output out = ownerburdened_2000 sum=;
 run;
 
+/*use HH count from NCDB and PUMA to weight the Loudoun number:
+
+NCDB: hh00 59921
+      hh10 104583
+IPUMS hh00 97263
+      hh10 145906
+*/
+
 data allhousingburden;
 merge rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 rentburdened_2000 ownerburdened_2000;
 by Jurisdiction;
 format Jurisdiction Jurisdiction.;
+if Jurisdiction=8 then rentburdened_2010= rentburdened_2010*(104583/145906);
+if Jurisdiction=8 then tothh_2010= tothh_2010*(104583/145906);
+if Jurisdiction=8 then ownerburdened_2010= ownerburdened_2010*(104583/145906);
+if Jurisdiction=8 then rentburdened_2000= rentburdened_2000*(59921/97263);
+if Jurisdiction=8 then ownerburdened_2000= ownerburdened_2000*(59921/97263);
+if Jurisdiction=8 then tothh_2000= tothh_2000*(59921/97263);
 run;
 
 data allhousingburden;
