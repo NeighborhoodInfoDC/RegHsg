@@ -39,6 +39,8 @@ knitr::opts_chunk$set(message = FALSE)
 
 The goal of this analysis is to modify the previous vacant lots analysis to include special exceptions that are written into the zoning code. We will rely on two datasets that were created in `vacant-lots-arlington.Rmd` - the cleaned general zoning code, and the cleaned set of vacant lots.
 
+The site plan process is mostly used for multifamily construction, so we will consider only the special exceptions for multiple family dwellings.
+
 
 ## Set-up
 Load libraries and functions
@@ -52,9 +54,6 @@ set_urbn_defaults("print")
 
 Create directory for data exports
 ```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
-}
 
 if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
   dir.create("L:/Libraries/RegHsg/Prog/Tables")
@@ -151,29 +150,50 @@ se1 %>%
   nrow()
 
 ```
+Filter out multiple-family exceptions.
 
-### Compare special exceptions with by-right
+```{r get-mf}
 
-In order to decide where special exceptions should be used, we need to compare those observations that have the same `dwelling_type` in the regular zoning code. 
+semf <- se1 %>% 
+  filter(dwelling_type == "Multiple-family")
 
-To simplify the process- select only the variables that are needed for the vacant lots calculation:
-`lot_area`, `lot_area_per_unit`, `height_ft`, and `lot_coverage_max`. Keep `zoning_code` and `dwelling_type` for identification. Also keep the `special_exception` flag we created.
+```
+
+### Fill in missing variables in special exceptions
+
+If the special exceptions inherit the same stipulations as the by-right zoning code, the fields were left blank. Use `fill()` to fill in these gaps.
+
+Replace missing lot coverage maximums with 56%- this is to be used if there is no specific designation, per the Arlington County zoning code.
 
 ```{r fil}
 
-se_compare <- se1 %>% 
-  select(zoning_code, dwelling_type,
-         lot_area_min, lotarea_per_unit,
-         height_ft, lot_coverage_max,
-         special_exception) %>% 
-  bind_rows(select(zoningcode,
-         zoning_code, dwelling_type,
-         lot_area_min, lotarea_per_unit,
-         height_ft, lot_coverage_max, special_exception)) %>% 
-  group_by(zoning_code, dwelling_type)
+mf_fill <- semf %>% 
+  bind_rows(filter(zoningcode,
+                   zoning_code %in% semf$zoning_code,
+                   dwelling_type == "Multiple-family")) %>% 
+  group_by(zoning_code, dwelling_type) %>% 
+  fill(lot_area_min, .direction = "down") %>% 
+  fill(lot_area_min, .direction = "up") %>% 
+  fill(lotarea_per_unit, .direction = "down") %>% 
+  fill(lotarea_per_unit, .direction = "up") %>%
+  fill(height_ft, .direction = "down") %>% 
+  fill(height_ft, .direction = "up") %>% 
+  fill(lot_coverage_max, .direction = "down") %>% 
+  fill(lot_coverage_max, .direction = "up") %>% 
+  mutate(lot_coverage_max = ifelse(is.na(lot_coverage_max),
+                                   .56,
+                                   lot_coverage_max))
 
+```
+
+There are four zoning codes that only allow for multiple-family development via special exception. The stipulations vary based on the 
+
+56 percent if no coverage ratio
+create two height variables and take the lower
+FAR / 
 
 # how many observations are the same?
+```{r }
 
 se_compare %>% nrow() -
 se_compare %>% 
@@ -185,6 +205,7 @@ se_compare %>%
   count()
 
 ```
+
 Except for multiple-family, the special exceptions, within a dwelling_type, were the same as the by-right zoning codes. For many zoning codes, additional dwelling types were added. 
 
 ### Dwelling type hierarchy
@@ -209,7 +230,6 @@ zoningcode_se <- se_compare %>%
   mutate(dwelling_type = factor(dwelling_type,
                                 levels = c("Multiple-family special exception",
                                            "Multiple-family",
-                                           "Townhouse, semi-detached, and existing one-family dwellings",
                                            "Townhouse",
                                            "Semi-detached",
                                            "Duplex",
@@ -223,12 +243,4 @@ zoningcode_se <- se_compare %>%
                                 0))
 
 ```
-
-
-
-
-
-
-
-
 
