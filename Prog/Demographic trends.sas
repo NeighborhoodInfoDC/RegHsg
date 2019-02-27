@@ -71,6 +71,14 @@ proc format;
     0 = 'Not Hispanic'
     1 = 'Hispanic';
 
+ value hhcat
+     .n = 'Not available'
+    1 = 'Single'
+	2= 'Couple without children'
+	3='other families'
+	4='2+ unrelated person only'
+	5='Other household'
+;
   value Jurisdiction
     1= "DC"
 	2= "Charles County"
@@ -511,16 +519,7 @@ data persons_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104"
 set Ipums.ACS_&year._dc Ipums.ACS_&year._va Ipums.ACS_&year._md;
 keep upuma race hispan age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_&year. BPL foreignborn COG;
 
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
-  if upuma in ("2401600") then Jurisdiction =2;
-  if upuma in ("2400301", "2400302") then Jurisdiction =3;
-  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
-  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
-  if upuma in ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") then Jurisdiction =7;
-  if upuma in ("5110701", "5110702" , "5110703") then Jurisdiction =8;
-  if upuma in ("5151244", "5151245", "5151246") then Jurisdiction =9; 
-  if upuma in ("5151255") then Jurisdiction =10; 
+	%assign_jurisdiction; 
 
 if hispan=0 then do;
 
@@ -572,10 +571,101 @@ run;
 
 %mend popbyrace;
 
-%popbyrace(2010);
 %popbyrace(2017);
 
-/*From census17 totalpop= 5578568 from ACS17 totalpop= 5579320 the new weight for IPUMS2017: 5578568/5579320*hhwt= 1*hhwt Don't need to calibrate*/
+data persons_2010 (where=(upuma in ("1100101",
+"1100102",
+"1100103",
+"1100104",
+"1100105",
+"2401600",
+"2400300",
+"2401001",
+"2401002",
+"2401003",
+"2401004",
+"2401005",
+"2401006",
+"2401007",
+"2401101",
+"2401102",
+"2401103",
+"2401104",
+"2401105",
+"2401106",
+"2401107",
+"5100101",
+"5100100",
+"5100301",
+"5100302",
+"5100303",
+"5100304",
+"5100305",
+"5100600",
+"5100501",
+"5100502",
+"5100200"
+)))  ;
+set Ipums.ACS_2010_dc Ipums.ACS_2010_va Ipums.ACS_2010_md;
+keep upuma race hispan age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_2010 BPL foreignborn COG;
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400300") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5100100") then Jurisdiction =6;
+  if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
+  if upuma in ("5100600") then Jurisdiction =8;
+  if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
+  if upuma in ("5100200") then Jurisdiction =10; 
+
+if hispan=0 then do;
+
+ if race=1 then race1=1;
+ else if race=2 then race1=2;
+ else race1=4;
+end;
+
+if hispan in(1, 2, 3, 4) then race1=3;
+
+if 0<=age<5 then age0=1;
+else if 5<=age<10 then age0=2;
+else if 10<=age<15 then age0=3;
+else if 15<=age<20 then age0=4;
+else if 20<=age<25 then age0=5;
+else if 25<=age<30 then age0=6;
+else if 30<=age<35 then age0=7;
+else if 35<=age<40 then age0=8;
+else if 40<=age<45 then age0=9;
+else if 45<=age<50 then age0=10;
+else if 50<=age<55 then age0=11;
+else if 55<=age<60 then age0=12;
+else if 60<=age<65 then age0=13;
+else if 65<=age<70 then age0=14;
+else if 70<=age<75 then age0=15;
+else if 75<=age<80 then age0=16;
+else if 80<=age<85 then age0=17;
+else if age>=85 then age0=18;
+
+if BPL in (100:950) then foreignborn=1;
+else if BPL=999 then foreignborn=.n;
+else foreignborn=0;
+
+totpop_2010 = 1;
+COG=1;
+run;
+
+proc summary data = persons_2010 ;
+	class Jurisdiction age0 race1 foreignborn;
+	var totpop_2010;
+	weight perwt;
+	output out = agegroup_race_immigration_2010 sum=;
+	format race1 racenew. age0 agegroup. Jurisdiction Jurisdiction. foreignborn foreignborn.;
+run;
+
+proc sort data=agegroup_race_immigration_2010(drop= _FREQ_ );
+by Jurisdiction age0 race1 foreignborn _TYPE_;
+run;
 
 data persons_2000(where=(upuma in ("1100101",
 "1100102",
@@ -618,11 +708,11 @@ keep upuma racgen00 hispand age pernum gq Jurisdiction hhwt perwt year serial nu
   if upuma in ("2400300") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
   if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5101301", "5101302") then Jurisdiction =6;
+  if upuma in ("5100100") then Jurisdiction =6;
   if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
   if upuma in ("5100600") then Jurisdiction =8;
   if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
-  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
+  if upuma in ("5100200") then Jurisdiction =10; 
 
 if hispand=0 then do;
 
@@ -675,9 +765,12 @@ proc sort data=agegroup_race_immigration_00 (drop= _FREQ_ );
 by Jurisdiction age0 race1 foreignborn _TYPE_;
 run;
 
+/*from NCDB pop10: 312311, pop00: 169599 for Loudon. From Ipums: pop00: 268888, pop10: 432211 use the ratio to adjust ipums*/
 data popbreakdown;
 merge agegroup_race_immigration_00 agegroup_race_immigration_2010 agegroup_race_immigration_2017;
 by Jurisdiction age0 race1 foreignborn _TYPE_;
+if Jurisdiction=8 then totpop_00=totpop_00*(169599/268888); 
+if Jurisdiction=8 then totpop_2010=totpop_2010*(312311/432211);
 run;
 
 proc export data = popbreakdown
@@ -766,6 +859,7 @@ run;
 proc summary data= vacantunits;
 	class Jurisdiction;
 	var totalunits vacunit;
+	weight hhwt;
 	output out = vacancyrate  sum=;
 	format Jurisdiction Jurisdiction. ;
 	run;
@@ -859,6 +953,7 @@ run;
 proc summary data=hhrelate_&year.;
   class serial;
   var notnonrelate totnumpop;
+  weight hhwt;
   output out =aaa_&year. sum= ;
 run;
 
@@ -872,8 +967,63 @@ end;
 run;
 
 %mend hhnonrelate;
-%hhnonrelate(2010);
 %hhnonrelate(2017);
+
+data hhrelate_2010 (where=(upuma in ("1100101",
+"1100102",
+"1100103",
+"1100104",
+"1100105",
+"2401600",
+"2400300",
+"2401001",
+"2401002",
+"2401003",
+"2401004",
+"2401005",
+"2401006",
+"2401007",
+"2401101",
+"2401102",
+"2401103",
+"2401104",
+"2401105",
+"2401106",
+"2401107",
+"5100101",
+"5100100",
+"5100301",
+"5100302",
+"5100303",
+"5100304",
+"5100305",
+"5100600",
+"5100501",
+"5100502",
+"5100200"
+))) ;
+set Ipums.ACS_2010_dc(where=(gq in (1,2))) Ipums.ACS_2010_va(where=(gq in (1,2))) Ipums.ACS_2010_md(where=(gq in (1,2)));
+keep upuma pernum gq hhwt perwt year serial numprec relate related notnonrelate totnumpop;
+if relate in (11,12,13) then notnonrelate=0;
+else if relate in (2,3,4,5,6,7,8,9,10) then notnonrelate=1;
+totnumpop=1;
+run;
+
+proc summary data=hhrelate_2010;
+  class serial;
+  var notnonrelate totnumpop;
+  weight hhwt;
+  output out =aaa_2010 sum= ;
+run;
+
+data nonrelatehh_2010 ;
+set aaa_2010;
+if totnumpop>=2 then do;
+	if notnonrelate>=1 then nonrelatehh=0;
+	else if notnonrelate=0 then nonrelatehh=1;
+	else nonrelatehh=.;
+end;
+run;
 
 data hhrelate_2000(where=(upuma in ("1100101",
 "1100102",
@@ -1004,8 +1154,107 @@ run;
 
 %mend hhtype_1;
 
-%hhtype_1(2010);
 %hhtype_1(2017);
+
+data hhtype_1_2010 (where=(upuma in ("1100101",
+"1100102",
+"1100103",
+"1100104",
+"1100105",
+"2401600",
+"2400300",
+"2401001",
+"2401002",
+"2401003",
+"2401004",
+"2401005",
+"2401006",
+"2401007",
+"2401101",
+"2401102",
+"2401103",
+"2401104",
+"2401105",
+"2401106",
+"2401107",
+"5100101",
+"5100100",
+"5100301",
+"5100302",
+"5100303",
+"5100304",
+"5100305",
+"5100600",
+"5100501",
+"5100502",
+"5100200"
+))) ;
+set Ipums.ACS_2010_dc(where=(pernum=1 and gq in (1,2))) Ipums.ACS_2010_va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_2010_md(where=(pernum=1 and gq in (1,2)));
+keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE relate incomecat;
+
+  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
+  if upuma in ("2401600") then Jurisdiction =2;
+  if upuma in ("2400300") then Jurisdiction =3;
+  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
+  if upuma in ("5100100") then Jurisdiction =6;
+  if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
+  if upuma in ("5100600") then Jurisdiction =8;
+  if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
+  if upuma in ("5100200") then Jurisdiction =10; 
+
+	  if hhincome ~=.n or hhincome ~=9999999 then do; 
+		 %dollar_convert( hhincome, hhincome_a, 2010, 2017, series=CUUR0000SA0 )
+	   end; 
+  
+		if hhincome_a in ( 9999999, .n , . ) then incomecat=.;
+			else do; 
+			    if hhincome_a<=32600 then incomecat=1;
+				else if 32600<hhincome_a<=54300 then incomecat=2;
+				else if 54300<hhincome_a<=70150 then incomecat=3;
+				else if 70150<hhincome_a<=108600 then incomecat=4;
+				else if 108600<hhincome_a<=130320 then incomecat=5;
+				else if 130320<hhincome_a<=217200 then incomecat=6;
+				else if 217200 < hhincome_a then incomecat=7;
+			end;
+
+		  label incomecat='Income Categories based on 2016 HUD Limit for Family of 4';
+
+run;
+
+proc sort data= hhtype_1_2010;
+by serial;
+run;
+
+proc sort data= nonrelatehh_2010;
+by serial;
+run;
+
+data hhtype_2010;
+merge hhtype_1_2010 nonrelatehh_2010 ;
+by serial;
+run;
+
+data hhtype_2010;
+set hhtype_2010;
+if hhtype in (4,5,6,7) then do;  /*non family*/
+	if numprec=1 then HHcat=1 ; /*single*/
+end;
+
+if hhtype in (1,2,3) then do; /*family household*/
+    if hhtype=1 & numprec=2 then HHcat=2 ; /*couple without kid*/
+	else HHcat=3; /*other family*/
+end;
+
+if nonrelatehh=1 then HHcat=4; /* non relate households*/ 
+
+if hhtype in (0, 9) then HHcat=.;
+
+else HHcat=5;
+
+HHnumber_2010=1;
+
+run; 
 
 data hhtype_1_2000 (where=(upuma in ("1100101",
 "1100102",
@@ -1047,12 +1296,12 @@ keep pernum upuma gq Jurisdiction hhwt perwt year serial numprec HHINCOME income
   if upuma in ("2401600") then Jurisdiction =2;
   if upuma in ("2400300") then Jurisdiction =3;
   if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
-  if upuma in ("2401101","2401102","2401103","2401104","2401105","2401106","2401107") then Jurisdiction =5;
+  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
   if upuma in ("5100100") then Jurisdiction =6;
-  if upuma in ("5101301", "5101302", "5100303", "5100304", "5100305") then Jurisdiction =7;
+  if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
   if upuma in ("5100600") then Jurisdiction =8;
-  if upuma in ("5100501", "5100502") then Jurisdiction =9; 
-  if upuma in ("5100100", "5100200") then Jurisdiction =10; 
+  if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
+  if upuma in ("5100200") then Jurisdiction =10; 
 
 	  if hhincome ~=.n or hhincome ~=9999999 then do; 
 		 %dollar_convert( hhincome, hhincome_a, 2000, 2017, series=CUUR0000SA0 )
@@ -1099,13 +1348,13 @@ run;
 proc summary data = hhtype_&year. ;
 	class Jurisdiction numprec incomecat HHcat;
 	var HHnumber_&year.;
-	weight perwt;
+	weight hhwt;
 	output out = HH_size_inc_type_&year.  sum=;
-	format Jurisdiction Jurisdiction. incomecat inc_cat. ;
+	format Jurisdiction Jurisdiction. incomecat inc_cat. HHcat hhcat.;
 run;
 
 proc sort data=HH_size_inc_type_&year.;
-by Jurisdiction;
+by Jurisdiction numprec incomecat HHcat;
 run;
 
 %mend summarizehh;
@@ -1113,41 +1362,17 @@ run;
 %summarizehh(2010);
 %summarizehh(2017);
 
-/*have to adjust the Loudon number for 2000 because it took a portion of a PUMA, according to NCDB Loudon hh in 2000 is 59921, the PUMA containing LOUdon has 96994*/
-data Loudon2000 (where=(ucounty= "51107"));
+/*have to adjust the Loudon number for 2000 and 2010 because it took a portion of a PUMA, according to NCDB Loudon hh in 2000 is 59921, hh in 2010 is 104583, the PUMA containing LOUdon has 97263 in 2000, 145906 in 2010*/
+data Loudon (where=(ucounty= "51107"));
 set NCDBpopulation;
 run;
 
-proc summary data=HH_size_inc_type_2000;
-by Jurisdiction;
-var HHnumber_2000;
-output out=loudonPUMA sum=;
-run;
-
-data HH_size_inc_type_2000_new;
-set HH_size_inc_type_2000;
-if Jurisdiction= 8 then HHnumber_2000_new = HHnumber_2000*0.62;
-else HHnumber_2000_new = HHnumber_2000;
-run;
-
-proc sort data=HH_size_inc_type_2000_new;
-by Jurisdiction numprec hud_inc HHcat;
-run;
-
-proc sort data=HH_size_inc_type_2010;
-by Jurisdiction numprec hud_inc HHcat;
-run;
-
-proc sort data=HH_size_inc_type_2017;
-by Jurisdiction numprec hud_inc HHcat;
-run;
-
 data hhbytypeallyears;
-merge HH_size_inc_type_2000_new HH_size_inc_type_2010 HH_size_inc_type_2017;
-by Jurisdiction numprec hud_inc HHcat;
+merge HH_size_inc_type_2000 HH_size_inc_type_2010 HH_size_inc_type_2017;
+by Jurisdiction numprec incomecat HHcat;
+if Jurisdiction= 8 then HHnumber_2000=HHnumber_2000*(59921/97263);
+if Jurisdiction= 8 then HHnumber_2010=HHnumber_2010*(104583/145906);
 run;
-
-/*I'm not sure why 2010 Ipums is missing jurisdictions?*/
 
 proc export data = hhbytypeallyears
    outfile="&_dcdata_default_path\RegHsg\Prog\hhbytypeallyears.csv"
