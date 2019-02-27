@@ -50,6 +50,7 @@ proc format;
 	8="Loudoun"
 	9="Prince William, Manassas and Manassas Park"
     10="Alexandria"
+	11="Total"
   	;
 value structure
   1= "Single family"
@@ -81,8 +82,8 @@ var vacantunit_&year.;
 output out= COGSvacantunits_&year. sum=;
 run;
 
-proc sort data= COGSvacant_&year.;
-by Jurisdiction structuretype bedrooms Tenure;
+proc sort data= COGSvacantunits_&year.;
+by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 run;
 
 data COGSarea_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
@@ -105,8 +106,8 @@ var unit_&year.;
 output out=COGSareaunits_&year. sum=;
 run;
 
-proc sort data= COGSarea_&year.;
-by Jurisdiction structuretype bedrooms Tenure;
+proc sort data= COGSareaunits_&year.;
+by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 run;
 
 %mend COGunits; 
@@ -178,8 +179,8 @@ var vacantunit_2000;
 output out= COGSvacantunits_2000 sum=;
 run;
 
-proc sort data= COGSvacant_2000;
-by Jurisdiction structuretype bedrooms Tenure;
+proc sort data= COGSvacantunits_2000;
+by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 run;
 
 data COGSarea_2000(where=(upuma in ("1100101",
@@ -246,17 +247,17 @@ var unit_2000;
 output out=COGSareaunits_2000 sum=;
 run;
 
-proc sort data= COGSarea_2000;
-by Jurisdiction structuretype bedrooms Tenure;
+proc sort data= COGSareaunits_2000;
+by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 run;
 
 data COGSunits;
 merge COGSareaunits_2000 COGSvacantunits_2000 COGSareaunits_2010 COGSvacantunits_2010 COGSareaunits_2017 COGSvacantunits_2017;
-by Jurisdiction structuretype bedrooms Tenure;
+by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 vacancyrate2010= vacantunit_2010/(vacantunit_2010+ unit_2010);
 vacancyrate2017= vacantunit_2017/(vacantunit_2017+ unit_2017);
 vacancyrate2000= vacantunit_2000/(vacantunit_2000+ unit_2000);
-format structuretype sturcture. Tenure tenure.;
+format structuretype structure. Tenure tenure.;
 run;
 
 proc export data = COGSunits
@@ -418,6 +419,12 @@ by Jurisdiction;
 format Jurisdiction Jurisdiction.;
 run;
 
+data allhousingburden;
+set allhousingburden;
+if _TYPE_=0 then Jurisdiction=11;
+format Jurisdiction Jurisdiction.;
+Run;
+
 proc export data = allhousingburden
    outfile="&_dcdata_default_path\RegHsg\Prog\all_housing_burden.csv"
    dbms=csv
@@ -425,21 +432,6 @@ proc export data = allhousingburden
 run;
 
 /*building permit by building type*/
-
-proc format;
-  value Jurisdiction
-    1= "DC"
-	2= "Charles County"
-	3= "Frederick County "
-	4="Montgomery County"
-	5="Prince Georges "
-	6="Arlington"
-	7="Fairfax, Fairfax city and Falls Church"
-	8="Loudoun"
-	9="Prince William, Manassas and Manassas Park"
-    10="Alexandria"
-  	;
-run;
 
 data permits (where= (ucounty in("11001", "24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685" )));
 set Census.Cen_building_permits_dc_md_va_wv;
@@ -462,12 +454,28 @@ by year Jurisdiction;
 run;
 
 proc summary data=permits;
-by year Jurisdiction ;
+class year Jurisdiction ;
 var units1_building units2_building units34_building units5p_building;
-output out= permits_allyear sum=;
+output out= permits_allyear(drop= _FREQ_) sum=;
 run;
 
-proc export data = permits_allyear
+data permits2;
+set permits_allyear (where=(_TYPE_ in (2,3)));
+if _TYPE_=2 then Jurisdiction=11;
+format Jurisdiction Jurisdiction.;
+run;
+
+proc sort data=permits2;
+by Jurisdiction year;
+run;
+
+proc transpose data=permits2 out=permits_allyear_trans ;
+by Jurisdiction;
+var units1_building units2_building units34_building units5p_building ;
+id year;
+run;
+
+proc export data = permits_allyear_trans
    outfile="&_dcdata_default_path\RegHsg\Prog\permits_allyear.csv"
    dbms=csv
    replace;
