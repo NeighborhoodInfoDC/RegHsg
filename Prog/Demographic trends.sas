@@ -447,6 +447,9 @@ rename Totpop= Totpop70;
 rename TotHH= TotHH70;
 label Totpop="Total populations in 1970";
 label TotHH="Total households in 1970";
+
+if ucounty = "11001" then TotHH = 262538;
+
 if ucounty in ("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685");
   if ucounty in ("11001") then Jurisdiction =1;
   if ucounty  in ("24017") then Jurisdiction =2;
