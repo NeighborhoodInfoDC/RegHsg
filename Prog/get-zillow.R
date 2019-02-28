@@ -4,7 +4,7 @@ library(lubridate)
 
 # Inventory -------------------------------------------------------
 
-
+#From Zillow Home Listings and Sales: Monthly for sale inventory seasonally adjusted
 inventory <- read_csv('http://files.zillowstatic.com/research/public/County/MonthlyListings_SSA_AllHomes_County.csv')
 inventoryMSA <- read_csv('http://files.zillowstatic.com/research/public/Metro/MonthlyListings_SSA_AllHomes_Metro.csv')
 
@@ -32,15 +32,10 @@ inventoryMSAJuly <- inventoryMSA %>%
   filter(month=="07") %>% 
   select(-monthx, -Metro, -month)
 
-#### inventory for COG region
-inventoryCOGJuly <- inventoryCOGmonth %>% 
-    filter(month=="07") %>% 
-    group_by(year) %>% 
-    summarize(JulyInventory= sum(inventory))
-
 
 # Sale prices --------------------------------------------------------
 
+#From Zillow Home Listings and Sales: Median sale price-seasonally adjusted
 price <- read_csv('http://files.zillowstatic.com/research/public/Metro/Sale_Prices_Msa.csv')
 
 priceMSAJuly <- price %>% 
@@ -52,10 +47,10 @@ priceMSAJuly <- price %>%
          year= substr(monthx, 1,4)) %>% 
   filter(month=="07") %>% 
   select(-name, -monthx, -month)%>% 
-  arrange(year, Mediansaleprice, -month)
+  arrange(year, Mediansaleprice)
 
 # Rent for SF and MF residents --------------------------------------------------------
-
+#From Zillow Rental Listings: Median rent list price
 rentSF <- read_csv('http://files.zillowstatic.com/research/public/Metro/Metro_MedianRentalPrice_Sfr.csv')
 rentlargeMF <- read_csv('http://files.zillowstatic.com/research/public/Metro/Metro_MedianRentalPrice_Mfr5Plus.csv')
 rentcondo <-read_csv('http://files.zillowstatic.com/research/public/Metro/Metro_MedianRentalPrice_CondoCoop.csv')
@@ -65,7 +60,6 @@ rentduplex <-read_csv('http://files.zillowstatic.com/research/public/Metro/Metro
 MetroRentSF <- rentSF %>% 
   rename(Metro = RegionName) %>% 
   select(-SizeRank) %>% 
-  filter(Metro=="Washington, DC") %>% 
   gather(key = 'monthx', value = 'MedianSFRent', -Metro) %>% 
   filter(Metro=="Washington, DC") %>% 
   arrange(Metro, monthx) %>% 
@@ -78,7 +72,6 @@ MetroRentSF <- rentSF %>%
 MetroRentMF <- rentlargeMF %>% 
   rename(Metro = RegionName) %>% 
   select(-SizeRank) %>% 
-  filter(Metro=="Washington, DC") %>% 
   gather(key = 'monthx', value = 'MedianMFRent', -Metro) %>% 
   filter(Metro=="Washington, DC") %>% 
   arrange(Metro, monthx) %>% 
@@ -90,7 +83,6 @@ MetroRentMF <- rentlargeMF %>%
 MetroRentCondo <- rentcondo %>% 
   rename(Metro = RegionName) %>% 
   select(-SizeRank) %>% 
-  filter(Metro=="Washington, DC") %>% 
   gather(key = 'monthx', value = 'MedianCondoRent', -Metro) %>% 
   filter(Metro=="Washington, DC") %>% 
   arrange(Metro, monthx) %>% 
@@ -102,7 +94,6 @@ MetroRentCondo <- rentcondo %>%
 MetroRentduplex <- rentduplex %>% 
   rename(Metro = RegionName) %>% 
   select(-SizeRank) %>% 
-  filter(Metro=="Washington, DC") %>% 
   gather(key = 'monthx', value = 'MedianDuplexRent', -Metro) %>% 
   filter(Metro=="Washington, DC") %>% 
   arrange(Metro, monthx) %>% 
@@ -111,15 +102,34 @@ MetroRentduplex <- rentduplex %>%
   filter(month=="07") %>% 
   select(-monthx, -Metro, -month)
 
-data1 <- full_join(inventoryMSAJuly, priceMSAJuly, by= c("year","year"))
-data2<- full_join(data1,  MetroRentSF,by= c("year","year") )
-data3<- full_join(data2,  MetroRentMF,by= c("year","year") )
-data4<- full_join(data3,  MetroRentCondo,by= c("year","year") )
-data5<- full_join(data4,  MetroRentduplex,by= c("year","year") )
+
+summedianprice <- function(Housetype){
+  
+  Metro_Housetype <- Housetype %>% 
+    rename(Metro = RegionName) %>% 
+    select(-SizeRank) %>% 
+    gather(key = 'monthx', value = Median_Housetype, -Metro) %>% 
+    filter(Metro=="Washington, DC") %>% 
+    arrange(Metro, monthx) %>% 
+    mutate(month = substr(monthx, 6, 7),
+           year= substr(monthx, 1,4)) %>% 
+    filter(month=="07") %>% 
+    select(-monthx, -Metro, -month)
+  
+}
+vars <- c(rentSF, rentlargeMF, rentcondo, rentduplex)
+lapply(vars, summedianprice)
+
+
+data1 <- full_join(inventoryMSAJuly, priceMSAJuly, by= "year")
+data2<- full_join(data1,  MetroRentSF,by= "year" )
+data3<- full_join(data2,  MetroRentMF,by= "year" )
+data4<- full_join(data3,  MetroRentCondo,by= "year" )
+data5<- full_join(data4,  MetroRentduplex,by= "year" )
 
 filepath <- paste0("L:/Libraries/RegHsg/Data/")
 
 write_csv(data5, 
-          paste0(filepath, "Housing market_Zillow data.csv"))
+          paste0(filepath, "Housing-market-Zillow-data.csv"))
 
 
