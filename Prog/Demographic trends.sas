@@ -442,7 +442,7 @@ libname rawnhgis "L:\Libraries\RegHsg\Raw\NHGIS";
 
 data pop_70;
 set rawnhgis.nhgis0014_ts_nominal_1970_county;
-keep ucounty TotPop TotHH;
+keep ucounty TotPop TotHH Jurisdiction;
 rename Totpop= Totpop70;
 rename TotHH= TotHH70;
 label Totpop="Total populations in 1970";
@@ -470,7 +470,7 @@ run;
 
 data pop_80;
 set rawnhgis.nhgis0014_ts_nominal_1980_county;
-keep ucounty TotPop TotHH;
+keep ucounty TotPop TotHH Jurisdiction;
 rename Totpop= Totpop80;
 rename TotHH= TotHH80;
 label Totpop="Total populations in 1980";
@@ -493,6 +493,15 @@ proc sort data=pop_80;
 by ucounty;
 run;
 
+data pop78;
+merge pop_80 pop_70;
+by ucounty;
+if ucounty = "51683" then Totpop70 = 9164;
+if ucounty = "51683" then TotHH70 = 2705;
+if ucounty = "51685" then Totpop70 = 6844;
+if ucounty = "51685" then TotHH70 = 1514;
+run;
+
 data pop17;
 set Cen_population_estimates;
 keep ucounty Jurisdiction POPESTIMATE2017;
@@ -513,7 +522,7 @@ by ucounty;
 run;
 
 data populationtrend;
-merge pop_70(drop=TotHH70 ) pop_80(drop=TotHH80 ) NCDBpopulation pop17;
+merge pop78(drop=TotHH70 TotHH80) NCDBpopulation pop17;
 by ucounty;
 format Jurisdiction Jurisdiction. ;
 COG=1;
@@ -532,10 +541,10 @@ run;
 data populationbyjur2 ;
 set populationbyjur;
 if _TYPE_= 0 then Jurisdiction=11 ;
-label TRCTPOP9 ="1990";
-label TRCTPOP0 ="2000";
-label TRCTPOP1= "2010";
-label POPESTIMATE2017= "2017";
+label TRCTPOP9 ="Total population in 1990";
+label TRCTPOP0 ="Total population in 2000";
+label TRCTPOP1= "Total population in 2010";
+label POPESTIMATE2017= "Total population in 2017";
 format Jurisdiction Jurisdiction.;
 run;
 
@@ -836,7 +845,7 @@ run;
 
 data households (where= (ucounty in("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685" )));
 set NCDB.Ncdb_master_update;
-keep ucounty Jurisdiction numhhs7 numhhs8 numhhs9 numhhs0 numhhs1;
+keep ucounty Jurisdiction numhhs9 numhhs0 numhhs1;
 
   if ucounty in ("11001") then Jurisdiction =1;
   if ucounty  in ("24017") then Jurisdiction =2;
@@ -854,7 +863,7 @@ run;
 proc sort data=households;
 by ucounty;
 run;
-
+/* calculate vacancy rate in 2017 and estimate hh counts based on housing units*/
 data COGSarea_2017 (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255"
                     ) and pernum =1 and gq in (1,2)));
 set Ipums.Acs_2017_dc Ipums.Acs_2017_md Ipums.Acs_2017_va;
@@ -912,7 +921,6 @@ run;
 proc summary data= vacantunits;
 	class Jurisdiction;
 	var totalunits vacunit;
-	weight hhwt;
 	output out = vacancyrate  sum=;
 	format Jurisdiction Jurisdiction. ;
 	run;
@@ -936,10 +944,7 @@ data hhestimates17 (drop= _FREQ_);
 set hh_housing;
 hhestimate17= totalunits*(1-vacrate);
 run;
-
-proc sort data=households;
-by Jurisdiction;
-run;
+/*end of estimating 2017 hh counts*/
 
 proc summary data=hhestimates17;
 	class Jurisdiction ;
@@ -957,16 +962,25 @@ data HH17;
 set HH17;
 if _TYPE_=0 then Jurisdiction=11;
 run;
-
-proc summary data=households;
+proc sort data=population;
+by Jurisdiction;
+run;
+proc summary data=population;
 	class Jurisdiction ;
-	var numhhs7 numhhs8 numhhs9 numhhs0 numhhs1;
-	output out = NCDBhouseholds  sum=;
+	var numhhs9 numhhs0 numhhs1;
+	output out = NCDBhouseholds(drop= _FREQ_)  sum=;
 	format Jurisdiction Jurisdiction. ;
 run;
 
-data NCDBhouseholds;
-set NCDBhouseholds(drop= _FREQ_);
+proc summary data= pop78;
+class Jurisdiction ;
+var tothh70 tothh80;
+output out= households78 sum=;
+format Jurisdiction Jurisdiction. ;
+run;
+data households78;
+set households78;
+if _TYPE_=0 then Jurisdiction=11;;
 run;
 
 data NCDBhouseholds;
@@ -978,13 +992,21 @@ proc sort data=HH17;
 by Jurisdiction;
 run;
 
+proc sort data=households78;
+by Jurisdiction;
+run;
+
 proc sort data=NCDBhouseholds;
 by Jurisdiction;
 run;
 
-data totalhouseholdtrend;
-merge NCDBhouseholds HH17;
+data totalhouseholdtrend (drop= _TYPE_ _FREQ_);
+merge households78 NCDBhouseholds HH17;
 by Jurisdiction;
+label NUMHHS9= "Total households in 1990";
+label NUMHHS0= "Total households in 2000";
+label NUMHHS1= "Total households in 2010";
+label hhestimate17 = "Total households in 2017";
 run;
 
 proc export data = totalhouseholdtrend
