@@ -167,7 +167,7 @@ ggplot() +
 Create buffer around the stations. To do this, we re-project to feet, create the buffer, then re-project back to CRS = 4326. Test this out with a half mile buffer.
 
 ```{r buff-trains}
-# convert one mile to feet and set units
+# convert half mile to feet and set units
 radius <- set_units(.5, mi) %>% set_units(ft)
 
 # project to MD state plane in feet
@@ -356,9 +356,10 @@ source("../Macros/get_node_geography.R")
 The following examples show two of the many ways we can use this function to get the geographies we need.
 ```{r ex}
 
-actvity_buffered <- get_node_geography(node_type = "activity",
+activity_buffered <- get_node_geography(node_type = "activity",
                                        style = "buffer",
                                        activity_buffer = 1)
+
 
 get_node_geography(node_type = "joint",
                    style = "buffer-union",
