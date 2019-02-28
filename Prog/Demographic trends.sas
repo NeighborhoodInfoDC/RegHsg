@@ -414,7 +414,7 @@ run;
 
 data population (where= (ucounty in("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685" )));
 set NCDB.Ncdb_master_update;
-keep ucounty Jurisdiction trctpop7 trctpop8 trctpop9 trctpop0 trctpop1 numhhs7 numhhs8 numhhs9 numhhs0 numhhs1;
+keep ucounty Jurisdiction trctpop9 trctpop0 trctpop1 numhhs9 numhhs0 numhhs1;
 
   if ucounty in ("11001") then Jurisdiction =1;
   if ucounty  in ("24017") then Jurisdiction =2;
@@ -430,11 +430,63 @@ keep ucounty Jurisdiction trctpop7 trctpop8 trctpop9 trctpop0 trctpop1 numhhs7 n
 run;
 proc summary data=population;
 by ucounty;
-var trctpop7 trctpop8 trctpop9 trctpop0 trctpop1 numhhs7 numhhs8 numhhs9 numhhs0 numhhs1;
+var trctpop9 trctpop0 trctpop1 numhhs9 numhhs0 numhhs1;
 output out= NCDBpopulation sum=;
 run;
 
 proc sort data=NCDBpopulation;
+by ucounty;
+run;
+
+libname rawnhgis "L:\Libraries\RegHsg\Raw\NHGIS";
+
+data pop_70;
+set rawnhgis.nhgis0014_ts_nominal_1970_county;
+keep ucounty TotPop TotHH;
+rename Totpop= Totpop70;
+rename TotHH= TotHH70;
+label Totpop="Total populations in 1970";
+label TotHH="Total households in 1970";
+if ucounty in ("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685");
+  if ucounty in ("11001") then Jurisdiction =1;
+  if ucounty  in ("24017") then Jurisdiction =2;
+  if ucounty  in ("24021") then Jurisdiction =3;
+  if ucounty  in ("24031") then Jurisdiction =4;
+  if ucounty  in ("24033") then Jurisdiction =5;
+  if ucounty  in ("51013") then Jurisdiction =6;
+  if ucounty  in ("51059", "51600", "51610") then Jurisdiction =7;
+  if ucounty  in ("51107") then Jurisdiction =8;
+  if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
+  if ucounty  in ("51510") then Jurisdiction =10; 
+
+run;
+
+proc sort data=pop_70;
+by ucounty;
+run;
+
+data pop_80;
+set rawnhgis.nhgis0014_ts_nominal_1980_county;
+keep ucounty TotPop TotHH;
+rename Totpop= Totpop80;
+rename TotHH= TotHH80;
+label Totpop="Total populations in 1980";
+label TotHH="Total households in 1980";
+if ucounty in ("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685");
+  if ucounty in ("11001") then Jurisdiction =1;
+  if ucounty  in ("24017") then Jurisdiction =2;
+  if ucounty  in ("24021") then Jurisdiction =3;
+  if ucounty  in ("24031") then Jurisdiction =4;
+  if ucounty  in ("24033") then Jurisdiction =5;
+  if ucounty  in ("51013") then Jurisdiction =6;
+  if ucounty  in ("51059", "51600", "51610") then Jurisdiction =7;
+  if ucounty  in ("51107") then Jurisdiction =8;
+  if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
+  if ucounty  in ("51510") then Jurisdiction =10; 
+
+run;
+
+proc sort data=pop_80;
 by ucounty;
 run;
 
@@ -458,7 +510,7 @@ by ucounty;
 run;
 
 data populationtrend;
-merge NCDBpopulation pop17;
+merge pop_70(drop=TotHH70 ) pop_80(drop=TotHH80 ) NCDBpopulation pop17;
 by ucounty;
 format Jurisdiction Jurisdiction. ;
 COG=1;
@@ -470,15 +522,13 @@ run;
 
 proc summary data= populationtrend;
 	class Jurisdiction;
-	var trctpop7 trctpop8 trctpop9 trctpop0 trctpop1 POPESTIMATE2017;
+	var totpop70 totpop80 trctpop9 trctpop0 trctpop1 POPESTIMATE2017;
 	output out= populationbyjur sum=;
 run;
 
 data populationbyjur2 ;
 set populationbyjur;
 if _TYPE_= 0 then Jurisdiction=11 ;
-label TRCTPOP7="1970";
-label TRCTPOP8="1980";
 label TRCTPOP9 ="1990";
 label TRCTPOP0 ="2000";
 label TRCTPOP1= "2010";
