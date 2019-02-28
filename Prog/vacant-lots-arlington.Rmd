@@ -647,7 +647,7 @@ zoningdata <- left_join(vacantfinal, zoningcode1, by = "zoning_code")
 
 ```
 
-There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
+There are `r nrow(anti_join(vacantfinal, zoningcode1, by = c("zoning_code")))` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
 
 ```{r antijoin}
 

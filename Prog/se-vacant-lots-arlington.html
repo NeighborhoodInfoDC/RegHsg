@@ -315,6 +315,7 @@ div.tocify {
 <div id="description" class="section level2">
 <h2>Description</h2>
 <p>The goal of this analysis is to modify the previous vacant lots analysis to include special exceptions that are written into the zoning code. We will rely on two datasets that were created in <code>vacant-lots-arlington.Rmd</code> - the cleaned general zoning code, and the cleaned set of vacant lots.</p>
+<p>The site plan process is mostly used for multifamily construction, so we will consider only the special exceptions for multiple family dwellings.</p>
 </div>
 <div id="set-up" class="section level2">
 <h2>Set-up</h2>
@@ -324,11 +325,7 @@ library(urbnthemes)
 
 set_urbn_defaults(&quot;print&quot;)</code></pre>
 <p>Create directory for data exports</p>
-<pre class="r"><code>if (!dir.exists(&quot;../Data&quot;)) {
-  dir.create(&quot;../Data&quot;)
-}
-
-if (!dir.exists(&quot;L:/Libraries/RegHsg/Prog/Tables&quot;)) {
+<pre class="r"><code>if (!dir.exists(&quot;L:/Libraries/RegHsg/Prog/Tables&quot;)) {
   dir.create(&quot;L:/Libraries/RegHsg/Prog/Tables&quot;)
 }</code></pre>
 <p>Set FIPS code and filepath name</p>
@@ -395,69 +392,66 @@ se1 &lt;- se %&gt;%
   filter(!zoning_code %in% zoningcode$zoning_code) %&gt;% 
   nrow()</code></pre>
 <pre><code>## [1] 0</code></pre>
+<p>Filter out multiple-family exceptions.</p>
+<pre class="r"><code>semf &lt;- se1 %&gt;% 
+  filter(dwelling_type == &quot;Multiple-family&quot;)</code></pre>
 </div>
-<div id="compare-special-exceptions-with-by-right" class="section level3">
-<h3>Compare special exceptions with by-right</h3>
-<p>In order to decide where special exceptions should be used, we need to compare those observations that have the same <code>dwelling_type</code> in the regular zoning code.</p>
-<p>To simplify the process- select only the variables that are needed for the vacant lots calculation: <code>lot_area</code>, <code>lot_area_per_unit</code>, <code>height_ft</code>, and <code>lot_coverage_max</code>. Keep <code>zoning_code</code> and <code>dwelling_type</code> for identification. Also keep the <code>special_exception</code> flag we created.</p>
-<pre class="r"><code>se_compare &lt;- se1 %&gt;% 
-  select(zoning_code, dwelling_type,
-         lot_area_min, lotarea_per_unit,
-         height_ft, lot_coverage_max,
-         special_exception) %&gt;% 
-  bind_rows(select(zoningcode,
-         zoning_code, dwelling_type,
-         lot_area_min, lotarea_per_unit,
-         height_ft, lot_coverage_max, special_exception)) %&gt;% 
-  group_by(zoning_code, dwelling_type)
-
-
-# how many observations are the same?
-
-se_compare %&gt;% nrow() -
-se_compare %&gt;% 
-  distinct(lot_area_min, lotarea_per_unit, height_ft, lot_coverage_max) %&gt;% 
-  nrow()</code></pre>
-<pre><code>## [1] 12</code></pre>
-<pre class="r"><code>se_compare %&gt;% 
-  group_by(dwelling_type) %&gt;% 
-  count()</code></pre>
-<pre><code>## # A tibble: 11 x 2
-## # Groups:   dwelling_type [11]
-##    dwelling_type                                                   n
-##    &lt;chr&gt;                                                       &lt;int&gt;
-##  1 &lt;NA&gt;                                                            2
-##  2 All Other                                                      10
-##  3 Apartment                                                       1
-##  4 Duplex                                                         13
-##  5 Low or Moderate Income Housing                                  7
-##  6 Multiple-family                                                17
-##  7 One Family Dwelling                                            30
-##  8 Other Residential                                               1
-##  9 Semi-detached                                                  13
-## 10 Townhouse                                                       7
-## 11 Townhouse, semi-detached, and existing one-family dwellings     6</code></pre>
-<p>Except for multiple-family, the special exceptions, within a dwelling_type, were the same as the by-right zoning codes. For many zoning codes, additional dwelling types were added.</p>
+<div id="fill-in-missing-variables-in-special-exceptions" class="section level3">
+<h3>Fill in missing variables in special exceptions</h3>
+<p>If the special exceptions inherit the same stipulations as the by-right zoning code, the fields were left blank. Use <code>fill()</code> to fill in these gaps.</p>
+<p>Replace missing lot coverage maximums with 56%- this is to be used if there is no specific designation, per the Arlington County zoning code.</p>
+<pre class="r"><code>mf_fill &lt;- semf %&gt;% 
+  bind_rows(filter(zoningcode,
+                   zoning_code %in% semf$zoning_code,
+                   dwelling_type == &quot;Multiple-family&quot;)) %&gt;% 
+  group_by(zoning_code, dwelling_type) %&gt;% 
+  fill(lot_area_min, .direction = &quot;down&quot;) %&gt;% 
+  fill(lot_area_min, .direction = &quot;up&quot;) %&gt;% 
+  fill(lotarea_per_unit, .direction = &quot;down&quot;) %&gt;% 
+  fill(lotarea_per_unit, .direction = &quot;up&quot;) %&gt;%
+  fill(height_ft, .direction = &quot;down&quot;) %&gt;% 
+  fill(height_ft, .direction = &quot;up&quot;) %&gt;% 
+  fill(lot_coverage_max, .direction = &quot;down&quot;) %&gt;% 
+  fill(lot_coverage_max, .direction = &quot;up&quot;) %&gt;% 
+  mutate(lot_coverage_max = ifelse(is.na(lot_coverage_max),
+                                   .56,
+                                   lot_coverage_max))</code></pre>
+<p>There are four mixed-use zoning codes that only allow for multiple-family development via special exception. The stipulations for height and FAR vary based on the lot size. Additionally, there is no lot size per unit, we will instead rely on the height or FAR (whichever one is more restrictive) to determine the number of units. This will occur after the vacant lots have been merged with the zoning codes.</p>
+<p>Join the multiple-family special exceptions to the by-right zoning code. This is the zoning code we will use for analysis.</p>
+<pre class="r"><code>zoningcode1 &lt;- mf_fill %&gt;% 
+  ungroup() %&gt;% 
+  filter(special_exception == 1) %&gt;% 
+  bind_rows(zoningcode)</code></pre>
 </div>
 <div id="dwelling-type-hierarchy" class="section level3">
 <h3>Dwelling type hierarchy</h3>
 <p>We can adjust the hierarchy we used to select the most dense zoning codes in the previous analysis by adding those that now occur, and prioritizing the multiple-family dwelling type from the special exception over the by-right.</p>
 <p>First, remove dwelling types that are not possible to include.</p>
-<pre class="r"><code>zoningcode_se &lt;- se_compare %&gt;% 
-  ungroup() %&gt;% 
-  filter(dwelling_type != &quot;Low or Moderate Income Housing&quot;) %&gt;% 
+<pre class="r"><code>count(zoningcode1, dwelling_type)</code></pre>
+<pre><code>## # A tibble: 7 x 2
+##   dwelling_type           n
+##   &lt;chr&gt;               &lt;int&gt;
+## 1 &lt;NA&gt;                    2
+## 2 Duplex                  7
+## 3 Multiple-family        17
+## 4 One Family Dwelling    30
+## 5 Other Residential       1
+## 6 Semi-detached           7
+## 7 Townhouse               7</code></pre>
+<pre class="r"><code>zoningcode2 &lt;- zoningcode1 %&gt;% 
+  group_by(zoning_code) %&gt;% 
   filter(!(dwelling_type %in% c(&quot;All&quot;,
                                 &quot;All Other&quot;,
                                 &quot;Duplex; share a lot line with RA, C, or M&quot;,
-                                &quot;Semi-detatched; share a lot line with RA, C, or M&quot;))
-           &amp; n() &gt; 1) %&gt;% 
-  mutate(dwelling_type = ifelse(dwelling_type %in% c(&quot;Multiple-family&quot;, &quot;Apartment&quot;),
+                                &quot;Semi-detatched; share a lot line with RA, C, or M&quot;)
+           &amp; n() &gt; 1)) %&gt;% 
+  ungroup() %&gt;% 
+  mutate(dwelling_type = ifelse(dwelling_type %in% c(&quot;Multiple-family&quot;) &amp; special_exception == 1,
                                 &quot;Multiple-family special exception&quot;,
                                 dwelling_type)) %&gt;% 
   mutate(dwelling_type = factor(dwelling_type,
                                 levels = c(&quot;Multiple-family special exception&quot;,
                                            &quot;Multiple-family&quot;,
-                                           &quot;Townhouse, semi-detached, and existing one-family dwellings&quot;,
                                            &quot;Townhouse&quot;,
                                            &quot;Semi-detached&quot;,
                                            &quot;Duplex&quot;,
@@ -469,6 +463,77 @@ se_compare %&gt;%
          two_unit_flag = ifelse(dwelling_type == &quot;Duplex&quot;,
                                 1,
                                 0))</code></pre>
+</div>
+</div>
+<div id="merge-with-vacant-lots" class="section level2">
+<h2>Merge with vacant lots</h2>
+<p>Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original <code>zoning</code> variable.</p>
+<pre class="r"><code>vacantfinal &lt;- vacant %&gt;% 
+  mutate(zoning_code = case_when(
+    zoning == &quot;RC&quot; ~ &quot;R-C&quot;,
+    zoning == &quot;C-0 Crystal City&quot; ~ &quot;C-O Crystal City&quot;,
+    zoning %in% c(&quot;C-O-ROSSLYN&quot;, &quot;C-O-ROSS&quot;) ~ &quot;C-O Rosslyn&quot;,
+    zoning == &quot;RA-H-3.2&quot; ~ &quot;RA-H 3.2&quot;,
+    TRUE ~ zoning
+  ))</code></pre>
+<p>Merge on zoning code variable. Test that all variables merged.</p>
+<pre class="r"><code>zoningdata &lt;- left_join(vacantfinal, zoningcode2, by = &quot;zoning_code&quot;)</code></pre>
+<p>There are 112 observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.</p>
+<pre class="r"><code>anti_join(vacantfinal, zoningcode1, by = c(&quot;zoning_code&quot;)) %&gt;% 
+  count(zoning) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">zoning</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">NA</td>
+<td align="right">57</td>
+</tr>
+<tr class="even">
+<td align="left">CM</td>
+<td align="right">19</td>
+</tr>
+<tr class="odd">
+<td align="left">CP-FBC</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td align="left">M-1</td>
+<td align="right">29</td>
+</tr>
+<tr class="odd">
+<td align="left">M-2</td>
+<td align="right">3</td>
+</tr>
+</tbody>
+</table>
+<p>Aside from those with missing zoning information, these zoning codes do not allow for residential properties, which explains why they were not found in the zoning code data.</p>
+<div id="break-out-special-exceptions" class="section level3">
+<h3>Break out special exceptions</h3>
+<p>Two datasets will be created: one that includes special exceptions, and one that doesn’t. This way, we do not throw out any observations that have no special exceptions, or any lots that have the appropriate lot size for the by-right dwelling type, but not the special exception.</p>
+<p>Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.</p>
+<pre class="r"><code>byright &lt;- zoningdata %&gt;% 
+  filter(!is.na(zoning),
+         lotsize_sf &gt;= lot_area_min,
+         special_exception == 0) %&gt;% 
+  group_by(propaddress) %&gt;% 
+  slice(which.min(dwelling_type)) %&gt;% 
+  ungroup()
+
+specialexception &lt;- zoningdata %&gt;% 
+  filter(!is.na(zoning),
+         lotsize_sf &gt;= lot_area_min) %&gt;% 
+  group_by(propaddress) %&gt;% 
+  slice(which.min(dwelling_type)) %&gt;% 
+  ungroup()</code></pre>
+</div>
+<div id="fill-in-stipulations-for-mixed-use-zones" class="section level3">
+<h3>Fill in stipulations for mixed use zones</h3>
 </div>
 </div>
 

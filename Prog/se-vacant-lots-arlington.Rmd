@@ -186,27 +186,19 @@ mf_fill <- semf %>%
 
 ```
 
-There are four zoning codes that only allow for multiple-family development via special exception. The stipulations vary based on the 
+There are four mixed-use zoning codes that only allow for multiple-family development via special exception. The stipulations for height and FAR vary based on the lot size. Additionally, there is no lot size per unit, we will instead rely on the height or FAR (whichever one is more restrictive) to determine the number of units. This will occur after the vacant lots have been merged with the zoning codes.
 
-56 percent if no coverage ratio
-create two height variables and take the lower
-FAR / 
+Join the multiple-family special exceptions to the by-right zoning code. This is the zoning code we will use for analysis.
 
-# how many observations are the same?
-```{r }
+```{r zoning-recombine}
 
-se_compare %>% nrow() -
-se_compare %>% 
-  distinct(lot_area_min, lotarea_per_unit, height_ft, lot_coverage_max) %>% 
-  nrow()
-
-se_compare %>% 
-  group_by(dwelling_type) %>% 
-  count()
+zoningcode1 <- mf_fill %>% 
+  ungroup() %>% 
+  filter(special_exception == 1) %>% 
+  bind_rows(zoningcode)
 
 ```
 
-Except for multiple-family, the special exceptions, within a dwelling_type, were the same as the by-right zoning codes. For many zoning codes, additional dwelling types were added. 
 
 ### Dwelling type hierarchy
 
@@ -215,16 +207,17 @@ We can adjust the hierarchy we used to select the most dense zoning codes in the
 First, remove dwelling types that are not possible to include.
 
 ```{r hier-dwell}
+count(zoningcode1, dwelling_type)
 
-zoningcode_se <- se_compare %>% 
-  ungroup() %>% 
-  filter(dwelling_type != "Low or Moderate Income Housing") %>% 
+zoningcode2 <- zoningcode1 %>% 
+  group_by(zoning_code) %>% 
   filter(!(dwelling_type %in% c("All",
                                 "All Other",
                                 "Duplex; share a lot line with RA, C, or M",
-                                "Semi-detatched; share a lot line with RA, C, or M"))
-           & n() > 1) %>% 
-  mutate(dwelling_type = ifelse(dwelling_type %in% c("Multiple-family", "Apartment"),
+                                "Semi-detatched; share a lot line with RA, C, or M")
+           & n() > 1)) %>% 
+  ungroup() %>% 
+  mutate(dwelling_type = ifelse(dwelling_type %in% c("Multiple-family") & special_exception == 1,
                                 "Multiple-family special exception",
                                 dwelling_type)) %>% 
   mutate(dwelling_type = factor(dwelling_type,
@@ -242,5 +235,71 @@ zoningcode_se <- se_compare %>%
                                 1,
                                 0))
 
+
 ```
+
+## Merge with vacant lots
+ 
+Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original `zoning` variable.
+
+```{r bk-clean}
+
+vacantfinal <- vacant %>% 
+  mutate(zoning_code = case_when(
+    zoning == "RC" ~ "R-C",
+    zoning == "C-0 Crystal City" ~ "C-O Crystal City",
+    zoning %in% c("C-O-ROSSLYN", "C-O-ROSS") ~ "C-O Rosslyn",
+    zoning == "RA-H-3.2" ~ "RA-H 3.2",
+    TRUE ~ zoning
+  ))
+           
+```
+
+Merge on zoning code variable. Test that all variables merged.
+
+```{r zoning-merge}
+
+zoningdata <- left_join(vacantfinal, zoningcode2, by = "zoning_code")
+
+```
+
+There are `r nrow(anti_join(vacantfinal, zoningcode1, by = c("zoning_code")))` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
+
+```{r antijoin}
+
+anti_join(vacantfinal, zoningcode1, by = c("zoning_code")) %>% 
+  count(zoning) %>% 
+  knitr::kable()
+
+```
+
+Aside from those with missing zoning information, these zoning codes do not allow for residential properties, which explains why they were not found in the zoning code data.
+
+### Break out special exceptions
+
+Two datasets will be created: one that includes special exceptions, and one that doesn't. This way, we do not throw out any observations that have no special exceptions, or any lots that have the appropriate lot size for the by-right dwelling type, but not the special exception.
+
+Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
+
+```{r filter-small}
+
+byright <- zoningdata %>% 
+  filter(!is.na(zoning),
+         lotsize_sf >= lot_area_min,
+         special_exception == 0) %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  ungroup()
+
+specialexception <- zoningdata %>% 
+  filter(!is.na(zoning),
+         lotsize_sf >= lot_area_min) %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  ungroup()
+
+```
+
+### Fill in stipulations for mixed use zones
+
 
