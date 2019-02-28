@@ -103,24 +103,6 @@ MetroRentduplex <- rentduplex %>%
   select(-monthx, -Metro, -month)
 
 
-summedianprice <- function(Housetype){
-  
-  Metro_Housetype <- Housetype %>% 
-    rename(Metro = RegionName) %>% 
-    select(-SizeRank) %>% 
-    gather(key = 'monthx', value = Median_Housetype, -Metro) %>% 
-    filter(Metro=="Washington, DC") %>% 
-    arrange(Metro, monthx) %>% 
-    mutate(month = substr(monthx, 6, 7),
-           year= substr(monthx, 1,4)) %>% 
-    filter(month=="07") %>% 
-    select(-monthx, -Metro, -month)
-  
-}
-vars <- c(rentSF, rentlargeMF, rentcondo, rentduplex)
-lapply(vars, summedianprice)
-
-
 data1 <- full_join(inventoryMSAJuly, priceMSAJuly, by= "year")
 data2<- full_join(data1,  MetroRentSF,by= "year" )
 data3<- full_join(data2,  MetroRentMF,by= "year" )

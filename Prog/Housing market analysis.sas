@@ -707,4 +707,30 @@ proc export data = permits_allyear_trans
    replace;
 run;
 
+/*read in Zillow data for transpose and inflation adjust*/
+proc import datafile = 'L:\Libraries\RegHsg\Data\Housing-market-Zillow-data.csv'
+ out = work.zillow
+ dbms = CSV;
+run;
+
+proc sort data=zillow;
+by year;
+run;
+
+data inflatadjustzillow;
+set zillow;
+if year=&year. then do;
+%dollar_convert( inventoryMetro, inventoryMetro_a, &year., 2018, series=CUUR0000SA0 )
+%dollar_convert( Mediansaleprice, Mediansaleprice_a, &year., 2018, series=CUUR0000SA0 )
+%dollar_convert( MedianSFRent, MedianSFRent_a, &year., 2018, series=CUUR0000SA0 )
+%dollar_convert( MedianMFRent, MedianMFRent_a, &year., 2018, series=CUUR0000SA0 )
+%dollar_convert( MedianCondoRent, MedianCondoRent_a, &year., 2018, series=CUUR0000SA0 )
+%dollar_convert( MedianDuplexRent, MedianDuplexRent_a, &year., 2018, series=CUUR0000SA0 )
+end;
+run;
+
+
+
+
+
 
