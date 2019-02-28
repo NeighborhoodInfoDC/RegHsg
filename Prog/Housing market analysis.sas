@@ -60,6 +60,9 @@ value structure
   .n= "Other"
   ;
 run;
+/**************************************************************************
+Compile housing units by characteristics
+**************************************************************************/
 /*Housing units*/
 %macro COGunits(year);
 data COGSvacant_&year.(where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and vacancy in (1,2)));
@@ -93,11 +96,12 @@ set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
 	%assign_jurisdiction; 
 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-if UNITSSTR =05 then structuretype=2; /*duplex*/
-if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
+else if UNITSSTR =05 then structuretype=2; /*duplex*/
+else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
+else if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
+
 if ownershpd in (21, 22) then Tenure = 1; /*renter*/
-if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
+else if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
 unit_&year.=1;
 run;
 
@@ -163,11 +167,12 @@ set Ipums.Acs_2010_vacant_dc Ipums.Acs_2010_vacant_md Ipums.Acs_2010_vacant_va ;
   if upuma in ("5100200") then Jurisdiction =10; 
 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-if UNITSSTR =05 then structuretype=2; /*duplex*/
-if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
+else if UNITSSTR =05 then structuretype=2; /*duplex*/
+else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
+else if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
+
 if vacancy=1 then Tenure = 1; /*renter*/
-if vacancy=2 then Tenure = 2; /*owner*/
+else if vacancy=2 then Tenure = 2; /*owner*/
 
 vacantunit_2010=1;
 run;
@@ -229,11 +234,12 @@ set Ipums.Acs_2010_dc Ipums.Acs_2010_md Ipums.Acs_2010_va;
   if upuma in ("5100200") then Jurisdiction =10; 
 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-if UNITSSTR =05 then structuretype=2; /*duplex*/
-if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
+else if UNITSSTR =05 then structuretype=2; /*duplex*/
+else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
+else if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
+
 if ownershpd in (21, 22) then Tenure = 1; /*renter*/
-if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
+else if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
 unit_2010=1;
 run;
 
@@ -294,12 +300,12 @@ set Ipums.Ipums_2000_vacant_dc Ipums.Ipums_2000_vacant_md Ipums.Ipums_2000_vacan
   if upuma in ("5100200") then Jurisdiction =10; 
 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-if UNITSSTR =05 then structuretype=2; /*duplex*/
-if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
+else if UNITSSTR =05 then structuretype=2; /*duplex*/
+else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
+else if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
 
 if vacancy =1 then Tenure = 1; /*renter*/
-if vacancy =2 then Tenure = 2; /*owner*/
+else if vacancy =2 then Tenure = 2; /*owner*/
 
 format Jurisdiction Jurisdiction.;
 
@@ -363,12 +369,12 @@ set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
   if upuma in ("5100200") then Jurisdiction =10; 
 
 if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-if UNITSSTR =05 then structuretype=2; /*duplex*/
-if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
+else if UNITSSTR =05 then structuretype=2; /*duplex*/
+else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
+else if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
 
 if ownershd in (21, 22) then Tenure = 1; /*renter*/
-if ownershd in ( 12,13 ) then Tenure = 2; /*owner*/
+else if ownershd in ( 12,13 ) then Tenure = 2; /*owner*/
 
 unit_2000=1;
 format Jurisdiction Jurisdiction.;
@@ -401,7 +407,9 @@ proc export data = COGSunits
    dbms=csv
    replace;
 run;
-
+/**************************************************************************
+Compile housing cost burden information
+**************************************************************************/
 %macro renterburden(year);
 data rentercostburden_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255") and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 set Ipums.ACS_&year._dc Ipums.ACS_&year._md Ipums.ACS_&year._va;
@@ -414,11 +422,13 @@ set Ipums.ACS_&year._dc Ipums.ACS_&year._md Ipums.ACS_&year._va;
     if ownershpd in (21, 22) then do; /*renter*/
 		if rentgrs*12>= HHINCOME*0.3 then rentburdened_&year.=1;
 	    else if HHIncome~=. then rentburdened_&year.=0;
+		totrenter_&year. = 1;
 	end;
 
     if ownershpd in ( 12,13 ) then do; /*owner*/
 		if owncost*12>= HHINCOME*0.3 then ownerburdened_&year.=1;
 	    else if HHIncome~=. then ownerburdened_&year.=0;
+		totowner_&year. = 1;
 	end;
 
 	tothh_&year. = 1;
@@ -430,14 +440,14 @@ run;
 
 proc summary data = rentercostburden_&year. (where=(ownershpd in (21, 22)));
 	class Jurisdiction;
-	var rentburdened_&year. tothh_&year.;
+	var rentburdened_&year. totrenter_&year.;
 	weight hhwt;
 	output out = rentburdened_&year. sum=;
 run;
 
 proc summary data = rentercostburden_&year.  (where=(ownershpd in (12, 13)));
 	class Jurisdiction;
-	var ownerburdened_&year. tothh_&year.;
+	var ownerburdened_&year. totowner_&year.;
 	weight hhwt;
 	output out = ownerburdened_&year.  sum=;
 run;
@@ -497,11 +507,13 @@ set Ipums.ACS_2010_dc Ipums.ACS_2010_md Ipums.ACS_2010_va;
     if ownershpd in (21, 22) then do; /*renter*/
 		if rentgrs*12>= HHINCOME*0.3 then rentburdened_2010=1;
 	    else if HHIncome~=. then rentburdened_2010=0;
+		totrenter_2010 = 1;
 	end;
 
     if ownershpd in ( 12,13 ) then do; /*owner*/
 		if owncost*12>= HHINCOME*0.3 then ownerburdened_2010=1;
 	    else if HHIncome~=. then ownerburdened_2010=0;
+		totowner_2010 = 1;
 	end;
 
 	tothh_2010 = 1;
@@ -513,14 +525,14 @@ run;
 
 proc summary data = rentercostburden_2010 (where=(ownershpd in (21, 22)));
 	class Jurisdiction;
-	var rentburdened_2010 tothh_2010;
+	var rentburdened_2010 totrenter_2010;
 	weight hhwt;
 	output out = rentburdened_2010 sum=;
 run;
 
 proc summary data = rentercostburden_2010  (where=(ownershpd in (12, 13)));
 	class Jurisdiction;
-	var ownerburdened_2010 tothh_2010;
+	var ownerburdened_2010 totowner_2010;
 	weight hhwt;
 	output out = ownerburdened_2010  sum=;
 run;
@@ -578,9 +590,8 @@ set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
 run;
 
 proc sort data = rentercostburden_2000; by serial; run;
-
+/* merge in downloaded owner monthly cost in 2000*/
 libname rawnew "L:\Libraries\IPUMS\Raw\usa_00027.sas7bdat\";
-
 
 data usa_00027;
 set rawnew.usa_00027;
@@ -599,11 +610,13 @@ if owncost=99999 then owncost=.;
 	if ownershd in (21, 22) then do; /*renter*/
 		if rentgrs*12>= HHINCOME*0.3 then rentburdened_2000=1;
 	    else if HHIncome~=. then rentburdened_2000=0;
+		totrenter_2000=1;
 	end;
 
     if ownershd in ( 12,13 ) then do; /*owner*/
 		if owncost*12>= HHINCOME*0.3 then ownerburdened_2000=1;
 	    else if HHIncome~=. then ownerburdened_2000=0;
+		totowner_2000=1;
 	end;
 run;
 
@@ -613,14 +626,14 @@ run;
 
 proc summary data = rentercostburden_2000_new (where=(ownershd in (21, 22)));
 	class Jurisdiction;
-	var rentburdened_2000 tothh_2000;
+	var rentburdened_2000 totrenter_2000;
 	weight hhwt;
 	output out = rentburdened_2000 sum=;
 run;
 
 proc summary data = rentercostburden_2000_new  (where=(ownershd in (12, 13)));
 	class Jurisdiction;
-	var ownerburdened_2000 tothh_2000;
+	var ownerburdened_2000 totowner_2000;
 	weight hhwt;
 	output out = ownerburdened_2000 sum=;
 run;
@@ -638,11 +651,13 @@ merge rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 
 by Jurisdiction;
 format Jurisdiction Jurisdiction.;
 if Jurisdiction=8 then rentburdened_2010= rentburdened_2010*(104583/145906);
-if Jurisdiction=8 then tothh_2010= tothh_2010*(104583/145906);
+if Jurisdiction=8 then totowner_2010= totowner_2010*(104583/145906);
+if Jurisdiction=8 then totrenter_2010= totrenter_2010*(104583/145906);
 if Jurisdiction=8 then ownerburdened_2010= ownerburdened_2010*(104583/145906);
 if Jurisdiction=8 then rentburdened_2000= rentburdened_2000*(59921/97263);
 if Jurisdiction=8 then ownerburdened_2000= ownerburdened_2000*(59921/97263);
-if Jurisdiction=8 then tothh_2000= tothh_2000*(59921/97263);
+if Jurisdiction=8 then totrenter_2000= totrenter_2000*(59921/97263);
+if Jurisdiction=8 then totowner_2000= totowner_2000*(59921/97263);
 run;
 
 data allhousingburden;
@@ -706,7 +721,9 @@ proc export data = permits_allyear_trans
    dbms=csv
    replace;
 run;
-
+/**************************************************************************
+Compile housing market information
+**************************************************************************/
 /*read in Zillow data for transpose and inflation adjust*/
 proc import datafile = 'L:\Libraries\RegHsg\Data\Housing-market-Zillow-data.csv'
  out = work.zillow
