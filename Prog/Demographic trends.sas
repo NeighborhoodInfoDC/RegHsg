@@ -570,7 +570,7 @@ set Cen_population_estimates;
 keep ucounty Jurisdiction NATURALINC: INTERNATIONALMIG: DOMESTICMIG: NETMIG:;
 run;
 
-proc export data = changecomponent2(drop= _TYPE_ _FREQ_)
+proc export data = changecomponent
    outfile="&_dcdata_default_path\RegHsg\Prog\changecomponent.csv"
    label dbms=csv
    replace;
