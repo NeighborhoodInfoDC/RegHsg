@@ -729,7 +729,14 @@ set zillow;
 run;
 
 
+proc transpose data=inflatadjustzillow out=inflatadjustzillow_trans ;
+var Mediansaleprice_a MedianSFRent_a MedianMFRent_a MedianCondoRent_a MedianDuplexRent_a inventoryMetro;
+id year;
+run;
 
 
-
-
+proc export data = inflatadjustzillow_trans
+   outfile="&_dcdata_default_path\RegHsg\Prog\zillow.csv"
+   dbms=csv
+   replace;
+run;
