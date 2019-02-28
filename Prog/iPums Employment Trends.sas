@@ -41,10 +41,14 @@ quit;
 /* Load Ipums for region, flag full-time year-round workers */
 data RegEmp_&year.;
 
-	%if &year. = 2017 or &year. = 2010 %then %do;
+	%if &year. = 2017 %then %do;
 	set ipums.Acs_&year._dc ipums.Acs_&year._md ipums.Acs_&year._va ipums.Acs_&year._wv;
 	if upuma in (&RegPumas.);
 	%end;
+	%else %if &year. = 2010 %then %do;
+	set ipums.Acs_&year._dc ipums.Acs_&year._md ipums.Acs_&year._va ipums.Acs_&year._wv;
+	if upuma in (&Reg2000Pumas.);
+	%end; 
 	%else %if &year. = 2000 %then %do;
 	set ipums.ipums_&year._dc ipums.ipums_&year._md ipums.ipums_&year._va ipums.ipums_&year._wv;
 	if upuma in (&Reg2000Pumas.);
