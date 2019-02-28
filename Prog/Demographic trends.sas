@@ -403,9 +403,7 @@ informat RNETMIG2017 best32.;
 
 	;
 
-	county2 = put(COUNTY,z3.);
-	state2 = put(STATE,z2.);
-	ucounty=  state2|| county2;
+	ucounty=  state|| county;
 
 	drop SUMLEV REGION DIVISION STNAME CTYNAME;
 
