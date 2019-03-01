@@ -278,7 +278,7 @@ We will also create a designation for dwelling types that are restricted to a ce
 
 ```{r dwelling-factor}
 
-zoningcode1 <- zoningcode1 %>% 
+zoningcode_factor <- zoningcode2 %>% 
   mutate( newdwelling_type = factor(newdwelling_type,
                                 levels = c("MF",
                                            "RF3",
@@ -291,6 +291,7 @@ zoningcode1 <- zoningcode1 %>%
          two_unit_flag = ifelse(newdwelling_type == "RF2"|newdwelling_type == "RF3",
                                 1,
                                 0))
+
 
 ```
 
@@ -483,7 +484,12 @@ dual <- vacanttotal %>%
 vacantfinal <- vacanttotal %>% 
         mutate(zoning_code=ZONING_LAB)
 
-zoningdata <- left_join(vacantfinal, zoningcode1, by = "zoning_code")
+zoningdata <- left_join(vacantfinal, zoningcode_factor, by = "zoning_code")
+
+zoningdata %>% 
+  group_by(newdwelling_type) %>% 
+  count() %>% 
+  knitr::kable()
 
 ```
 
@@ -491,7 +497,7 @@ There are `r ` observations that did not have a match in the zoning code. Below,
 
 ```{r antijoin}
 
-anti_join(vacantfinal, zoningcode1, by = c("zoning_code")) %>% 
+anti_join(vacantfinal,zoningcode_factor, by = c("zoning_code")) %>% 
   count(ZONING_LAB) %>% 
   knitr::kable()
 
@@ -514,7 +520,7 @@ zoningdatanew <- left_join(vacantcleaned, zoningcode1, by = "zoning_code")
 After cleaning, use anti_join again to test if there are any left over residential codes that are not joined. R1 and RC-1, RC-3 not joined. Check the spreasheet and they are not in. Leave for now.
 ```{r antijoinagain}
 
-anti_join(vacantcleaned, zoningcode1, by = c("zoning_code")) %>% 
+anti_join(vacantcleaned, zoningcode_factor, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
@@ -523,7 +529,7 @@ anti_join(vacantcleaned, zoningcode1, by = c("zoning_code")) %>%
 There are 2026 R1s that are not joined which is pretty significant, in our spreadsheet we have R1A and R1B, pull in lotsize and see which ones we should assign the R1 to. R1A has lot size of 7500, R1B has lot size of 5000. Use as threshold.
 ```{r assign R1}
 
-anti_join(vacantcleaned, zoningcode1, by = c("zoning_code")) %>% 
+anti_join(vacantcleaned, zoningcode_factor, by = c("zoning_code")) %>% 
   filter(zoning_code=="R1") %>% 
   mutate(R1Aflag= ifelse(lotsize_sf>=7500,1,0),
          R1Bflag=ifelse(lotsize_sf<7500 & lotsize_sf>= 5000,1, 0)) %>% 
@@ -540,25 +546,53 @@ vacantcleaned2 <- vacantcleaned %>%
   mutate(zoning_code= ifelse(R1Aflag==1, "R1A", zoning_code),
          zoning_code= ifelse(R1Bflag==1, "R1B", zoning_code))
 
-anti_join(vacantcleaned2, zoningcode1, by = c("zoning_code")) %>% 
+anti_join(vacantcleaned2, zoningcode_factor, by = c("zoning_code")) %>% 
   filter(zoning_code=="R1") %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
-zoningdatanew2 <- left_join(vacantcleaned2, zoningcode1, by = "zoning_code")
+zoningdatanew2 <- left_join(vacantcleaned2, zoningcode_factor, by = "zoning_code")
 
+zoningdatanew2 %>% 
+  group_by(newdwelling_type) %>% 
+  count() %>% 
+  knitr::kable()
 ```
 
-Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
+Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 27166 to 6969, after slicing out the least dense zoning code, we only have 1640 observation left. We need to fix this.
 
 ```{r filter-small}
 
 zoningdata1 <- zoningdatanew2 %>% 
+  mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
+         lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
   filter(!is.na(zoning_code),
          lotsize_sf >= lot_area_min) %>% 
   group_by(propaddress) %>% 
   slice(which.min(newdwelling_type)) %>% 
   ungroup()
+
+
+# 13428 cases where lotsize_sf is less than the minimum lot area
+zoningdata1test <- zoningdatanew2 %>% 
+    mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
+         lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
+     filter(lotsize_sf < lot_area_min) %>% 
+     mutate(gap= lotsize_sf-lot_area_min) %>% 
+    select(lotsize_sf,lot_area_min, gap)
+
+
+ggplot(zoningdata1, aes(lotsize_sf) )+
+  geom_histogram(binwidth = 5000)
+
+
+ggplot(zoningdata1, aes(lot_area_min) )+
+  geom_histogram(binwidth = 500)
+
+
+ggplot(zoningdata1, aes((lotsize_sf-lot_area_min)) )+
+  geom_histogram(binwidth = 500)
+
 
 ```
 
