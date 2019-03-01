@@ -5,11 +5,6 @@ library(tidyverse)
 library(DescTools)
 library(purrr)
 
-source("../Macros/read-bk.R")
-source("../Macros/filter-bk.R")
-source("../Macros/select-vars.R")
-source("../Macros/sample-properties.R")
-source("../Macros/classify-addresses.R")
 
 #### Create directory for data exports on local computer
 
@@ -75,12 +70,12 @@ boundary <- ggplot()+
 
 #Typology by HH income 
 ggplot() +
-  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#98cf90", size=0.5)+
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#98cf90", size=0.05)+
   geom_sf(Typologymap,  mapping = aes(),
           fill = NA, color = "white", size = .05) +
   geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHHcode)), color= "#dcdbdb", size = .05)+
-  scale_fill_manual(values = c ("#a2d4ec", "#fce39e", "#fccb41", "#eb99c2", "#e9807d", "#db2b27" ),
-                    labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Not at risk")) +
+  scale_fill_manual(values = c ("#a2d4ec", "#fce39e", "#fccb41", "#eb99c2", "#e9807d", "#db2b27","#d2d2d2" ),
+                    labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Low-moderate value: not at risk","Other not at risk")) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
   labs(title = "Neighborhood Gentrification Typology by HH") + 
@@ -96,8 +91,8 @@ ggplot() +
   geom_sf(COGcounty_sf,  mapping = aes(),
           fill = NA, color = "#9d9d9d", size = .05) +
   geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAMcode)), color= "#dcdbdb", size = .05)+
-  scale_fill_manual(values = c ("#a2d4ec", "#fce39e", "#fccb41", "#eb99c2", "#e9807d", "#db2b27" ),
-                    labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Not at risk")) +
+  scale_fill_manual(values = c ("#a2d4ec", "#fce39e", "#fccb41", "#eb99c2", "#e9807d", "#db2b27","#d2d2d2" ),
+                    labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Low-moderate value: not at risk","Other not at risk")) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
   labs(title = "Neighborhood Gentrification Typology by Family") + 
