@@ -576,7 +576,18 @@ set Cen_population_estimates;
   if ucounty  in ("51107") then Jurisdiction =8;
   if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
   if ucounty  in ("51510") then Jurisdiction =10; 
+
 keep ucounty Jurisdiction NATURALINC: INTERNATIONALMIG: DOMESTICMIG: NETMIG:;
+run;
+
+proc means noprint data=changecomponent;
+output out=dem_change_sum sum=;
+run;
+
+data changecomponent_total (drop= _TYPE_ _FREQ_);
+set changecomponent dem_change_sum(in=in2);
+if in2 then Jurisdiction=11;
+format Jurisdiction Jurisdiction.;
 run;
 
 proc export data = changecomponent
