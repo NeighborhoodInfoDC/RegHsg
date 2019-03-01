@@ -1,0 +1,166 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Upzoning analysis for Arlington County"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The goal of this analysis is to estimate the number of units to be gained from upzoning the existing housing stock within 1 mile of COG activity centers and 1/2 mile of rail, including MARC/VRE.
+
+The metric that we use for density will be defined as units per acre. 
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(sf)
+library(urbnthemes)
+library(units)
+
+source("../Macros/read-arlington.R")
+source("../Macros/get_node_geography.R")
+
+```
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+
+```
+
+
+Set FIPS code, filepath name, and directory for maps
+
+```{r fips}
+currentfips <- "51013"
+filepath <- "arlington"
+rhfdir <- "L:/Libraries/RegHsg/Maps"
+```
+
+Load in Black Knight data for the region, select jurisdiction and standard variables
+```{r read}
+if (!exists("jur")) {
+  jur <- read_arlington(filepath)
+} else {
+  warning(filepath, " data already read in")
+}
+
+```
+
+
+Use the functions established in `clean-node-geographies.Rmd` to read in shapefiles for nodes. Start with activity centers.
+
+```{r get-nodes}
+
+act1mile <- get_node_geography(node_type = "activity",
+                               style = "buffer",
+                               activity_buffer = 1)
+
+```
+
+Read in Arlington zoning later
+
+
+```{r read-zon}
+
+zon <- st_read(dsn = paste0(rhfdir, "/",
+                            filepath, "-zoning-map"),
+               layer = "Zoning_Polygons") %>% 
+  st_transform(crs = 4326)
+
+
+```
+
+
+## Example
+
+Pick one activity center in Arlington to test and visualize the calculation. Use Clarendon activity center as an example.
+
+```{r clar}
+
+clarendon <- filter(act1mile, name == "Clarendon")
+
+ggplot() +
+  geom_sf(zon, mapping = aes(fill = GZDC)) +
+  scale_fill_manual(values = c("#1696d2", "#ec008b", "#d2d2d2",
+                               "#fdbf11", "#55b748", "#0a4c6a")) +
+  geom_sf(clarendon, mapping = aes(),
+          fill = NA, size = 2) +
+  theme_urbn_map() +
+  coord_sf(datum = NA)
+
+```
+
+We can clip the zoning layer to the circumference of the buffer.
+
+```{r clip-zon}
+
+zon_clar <- st_intersection(zon, clarendon)
+
+
+ggplot() +
+  geom_sf(zon_clar, mapping = aes(fill = GZDC)) +
+  scale_fill_manual(values = c("#1696d2", "#ec008b", "#d2d2d2",
+                               "#fdbf11", "#55b748", "#0a4c6a")) +
+  theme_urbn_map() +
+  coord_sf(datum = NA)
+
+```
+
+Test how much of the area in the buffered zone is in each zoning code.
+
+```{r calc-area}
+
+zon_clar <- zon_clar %>% 
+  mutate(area = st_area(zon_clar) %>% set_units("acre"))
+
+totalarea <- sum(zon_clar$area)
+units(totalarea) <- NULL
+units(zon_clar$area) <- NULL
+
+zon_clar %>% as.data.frame() %>% 
+  group_by(ZN_DESIG) %>% 
+  summarize(area= sum(area)) %>% 
+  mutate(p_area = (area/totalarea) %>% 
+                   set_units(NULL)) %>% 
+  arrange(desc(p_area)) %>% 
+  knitr::kable()
+
+```
+
+
+## Application
