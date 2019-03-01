@@ -1192,26 +1192,27 @@ proc sort data= nonrelatehh_&year.;
 by serial;
 run;
 
-data hhtype_&year.;
+data hhtype_&year._raw;
 merge hhtype_1_&year. nonrelatehh_&year. ;
 by serial;
 run;
 
 data hhtype_&year.;
-set hhtype_&year.;
+set hhtype_&year._raw;
 
 if hhtype in (4,5,6,7) then do;  /*non family*/
 	if numprec=1 then HHcat=1 ; /*single*/
+	if nonrelatehh=1 then HHcat=4; /* non relate households*/ 
 end;
 
-if hhtype in (1,2,3) then do; /*family household*/
+else if hhtype in (1,2,3) then do; /*family household*/
     if hhtype=1 & numprec=2 then HHcat=2 ; /*couple without kid*/
 	else HHcat=3; /*other family*/
 end;
 
-if nonrelatehh=1 then HHcat=4; /* non relate households*/ 
-
-if hhtype in (0, 9) then HHcat=.;
+else if hhtype in (0, 9) then do;
+HHcat=.;
+end;
 
 else HHcat=5;
 
@@ -1283,10 +1284,11 @@ else if hhtype in (1,2,3) then do; /*family household*/
 	else HHcat=3; /*other family*/
 end;
 
-/*else if hhtype in (0, 9) then HHcat=9999;*/
-else do;
-HHcat=5; 
+else if hhtype in (0,9) then do; 
+HHcat=.;
 end;
+
+else HHcat=5; 
 
 HHnumber_2010=1;
 
