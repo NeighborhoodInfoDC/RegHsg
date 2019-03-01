@@ -304,6 +304,7 @@ specialexception <- zoningdata %>%
 
 count(byright, dwelling_type)
 count(specialexception, dwelling_type)
+
 ```
 
 ### Fill in stipulations for mixed use zones
