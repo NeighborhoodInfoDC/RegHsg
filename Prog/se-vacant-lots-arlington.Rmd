@@ -122,6 +122,7 @@ A few cleaning tasks:
 * Create `special_exception` flag
 * Filter out `dwelling_type` values that we cannot use
 * Change `dwelling_type` values incorrectly recorded as "Multiple-family dwellings" to "Multiple-family"
+* If `height_ft` is missing, fill in with `height_stories`
 
 ```{r height-problems}
 
@@ -136,6 +137,9 @@ se1 <- se %>%
   mutate(dwelling_type = ifelse(dwelling_type == "Multiple-family dwellings",
                                 "Multiple-family",
                                 dwelling_type)) %>% 
+  mutate(height_ft = ifelse(is.na(height_ft) & !is.na(height_stories),
+                            height_stories * 10,
+                            height_ft)) %>% 
   filter(dwelling_type != "Hotel")
   
   
@@ -298,8 +302,171 @@ specialexception <- zoningdata %>%
   slice(which.min(dwelling_type)) %>% 
   ungroup()
 
+count(byright, dwelling_type)
+count(specialexception, dwelling_type)
 ```
 
 ### Fill in stipulations for mixed use zones
+
+```{r }
+
+specialexception1 <- specialexception %>% 
+  mutate(height_se = case_when(
+    zoning == "C-O-1.5" & lotsize_sf < 871200 ~ 80,
+    zoning == "C-O-1.5" & lotsize_sf >= 871200 ~ 180,
+    TRUE ~ height_ft))
+
+```
+
+## Calculate missing units
+
+There are several variables we will use to calculate how many units we can put on each vacant lot.
+
+1. Buildable area: this is `lotsize_sf` x the coverage ratio (`lot_coverage_max`)
+2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
+3. Units per floor: this is the living area divided by the average unit size. We use 940 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
+4. Units allowed based on height limits: This is the units per floor x the number of stories.
+3. Units allowed based on lot size: this is the lot area divided by `lotarea_per_unit`
+
+We can create a function that will allow us to easily adjust these parameters and compare results.
+
+```{r get-est}
+
+#' Get maximum unit variables
+#' @description this function generates the variables necessary to calculate the maximum number of units that can occupy one lot, per the by-right zoning code.
+#'
+#' @param dataset dataset with lot size and zoning variables 
+#' @param construction_efficiency Assumption for construction efficiency
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
+#'
+#' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`, `units_height`, `units_lotsize`, and `units_total`
+#'
+#' @examples
+get_unit_variables <- function(dataset, 
+                               construction_efficiency, 
+                               average_unit_size) {
+  
+  dataset %>% 
+    mutate(parameters = paste0("CE: ", construction_efficiency * 100,
+                               "% , Unit size: ", average_unit_size,
+                               " sf"),
+           buildable_area = lotsize_sf * lot_coverage_max,
+           living_area = buildable_area * construction_efficiency,
+           units_per_floor = floor(living_area / average_unit_size),
+           floors = floor(height_ft / 10),
+           units_height = units_per_floor * floors,
+           units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
+    mutate_at(vars(units_height, units_lotsize),
+              funs(case_when(
+                one_unit_flag == 1 ~ 1,
+                two_unit_flag == 1 ~ 2,
+                TRUE ~ .))) %>% 
+    mutate(units_total = case_when(
+      one_unit_flag == 1 ~ 1,
+      two_unit_flag == 1 ~ 2,
+      is.na(units_lotsize) ~ units_height,
+      units_height < units_lotsize ~ units_height,
+      TRUE ~ units_lotsize))
+  
+}
+
+#' Get maximum unit summary
+#'
+#' @param dataset dataset with lot size and zoning variables 
+#' @param construction_efficiency Assumption for construction efficiency
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
+#' @param dwelling_type_breakdown Options are TRUE or FALSE- indicates whether or not estimates should be broken down by `dwelling_type`
+#'
+#' @return Returns a dataframe with summary statistics on the maximum units that can be build on lots, per the by-right zoning code.
+#'
+#' @examples
+get_unit_summary <- function(dataset, 
+                             construction_efficiency, 
+                             average_unit_size,
+                             dwelling_type_breakdown) {
+
+  x <- dataset %>% 
+    get_unit_variables(construction_efficiency,
+                       average_unit_size) %>%
+    group_by(parameters) %>% 
+    summarize(lots = n(),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
+              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE)))
+  
+  y <- dataset %>% 
+    get_unit_variables(construction_efficiency,
+                       average_unit_size) %>%
+    group_by(parameters, dwelling_type) %>% 
+    summarize(lots = n(),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
+              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE))) %>% 
+    mutate(dwelling_type = as.character(dwelling_type))
+  
+  
+  if (dwelling_type_breakdown == TRUE) {
+   
+      bind_rows(y, mutate(x, dwelling_type = "All"))  
+  
+  } else if (dwelling_type_breakdown == FALSE) {
+      x
+    }
+}
+
+
+
+```
+
+
+Compare different between special exception and by right.
+
+```{r compare-se-br}
+
+get_unit_summary(byright,
+                 construction_efficiency = .75,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE) %>% 
+  knitr::kable(caption = "By right only")
+
+get_unit_summary(specialexception1,
+                 construction_efficiency = .75,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE) %>% 
+  knitr::kable(caption = "With special exceptions")
+
+```
+
+Make scatterplot of special exceptions.
+
+```{r scatter-special}
+
+specialexception1 %>% 
+  get_unit_variables(construction_efficiency = .7,
+                     average_unit_size = 940) %>% 
+  filter(units_total > 1) %>% 
+  ggplot() +
+  geom_point(mapping = aes(lotsize_sf, units_total,
+                           color = dwelling_type),
+             alpha = .8) +
+  scale_x_continuous(labels = scales::comma,
+                     expand = expand_scale(mult = c(0, 0.0002)), 
+                    # limits = c(0, 50000),
+                    # breaks = 0:5 * 10000
+                    ) +
+  scale_y_continuous(expand = expand_scale(mult = c(0, 0.0002)), 
+                    # limits = c(0, 60),
+                    # breaks = 0:4 * 15
+                    ) +
+  scatter_grid() +
+  labs(x = "Lot size (square feet)", y = "Total units") +
+  theme(plot.margin = margin(t = 20,
+                             r = 20))
+
+
+
+```
 
 
