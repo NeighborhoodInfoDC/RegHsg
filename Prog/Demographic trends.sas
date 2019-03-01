@@ -72,14 +72,14 @@ proc format;
     0 = 'Not Hispanic'
     1 = 'Hispanic';
 
- value hhcat
-     .n = 'Not available'
-    1 = 'Single'
-	2= 'Couple without children'
-	3='other families'
-	4='2+ unrelated person only'
-	5='Other household'
-;
+  /* Derived household categories*/
+  value hhcat
+    1 = "Person living alone"
+    2 = "Couple living alone"
+    3 = "Family with children"
+    4 = "2+ unrelated adults only"
+    5 = "Other households";
+
   value Jurisdiction
     1= "DC"
 	2= "Charles County"
@@ -113,6 +113,12 @@ proc format;
     7 = 'More than $217,200'
 	8 = 'Vacant'
 	;
+
+/*Summarize number of persons in household*/
+value numprec3p
+  1 = '1'
+  2 = '2'
+  3-high = '3+';
   	  
 run;
 /**************************************************************************
@@ -1013,18 +1019,22 @@ Compile hh counts by size, family type and income
 %macro hhnonrelate(year);
 data hhrelate_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255"))) ;
 set Ipums.ACS_&year._dc(where=(gq in (1,2))) Ipums.ACS_&year._va(where=(gq in (1,2))) Ipums.ACS_&year._md(where=(gq in (1,2)));
-keep upuma pernum gq hhwt perwt year serial numprec relate related notrelatedper relatedper unmarriedpartner totnumpop;
+keep upuma pernum gq hhwt perwt year serial numprec relate related notrelatedper relatedper unmarriedpartner children totnumpop;
 
 notrelatedper = 0;
 relatedper = 0;
 unmarriedpartner = 0;
+children = 0;
 
-/** Count numbers of related and nonrelated persons in HH **/
+/** Count numbers of related and not related persons in HH **/
 if relate in (11,12,13) then notrelatedper=1;
 else if relate in (2,3,4,5,6,7,8,9,10) then relatedper=1;
 
 /** Unmarried partners **/
 if related = 1114 then unmarriedpartner = 1;
+
+/** Children **/
+if 0<= age < 18 then children = 1;
 
 totnumpop=1;
 
@@ -1032,20 +1042,9 @@ run;
 
 proc summary data=hhrelate_&year. nway;
   class serial;
-  var relatedper notrelatedper unmarriedpartner totnumpop;
+  var relatedper notrelatedper unmarriedpartner children totnumpop;
   output out =aaa_&year. (drop=_type_ _freq_) sum= ;
 run;
-
-/*
-data nonrelatehh_&year. ;
-set aaa_&year.;
-if totnumpop>=2 then do;
-	if notnonrelate>=1 then nonrelatehh=0;
-	else if notnonrelate=0 then nonrelatehh=1;
-	else nonrelatehh=.;
-end;
-run;
-*/
 
 %mend hhnonrelate;
 %hhnonrelate(2017);
@@ -1086,22 +1085,12 @@ data hhtype_&year.;
 merge hhtype_1_&year. aaa_&year. ;
 by serial;
 
-if hhtype in (4,5,6,7) then do;  /*non family*/
-	if numprec=1 then HHcat=1 ; /*single*/
-  else if numprec=2 and unmarriedpartner=1 then HHcat=2; /*(unmarried)couple without kid*/
-	else if relatedper=0 then HHcat=4; /* non relate households*/ 
-  else HHcat=5; /* Other households **/
-end;
-
-else if hhtype in (1,2,3) then do; /*family household*/
-    if hhtype=1 & numprec=2 then HHcat=2 ; /*(married)couple without kid*/
-	else HHcat=3; /*other family*/
-end;
-
-else if hhtype in (0, 9) then do;
-  if numprec=2 and unmarriedpartner=1 then HHcat=2; /*(unmarried)couple without kid*/
-  else HHcat=.;
-end;
+  if hhtype in ( 0 ) then HHcat=.n;
+	else if numprec=1 then HHcat=1 ; /*singleton*/
+  else if numprec=2 and ( hhtype=1 or unmarriedpartner=1 ) then HHcat=2; /*(married/unmarried)couple alone*/
+  else if hhtype in ( 1, 2, 3 ) and children > 0 then HHcat=3; /* family with children */
+	else if relatedper=0 and children=0 then HHcat=4; /* non related adult households*/ 
+  else HHcat=5; /*other households*/
 
 HHnumber_&year.=1;
 
@@ -1111,9 +1100,17 @@ run;
 
 %hhtype_1(2017);
 
+title2 "Check HH types 2017";
+
 proc freq data=hhtype_2017;
-table hhcat;
+  weight hhwt;
+  tables hhcat;
+  tables hhcat * hhtype / list missing nocum;
+  tables hhcat * numprec / list missing nocum;
+  format hhcat hhcat. numprec numprec3p.;
 run;
+
+title2; 
 
 /** 2010 **/
 
