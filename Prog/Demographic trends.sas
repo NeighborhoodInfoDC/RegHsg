@@ -1007,22 +1007,36 @@ Compile hh counts by size, family type and income
 **************************************************************************/
 
 /*hh by size, type and income*/
+
+/** 2017 **/
+
 %macro hhnonrelate(year);
 data hhrelate_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255"))) ;
 set Ipums.ACS_&year._dc(where=(gq in (1,2))) Ipums.ACS_&year._va(where=(gq in (1,2))) Ipums.ACS_&year._md(where=(gq in (1,2)));
-keep upuma pernum gq hhwt perwt year serial numprec relate related notnonrelate totnumpop;
-if relate in (11,12,13) then notnonrelate=0;
-else if relate in (2,3,4,5,6,7,8,9,10) then notnonrelate=1;
+keep upuma pernum gq hhwt perwt year serial numprec relate related notrelatedper relatedper unmarriedpartner totnumpop;
+
+notrelatedper = 0;
+relatedper = 0;
+unmarriedpartner = 0;
+
+/** Count numbers of related and nonrelated persons in HH **/
+if relate in (11,12,13) then notrelatedper=1;
+else if relate in (2,3,4,5,6,7,8,9,10) then relatedper=1;
+
+/** Unmarried partners **/
+if related = 1114 then unmarriedpartner = 1;
+
 totnumpop=1;
+
 run;
 
 proc summary data=hhrelate_&year. nway;
   class serial;
-  var notnonrelate totnumpop;
-  weight hhwt;
-  output out =aaa_&year. sum= ;
+  var relatedper notrelatedper unmarriedpartner totnumpop;
+  output out =aaa_&year. (drop=_type_ _freq_) sum= ;
 run;
 
+/*
 data nonrelatehh_&year. ;
 set aaa_&year.;
 if totnumpop>=2 then do;
@@ -1031,9 +1045,77 @@ if totnumpop>=2 then do;
 	else nonrelatehh=.;
 end;
 run;
+*/
 
 %mend hhnonrelate;
 %hhnonrelate(2017);
+
+%macro hhtype_1(year);
+data hhtype_1_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255"))) ;
+set Ipums.ACS_&year._dc(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._md(where=(pernum=1 and gq in (1,2)));
+keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE relate incomecat;
+
+
+	%assign_jurisdiction; 
+
+	  if hhincome ~=.n or hhincome ~=9999999 then do; 
+		 %dollar_convert( hhincome, hhincome_a, &year., 2017, series=CUUR0000SA0 )
+	   end; 
+  
+		if hhincome_a in ( 9999999, .n , . ) then incomecat=.;
+			else do; 
+			    if hhincome_a<=32600 then incomecat=1;
+				else if 32600<hhincome_a<=54300 then incomecat=2;
+				else if 54300<hhincome_a<=70150 then incomecat=3;
+				else if 70150<hhincome_a<=108600 then incomecat=4;
+				else if 108600<hhincome_a<=130320 then incomecat=5;
+				else if 130320<hhincome_a<=217200 then incomecat=6;
+				else if 217200 < hhincome_a then incomecat=7;
+			end;
+
+		  label incomecat='Income Categories based on 2016 HUD Limit for Family of 4';
+
+run;
+
+proc sort data= hhtype_1_&year.;
+by serial;
+run;
+
+data hhtype_&year.;
+
+merge hhtype_1_&year. aaa_&year. ;
+by serial;
+
+if hhtype in (4,5,6,7) then do;  /*non family*/
+	if numprec=1 then HHcat=1 ; /*single*/
+  else if numprec=2 and unmarriedpartner=1 then HHcat=2; /*(unmarried)couple without kid*/
+	else if relatedper=0 then HHcat=4; /* non relate households*/ 
+  else HHcat=5; /* Other households **/
+end;
+
+else if hhtype in (1,2,3) then do; /*family household*/
+    if hhtype=1 & numprec=2 then HHcat=2 ; /*(married)couple without kid*/
+	else HHcat=3; /*other family*/
+end;
+
+else if hhtype in (0, 9) then do;
+  if numprec=2 and unmarriedpartner=1 then HHcat=2; /*(unmarried)couple without kid*/
+  else HHcat=.;
+end;
+
+HHnumber_&year.=1;
+
+run; 
+
+%mend hhtype_1;
+
+%hhtype_1(2017);
+
+proc freq data=hhtype_2017;
+table hhcat;
+run;
+
+/** 2010 **/
 
 data hhrelate_2010 (where=(upuma in ("1100101",
 "1100102",
@@ -1157,72 +1239,8 @@ else couplefam=0;
 
 run;
 
-%macro hhtype_1(year);
-data hhtype_1_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255"))) ;
-set Ipums.ACS_&year._dc(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_&year._md(where=(pernum=1 and gq in (1,2)));
-keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE relate incomecat;
 
 
-	%assign_jurisdiction; 
-
-	  if hhincome ~=.n or hhincome ~=9999999 then do; 
-		 %dollar_convert( hhincome, hhincome_a, &year., 2017, series=CUUR0000SA0 )
-	   end; 
-  
-		if hhincome_a in ( 9999999, .n , . ) then incomecat=.;
-			else do; 
-			    if hhincome_a<=32600 then incomecat=1;
-				else if 32600<hhincome_a<=54300 then incomecat=2;
-				else if 54300<hhincome_a<=70150 then incomecat=3;
-				else if 70150<hhincome_a<=108600 then incomecat=4;
-				else if 108600<hhincome_a<=130320 then incomecat=5;
-				else if 130320<hhincome_a<=217200 then incomecat=6;
-				else if 217200 < hhincome_a then incomecat=7;
-			end;
-
-		  label incomecat='Income Categories based on 2016 HUD Limit for Family of 4';
-
-run;
-
-proc sort data= hhtype_1_&year.;
-by serial;
-run;
-
-proc sort data= nonrelatehh_&year.;
-by serial;
-run;
-
-data hhtype_&year._raw;
-merge hhtype_1_&year. nonrelatehh_&year. ;
-by serial;
-run;
-
-data hhtype_&year.;
-set hhtype_&year._raw;
-
-if hhtype in (4,5,6,7) then do;  /*non family*/
-	if numprec=1 then HHcat=1 ; /*single*/
-	if nonrelatehh=1 then HHcat=4; /* non relate households*/ 
-end;
-
-else if hhtype in (1,2,3) then do; /*family household*/
-    if hhtype=1 & numprec=2 then HHcat=2 ; /*couple without kid*/
-	else HHcat=3; /*other family*/
-end;
-
-else if hhtype in (0, 9) then do;
-HHcat=.;
-end;
-
-else HHcat=5;
-
-HHnumber_&year.=1;
-
-run; 
-
-%mend hhtype_1;
-
-%hhtype_1(2017);
 
 data hhtype_1_2010 (where=(Jurisdiction in (1:10))) ;
 set Ipums.ACS_2010_dc(where=(pernum=1 and gq in (1,2))) Ipums.ACS_2010_va(where=(pernum=1 and gq in (1,2))) Ipums.ACS_2010_md(where=(pernum=1 and gq in (1,2)));
