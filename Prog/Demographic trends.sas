@@ -36,6 +36,7 @@ COGS region:
 %DCData_lib( RegHsg )
 %DCData_lib( Census )
 %DCData_lib( Ipums );
+
 proc format;
 
  value racenew
@@ -114,19 +115,26 @@ proc format;
 	8 = 'Vacant'
 	;
 
-/*Summarize number of persons in household*/
+/*Summarize number of persons in household for testing*/
 value numprec3p
   1 = '1'
   2 = '2'
   3-high = '3+';
+
+/*Summarize number of persons in household for tables*/
+value numprectab 
+  1 = '1'
+  2 = '2'
+  3 = '3'
+  4 = '4'
+  5 = '5'
+  6-high = '6+';
   	  
 run;
+
 /**************************************************************************
 Read in census population data
 **************************************************************************/
-
-** Define libraries **;
-
 
 /* Path to raw data csv files and names */
 
@@ -565,6 +573,7 @@ proc export data = populationbyjur2(drop= _TYPE_ _FREQ_)
    label dbms=csv
    replace;
 run;
+
 /**************************************************************************
 Use census population estimate for component of population change
 **************************************************************************/
@@ -601,6 +610,7 @@ proc export data = changecomponent
    label dbms=csv
    replace;
 run;
+
 /**************************************************************************
 Compile population break down by race, age and foreign born status
 **************************************************************************/
@@ -839,6 +849,7 @@ proc export data = popbreakdown
    dbms=csv
    replace;
 run;
+
 /**************************************************************************
 Compile household trend 
 **************************************************************************/
@@ -925,16 +936,16 @@ keep Jurisdiction vacrate;
 vacrate= vacunit/totalunits;
 run;
 
-proc sort data=COGSarea_2017 ;
+proc sort data=units_2017;
 by Jurisdiction;
 run;
 
 data hh_housing;
-merge COGSarea_2017 vacancyrate2;
+merge units_2017 vacancyrate2;
 by Jurisdiction;
 run;
 
-data hhestimates17 (drop= _FREQ_);
+data hhestimates17;
 set hh_housing;
 hhestimate17= totalunits*(1-vacrate);
 run;
@@ -1008,6 +1019,7 @@ proc export data = totalhouseholdtrend
    dbms=csv
    replace;
 run;
+
 /**************************************************************************
 Compile hh counts by size, family type and income
 **************************************************************************/
@@ -1141,17 +1153,19 @@ title2;
 
 proc summary data = hhtype_&year. ;
 	class Jurisdiction numprec incomecat HHcat;
+  ways 0 1;
 	var HHnumber_&year.;
 	weight hhwt;
 	output out = HH_size_inc_type_&year.  sum=;
-	format Jurisdiction Jurisdiction. incomecat inc_cat. HHcat hhcat.;
+	format Jurisdiction Jurisdiction. incomecat inc_cat. HHcat hhcat. numprec numprectab.;
 run;
 
 proc sort data=HH_size_inc_type_&year.;
-by Jurisdiction numprec incomecat HHcat;
+by _type_ Jurisdiction numprec incomecat HHcat;
 run;
 
 %mend summarizehh;
+
 %summarizehh(2000);
 %summarizehh(2010);
 %summarizehh(2017);
@@ -1163,7 +1177,7 @@ run;
 
 data hhbytypeallyears;
 merge HH_size_inc_type_2000 HH_size_inc_type_2010 HH_size_inc_type_2017;
-by Jurisdiction numprec incomecat HHcat;
+by _type_ Jurisdiction numprec incomecat HHcat;
 if Jurisdiction= 8 then HHnumber_2000=HHnumber_2000*(59921/97263);
 if Jurisdiction= 8 then HHnumber_2010=HHnumber_2010*(104583/145906);
 run;
