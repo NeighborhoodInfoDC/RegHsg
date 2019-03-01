@@ -513,3 +513,30 @@ anti_join(vacantfinal, zoningcode1, by = c("zoning_code")) %>%
   knitr::kable()
 
 ```
+
+We need to clean the spatial joined zoning code that are not joined in the table and join again. 
+
+```{r remove dash}
+
+vacantcleaned <- vacantfinal %>% 
+          separate( zoning_code, sep = "-", remove = TRUE, into = c("a1", "a2", "a3")) %>% 
+          mutate(zoning_code_new= paste0(a1, a2, a3)) %>% 
+          filter(ZONING_LAB=="R-21")
+
+
+zoningdataclean <- left_join(vacantcleaned, zoningcode1, by = "zoning_code")
+
+```
+
+Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
+
+```{r filter-small}
+
+zoningdata1 <- zoningdata %>% 
+  filter(!is.na(zoning_code),
+         lotsize_sf >= lot_area_min) %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  ungroup()
+
+```
