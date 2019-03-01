@@ -208,7 +208,7 @@ rm(z)
 
 For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most dense construction for that zone. 
 
-First, we look at all the options, these categories is not as helpful because attached and detached can mean so many different things plus we have a lot of NAs for residential code. So need to create a new dwelling type variable.
+First, we look at all the options, these categories are not as helpful because attached and detached can mean so many different things in the context ofdifferent zoning types plus we have a lot of NAs for residential code. So need to create a new dwelling type variable.
 
 ```{r tab-dwellings}
 zoningcode %>% 
@@ -322,7 +322,6 @@ vacant %>%
 ### Missing lot size
 We filled in the missing lot size, when we can, with the cleaned parcelbase lot area data in the clean DC step. So skip this step.
 
-
 We have 788 lotsize missing after the cleaning. 
 
 ```{r count-lots}
@@ -348,7 +347,7 @@ vacant %>%
 
 ```
 
-All of the vacant properties in DC have either a 0 or a missing value for the improvement value, which is what we would expect. 
+All of the vacant lots in DC have either a 0 or a missing value for the improvement value, which is what we would expect. 
 
 ```{r not-so-vacant}
 
@@ -359,7 +358,7 @@ vacantstructure <- vacant%>%
 
 ```
 
-We will not include these in the calculation. We can also make a flag for missing coordinates.
+We will not include vacant with structures (242 cases) in the calculation. We can also make a flag for missing coordinates.
 
 ```{r not-vacant-recat}
 
@@ -371,7 +370,7 @@ vacant1 <- vacant %>%
 ```
 
 ### Missing zoning variables
-Blackknight zoning data for DC is outdated, making it complicated to crosswalk that to the new zoning code and our zoning statistics, we will use a spatial join to the county's zoning layer to get zoning information for all parcels. 
+Blackknight zoning data for DC is outdated, making it complicated to crosswalk it to the new zoning code and our zoning statistics. Instead, we will use a spatial join to the county's zoning layer to get zoning information for all parcels. 
 
 Read in zoning layer, set CRS
 ```{r read-zoning}
@@ -437,7 +436,7 @@ if (sum(is.na(vacant2$ZONING_LAB)) / nrow(vacant2) > .05) {
       
 ```
 
-Test how many have different results from the Black Knight zoning variable. 3804 of 8661 were the same if using new zoning code. 5448 of 8661 were the same if using old zoning code in the shapefile.
+Test how many have different results from the Black Knight zoning variable. 3804 of 8661 were the same if using new zoning code. 5448 of 8661 were the same if using old zoning code in the shapefile.This is expected because blacknight data zoning code was dated and not consisted with the 2016 updated DC zoning codes.
 
 ```{r test-spatial}
 
@@ -448,22 +447,6 @@ vacant2 %>%
 vacant2 %>% 
   group_by(is.na(zoning)) %>% 
   count(zoning == OLD_ZONING)
-
-```
-
-Take a closer look how many and what percent are different "just because"- not because they didn't merge, have missing values, or have duplicate values.
-
-```{r test-spatial-again}
-
-vacant2 %>% 
-  filter(!is.na(zoning), 
-         !is.na( OLD_ZONING), 
-         str_detect(zoning, ",") == FALSE) %>% 
-  mutate(different_flag = ifelse(zoning !=  OLD_ZONING,
-                                 1,
-                                 0)) %>% 
-  summarize(different = sum(different_flag, na.rm = TRUE)) %>% 
-  mutate(percent_different = paste0(round(different / nrow(vacant1) *100, 2), "%"))
 
 ```
 
@@ -537,12 +520,40 @@ anti_join(vacantcleaned, zoningcode1, by = c("zoning_code")) %>%
 
 ```
 
+There are 2026 R1s that are not joined which is pretty significant, in our spreadsheet we have R1A and R1B, pull in lotsize and see which ones we should assign the R1 to. R1A has lot size of 7500, R1B has lot size of 5000. Use as threshold.
+```{r assign R1}
+
+anti_join(vacantcleaned, zoningcode1, by = c("zoning_code")) %>% 
+  filter(zoning_code=="R1") %>% 
+  mutate(R1Aflag= ifelse(lotsize_sf>=7500,1,0),
+         R1Bflag=ifelse(lotsize_sf<7500 & lotsize_sf>= 5000,1, 0)) %>% 
+  count(R1Aflag, R1Bflag, zoning_code) %>% 
+  knitr::kable()
+
+```
+Reassign some of the R1s to R1A and R1B based on the flag
+```{r reassign R1}
+
+vacantcleaned2 <- vacantcleaned %>% 
+  mutate(R1Aflag= ifelse(lotsize_sf>=7500 & zoning_code=="R1",1,0),
+         R1Bflag=ifelse(lotsize_sf<7500 & lotsize_sf>= 5000 & zoning_code=="R1",1, 0)) %>% 
+  mutate(zoning_code= ifelse(R1Aflag==1, "R1A", zoning_code),
+         zoning_code= ifelse(R1Bflag==1, "R1B", zoning_code))
+
+anti_join(vacantcleaned2, zoningcode1, by = c("zoning_code")) %>% 
+  filter(zoning_code=="R1") %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
+zoningdatanew2 <- left_join(vacantcleaned2, zoningcode1, by = "zoning_code")
+
+```
 
 Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
 
 ```{r filter-small}
 
-zoningdata1 <- zoningdatanew %>% 
+zoningdata1 <- zoningdatanew2 %>% 
   filter(!is.na(zoning_code),
          lotsize_sf >= lot_area_min) %>% 
   group_by(propaddress) %>% 
