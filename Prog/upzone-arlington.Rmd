@@ -259,4 +259,8 @@ bk_clar %>%
 
 ```
 
+
 ## Application
+
+QUESTION- how to deal with activity zones that overlap jurisdictions??
+
