@@ -1,13 +1,13 @@
 /**************************************************************************
- Program:  Assign_jurisdiction.sas
+ Program:  Assign_jurisdiction00.sas
  Library:  RegHsg
  Project:  Regional Housing Framework
- Author:   L. Hendey
- Created:  1/09/2019
+ Author:   P. Tatian
+ Created:  3/1/2019
  Version:  SAS 9.4
  Environment:  Local Windows session (desktop)
  
- Description: Assign jurisdiction based on 2010 PUMAS for ACS IPUMS data for the COGS region:
+Description: Assign jurisdiction based on 2000 PUMAS for ACS IPUMS data for the COGS region:
   1="DC"
   2="Charles County"
   3="Frederick County "
@@ -22,31 +22,31 @@
  Modifications:
 **************************************************************************/
 
-%macro assign_jurisdiction;
+%macro Assign_jurisdiction00;
 
   select ( upuma );
     when ("1100101", "1100102", "1100103", "1100104", "1100105") 
       Jurisdiction =1;
     when ("2401600") 
       Jurisdiction =2;
-    when ("2400301", "2400302") 
+    when ("2400300") 
       Jurisdiction =3;
     when ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") 
       Jurisdiction =4;
     when ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") 
       Jurisdiction =5;
-    when ("5101301", "5101302") 
+    when ("5100100") 
       Jurisdiction =6;
-    when ("5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309") 
+    when ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") 
       Jurisdiction =7;
-    when ("5110701", "5110702" , "5110703") 
+    when ("5100600") 
       Jurisdiction =8;
-    when ("5151244", "5151245", "5151246") 
+    when ("5100501", "5100502", "5100501") 
       Jurisdiction =9; 
-    when ("5151255") 
+    when ("5100200") 
       Jurisdiction =10; 
     otherwise
         ;
   end;
  
-%mend assign_jurisdiction;
+%mend Assign_jurisdiction00;

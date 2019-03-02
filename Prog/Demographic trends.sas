@@ -43,13 +43,13 @@ proc format;
    .n = 'Not available'
     1 = 'White non-Hispanic'
     2 = 'Black non-Hispanic'
-    3 = "Hispanic "
-	4 = "All other non-Hispanic "
-	5= "Asian non-Hispanic";
+    3 = "Hispanic"
+    4 = "Asian non-Hispanic"
+    5 = "All other non-Hispanic ";
 
   value agegroup
      .n = 'Not available'
-    1= "0-5 years old"
+    1= "0-4 years old"
 	2= "5-9 years old"
 	3= "10-14 years old "
 	4="15-19 years old"
@@ -82,6 +82,7 @@ proc format;
     5 = "Other households";
 
   value Jurisdiction
+	0= "Total"
     1= "DC"
 	2= "Charles County"
 	3= "Frederick County "
@@ -92,7 +93,6 @@ proc format;
 	8="Loudoun"
 	9="Prince William, Manassas and Manassas Park"
     10="Alexandria"
-	11= "Total"
   	;
 
   value foreignborn
@@ -115,20 +115,20 @@ proc format;
 	8 = 'Vacant'
 	;
 
-/*Summarize number of persons in household for testing*/
-value numprec3p
-  1 = '1'
-  2 = '2'
-  3-high = '3+';
+  /*Summarize number of persons in household for testing*/
+  value numprec3p
+    1 = '1'
+    2 = '2'
+    3-high = '3+';
 
-/*Summarize number of persons in household for tables*/
-value numprectab 
-  1 = '1'
-  2 = '2'
-  3 = '3'
-  4 = '4'
-  5 = '5'
-  6-high = '6+';
+  /*Summarize number of persons in household for tables*/
+  value numprectab 
+    1 = '1'
+    2 = '2'
+    3 = '3'
+    4 = '4'
+    5 = '5'
+    6-high = '6+';
   	  
 run;
 
@@ -432,7 +432,7 @@ run;
 Compile population trend data
 **************************************************************************/
 
-data population (where= (ucounty in("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685" )));
+data population (where=(jurisdiction in (1:10)));
 set NCDB.Ncdb_master_update;
 keep ucounty Jurisdiction trctpop9 trctpop0 trctpop1 numhhs9 numhhs0 numhhs1;
 
@@ -470,7 +470,6 @@ label TotHH="Total households in 1970";
 
 if ucounty = "11001" then TotHH = 262538;
 
-if ucounty in ("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685");
   if ucounty in ("11001") then Jurisdiction =1;
   if ucounty  in ("24017") then Jurisdiction =2;
   if ucounty  in ("24021") then Jurisdiction =3;
@@ -481,6 +480,8 @@ if ucounty in ("11001","24017","24021","24031","24033","51013","51059","51107","
   if ucounty  in ("51107") then Jurisdiction =8;
   if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
   if ucounty  in ("51510") then Jurisdiction =10; 
+  
+  if jurisdiction in (1:10);
 
 run;
 
@@ -495,7 +496,7 @@ rename Totpop= Totpop80;
 rename TotHH= TotHH80;
 label Totpop="Total populations in 1980";
 label TotHH="Total households in 1980";
-if ucounty in ("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685");
+
   if ucounty in ("11001") then Jurisdiction =1;
   if ucounty  in ("24017") then Jurisdiction =2;
   if ucounty  in ("24021") then Jurisdiction =3;
@@ -506,6 +507,8 @@ if ucounty in ("11001","24017","24021","24031","24033","51013","51059","51107","
   if ucounty  in ("51107") then Jurisdiction =8;
   if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
   if ucounty  in ("51510") then Jurisdiction =10; 
+  
+  if jurisdiction in (1:10);
 
 run;
 
@@ -555,12 +558,12 @@ run;
 proc summary data= populationtrend;
 	class Jurisdiction;
 	var totpop70 totpop80 trctpop9 trctpop0 trctpop1 POPESTIMATE2017;
-	output out= populationbyjur sum=;
+	output out= populationbyjur (drop=_freq_) sum=;
 run;
 
 data populationbyjur2 ;
 set populationbyjur;
-if _TYPE_= 0 then Jurisdiction=11 ;
+if _TYPE_= 0 then Jurisdiction= 0 ;
 label TRCTPOP9 ="Total population in 1990";
 label TRCTPOP0 ="Total population in 2000";
 label TRCTPOP1= "Total population in 2010";
@@ -568,8 +571,8 @@ label POPESTIMATE2017= "Total population in 2017";
 format Jurisdiction Jurisdiction.;
 run;
 
-proc export data = populationbyjur2(drop= _TYPE_ _FREQ_)
-   outfile="&_dcdata_default_path\RegHsg\Prog\populationbyjur.csv"
+proc export data = populationbyjur2 (drop=_type_)
+   outfile="&_dcdata_default_path\RegHsg\Prog\Demographic trends populationbyjur.csv"
    label dbms=csv
    replace;
 run;
@@ -595,18 +598,19 @@ set Cen_population_estimates;
 keep ucounty Jurisdiction NATURALINC: INTERNATIONALMIG: DOMESTICMIG: NETMIG:;
 run;
 
-proc means noprint data=changecomponent;
-output out=dem_change_sum sum=;
+proc summary data=changecomponent;
+  var NATURALINC: INTERNATIONALMIG: DOMESTICMIG: NETMIG:;
+  output out=dem_change_sum sum=;
 run;
 
 data changecomponent_total (drop= _TYPE_ _FREQ_);
 set changecomponent dem_change_sum(in=in2);
-if in2 then Jurisdiction=11;
+if in2 then Jurisdiction= 0;
 format Jurisdiction Jurisdiction.;
 run;
 
 proc export data = changecomponent
-   outfile="&_dcdata_default_path\RegHsg\Prog\changecomponent.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Demographic trends changecomponent.csv"
    label dbms=csv
    replace;
 run;
@@ -616,22 +620,28 @@ Compile population break down by race, age and foreign born status
 **************************************************************************/
 
 %macro popbyrace(year);
-data persons_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255")))  ;
+data persons_&year. (where=(jurisdiction in (1:10)))  ;
 set Ipums.ACS_&year._dc Ipums.ACS_&year._va Ipums.ACS_&year._md;
-keep upuma race hispan age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_&year. BPL foreignborn COG;
+keep upuma raced hispand age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_&year. BPL foreignborn COG;
 
-	%assign_jurisdiction; 
+  %if &year >= 2012 %then %do;
+    %assign_jurisdiction
+  %end;
+  %else %do;
+    %assign_jurisdiction00
+  %end;
 
-if hispan=0 then do;
+if hispand=0 then do;
 
- if race=1 then race1=1;
- else if race=2 then race1=2;
- else if race in (4,5,6) then race1= 5;
- else race1=4;
+ if raced=100 then race1=1;
+ else if raced=200 then race1=2;
+ else if 400 <= raced <= 679 then race1= 4;
+ else race1=5;
+
 end;
 
-if hispan in(1, 2, 3, 4) then race1=3;
-
+else race1=3;
+	
 if 0<=age<5 then age0=1;
 else if 5<=age<10 then age0=2;
 else if 10<=age<15 then age0=3;
@@ -661,14 +671,15 @@ run;
 
 proc summary data = persons_&year. ;
 	class Jurisdiction age0 race1 foreignborn;
+	ways 0 1;
 	var totpop_&year.;
 	weight perwt;
-	output out = agegroup_race_immigration_&year. sum=;
+	output out = agegroup_race_immigration_&year. (drop=_freq_) sum=;
 	format race1 racenew. age0 agegroup. Jurisdiction Jurisdiction. foreignborn foreignborn.;
 run;
 
-proc sort data=agegroup_race_immigration_&year.(drop= _FREQ_ );
-by Jurisdiction age0 race1 foreignborn _TYPE_;
+proc sort data=agegroup_race_immigration_&year.;
+by _type_ Jurisdiction age0 race1 foreignborn;
 run;
 
 %mend popbyrace;
@@ -677,27 +688,20 @@ run;
 
 data persons_2010 (where= (Jurisdiction in (1:10))) ;
 set Ipums.ACS_2010_dc Ipums.ACS_2010_va Ipums.ACS_2010_md;
-keep upuma race hispan age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_2010 BPL foreignborn COG;
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
-  if upuma in ("2401600") then Jurisdiction =2;
-  if upuma in ("2400300") then Jurisdiction =3;
-  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
-  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5100100") then Jurisdiction =6;
-  if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
-  if upuma in ("5100600") then Jurisdiction =8;
-  if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
-  if upuma in ("5100200") then Jurisdiction =10; 
+keep upuma raced hispand age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_2010 BPL foreignborn COG;
 
-if hispan=0 then do;
+%assign_jurisdiction00
 
- if race=1 then race1=1;
- else if race=2 then race1=2;
- else if race in (4,5,6) then race1= 5;
- else race1=4;
+if hispand=0 then do;
+
+ if raced=100 then race1=1;
+ else if raced=200 then race1=2;
+ else if 400 <= raced <= 679 then race1= 4;
+ else race1=5;
+
 end;
 
-if hispan in(1, 2, 3, 4) then race1=3;
+else race1=3;
 
 if 0<=age<5 then age0=1;
 else if 5<=age<10 then age0=2;
@@ -728,68 +732,30 @@ run;
 
 proc summary data = persons_2010 ;
 	class Jurisdiction age0 race1 foreignborn;
+	ways 0 1;
 	var totpop_2010;
 	weight perwt;
-	output out = agegroup_race_immigration_2010 sum=;
+	output out = agegroup_race_immigration_2010 (drop=_freq_) sum=;
 	format race1 racenew. age0 agegroup. Jurisdiction Jurisdiction. foreignborn foreignborn.;
 run;
 
-proc sort data=agegroup_race_immigration_2010(drop= _FREQ_ );
-by Jurisdiction age0 race1 foreignborn _TYPE_;
+proc sort data=agegroup_race_immigration_2010;
+by _type_ Jurisdiction age0 race1 foreignborn;
 run;
 
-data persons_2000(where=(upuma in ("1100101",
-"1100102",
-"1100103",
-"1100104",
-"1100105",
-"2401600",
-"2400300",
-"2401001",
-"2401002",
-"2401003",
-"2401004",
-"2401005",
-"2401006",
-"2401007",
-"2401101",
-"2401102",
-"2401103",
-"2401104",
-"2401105",
-"2401106",
-"2401107",
-"5100101",
-"5100100",
-"5100301",
-"5100302",
-"5100303",
-"5100304",
-"5100305",
-"5100600",
-"5100501",
-"5100502",
-"5100200"
-)));
+data persons_2000(where=(jurisdiction in (1:10)));
 set ipums.Ipums_2000_dc ipums.Ipums_2000_md ipums.Ipums_2000_va ;
-keep upuma racgen00 hispand age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_00 bpld foreignborn;
+keep upuma raced hispand age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_00 bpld foreignborn;
 
-  if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
-  if upuma in ("2401600") then Jurisdiction =2;
-  if upuma in ("2400300") then Jurisdiction =3;
-  if upuma in ("2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007") then Jurisdiction =4;
-  if upuma in ("2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107") then Jurisdiction =5;
-  if upuma in ("5100100") then Jurisdiction =6;
-  if upuma in ("5100301", "5100302", "5100303", "5100304", "5100305", "5100303", "5100301") then Jurisdiction =7;
-  if upuma in ("5100600") then Jurisdiction =8;
-  if upuma in ("5100501", "5100502", "5100501") then Jurisdiction =9; 
-  if upuma in ("5100200") then Jurisdiction =10; 
+%assign_jurisdiction00
 
 if hispand=0 then do;
 
- if racgen00=1 then race1=1;
- else if racgen00=2 then race1=2;
- else race1=4;
+ if raced=100 then race1=1;
+ else if raced=200 then race1=2;
+ else if 400 <= raced <= 679 then race1= 4;
+ else race1=5;
+
 end;
 
 else race1=3;
@@ -826,26 +792,27 @@ run;
 
 proc summary data = persons_2000 ;
 	class Jurisdiction age0 race1 foreignborn;
+	ways 0 1;
 	var totpop_00;
 	weight perwt;
-	output out = agegroup_race_immigration_00  sum=;
+	output out = agegroup_race_immigration_00 (drop=_freq_) sum=;
 	format race1 racenew. age0 agegroup. Jurisdiction Jurisdiction. foreignborn foreignborn. ;
 run;
 
-proc sort data=agegroup_race_immigration_00 (drop= _FREQ_ );
-by Jurisdiction age0 race1 foreignborn _TYPE_;
+proc sort data=agegroup_race_immigration_00;
+by _type_ Jurisdiction age0 race1 foreignborn;
 run;
 
 /*from NCDB pop10: 312311, pop00: 169599 for Loudon. From Ipums: pop00: 268888, pop10: 432211 use the ratio to adjust ipums*/
 data popbreakdown;
 merge agegroup_race_immigration_00 agegroup_race_immigration_2010 agegroup_race_immigration_2017;
-by Jurisdiction age0 race1 foreignborn _TYPE_;
+by _type_ Jurisdiction age0 race1 foreignborn _TYPE_;
 if Jurisdiction=8 then totpop_00=totpop_00*(169599/268888); 
 if Jurisdiction=8 then totpop_2010=totpop_2010*(312311/432211);
 run;
 
-proc export data = popbreakdown
-   outfile="&_dcdata_default_path\RegHsg\Prog\popbreakdown.csv"
+proc export data = popbreakdown (drop=_type_)
+   outfile="&_dcdata_default_path\RegHsg\Prog\Demographic trends popbreakdown.csv"
    dbms=csv
    replace;
 run;
@@ -856,7 +823,7 @@ Compile household trend
 
 /*household number*/
 
-data households (where= (ucounty in("11001","24017","24021","24031","24033","51013","51059","51107","51153","51510","51600","51610","51683","51685" )));
+data households (where=(jurisdiction in (1:10)));
 set NCDB.Ncdb_master_update;
 keep ucounty Jurisdiction numhhs9 numhhs0 numhhs1;
 
@@ -888,6 +855,7 @@ totalunits=1;
 proc sort data=units_2017;
 by upuma;
 run;
+
 proc summary data=units_2017;
 by upuma;
 var totalunits;
@@ -895,7 +863,7 @@ weight hhwt;
 output out = COGSarea_2017_sum sum=;
 run;
 
-data vacant_2017 (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255" )));
+data vacant_2017 (where=(jurisdiction in (1:10)));
 set Ipums.Acs_2017_vacant_dc Ipums.Acs_2017_vacant_md Ipums.Acs_2017_vacant_va;
 
 	%assign_jurisdiction; 
@@ -965,11 +933,12 @@ run;
 
 data HH17;
 set HH17;
-if _TYPE_=0 then Jurisdiction=11;
+if _TYPE_=0 then Jurisdiction= 0;
 run;
 proc sort data=population;
 by Jurisdiction;
 run;
+
 proc summary data=population;
 	class Jurisdiction ;
 	var numhhs9 numhhs0 numhhs1;
@@ -985,12 +954,12 @@ format Jurisdiction Jurisdiction. ;
 run;
 data households78;
 set households78;
-if _TYPE_=0 then Jurisdiction=11;;
+if _TYPE_=0 then Jurisdiction= 0;;
 run;
 
 data NCDBhouseholds;
 set NCDBhouseholds;
-if _TYPE_=0 then Jurisdiction=11;
+if _TYPE_=0 then Jurisdiction= 0;
 run;
 
 proc sort data=HH17;
@@ -1015,7 +984,7 @@ label hhestimate17 = "Total households in 2017";
 run;
 
 proc export data = totalhouseholdtrend
-   outfile="&_dcdata_default_path\RegHsg\Prog\totalhouseholdtrend.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Demographic trends totalhouseholdtrend.csv"
    dbms=csv
    replace;
 run;
@@ -1033,11 +1002,18 @@ Compile hh counts by size, family type and income
 %if &year = 2000 %then %let filepre = Ipums;
 %else %let filepre = ACS;
 
-data hhrelate_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255"))) ;
+data hhrelate_&year. (where=(jurisdiction in (1:10))) ;
 set Ipums.&filepre._&year._dc Ipums.&filepre._&year._va Ipums.&filepre._&year._md;
 where gq in ( 1, 2 );
-keep upuma pernum gq hhwt perwt year serial age numprec related notrelatedper relatedper 
+keep upuma jurisdiction pernum gq hhwt perwt year serial age numprec related notrelatedper relatedper 
      spouse unmarriedpartner children totnumpop;
+
+  %if &year >= 2012 %then %do;
+    %assign_jurisdiction
+  %end;
+  %else %do;
+    %assign_jurisdiction00
+  %end;
 
 notrelatedper = 0;
 relatedper = 0;
@@ -1077,13 +1053,17 @@ run;
 %if &year = 2000 %then %let filepre = Ipums;
 %else %let filepre = ACS;
 
-data hhtype_1_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002","2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107","5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305","5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244","5151245", "5151246", "5151255"))) ;
+data hhtype_1_&year. (where=(jurisdiction in (1:10))) ;
 set Ipums.&filepre._&year._dc Ipums.&filepre._&year._va Ipums.&filepre._&year._md;
 where pernum=1 and gq in (1,2);
-keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME HHTYPE relate incomecat;
+keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME incomecat;
 
-
-	%assign_jurisdiction; 
+  %if &year >= 2012 %then %do;
+    %assign_jurisdiction
+  %end;
+  %else %do;
+    %assign_jurisdiction00
+  %end;
 
 	  if hhincome ~=.n or hhincome ~=9999999 then do; 
 		 %dollar_convert( hhincome, hhincome_a, &year., 2016, series=CUUR0000SA0 )
@@ -1152,16 +1132,16 @@ title2;
 %macro summarizehh(year);
 
 proc summary data = hhtype_&year. ;
-	class Jurisdiction numprec incomecat HHcat;
+  class Jurisdiction numprec incomecat HHcat;
   ways 0 1;
-	var HHnumber_&year.;
-	weight hhwt;
-	output out = HH_size_inc_type_&year.  sum=;
-	format Jurisdiction Jurisdiction. incomecat inc_cat. HHcat hhcat. numprec numprectab.;
+  var HHnumber_&year.;
+  weight hhwt;
+  output out = HH_size_inc_type_&year. (drop=_freq_) sum=;
+  format Jurisdiction Jurisdiction. incomecat inc_cat. HHcat hhcat. numprec numprectab.;
 run;
 
 proc sort data=HH_size_inc_type_&year.;
-by _type_ Jurisdiction numprec incomecat HHcat;
+  by _type_ Jurisdiction numprec incomecat HHcat;
 run;
 
 %mend summarizehh;
@@ -1182,8 +1162,8 @@ if Jurisdiction= 8 then HHnumber_2000=HHnumber_2000*(59921/97263);
 if Jurisdiction= 8 then HHnumber_2010=HHnumber_2010*(104583/145906);
 run;
 
-proc export data = hhbytypeallyears
-   outfile="&_dcdata_default_path\RegHsg\Prog\hhbytypeallyears.csv"
+proc export data = hhbytypeallyears (drop=_type_)
+   outfile="&_dcdata_default_path\RegHsg\Prog\Demographic trends hhbytypeallyears.csv"
    dbms=csv
    replace;
 run;
