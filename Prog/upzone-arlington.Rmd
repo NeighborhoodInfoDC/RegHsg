@@ -71,13 +71,25 @@ filepath <- "arlington"
 rhfdir <- "L:/Libraries/RegHsg/Maps"
 ```
 
-Load in Black Knight data for the region, select jurisdiction and standard variables
+Load in  cleaned Arlington data. Fill in lot size where possible, as done in vacant lots analysis.
+
 ```{r read}
 if (!exists("jur")) {
   jur <- read_arlington(filepath)
 } else {
   warning(filepath, " data already read in")
 }
+
+
+jur <- jur %>% 
+  mutate(arc_lotsize_sf = lotsize_sf, # archive the original lot size variable
+         lotsize_sf = ifelse(is.na(lotsize_sf),
+                             parcel_area,
+                             lotsize_sf),
+         lotsize_sf = ifelse(is.na(lotsize_sf),
+                             lotsize_prop,
+                             lotsize_sf),
+         lotsize_acres = lotsize_sf / 43560)
 
 ```
 
@@ -92,7 +104,7 @@ act1mile <- get_node_geography(node_type = "activity",
 
 ```
 
-Read in Arlington zoning later
+Read in Arlington zoning layer
 
 
 ```{r read-zon}
@@ -105,7 +117,18 @@ zon <- st_read(dsn = paste0(rhfdir, "/",
 
 ```
 
+Convert Black Knight data to spatial.
 
+```{r bk-spatial}
+
+jursf <- jur %>% 
+  filter(!(is.na(lat) | is.na(long))) %>% 
+  st_as_sf(coords = c("long", "lat")) %>% 
+  st_set_crs(st_crs(zon))
+  
+
+```
+\
 ## Example
 
 Pick one activity center in Arlington to test and visualize the calculation. Use Clarendon activity center as an example.
@@ -119,18 +142,18 @@ ggplot() +
   scale_fill_manual(values = c("#1696d2", "#ec008b", "#d2d2d2",
                                "#fdbf11", "#55b748", "#0a4c6a")) +
   geom_sf(clarendon, mapping = aes(),
-          fill = NA, size = 2) +
+          fill = NA, size = 1.6, color = "black") +
   theme_urbn_map() +
   coord_sf(datum = NA)
 
 ```
 
-We can clip the zoning layer to the circumference of the buffer.
+We can clip the zoning layer and the Black Knight data to the circumference of the buffer.
 
 ```{r clip-zon}
 
 zon_clar <- st_intersection(zon, clarendon)
-
+bk_clar <- st_intersection(jursf, clarendon)
 
 ggplot() +
   geom_sf(zon_clar, mapping = aes(fill = GZDC)) +
@@ -139,7 +162,15 @@ ggplot() +
   theme_urbn_map() +
   coord_sf(datum = NA)
 
+ggplot() +
+  geom_sf(zon_clar, mapping = aes()) +
+  geom_sf(bk_clar, mapping = aes()) +
+  theme_urbn_map() +
+  coord_sf(datum = NA)
+
 ```
+
+### Test zoning and land use within activity zone
 
 Test how much of the area in the buffered zone is in each zoning code.
 
@@ -157,10 +188,75 @@ zon_clar %>% as.data.frame() %>%
   summarize(area= sum(area)) %>% 
   mutate(p_area = (area/totalarea) %>% 
                    set_units(NULL)) %>% 
-  arrange(desc(p_area)) %>% 
+  arrange(desc(p_area)) %>%
+  mutate(area_sum = cumsum(p_area)) %>% 
   knitr::kable()
 
 ```
 
+Use lot size to test land use inside zone.
+
+```{r land-use}
+
+total_area_parcel <- bk_clar %>% 
+  as.data.frame() %>% 
+  summarize(sum(lotsize_acres, na.rm = TRUE)) %>% 
+  pull()
+
+bk_clar %>% 
+  as.data.frame() %>% 
+  group_by(category_detail) %>% 
+  summarize(area = sum(lotsize_acres, na.rm = TRUE),
+            p_area = area / total_area_parcel) %>% 
+  arrange(desc(p_area)) %>% 
+  mutate(area_sum = cumsum(p_area))
+
+```
+
+
+### Develop metric for density
+
+Calculate units per acre- only include residential properties.
+
+```{r units-per-acre}
+
+bk_clar <- bk_clar %>% 
+  mutate(numberofunits = ifelse(category == "sf" & numberofunits == 0,
+                                1,
+                                numberofunits))
+
+total_acres_residential <- bk_clar %>% 
+  as.data.frame() %>% 
+  filter(residential == 1) %>% 
+  summarize(sum(lotsize_acres, na.rm = TRUE)) %>% 
+  pull()
+
+
+total_units <- bk_clar %>% 
+  as.data.frame() %>% 
+  filter(residential == 1) %>% 
+  summarize(sum(numberofunits, na.rm = TRUE)) %>% 
+  pull()
+  
+total_units / total_acres_residential
+
+```
+
+Calculate density for each zoning code.
+
+```{r density-zoning}
+
+bk_clar %>% 
+  as.data.frame() %>% 
+  group_by(zoning) %>% 
+  summarize(total_units = sum(numberofunits, na.rm = TRUE),
+            total_acres_residential = sum(lotsize_acres, na.rm = TRUE)) %>% 
+  mutate(units_per_acre = total_units / total_acres_residential) %>% 
+  arrange(desc(total_acres_residential)) %>% 
+  head(20) %>% 
+  knitr::kable()
+
+
+```
 
 ## Application
