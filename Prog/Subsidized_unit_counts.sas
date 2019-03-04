@@ -75,6 +75,7 @@ proc format;
     2031-2035 = '2031 - 2035';
 run;
 
+
 data Work.Allassistedunits;
 	set RegHsg.Natlpres_activeandinc_prop;
 	if CountyCode in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600", "51610", "51683", "51685") then COGregion =1;
@@ -297,13 +298,25 @@ label
 
   run;
 
+*Create construction dates for affordable housing;
+
+data Work.ConstructionDates;
+  set Work.SubsidyExpirationDates;
+  format LatestConstructionDate MMDDYY10.;
+if ProgCat in (1,2) then PHConstructionDate=max(LatestConstructionDate);
+format PHConstructionDate MMDDYY10.;
+If year (PHConstructionDate) < 2000 then timecount = '1930-1999';
+else if year (PHConstructionDate) >= 2000 then timecount = '2000-2019';
+run;
+
+
 ** Review results of assisted unit and expiration date calculations **;
 
-proc sort data=Work.SubsidyExpirationDates;
+proc sort data=Work.ConstructionDates;
   by ProgCat;
 run;
 
-proc means data=Work.SubsidyExpirationDates n mean min max;
+proc means data=Work.ConstructionDates n mean min max;
   by ProgCat;
   var min_assistedunits max_assistedunits mid_assistedunits moe_assistedunits 
       earliest_expirationdate latest_expirationdate;
@@ -316,7 +329,7 @@ ods csvall  body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_uniqu
 
 title3 "Project and assisted unit unique counts";
 
-proc tabulate data=Work.SubsidyExpirationDates  format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates  format=comma10. noseps missing;
   class ProgCat / preloadfmt order=data;
   var mid_assistedunits moe_assistedunits;
   table
@@ -336,7 +349,7 @@ ods csvall  body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_expir
 title3 "Projects and assisted units with subsidies  expiring 2015 - 2035";
 footnote1 "LIHTC expiration includes 15-year compliance and 30-year subsidy end dates.";
 
-proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(earliest_expirationdate15);
   class ProgCat / preloadfmt order=data;
   class earliest_expirationdate15;
@@ -360,7 +373,7 @@ ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_s8.csv
 title3 "Section 8 projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
-proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(s8_endyr);
   class s8_endyr;
   var s8_all_assistedunits;
@@ -382,7 +395,7 @@ ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_s202.c
 title3 "Section 202 projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
-proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(s202_endyr);
   class s202_endyr;
   var s202_all_assistedunits;
@@ -404,7 +417,7 @@ ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_s236.c
 title3 "Section 236 projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
-proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(s236_endyr);
   class s236_endyr;
   var s236_all_assistedunits;
@@ -426,7 +439,7 @@ ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_FHA.cs
 title3 "FHA projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
-proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(FHA_endyr);
   class FHA_endyr;
   var FHA_all_assistedunits;
@@ -448,7 +461,7 @@ ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_LIHTC.
 title3 "LIHTC projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
-proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(LIHTC_endyr);
   class LIHTC_endyr;
   var LIHTC_all_assistedunits;
@@ -470,7 +483,7 @@ ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_LIHTC1
 title3 "LIHTC projects and assisted units with subsidies expiring 2015 - 2035, 15 year dates";
 footnote1;
 
-proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(LIHTC_15yr);
   class LIHTC_15yr;
   var LIHTC_all_assistedunits;
@@ -492,7 +505,7 @@ ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_rhs515
 title3 "RHS 515 projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
-proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(RHS515_endyr);
   class RHS515_endyr;
   var RHS515_all_assistedunits;
@@ -514,7 +527,7 @@ ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_rhs538
 title3 "RHS 538 projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
-proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(RHS538_endyr);
   class RHS538_endyr;
   var RHS538_all_assistedunits;
@@ -536,7 +549,7 @@ ods csvall body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_HOME.c
 title3 "HOME projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
-proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(HOME_endyr);
   class HOME_endyr;
   var HOME_all_assistedunits;
@@ -548,6 +561,29 @@ proc tabulate data=Work.SubsidyExpirationDates format=comma10. noseps missing;
     sum='Assisted Units' * HOME_all_assistedunits=' ' 
     ;
   format HOME_endyr yearrng.;
+run;
+
+ods csvall close;
+
+/*Public Housing*/
+ods csvall  body="&_dcdata_default_path\RegHsg\Prog\PH_unit_counts.csv";
+
+title3 "Public housing projects and assisted united with latest construction dates";
+
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
+  where not missing(PHConstructionDate);
+  class ProgCat / preloadfmt order=data;
+  class timecount;
+  var mid_assistedunits moe_assistedunits;
+  table
+    /** Rows **/
+    all='Total' ProgCat=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Public housing latest construction dates' * (  all='Total' timecount=' ' ) 
+      * (  mid_assistedunits='Est.' moe_assistedunits='+/-' )
+    ;
+  format ProgCat ProgCat. ;
 run;
 
 ods csvall close;
