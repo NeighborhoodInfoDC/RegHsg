@@ -65,39 +65,42 @@
 /* Program specific formats */
 proc format;
 
-  value tenure
-  1= "Renter household"
-  2= "Owner household"
-	;
-  value Jurisdiction
-    1= "DC"
-	2= "Charles County"
-	3= "Frederick County "
-	4="Montgomery County"
-	5="Prince Georges "
-	6="Arlington"
-	7="Fairfax, Fairfax city and Falls Church"
-	8="Loudoun"
-	9="Prince William, Manassas and Manassas Park"
-    10="Alexandria"
-	11="Total"
-  	;
-value structure
-  1= "Single family"
-  2= "Duplex"
-  3= "Small multifamily"
-  4= "Large multifamily"
-  .n= "Other"
-  ;
+	value tenure
+		1= "Renter household"
+		2= "Owner household"
+		;
+
+	value Jurisdiction
+		1= "DC"
+		2= "Charles County"
+		3= "Frederick County "
+		4="Montgomery County"
+		5="Prince Georges "
+		6="Arlington"
+		7="Fairfax, Fairfax city and Falls Church"
+		8="Loudoun"
+		9="Prince William, Manassas and Manassas Park"
+		10="Alexandria"
+		11="Total"
+		;
+
+	value structure
+		1= "Single family"
+		2= "Duplex"
+		3= "Small multifamily"
+		4= "Large multifamily"
+		.n= "Other"
+		 ;
 run;
 
 
 /**************************************************************************
-Compile housing units by characteristics
+Part 1: Compile housing units by characteristics from Ipums.
 **************************************************************************/
 
-/*Housing units*/
 %macro COGunits(year);
+
+/* Calculate vacant untis for each year of Ipums */
 data COGSvacant_&year.(where=(vacancy in (1,2)));
 
 	%if &year. = 2017 %then %do;
@@ -139,6 +142,7 @@ proc sort data= COGSvacantunits_&year.;
 	by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 run;
 
+/* Calculate total number of units for each year of Ipums */
 data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 	%if &year. = 2017 %then %do;
 	set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va; 
@@ -189,31 +193,34 @@ run;
 %COGunits(2000);
 
 
-data COGSunits;
+/* Combine units and vacant units to calculate vacancy rate and export */
+data COGSunits (drop = _freq_);
 	merge COGSareaunits_2000 COGSvacantunits_2000 COGSareaunits_2010 COGSvacantunits_2010 COGSareaunits_2017 COGSvacantunits_2017;
 	by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 
-	vacancyrate2010= vacantunit_2010/(vacantunit_2010+ unit_2010);
-	vacancyrate2017= vacantunit_2017/(vacantunit_2017+ unit_2017);
-	vacancyrate2000= vacantunit_2000/(vacantunit_2000+ unit_2000);
+	vacancyrate2010= vacantunit_2010 / sum(of vacantunit_2010 unit_2010);
+	vacancyrate2017= vacantunit_2017 / sum(of vacantunit_2017 unit_2017);
+	vacancyrate2000= vacantunit_2000 / sum(of vacantunit_2000 unit_2000);
 
 	format structuretype structure. Tenure tenure.;
 run;
 
 proc export data = COGSunits
-   outfile="&_dcdata_default_path\RegHsg\Prog\Housing and dwelling characteristics.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Housing Characteristics.csv"
    dbms=csv
    replace;
 run;
 
+
 /**************************************************************************
-Part 1: Compile housing cost burden information from IPums.
+Part 2: Compile housing cost burden information from IPums.
 **************************************************************************/
 
-libname rawnew "L:\Libraries\IPUMS\Raw\usa_00027.sas7bdat\";
+/* Because the 2000 ipums doesn't include 'owncost' we merge on this supplemental file */
+libname suppl "L:\Libraries\IPUMS\Raw\usa_00027.sas7bdat\";
 
 data ipums_2000_suppl;
-	set rawnew.usa_00027;
+	set suppl.usa_00027;
 	if pernum=1;
 	drop year datanum hhwt statefip gq pernum perwt;
 run;
@@ -226,7 +233,7 @@ run;
 
 proc sort data = Ipums_2000_dmwv; by serial; run;
 	
-
+/* Calculate cost burden for each year of Ipums */
 %macro renterburden(year);
 data rentercostburden_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 
@@ -293,7 +300,7 @@ run;
 %renterburden(2010);
 %renterburden(2000);
 
-
+/* Combine housing cost into a single file and export */
 data allhousingburden;
 	merge rentburdened_2000 ownerburdened_2000 rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 ;
 	by Jurisdiction;
@@ -311,18 +318,18 @@ data allhousingburden;
 	format Jurisdiction Jurisdiction.;
 run;
 
-
 proc export data = allhousingburden
-   outfile="&_dcdata_default_path\RegHsg\Prog\all_housing_burden.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Housing Cost Burden.csv"
    dbms=csv
    replace;
 run;
 
 
 /**************************************************************************
-Part 2: Compile permit data from Census permits data.
+Part 3: Compile permit data from Census permits data.
 **************************************************************************/
 
+/* Read in Census permits data */
 data permits (where= (ucounty in(&RHFregion.)));
 	set Census.Cen_building_permits_dc_md_va_wv;
 	keep year ucounty units1_building units2_building units34_building units5p_building Jurisdiction;
@@ -335,6 +342,7 @@ proc sort data=permits;
 	by year Jurisdiction;
 run;
 
+/* Summarize permits by year and jurisdiction */
 proc summary data=permits;
 	class year Jurisdiction ;
 	var units1_building units2_building units34_building units5p_building;
@@ -351,6 +359,7 @@ proc sort data=permits2;
 	by Jurisdiction year;
 run;
 
+/*Transpose permits for final output */
 proc transpose data=permits2 out=permits_allyear_t ;
 	by Jurisdiction;
 	var units1_building units2_building units34_building units5p_building ;
@@ -358,16 +367,17 @@ proc transpose data=permits2 out=permits_allyear_t ;
 run;
 
 proc export data = permits_allyear_t
-   outfile="&_dcdata_default_path\RegHsg\Prog\permits_allyear.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Building Permits.csv"
    dbms=csv
    replace;
 run;
 
+
 /**************************************************************************
-Part 3: Compile housing market information from Zillow data.
+Part 4: Compile housing market information from Zillow data.
 **************************************************************************/
 
-/*read in Zillow data for transpose and inflation adjust*/
+/* Read in Zillow csv */
 proc import datafile = 'L:\Libraries\RegHsg\Data\Housing-market-Zillow-data.csv'
 	out = work.zillow
 	dbms = CSV 
@@ -378,6 +388,7 @@ proc sort data=zillow;
 	by year;
 run;
 
+/* Inflation adjust Zillow then transpose for final output */
 data inflatadjustzillow;
 	set zillow;
 
@@ -388,15 +399,13 @@ data inflatadjustzillow;
 	%dollar_convert( MedianDuplexRent, MedianDuplexRent_a, year, 2016, series=CUUR0000SA0 )
 run;
 
-
 proc transpose data=inflatadjustzillow out=inflatadjustzillow_trans ;
 	var Mediansaleprice_a MedianSFRent_a MedianMFRent_a MedianCondoRent_a MedianDuplexRent_a inventoryMetro;
 	id year;
 run;
 
-
 proc export data = inflatadjustzillow_trans
-	outfile="&_dcdata_default_path\RegHsg\Prog\zillow.csv"
+	outfile="&_dcdata_default_path\RegHsg\Prog\Zillow Inventory and Price.csv"
 	dbms=csv
 	replace;
 run;
