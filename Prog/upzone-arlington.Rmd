@@ -42,6 +42,7 @@ The goal of this analysis is to estimate the number of units to be gained from u
 The metric that we use for density will be defined as units per acre. 
 
 ## Set-up
+
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
@@ -128,7 +129,8 @@ jursf <- jur %>%
   
 
 ```
-\
+
+
 ## Example
 
 Pick one activity center in Arlington to test and visualize the calculation. Use Clarendon activity center as an example.
@@ -155,16 +157,29 @@ We can clip the zoning layer and the Black Knight data to the circumference of t
 zon_clar <- st_intersection(zon, clarendon)
 bk_clar <- st_intersection(jursf, clarendon)
 
+```
+
+#### {.tabset .tabset.fade}
+##### Zoning layer
+
+```{r plot1, echo=FALSE}
 ggplot() +
   geom_sf(zon_clar, mapping = aes(fill = GZDC)) +
   scale_fill_manual(values = c("#1696d2", "#ec008b", "#d2d2d2",
                                "#fdbf11", "#55b748", "#0a4c6a")) +
   theme_urbn_map() +
   coord_sf(datum = NA)
+```
+
+##### Black knight data
+
+```{r plot2, echo=FALSE}
 
 ggplot() +
   geom_sf(zon_clar, mapping = aes()) +
-  geom_sf(bk_clar, mapping = aes()) +
+  geom_sf(bk_clar, mapping = aes(color = category),
+          show.legend = "point") +
+  scale_color_manual(values = c("#1696d2", "#fdbf11", "#000000", "#ec008b")) +
   theme_urbn_map() +
   coord_sf(datum = NA)
 
@@ -205,7 +220,7 @@ total_area_parcel <- bk_clar %>%
 
 bk_clar %>% 
   as.data.frame() %>% 
-  group_by(category_detail) %>% 
+  group_by(category) %>% 
   summarize(area = sum(lotsize_acres, na.rm = TRUE),
             p_area = area / total_area_parcel) %>% 
   arrange(desc(p_area)) %>% 
@@ -261,6 +276,18 @@ bk_clar %>%
 
 
 ## Application
+
+
+> Our estimate takes into account the characteristics of land surrounding each of the 1,095 transit stations. 
+We filtered out regions classified as rural or remote that are thinly populated and unlikely to be developed for transit-oriented housing over the next 50 years. Within each station area, we screened out non-developable 
+land and assumed that one-third of developable land will be used for commercial purposes. On the remaining 
+land—developable residential space—we assumed that 10 percent would be needed for roads and other 
+public spaces rather than homes. We calculated the housing potential on developable residential land by 
+assuming two scenarios. In our low case, there is one new housing unit per net acre for every 100 existing 
+units within the transit-oriented development area. In our high case, station areas “upshift” to the density of the next urban type. So, suburban nodes (with fewer than 6.5 units per net acre) are developed to the average 
+current density of urban centers, at ten units per net acre. Urban centers (with 6.5 to 15 units per net acre) are developed to the average current density of regional hubs, at 31 units per net acre. And regional hubs (with more than 15 units per net acre) upshift to 31 units per net acre if they are currently below that density, and if they already have more than 31 units per net acre, we use the station area’s low-case density potential. To avoid double-counting the transit-oriented development housing opportunity with other tools discussed in this paper, we subtracted opportunities in transit areas that were identified for potential infill on vacant land (Tool 1) or redevelopment of underutilized land (Tool 4).
+
+
 
 QUESTION- how to deal with activity zones that overlap jurisdictions??
 
