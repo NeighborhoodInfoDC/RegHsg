@@ -62,6 +62,7 @@
 				 "51685"  /* Manassas Park */
 					;
 
+/* Program specific formats */
 proc format;
 
   value tenure
@@ -89,186 +90,114 @@ value structure
   .n= "Other"
   ;
 run;
+
+
 /**************************************************************************
 Compile housing units by characteristics
 **************************************************************************/
+
 /*Housing units*/
 %macro COGunits(year);
-data COGSvacant_&year.(where=(upuma in (&pumanew.) and vacancy in (1,2)));
-set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
-	%newpuma_jurisdiction; 
-if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-if UNITSSTR =05 then structuretype=2; /*duplex*/
-if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
+data COGSvacant_&year.(where=(vacancy in (1,2)));
 
-if vacancy=1 then Tenure = 1; /*renter*/
-if vacancy=2 then Tenure = 2; /*owner*/
+	%if &year. = 2017 %then %do;
+	set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
+		%newpuma_jurisdiction; 
+		if upuma in (&pumanew.);
+	%end;
+	%else %if &year. = 2010 %then %do;
+	set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
+		%oldpuma_jurisdiction; 
+		if upuma in (&pumaold.);
+	%end; 
+	%else %if &year. = 2000 %then %do;
+	set Ipums.Ipums_2000_vacant_dc Ipums.Ipums_2000_vacant_md Ipums.Ipums_2000_vacant_va ;
+		%oldpuma_jurisdiction; 
+		if upuma in (&pumaold.);
+	%end; 
 
-vacantunit_&year.=1;
+	if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
+	if UNITSSTR =05 then structuretype=2; /*duplex*/
+	if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
+	if UNITSSTR in (08, 09, 10)then structuretype=4; /*large multifamily*/
+
+	if vacancy=1 then Tenure = 1; /*renter*/
+	if vacancy=2 then Tenure = 2; /*owner*/
+
+	vacantunit_&year.=1;
+
 run;
 
 proc summary data= COGSvacant_&year.;
-class Jurisdiction structuretype bedrooms Tenure;
-var vacantunit_&year.;
-weight hhwt;
-output out= COGSvacantunits_&year. sum=;
+	class Jurisdiction structuretype bedrooms Tenure;
+	var vacantunit_&year.;
+	weight hhwt;
+	output out= COGSvacantunits_&year. sum=;
 run;
 
 proc sort data= COGSvacantunits_&year.;
-by Jurisdiction structuretype bedrooms Tenure _TYPE_;
+	by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 run;
 
-data COGSarea_&year. (where=(upuma in (&pumanew.) and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
-set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
+data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
+	%if &year. = 2017 %then %do;
+	set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va; 
+		%newpuma_jurisdiction; 
+		if upuma in (&pumanew.);
+	%end;
+	%else %if &year. = 2010 %then %do;
+	set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
+		%oldpuma_jurisdiction; 
+		if upuma in (&pumaold.);
+	%end; 
+	%else %if &year. = 2000 %then %do;
+	set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
+		%oldpuma_jurisdiction; 
+		ownershpd = ownershd;
+		if upuma in (&pumaold.);
+	%end; 
 
-	%newpuma_jurisdiction;  
+	if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
+	else if UNITSSTR = 05 then structuretype=2; /*duplex*/
+	else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
+	else if UNITSSTR in (08, 09, 10)then structuretype=4; /*large multifamily*/
 
-if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-else if UNITSSTR =05 then structuretype=2; /*duplex*/
-else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-else if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
 
-if ownershpd in (21, 22) then Tenure = 1; /*renter*/
-else if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
-unit_&year.=1;
-run;
+	if ownershpd in (21, 22) then Tenure = 1; /*renter*/
+	else if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
+
+	unit_&year.=1;
+
+	run;
+
 
 proc summary data= COGSarea_&year.;
-class Jurisdiction structuretype bedrooms Tenure;
-var unit_&year.;
-weight hhwt;
-output out=COGSareaunits_&year. sum=;
+	class Jurisdiction structuretype bedrooms Tenure;
+	var unit_&year.;
+	weight hhwt;
+	output out=COGSareaunits_&year. sum=;
 run;
 
 proc sort data= COGSareaunits_&year.;
-by Jurisdiction structuretype bedrooms Tenure _TYPE_;
+	by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 run;
 
 %mend COGunits; 
 
 %COGunits(2017);
+%COGunits(2010);
+%COGunits(2000);
 
 
-data COGSvacant_2010(where=(upuma in (&pumaold.) and vacancy in (1,2)));
-set Ipums.Acs_2010_vacant_dc Ipums.Acs_2010_vacant_md Ipums.Acs_2010_vacant_va ;
-
-  %oldpuma_jurisdiction; 
-
-if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-else if UNITSSTR =05 then structuretype=2; /*duplex*/
-else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-else if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
-
-if vacancy=1 then Tenure = 1; /*renter*/
-else if vacancy=2 then Tenure = 2; /*owner*/
-
-vacantunit_2010=1;
-run;
-
-proc summary data= COGSvacant_2010;
-class Jurisdiction structuretype bedrooms Tenure;
-var vacantunit_2010;
-weight hhwt;
-output out= COGSvacantunits_2010 sum=;
-run;
-
-proc sort data= COGSvacantunits_2010;
-by Jurisdiction structuretype bedrooms Tenure _TYPE_;
-run;
-
-data COGSarea_2010 (where=(upuma in (&pumaold.) and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
-set Ipums.Acs_2010_dc Ipums.Acs_2010_md Ipums.Acs_2010_va;
-
-  %oldpuma_jurisdiction;  
-
-if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-else if UNITSSTR =05 then structuretype=2; /*duplex*/
-else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-else if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
-
-if ownershpd in (21, 22) then Tenure = 1; /*renter*/
-else if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
-unit_2010=1;
-run;
-
-proc summary data= COGSarea_2010;
-class Jurisdiction structuretype bedrooms Tenure;
-var unit_2010;
-weight hhwt;
-output out=COGSareaunits_2010 sum=;
-run;
-
-proc sort data= COGSareaunits_2010;
-by Jurisdiction structuretype bedrooms Tenure _TYPE_;
-run;
-
-data COGSvacant_2000(where=(upuma in (&pumaold.) and vacancy in (1,2)));
-set Ipums.Ipums_2000_vacant_dc Ipums.Ipums_2000_vacant_md Ipums.Ipums_2000_vacant_va ;
-
-  %oldpuma_jurisdiction; 
-
-if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-else if UNITSSTR =05 then structuretype=2; /*duplex*/
-else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-else if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
-
-if vacancy =1 then Tenure = 1; /*renter*/
-else if vacancy =2 then Tenure = 2; /*owner*/
-
-format Jurisdiction Jurisdiction.;
-
-vacantunit_2000=1;
-run;
-
-proc summary data= COGSvacant_2000;
-class Jurisdiction structuretype bedrooms Tenure;
-var vacantunit_2000;
-weight hhwt;
-output out= COGSvacantunits_2000 sum=;
-run;
-
-proc sort data= COGSvacantunits_2000;
-by Jurisdiction structuretype bedrooms Tenure _TYPE_;
-run;
-
-data COGSarea_2000(where=(upuma in (&pumaold.)and pernum=1 and gq in (1,2) and ownershd in ( 12,13,21,22 )));
-set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
-
-  %oldpuma_jurisdiction; 
-
-if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-else if UNITSSTR =05 then structuretype=2; /*duplex*/
-else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-else if UNITSSTR in (08, 09. 10)then structuretype=4; /*large multifamily*/
-
-if ownershd in (21, 22) then Tenure = 1; /*renter*/
-else if ownershd in ( 12,13 ) then Tenure = 2; /*owner*/
-
-unit_2000=1;
-format Jurisdiction Jurisdiction.;
-
-run;
-
-proc summary data= COGSarea_2000;
-class Jurisdiction structuretype bedrooms Tenure;
-var unit_2000;
-weight hhwt;
-output out=COGSareaunits_2000 sum=;
-run;
-
-proc sort data= COGSareaunits_2000;
-by Jurisdiction structuretype bedrooms Tenure _TYPE_;
-run;
-
-/*don't have to reweight Loudoun vacancy rate because it is a rate*/
 data COGSunits;
-merge COGSareaunits_2000 COGSvacantunits_2000 COGSareaunits_2010 COGSvacantunits_2010 COGSareaunits_2017 COGSvacantunits_2017;
-by Jurisdiction structuretype bedrooms Tenure _TYPE_;
-vacancyrate2010= vacantunit_2010/(vacantunit_2010+ unit_2010);
-vacancyrate2017= vacantunit_2017/(vacantunit_2017+ unit_2017);
-vacancyrate2000= vacantunit_2000/(vacantunit_2000+ unit_2000);
-format structuretype structure. Tenure tenure.;
+	merge COGSareaunits_2000 COGSvacantunits_2000 COGSareaunits_2010 COGSvacantunits_2010 COGSareaunits_2017 COGSvacantunits_2017;
+	by Jurisdiction structuretype bedrooms Tenure _TYPE_;
+
+	vacancyrate2010= vacantunit_2010/(vacantunit_2010+ unit_2010);
+	vacancyrate2017= vacantunit_2017/(vacantunit_2017+ unit_2017);
+	vacancyrate2000= vacantunit_2000/(vacantunit_2000+ unit_2000);
+
+	format structuretype structure. Tenure tenure.;
 run;
 
 proc export data = COGSunits
@@ -276,14 +205,50 @@ proc export data = COGSunits
    dbms=csv
    replace;
 run;
-/**************************************************************************
-Compile housing cost burden information
-**************************************************************************/
-%macro renterburden(year);
-data rentercostburden_&year. (where=(upuma in (&pumanew.) and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
-set Ipums.ACS_&year._dc Ipums.ACS_&year._md Ipums.ACS_&year._va;
 
-	%newpuma_jurisdiction; 
+/**************************************************************************
+Part 1: Compile housing cost burden information from IPums.
+**************************************************************************/
+
+libname rawnew "L:\Libraries\IPUMS\Raw\usa_00027.sas7bdat\";
+
+data ipums_2000_suppl;
+	set rawnew.usa_00027;
+	if pernum=1;
+	drop year datanum hhwt statefip gq pernum perwt;
+run;
+
+proc sort data = ipums_2000_suppl; by serial; run;
+
+data Ipums_2000_dmwv;
+	set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
+run;
+
+proc sort data = Ipums_2000_dmwv; by serial; run;
+	
+
+%macro renterburden(year);
+data rentercostburden_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
+
+	%if &year. = 2017 %then %do;
+	set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va; 
+		%newpuma_jurisdiction; 
+		if upuma in (&pumanew.);
+	%end;
+	%else %if &year. = 2010 %then %do;
+	set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
+		%oldpuma_jurisdiction; 
+		if upuma in (&pumaold.);
+	%end; 
+	%else %if &year. = 2000 %then %do;
+	merge Ipums_2000_dmwv (in=a) ipums_2000_suppl (in=b);
+	by serial;
+	if a and b;
+
+		%oldpuma_jurisdiction; 
+		ownershpd = ownershd;
+		if upuma in (&pumaold.);
+	%end; 
 
 	if gq in (1,2);
 	if pernum = 1;
@@ -301,10 +266,11 @@ set Ipums.ACS_&year._dc Ipums.ACS_&year._md Ipums.ACS_&year._va;
 	end;
 
 	tothh_&year. = 1;
+
 run;
 
 proc sort data=rentercostburden_&year.;
-by Jurisdiction;
+	by Jurisdiction;
 run;
 
 proc summary data = rentercostburden_&year. (where=(ownershpd in (21, 22)));
@@ -324,120 +290,12 @@ run;
 %mend renterburden; 
 
 %renterburden(2017);
+%renterburden(2010);
+%renterburden(2000);
 
-data rentercostburden_2010 (where=(upuma in (&pumaold.) and pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
-set Ipums.ACS_2010_dc Ipums.ACS_2010_md Ipums.ACS_2010_va;
-
-  %oldpuma_jurisdiction; 
-
-	if gq in (1,2);
-	if pernum = 1;
-
-    if ownershpd in (21, 22) then do; /*renter*/
-		if rentgrs*12>= HHINCOME*0.3 then rentburdened_2010=1;
-	    else if HHIncome~=. then rentburdened_2010=0;
-		totrenter_2010 = 1;
-	end;
-
-    if ownershpd in ( 12,13 ) then do; /*owner*/
-		if owncost*12>= HHINCOME*0.3 then ownerburdened_2010=1;
-	    else if HHIncome~=. then ownerburdened_2010=0;
-		totowner_2010 = 1;
-	end;
-
-	tothh_2010 = 1;
-run;
-
-proc sort data=rentercostburden_2010;
-by Jurisdiction;
-run;
-
-proc summary data = rentercostburden_2010 (where=(ownershpd in (21, 22)));
-	class Jurisdiction;
-	var rentburdened_2010 totrenter_2010;
-	weight hhwt;
-	output out = rentburdened_2010 sum=;
-run;
-
-proc summary data = rentercostburden_2010  (where=(ownershpd in (12, 13)));
-	class Jurisdiction;
-	var ownerburdened_2010 totowner_2010;
-	weight hhwt;
-	output out = ownerburdened_2010  sum=;
-run;
-
-data rentercostburden_2000 (where=(upuma in (&pumaold.) and pernum=1 and gq in (1,2) and ownershd in ( 12,13,21,22 )));
-set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
-
-  %oldpuma_jurisdiction; 
-
-	if gq in (1,2);
-	if pernum = 1;
-
-	tothh_2000 = 1;
-
-run;
-
-proc sort data = rentercostburden_2000; by serial; run;
-/* merge in downloaded owner monthly cost in 2000*/
-libname rawnew "L:\Libraries\IPUMS\Raw\usa_00027.sas7bdat\";
-
-data usa_00027;
-set rawnew.usa_00027;
-if pernum=1;
-drop year datanum hhwt statefip gq pernum perwt;
-run;
-
-proc sort data = usa_00027; by serial; run;
-
-data rentercostburden_2000_new;
-	merge rentercostburden_2000(in=a) usa_00027 (in=b) ;
-	by serial;
-	if a and b;
-
-if owncost=99999 then owncost=.;
-
-	if ownershd in (21, 22) then do; /*renter*/
-		if rentgrs*12>= HHINCOME*0.3 then rentburdened_2000=1;
-	    else if HHIncome~=. then rentburdened_2000=0;
-		totrenter_2000=1;
-	end;
-
-    if ownershd in ( 12,13 ) then do; /*owner*/
-		if owncost*12>= HHINCOME*0.3 then ownerburdened_2000=1;
-	    else if HHIncome~=. then ownerburdened_2000=0;
-		totowner_2000=1;
-	end;
-run;
-
-proc sort data=rentercostburden_2000_new;
-by Jurisdiction;
-run;
-
-proc summary data = rentercostburden_2000_new (where=(ownershd in (21, 22)));
-	class Jurisdiction;
-	var rentburdened_2000 totrenter_2000;
-	weight hhwt;
-	output out = rentburdened_2000 sum=;
-run;
-
-proc summary data = rentercostburden_2000_new  (where=(ownershd in (12, 13)));
-	class Jurisdiction;
-	var ownerburdened_2000 totowner_2000;
-	weight hhwt;
-	output out = ownerburdened_2000 sum=;
-run;
-
-/*use HH count from NCDB and PUMA to weight the Loudoun number:
-
-NCDB: hh00 59921
-      hh10 104583
-IPUMS hh00 97263
-      hh10 145906
-*/
 
 data allhousingburden;
-	merge rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 rentburdened_2000 ownerburdened_2000;
+	merge rentburdened_2000 ownerburdened_2000 rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 ;
 	by Jurisdiction;
 	format Jurisdiction Jurisdiction.;
 	if Jurisdiction=8 then rentburdened_2010= rentburdened_2010*(104583/145906);
@@ -454,88 +312,93 @@ data allhousingburden;
 run;
 
 
-
 proc export data = allhousingburden
    outfile="&_dcdata_default_path\RegHsg\Prog\all_housing_burden.csv"
    dbms=csv
    replace;
 run;
 
-/*building permit by building type*/
+
+/**************************************************************************
+Part 2: Compile permit data from Census permits data.
+**************************************************************************/
 
 data permits (where= (ucounty in(&RHFregion.)));
-set Census.Cen_building_permits_dc_md_va_wv;
-keep year ucounty units1_building units2_building units34_building units5p_building Jurisdiction;
-  %ucounty_jurisdiction;
-format Jurisdiction Jurisdiction. ;
+	set Census.Cen_building_permits_dc_md_va_wv;
+	keep year ucounty units1_building units2_building units34_building units5p_building Jurisdiction;
+
+	%ucounty_jurisdiction;
+	format Jurisdiction Jurisdiction. ;
 run;
 
 proc sort data=permits;
-by year Jurisdiction;
+	by year Jurisdiction;
 run;
 
 proc summary data=permits;
-class year Jurisdiction ;
-var units1_building units2_building units34_building units5p_building;
-output out= permits_allyear(drop= _FREQ_) sum=;
+	class year Jurisdiction ;
+	var units1_building units2_building units34_building units5p_building;
+	output out= permits_allyear(drop= _FREQ_) sum=;
 run;
 
 data permits2;
-set permits_allyear (where=(_TYPE_ in (2,3)));
-if _TYPE_=2 then Jurisdiction=11;
-format Jurisdiction Jurisdiction.;
+	set permits_allyear (where=(_TYPE_ in (2,3)));
+	if _TYPE_=2 then Jurisdiction=11;
+	format Jurisdiction Jurisdiction.;
 run;
 
 proc sort data=permits2;
-by Jurisdiction year;
+	by Jurisdiction year;
 run;
 
-proc transpose data=permits2 out=permits_allyear_trans ;
-by Jurisdiction;
-var units1_building units2_building units34_building units5p_building ;
-id year;
+proc transpose data=permits2 out=permits_allyear_t ;
+	by Jurisdiction;
+	var units1_building units2_building units34_building units5p_building ;
+	id year;
 run;
 
-proc export data = permits_allyear_trans
+proc export data = permits_allyear_t
    outfile="&_dcdata_default_path\RegHsg\Prog\permits_allyear.csv"
    dbms=csv
    replace;
 run;
+
 /**************************************************************************
-Compile housing market information
+Part 3: Compile housing market information from Zillow data.
 **************************************************************************/
+
 /*read in Zillow data for transpose and inflation adjust*/
 proc import datafile = 'L:\Libraries\RegHsg\Data\Housing-market-Zillow-data.csv'
- out = work.zillow
- dbms = CSV 
- replace;
+	out = work.zillow
+	dbms = CSV 
+	replace;
 run;
 
 proc sort data=zillow;
-by year;
+	by year;
 run;
 
 data inflatadjustzillow;
-set zillow;
+	set zillow;
 
-%dollar_convert( Mediansaleprice, Mediansaleprice_a, year, 2016, series=CUUR0000SA0 )
-%dollar_convert( MedianSFRent, MedianSFRent_a, year, 2016, series=CUUR0000SA0 )
-%dollar_convert( MedianMFRent, MedianMFRent_a, year, 2016, series=CUUR0000SA0 )
-%dollar_convert( MedianCondoRent, MedianCondoRent_a, year, 2016, series=CUUR0000SA0 )
-%dollar_convert( MedianDuplexRent, MedianDuplexRent_a, year, 2016, series=CUUR0000SA0 )
+	%dollar_convert( Mediansaleprice, Mediansaleprice_a, year, 2016, series=CUUR0000SA0 )
+	%dollar_convert( MedianSFRent, MedianSFRent_a, year, 2016, series=CUUR0000SA0 )
+	%dollar_convert( MedianMFRent, MedianMFRent_a, year, 2016, series=CUUR0000SA0 )
+	%dollar_convert( MedianCondoRent, MedianCondoRent_a, year, 2016, series=CUUR0000SA0 )
+	%dollar_convert( MedianDuplexRent, MedianDuplexRent_a, year, 2016, series=CUUR0000SA0 )
 run;
 
 
 proc transpose data=inflatadjustzillow out=inflatadjustzillow_trans ;
-var Mediansaleprice_a MedianSFRent_a MedianMFRent_a MedianCondoRent_a MedianDuplexRent_a inventoryMetro;
-id year;
+	var Mediansaleprice_a MedianSFRent_a MedianMFRent_a MedianCondoRent_a MedianDuplexRent_a inventoryMetro;
+	id year;
 run;
 
 
 proc export data = inflatadjustzillow_trans
-   outfile="&_dcdata_default_path\RegHsg\Prog\zillow.csv"
-   dbms=csv
-   replace;
+	outfile="&_dcdata_default_path\RegHsg\Prog\zillow.csv"
+	dbms=csv
+	replace;
 run;
 
 
