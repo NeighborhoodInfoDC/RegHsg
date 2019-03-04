@@ -436,16 +436,7 @@ data population (where=(jurisdiction in (1:10)));
 set NCDB.Ncdb_master_update;
 keep ucounty Jurisdiction trctpop9 trctpop0 trctpop1 numhhs9 numhhs0 numhhs1;
 
-  if ucounty in ("11001") then Jurisdiction =1;
-  if ucounty  in ("24017") then Jurisdiction =2;
-  if ucounty  in ("24021") then Jurisdiction =3;
-  if ucounty  in ("24031") then Jurisdiction =4;
-  if ucounty  in ("24033") then Jurisdiction =5;
-  if ucounty  in ("51013") then Jurisdiction =6;
-  if ucounty  in ("51059", "51600", "51610") then Jurisdiction =7;
-  if ucounty  in ("51107") then Jurisdiction =8;
-  if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
-  if ucounty  in ("51510") then Jurisdiction =10; 
+  %ucounty_jurisdiction
 
 run;
 proc summary data=population;
@@ -470,16 +461,7 @@ label TotHH="Total households in 1970";
 
 if ucounty = "11001" then TotHH = 262538;
 
-  if ucounty in ("11001") then Jurisdiction =1;
-  if ucounty  in ("24017") then Jurisdiction =2;
-  if ucounty  in ("24021") then Jurisdiction =3;
-  if ucounty  in ("24031") then Jurisdiction =4;
-  if ucounty  in ("24033") then Jurisdiction =5;
-  if ucounty  in ("51013") then Jurisdiction =6;
-  if ucounty  in ("51059", "51600", "51610") then Jurisdiction =7;
-  if ucounty  in ("51107") then Jurisdiction =8;
-  if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
-  if ucounty  in ("51510") then Jurisdiction =10; 
+  %ucounty_jurisdiction
   
   if jurisdiction in (1:10);
 
@@ -497,16 +479,7 @@ rename TotHH= TotHH80;
 label Totpop="Total populations in 1980";
 label TotHH="Total households in 1980";
 
-  if ucounty in ("11001") then Jurisdiction =1;
-  if ucounty  in ("24017") then Jurisdiction =2;
-  if ucounty  in ("24021") then Jurisdiction =3;
-  if ucounty  in ("24031") then Jurisdiction =4;
-  if ucounty  in ("24033") then Jurisdiction =5;
-  if ucounty  in ("51013") then Jurisdiction =6;
-  if ucounty  in ("51059", "51600", "51610") then Jurisdiction =7;
-  if ucounty  in ("51107") then Jurisdiction =8;
-  if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
-  if ucounty  in ("51510") then Jurisdiction =10; 
+  %ucounty_jurisdiction
   
   if jurisdiction in (1:10);
 
@@ -528,16 +501,9 @@ run;
 data pop17;
 set Cen_population_estimates;
 keep ucounty Jurisdiction POPESTIMATE2017;
-  if ucounty in ("11001") then Jurisdiction =1;
-  if ucounty  in ("24017") then Jurisdiction =2;
-  if ucounty  in ("24021") then Jurisdiction =3;
-  if ucounty  in ("24031") then Jurisdiction =4;
-  if ucounty  in ("24033") then Jurisdiction =5;
-  if ucounty  in ("51013") then Jurisdiction =6;
-  if ucounty  in ("51059", "51600", "51610") then Jurisdiction =7;
-  if ucounty  in ("51107") then Jurisdiction =8;
-  if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
-  if ucounty  in ("51510") then Jurisdiction =10; 
+
+  %ucounty_jurisdiction
+
 run;
 
 proc sort data=pop17;
@@ -584,16 +550,8 @@ Use census population estimate for component of population change
 /*component of population change*/
 data changecomponent;
 set Cen_population_estimates;
-  if ucounty in ("11001") then Jurisdiction =1;
-  if ucounty  in ("24017") then Jurisdiction =2;
-  if ucounty  in ("24021") then Jurisdiction =3;
-  if ucounty  in ("24031") then Jurisdiction =4;
-  if ucounty  in ("24033") then Jurisdiction =5;
-  if ucounty  in ("51013") then Jurisdiction =6;
-  if ucounty  in ("51059", "51600", "51610") then Jurisdiction =7;
-  if ucounty  in ("51107") then Jurisdiction =8;
-  if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
-  if ucounty  in ("51510") then Jurisdiction =10; 
+  
+  %ucounty_jurisdiction
 
 keep ucounty Jurisdiction NATURALINC: INTERNATIONALMIG: DOMESTICMIG: NETMIG:;
 run;
@@ -625,10 +583,10 @@ set Ipums.ACS_&year._dc Ipums.ACS_&year._va Ipums.ACS_&year._md;
 keep upuma raced hispand age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_&year. BPL foreignborn COG;
 
   %if &year >= 2012 %then %do;
-    %assign_jurisdiction
+    %newpuma_jurisdiction
   %end;
   %else %do;
-    %assign_jurisdiction00
+    %oldpuma_jurisdiction
   %end;
 
 if hispand=0 then do;
@@ -690,7 +648,7 @@ data persons_2010 (where= (Jurisdiction in (1:10))) ;
 set Ipums.ACS_2010_dc Ipums.ACS_2010_va Ipums.ACS_2010_md;
 keep upuma raced hispand age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_2010 BPL foreignborn COG;
 
-%assign_jurisdiction00
+%oldpuma_jurisdiction
 
 if hispand=0 then do;
 
@@ -747,7 +705,7 @@ data persons_2000(where=(jurisdiction in (1:10)));
 set ipums.Ipums_2000_dc ipums.Ipums_2000_md ipums.Ipums_2000_va ;
 keep upuma raced hispand age pernum gq Jurisdiction hhwt perwt year serial numprec race1 age0 totpop_00 bpld foreignborn;
 
-%assign_jurisdiction00
+%oldpuma_jurisdiction
 
 if hispand=0 then do;
 
@@ -827,16 +785,7 @@ data households (where=(jurisdiction in (1:10)));
 set NCDB.Ncdb_master_update;
 keep ucounty Jurisdiction numhhs9 numhhs0 numhhs1;
 
-  if ucounty in ("11001") then Jurisdiction =1;
-  if ucounty  in ("24017") then Jurisdiction =2;
-  if ucounty  in ("24021") then Jurisdiction =3;
-  if ucounty  in ("24031") then Jurisdiction =4;
-  if ucounty  in ("24033") then Jurisdiction =5;
-  if ucounty  in ("51013") then Jurisdiction =6;
-  if ucounty  in ("51059", "51600", "51610") then Jurisdiction =7;
-  if ucounty  in ("51107") then Jurisdiction =8;
-  if ucounty  in ("51153", "51683", "51685") then Jurisdiction =9; 
-  if ucounty  in ("51510") then Jurisdiction =10; 
+  %ucounty_jurisdiction
 
 run;
 
@@ -848,7 +797,7 @@ data units_2017 (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1
                     ) and pernum =1 and gq in (1,2)));
 set Ipums.Acs_2017_dc Ipums.Acs_2017_md Ipums.Acs_2017_va;
 keep upuma Jurisdiction hhwt totalunits pernum gq;
-	%assign_jurisdiction; 
+	%newpuma_jurisdiction; 
 totalunits=1;
 	run;
 
@@ -866,7 +815,7 @@ run;
 data vacant_2017 (where=(jurisdiction in (1:10)));
 set Ipums.Acs_2017_vacant_dc Ipums.Acs_2017_vacant_md Ipums.Acs_2017_vacant_va;
 
-	%assign_jurisdiction; 
+	%newpuma_jurisdiction; 
 if vacancy in (1,2,3) then vacunit = 1;
 run;
 
@@ -888,7 +837,7 @@ run;
 data vacantunits;
 merge COGvacant2017_sum COGSarea_2017_sum;
 by upuma;
-	%assign_jurisdiction; 
+	%newpuma_jurisdiction; 
 run;
 
 proc summary data= vacantunits;
@@ -1009,10 +958,10 @@ keep upuma jurisdiction pernum gq hhwt perwt year serial age numprec related not
      spouse unmarriedpartner children totnumpop;
 
   %if &year >= 2012 %then %do;
-    %assign_jurisdiction
+    %newpuma_jurisdiction
   %end;
   %else %do;
-    %assign_jurisdiction00
+    %oldpuma_jurisdiction
   %end;
 
 notrelatedper = 0;
@@ -1059,10 +1008,10 @@ where pernum=1 and gq in (1,2);
 keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME incomecat;
 
   %if &year >= 2012 %then %do;
-    %assign_jurisdiction
+    %newpuma_jurisdiction
   %end;
   %else %do;
-    %assign_jurisdiction00
+    %oldpuma_jurisdiction
   %end;
 
 	  if hhincome ~=.n or hhincome ~=9999999 then do; 
