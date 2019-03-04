@@ -597,6 +597,17 @@ label
 
 run;
 
+proc format;
+  value yearpopchg
+    2011 = '2010-2011'
+    2012 = '2011-2012'
+    2013 = '2012-2013'
+    2014 = '2013-2014'
+    2015 = '2014-2015'
+    2016 = '2015-2016'
+    2017 = '2016-2017';
+run;
+
 ods csvall body="&_dcdata_default_path\RegHsg\Prog\Demographic trends changecomponent.csv";
 
 proc tabulate data=changecomponent_total format=comma10.0 noseps missing;
@@ -610,6 +621,7 @@ proc tabulate data=changecomponent_total format=comma10.0 noseps missing;
     /** Columns **/
     year=' '
     / condense box='Components of population change';
+  format year yearpopchg.;
 run;
 
 ods csvall close;
