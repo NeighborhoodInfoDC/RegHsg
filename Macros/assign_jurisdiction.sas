@@ -1,5 +1,5 @@
 /**************************************************************************
- Program:  Assign_jurisdiction.sas
+ Program:  assign_jurisdiction.sas
  Library:  RegHsg
  Project:  Regional Housing Framework
  Author:   L. Hendey
@@ -19,7 +19,7 @@
   9="Prince William, Manassas and Manassas Park"
   10="Alexandria"
 
- Modifications:
+ Modifications: 
 **************************************************************************/
 
 %macro assign_jurisdiction;

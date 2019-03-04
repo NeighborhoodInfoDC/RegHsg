@@ -1,29 +1,19 @@
 
-#' Read in cleaned Black Knight data for jurisdiction
+#' Read in cleaned Black Knight data for Arlington County
 #'
 #'
 #'
-#' @param name name of county or jurisdiction 
 #' @param rmd indicates whether or not function is being called from an 
 #' Rmd document or not. Default is set to TRUE.
 #'
-#' @return dataframe of black knight data for select jurisdiction
+#' @return dataframe of black knight data for Arlington county, with all variables that were created in the clean and preclean phase.
 #' @export
 #'
 #' @examples jur <- read_jurisdiction("arlington", rmd = TRUE)
-read_jurisdiction <- function(name, rmd = TRUE) {
+read_arlington <- function(rmd = TRUE) {
   
-  if (rmd == TRUE) {
-    filename <- paste0("../Data/", 
-                       name, 
-                       "-cleaned-data.csv")
-  } else if (rmd == FALSE) {
-    
-    filename <- paste0("Data/", 
-                       name, 
-                       "-cleaned-data.csv")
-    
-  }
+  filename <- paste0("L:/Libraries/RegHsg/Data/", filepath,
+                     "/", filepath, "-cleaned-data.csv")
   
   if (!file.exists(filename)) {
     stop("cleaned data not found in Data directory")
@@ -59,6 +49,18 @@ read_jurisdiction <- function(name, rmd = TRUE) {
                               category_detail = col_character(),
                               residential = col_integer(),
                               building_type = col_character(),
+                              assessedlandvalue = col_double(),
+                              assessedimprovementvalue = col_double(),
+                              totalassessedvalue = col_double(),
+                              raw_parcelid_prop = col_character(),
+                              lotsize_prop = col_double(),
+                              propaddress_prop = col_character(),
+                              numberofunits_prop = col_character(),
+                              lat_prop = col_double(),
+                              long_prop = col_double(),
+                              parcel_area = col_double(),
+                              parcel_length = col_double(),
+                              raw_parcelid_par = col_character(),
                               parcel_address = col_character(),
                               vacant_flag = col_integer()))
   }
