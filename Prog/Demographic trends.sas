@@ -9,7 +9,7 @@
  
  Description:  Use NCDB and ACS data to compile demographic change data for RHF project
 
-COGS region:
+ COG region:
  DC (11001)
  Charles Couty(24017)
  Frederick County(24021)
@@ -456,7 +456,7 @@ set rawnhgis.nhgis0014_ts_nominal_1970_county;
 keep ucounty TotPop TotHH Jurisdiction;
 rename Totpop= Totpop70;
 rename TotHH= TotHH70;
-label Totpop="Total populations in 1970";
+label Totpop="Total population in 1970";
 label TotHH="Total households in 1970";
 
 if ucounty = "11001" then TotHH = 262538;
@@ -476,7 +476,7 @@ set rawnhgis.nhgis0014_ts_nominal_1980_county;
 keep ucounty TotPop TotHH Jurisdiction;
 rename Totpop= Totpop80;
 rename TotHH= TotHH80;
-label Totpop="Total populations in 1980";
+label Totpop="Total population in 1980";
 label TotHH="Total households in 1980";
 
   %ucounty_jurisdiction
@@ -557,21 +557,63 @@ keep ucounty Jurisdiction NATURALINC: INTERNATIONALMIG: DOMESTICMIG: NETMIG:;
 run;
 
 proc summary data=changecomponent;
+  class jurisdiction;
   var NATURALINC: INTERNATIONALMIG: DOMESTICMIG: NETMIG:;
   output out=dem_change_sum sum=;
 run;
 
 data changecomponent_total (drop= _TYPE_ _FREQ_);
-set changecomponent dem_change_sum(in=in2);
-if in2 then Jurisdiction= 0;
+
+set dem_change_sum;
+
+if jurisdiction = . then Jurisdiction= 0;
 format Jurisdiction Jurisdiction.;
+
+array antr{2011:2017} naturalinc2011-naturalinc2017; 
+array aint{2011:2017} internationalmig2011-internationalmig2017; 
+array adom{2011:2017} domesticmig2011-domesticmig2017; 
+array anet{2011:2017} netmig2011-netmig2017; 
+
+do Year = 2011 to 2017;
+
+  naturalinc = antr{Year};
+  internationalmig = aint{Year};
+  domesticmig = adom{Year};
+  netmig = anet{Year};
+  totalchg = naturalinc + netmig;
+  
+  output;
+  
+end;
+
+keep jurisdiction Year totalchg naturalinc internationalmig domesticmig netmig;
+
+label
+  naturalinc = 'Natural'
+  internationalmig = 'International'
+  domesticmig = 'Domestic'
+  netmig = 'Net migration'
+  totalchg = 'Total change';
+
 run;
 
-proc export data = changecomponent
-   outfile="&_dcdata_default_path\RegHsg\Prog\Demographic trends changecomponent.csv"
-   label dbms=csv
-   replace;
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Demographic trends changecomponent.csv";
+
+proc tabulate data=changecomponent_total format=comma10.0 noseps missing;
+  var totalchg naturalinc netmig internationalmig domesticmig;
+  class year jurisdiction;  
+  table 
+    /** Pages **/
+    jurisdiction=' ' * sum=' ',
+    /** Rows **/
+    totalchg naturalinc netmig internationalmig domesticmig,
+    /** Columns **/
+    year=' '
+    / condense box='Components of population change';
 run;
+
+ods csvall close;
+
 
 /**************************************************************************
 Compile population break down by race, age and foreign born status
