@@ -385,6 +385,7 @@ libname rawnew "L:\Libraries\IPUMS\Raw\usa_00027.sas7bdat\";
 data usa_00027;
 set rawnew.usa_00027;
 if pernum=1;
+drop year datanum hhwt statefip gq pernum perwt;
 run;
 
 proc sort data = usa_00027; by serial; run;
@@ -436,24 +437,23 @@ IPUMS hh00 97263
 */
 
 data allhousingburden;
-merge rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 rentburdened_2000 ownerburdened_2000;
-by Jurisdiction;
-format Jurisdiction Jurisdiction.;
-if Jurisdiction=8 then rentburdened_2010= rentburdened_2010*(104583/145906);
-if Jurisdiction=8 then totowner_2010= totowner_2010*(104583/145906);
-if Jurisdiction=8 then totrenter_2010= totrenter_2010*(104583/145906);
-if Jurisdiction=8 then ownerburdened_2010= ownerburdened_2010*(104583/145906);
-if Jurisdiction=8 then rentburdened_2000= rentburdened_2000*(59921/97263);
-if Jurisdiction=8 then ownerburdened_2000= ownerburdened_2000*(59921/97263);
-if Jurisdiction=8 then totrenter_2000= totrenter_2000*(59921/97263);
-if Jurisdiction=8 then totowner_2000= totowner_2000*(59921/97263);
+	merge rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 rentburdened_2000 ownerburdened_2000;
+	by Jurisdiction;
+	format Jurisdiction Jurisdiction.;
+	if Jurisdiction=8 then rentburdened_2010= rentburdened_2010*(104583/145906);
+	if Jurisdiction=8 then totowner_2010= totowner_2010*(104583/145906);
+	if Jurisdiction=8 then totrenter_2010= totrenter_2010*(104583/145906);
+	if Jurisdiction=8 then ownerburdened_2010= ownerburdened_2010*(104583/145906);
+	if Jurisdiction=8 then rentburdened_2000= rentburdened_2000*(59921/97263);
+	if Jurisdiction=8 then ownerburdened_2000= ownerburdened_2000*(59921/97263);
+	if Jurisdiction=8 then totrenter_2000= totrenter_2000*(59921/97263);
+	if Jurisdiction=8 then totowner_2000= totowner_2000*(59921/97263);
+
+	if _TYPE_=0 then Jurisdiction=11;
+	format Jurisdiction Jurisdiction.;
 run;
 
-data allhousingburden;
-set allhousingburden;
-if _TYPE_=0 then Jurisdiction=11;
-format Jurisdiction Jurisdiction.;
-Run;
+
 
 proc export data = allhousingburden
    outfile="&_dcdata_default_path\RegHsg\Prog\all_housing_burden.csv"
@@ -518,11 +518,11 @@ run;
 data inflatadjustzillow;
 set zillow;
 
-%dollar_convert( Mediansaleprice, Mediansaleprice_a, year, 2018, series=CUUR0000SA0 )
-%dollar_convert( MedianSFRent, MedianSFRent_a, year, 2018, series=CUUR0000SA0 )
-%dollar_convert( MedianMFRent, MedianMFRent_a, year, 2018, series=CUUR0000SA0 )
-%dollar_convert( MedianCondoRent, MedianCondoRent_a, year, 2018, series=CUUR0000SA0 )
-%dollar_convert( MedianDuplexRent, MedianDuplexRent_a, year, 2018, series=CUUR0000SA0 )
+%dollar_convert( Mediansaleprice, Mediansaleprice_a, year, 2016, series=CUUR0000SA0 )
+%dollar_convert( MedianSFRent, MedianSFRent_a, year, 2016, series=CUUR0000SA0 )
+%dollar_convert( MedianMFRent, MedianMFRent_a, year, 2016, series=CUUR0000SA0 )
+%dollar_convert( MedianCondoRent, MedianCondoRent_a, year, 2016, series=CUUR0000SA0 )
+%dollar_convert( MedianDuplexRent, MedianDuplexRent_a, year, 2016, series=CUUR0000SA0 )
 run;
 
 
