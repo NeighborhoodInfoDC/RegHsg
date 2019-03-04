@@ -527,6 +527,10 @@ proc summary data= populationtrend;
 	output out= populationbyjur (drop=_freq_) sum=;
 run;
 
+proc sort data=populationbyjur;
+  by _type_ descending POPESTIMATE2017;
+run;
+
 data populationbyjur2 ;
 set populationbyjur;
 if _TYPE_= 0 then Jurisdiction= 0 ;
@@ -977,13 +981,17 @@ proc sort data=NCDBhouseholds;
 by Jurisdiction;
 run;
 
-data totalhouseholdtrend (drop= _TYPE_ _FREQ_);
+data totalhouseholdtrend (drop=_FREQ_);
 merge households78 NCDBhouseholds HH17;
 by Jurisdiction;
 label NUMHHS9= "Total households in 1990";
 label NUMHHS0= "Total households in 2000";
 label NUMHHS1= "Total households in 2010";
 label hhestimate17 = "Total households in 2017";
+run;
+
+proc sort data=totalhouseholdtrend ;
+  by _type_ descending hhestimate17;
 run;
 
 proc export data = totalhouseholdtrend
