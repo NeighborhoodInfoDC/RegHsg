@@ -7,7 +7,10 @@
  Version:  SAS 9.2
  Environment:  Local Windows session (desktop)
  
-download for whole metro area or states if easier. We would like to be able to understand where properties are located, how many units are subsidized (at what level if known), subsidy programs involved, and any expiration dates for the subsidies.
+download for whole metro area or states if easier. 
+We would like to be able to understand where properties are located, 
+how many units are subsidized (at what level if known), 
+subsidy programs involved, and any expiration dates for the subsidies.
 
 We want all jurisdictions in the COG region:
 
