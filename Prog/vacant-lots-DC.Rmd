@@ -413,6 +413,12 @@ vacantsfparcel <- vacant1 %>%
   st_set_crs(2804) %>% 
   st_transform(4326)
 
+#export for ArcGIS check
+vacant1 %>% 
+  filter(missing_parcelXY == 0) %>% 
+  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
+                   filepath,
+                   "DCparcelbase_XY.csv"))
 
 ggplot()+
   geom_sf(data = vacantsfparcel, mapping = aes(),
