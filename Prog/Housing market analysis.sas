@@ -298,11 +298,10 @@ run;
 
 %renterburden(2017);
 %renterburden(2010);
-%renterburden(2000);
 
 /* Combine housing cost into a single file and export */
 data allhousingburden;
-	merge rentburdened_2000 ownerburdened_2000 rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 ;
+	merge rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 ;
 	by Jurisdiction;
 	format Jurisdiction Jurisdiction.;
 
