@@ -306,10 +306,12 @@ label
 data Work.ConstructionDates;
   set Work.SubsidyExpirationDates;
   format LatestConstructionDate MMDDYY10.;
-if ProgCat in (1,2) then PHConstructionDate=max(LatestConstructionDate);
+if ProgCat=1 then PHConstructionDate=LatestConstructionDate;
+If 1930 <= year (PHConstructionDate) <= 1950 then timecount = '1930-1950';
+else if 1951 <=  year (PHConstructionDate) <= 1970 then timecount='1951-1970';
+else if 1971 <= year (PHConstructionDate) <= 1990 then timecount='1971-1990';
+else if year (PHConstructionDate) >= 1991 then timecount = '1991-2019';
 format PHConstructionDate MMDDYY10.;
-If year (PHConstructionDate) < 2000 then timecount = '1930-1999';
-else if year (PHConstructionDate) >= 2000 then timecount = '2000-2019';
 run;
 
 
