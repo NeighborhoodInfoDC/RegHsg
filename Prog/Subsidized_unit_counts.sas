@@ -573,7 +573,7 @@ ods csvall close;
 /*Public Housing*/
 ods csvall  body="&_dcdata_default_path\RegHsg\Prog\PH_unit_counts.csv";
 
-title3 "Public housing projects and assisted united with latest construction dates";
+title3 "Public housing projects and assisted units with latest construction dates";
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(PHConstructionDate);
@@ -582,10 +582,10 @@ proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   var mid_assistedunits moe_assistedunits;
   table
     /** Rows **/
-    all='Total' ProgCat=' ',
+    ProgCat=' ',
     /** Columns **/
     n='Projects'    
-    sum='Public housing latest construction dates' * (  all='Total' timecount=' ' ) 
+    sum='Public housing latest construction dates' * ( timecount=' ' ) 
       * (  mid_assistedunits='Est.' moe_assistedunits='+/-' )
     ;
   format ProgCat ProgCat. ;
