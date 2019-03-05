@@ -205,6 +205,7 @@ data COGSunits (drop = _freq_);
 	vacancyrate2000= vacantunit_2000 / sum(of vacantunit_2000 unit_2000);
 
 	format structuretype structure. Tenure tenure.;
+	drop _type_;
 run;
 
 proc export data = COGSunits
