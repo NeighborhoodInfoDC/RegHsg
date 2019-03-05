@@ -7,7 +7,7 @@
  Version:  SAS 9.2
  Environment:  Local Windows session (desktop)
  
- Description:  Produce numbers for housing market 2000-2017 for the COGS region:
+ Description:  Produce numbers for housing market 2000-2017 for the COG region:
  DC (11001)
  Charles Couty(24017)
  Frederick County(24021)
@@ -120,9 +120,9 @@ data COGSvacant_&year.(where=(vacancy in (1,2)));
 	%end; 
 
 	if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-	if UNITSSTR =05 then structuretype=2; /*duplex*/
-	if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-	if UNITSSTR in (08, 09, 10)then structuretype=4; /*large multifamily*/
+	else if UNITSSTR =05 then structuretype=2; /*duplex*/
+	else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
+	else if UNITSSTR in (08, 09, 10)then structuretype=4; /*large multifamily*/
 
 	if vacancy=1 then Tenure = 1; /*renter*/
 	if vacancy=2 then Tenure = 2; /*owner*/
