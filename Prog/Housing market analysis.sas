@@ -134,6 +134,7 @@ run;
 proc summary data= COGSvacant_&year.;
 	class Jurisdiction structuretype bedrooms Tenure;
 	var vacantunit_&year.;
+	ways 0 1;
 	weight hhwt;
 	output out= COGSvacantunits_&year. sum=;
 run;
@@ -178,6 +179,7 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 proc summary data= COGSarea_&year.;
 	class Jurisdiction structuretype bedrooms Tenure;
 	var unit_&year.;
+	ways 0 1;
 	weight hhwt;
 	output out=COGSareaunits_&year. sum=;
 run;
