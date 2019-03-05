@@ -391,6 +391,7 @@ run;
 
 /* Add row labels */
 data inflatadjustzillow_labels;
+	length label $50.;
 	retain _name_ label _2008 _2009 _2010 _2011 _2012 _2013 _2014 _2015 _2016 _2017 _2018;
 	set inflatadjustzillow_trans;
 
