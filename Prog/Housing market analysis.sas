@@ -171,6 +171,8 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 	if ownershpd in (21, 22) then Tenure = 1; /*renter*/
 	else if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
 
+	occupiedunits_&year.=1;
+
 	run;
 
 
@@ -202,8 +204,6 @@ data COGSunits (drop = _freq_);
 	vacancyrate2017= vacantunit_2017 / sum(of vacantunit_2017 unit_2017);
 	vacancyrate2000= vacantunit_2000 / sum(of vacantunit_2000 unit_2000);
 
-	totunits_&year.=1;
-
 	format structuretype structure. Tenure tenure.;
 	drop _type_;
 run;
@@ -218,23 +218,6 @@ run;
 /**************************************************************************
 Part 2: Compile housing cost burden information from IPums.
 **************************************************************************/
-
-/* Because the 2000 ipums doesn't include 'owncost' we merge on this supplemental file */
-libname suppl "L:\Libraries\IPUMS\Raw\usa_00027.sas7bdat\";
-
-data ipums_2000_suppl;
-	set suppl.usa_00027;
-	if pernum=1;
-	drop year datanum hhwt statefip gq pernum perwt;
-run;
-
-proc sort data = ipums_2000_suppl; by serial; run;
-
-data Ipums_2000_dmwv;
-	set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
-run;
-
-proc sort data = Ipums_2000_dmwv; by serial; run;
 	
 /* Calculate cost burden for each year of Ipums */
 %macro renterburden(year);
@@ -314,10 +297,6 @@ data allhousingburden;
 		totowner_2010= totowner_2010*&LOUDOUN_RENT_WTADJ.;
 		totrenter_2010= totrenter_2010*&LOUDOUN_RENT_WTADJ.;
 		ownerburdened_2010= ownerburdened_2010*&LOUDOUN_RENT_WTADJ.;
-		rentburdened_2000= rentburdened_2000*&LOUDOUN_RENT_WTADJ.;
-		ownerburdened_2000= ownerburdened_2000*&LOUDOUN_RENT_WTADJ.;
-		totrenter_2000= totrenter_2000*&LOUDOUN_RENT_WTADJ.;
-		totowner_2000= totowner_2000*&LOUDOUN_RENT_WTADJ.;
 	end;
 
 	if _TYPE_=0 then Jurisdiction=11;
