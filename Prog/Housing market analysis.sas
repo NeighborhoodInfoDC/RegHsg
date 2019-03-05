@@ -140,7 +140,7 @@ proc summary data= COGSvacant_&year.;
 run;
 
 proc sort data= COGSvacantunits_&year.;
-	by Jurisdiction structuretype bedrooms Tenure _TYPE_;
+	by _type_ Jurisdiction structuretype bedrooms Tenure;
 run;
 
 /* Calculate total number of units for each year of Ipums */
@@ -185,7 +185,7 @@ proc summary data= COGSarea_&year.;
 run;
 
 proc sort data= COGSareaunits_&year.;
-	by Jurisdiction structuretype bedrooms Tenure _TYPE_;
+	by _type_ Jurisdiction structuretype bedrooms Tenure ;
 run;
 
 %mend COGunits; 
