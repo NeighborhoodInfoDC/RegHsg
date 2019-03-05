@@ -305,14 +305,18 @@ data allhousingburden;
 	merge rentburdened_2000 ownerburdened_2000 rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 ;
 	by Jurisdiction;
 	format Jurisdiction Jurisdiction.;
-	if Jurisdiction=8 then rentburdened_2010= rentburdened_2010*(104583/145906);
-	if Jurisdiction=8 then totowner_2010= totowner_2010*(104583/145906);
-	if Jurisdiction=8 then totrenter_2010= totrenter_2010*(104583/145906);
-	if Jurisdiction=8 then ownerburdened_2010= ownerburdened_2010*(104583/145906);
-	if Jurisdiction=8 then rentburdened_2000= rentburdened_2000*(59921/97263);
-	if Jurisdiction=8 then ownerburdened_2000= ownerburdened_2000*(59921/97263);
-	if Jurisdiction=8 then totrenter_2000= totrenter_2000*(59921/97263);
-	if Jurisdiction=8 then totowner_2000= totowner_2000*(59921/97263);
+
+	%let LOUDOUN_RENT_WTADJ = (104583/145906);
+	if Jurisdiction=8 then do;
+		rentburdened_2010= rentburdened_2010*&LOUDOUN_RENT_WTADJ.;
+		totowner_2010= totowner_2010*&LOUDOUN_RENT_WTADJ.;
+		totrenter_2010= totrenter_2010*&LOUDOUN_RENT_WTADJ.;
+		ownerburdened_2010= ownerburdened_2010*&LOUDOUN_RENT_WTADJ.;
+		rentburdened_2000= rentburdened_2000*&LOUDOUN_RENT_WTADJ.;
+		ownerburdened_2000= ownerburdened_2000*&LOUDOUN_RENT_WTADJ.;
+		totrenter_2000= totrenter_2000*&LOUDOUN_RENT_WTADJ.;
+		totowner_2000= totowner_2000*&LOUDOUN_RENT_WTADJ.;
+	end;
 
 	if _TYPE_=0 then Jurisdiction=11;
 	format Jurisdiction Jurisdiction.;
@@ -433,7 +437,7 @@ data inflatadjustzillow_labels;
 
 run;
 
-proc export data = inflatadjustzillow_trans
+proc export data = inflatadjustzillow_labels
 	outfile="&_dcdata_default_path\RegHsg\Prog\Zillow Inventory and Price.csv"
 	dbms=csv
 	replace;
