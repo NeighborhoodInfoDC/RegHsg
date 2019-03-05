@@ -68,6 +68,14 @@ proc format;
     17 = "80-84 years old"
     18= "85+ years old";
 
+  value agegrouptab
+    .n = 'Not available'
+    0-17 = "0-17 years old"
+    18-35 = "18-35 years old"
+    36-55 = "36-55 years old"
+    56-75 = "56-75 years old"
+    76-high = "76+ years old";
+
   value hispan
      .n = 'Not available'
     0 = 'Not Hispanic'
@@ -686,16 +694,16 @@ COG=1;
 run;
 
 proc summary data = persons_&year. ;
-	class Jurisdiction age0 race1 foreignborn;
+	class Jurisdiction age race1 foreignborn;
 	ways 0 1;
 	var totpop_&year.;
 	weight perwt;
 	output out = agegroup_race_immigration_&year. (drop=_freq_) sum=;
-	format race1 racenew. age0 agegroup. Jurisdiction Jurisdiction. foreignborn foreignborn.;
+	format race1 racenew. age agegrouptab. Jurisdiction Jurisdiction. foreignborn foreignborn.;
 run;
 
 proc sort data=agegroup_race_immigration_&year.;
-by _type_ Jurisdiction age0 race1 foreignborn;
+by _type_ Jurisdiction age race1 foreignborn;
 run;
 
 %mend popbyrace;
@@ -747,16 +755,16 @@ COG=1;
 run;
 
 proc summary data = persons_2010 ;
-	class Jurisdiction age0 race1 foreignborn;
+	class Jurisdiction age race1 foreignborn;
 	ways 0 1;
 	var totpop_2010;
 	weight perwt;
 	output out = agegroup_race_immigration_2010 (drop=_freq_) sum=;
-	format race1 racenew. age0 agegroup. Jurisdiction Jurisdiction. foreignborn foreignborn.;
+	format race1 racenew. age agegrouptab. Jurisdiction Jurisdiction. foreignborn foreignborn.;
 run;
 
 proc sort data=agegroup_race_immigration_2010;
-by _type_ Jurisdiction age0 race1 foreignborn;
+by _type_ Jurisdiction age race1 foreignborn;
 run;
 
 data persons_2000(where=(jurisdiction in (1:10)));
@@ -807,22 +815,22 @@ tables bpld;
 run;
 
 proc summary data = persons_2000 ;
-	class Jurisdiction age0 race1 foreignborn;
+	class Jurisdiction age race1 foreignborn;
 	ways 0 1;
 	var totpop_00;
 	weight perwt;
 	output out = agegroup_race_immigration_00 (drop=_freq_) sum=;
-	format race1 racenew. age0 agegroup. Jurisdiction Jurisdiction. foreignborn foreignborn. ;
+	format race1 racenew. age agegrouptab. Jurisdiction Jurisdiction. foreignborn foreignborn. ;
 run;
 
 proc sort data=agegroup_race_immigration_00;
-by _type_ Jurisdiction age0 race1 foreignborn;
+by _type_ Jurisdiction age race1 foreignborn;
 run;
 
 /*from NCDB pop10: 312311, pop00: 169599 for Loudon. From Ipums: pop00: 268888, pop10: 432211 use the ratio to adjust ipums*/
 data popbreakdown;
 merge agegroup_race_immigration_00 agegroup_race_immigration_2010 agegroup_race_immigration_2017;
-by _type_ Jurisdiction age0 race1 foreignborn _TYPE_;
+by _type_ Jurisdiction age race1 foreignborn _TYPE_;
 if Jurisdiction=8 then totpop_00=totpop_00*(169599/268888); 
 if Jurisdiction=8 then totpop_2010=totpop_2010*(312311/432211);
 run;
