@@ -404,6 +404,35 @@ proc transpose data=inflatadjustzillow out=inflatadjustzillow_trans ;
 	id year;
 run;
 
+/* Add row labels */
+data inflatadjustzillow_labels;
+	retain _name_ label _2008 _2009 _2010 _2011 _2012 _2013 _2014 _2015 _2016 _2017 _2018;
+	set inflatadjustzillow_trans;
+
+	if _NAME_ = "Mediansaleprice_a" then label = "Median sales price, 2016-dollars" ;
+	if _NAME_ = "MedianSFRent_a" then label = "Median single-family monthly rent, 2016-dollars" ;
+	if _NAME_ = "MedianMFRent_a" then label = "Median multi-family monthly rent, 2016-dollars" ;
+	if _NAME_ = "MedianCondoRent_a" then label = "Median condo monthly rent, 2016-dollars" ;
+	if _NAME_ = "MedianDuplexRent_a" then label = "Median duplex monthly rent, 2016-dollars" ;
+	if _NAME_ = "inventoryMetro" then label = "Number of real property sales" ;
+
+	label _name_ = "Variable name"
+		  label = "Variable label"
+		  _2008 = "2008"
+		  _2009 = "2009"
+		  _2010 = "2010"
+		  _2011 = "2011"
+		  _2012 = "2012"
+		  _2013 = "2013"
+		  _2014 = "2014"
+		  _2015 = "2015"
+		  _2016 = "2016"
+		  _2017 = "2017"
+		  _2018 = "2018"
+		  ;
+
+run;
+
 proc export data = inflatadjustzillow_trans
 	outfile="&_dcdata_default_path\RegHsg\Prog\Zillow Inventory and Price.csv"
 	dbms=csv
