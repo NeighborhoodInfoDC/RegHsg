@@ -171,8 +171,6 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 	if ownershpd in (21, 22) then Tenure = 1; /*renter*/
 	else if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
 
-	unit_&year.=1;
-
 	run;
 
 
@@ -203,6 +201,8 @@ data COGSunits (drop = _freq_);
 	vacancyrate2010= vacantunit_2010 / sum(of vacantunit_2010 unit_2010);
 	vacancyrate2017= vacantunit_2017 / sum(of vacantunit_2017 unit_2017);
 	vacancyrate2000= vacantunit_2000 / sum(of vacantunit_2000 unit_2000);
+
+	totunits_&year.=1;
 
 	format structuretype structure. Tenure tenure.;
 	drop _type_;
