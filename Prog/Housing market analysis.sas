@@ -91,6 +91,14 @@ proc format;
 		4= "Large multifamily"
 		.n= "Other"
 		 ;
+	
+	value bedroomtab
+	  0 = "No bedrooms"
+	  1 = "1 bedroom"
+	  2 = "2"
+	  3 = "3"
+	  4 = "4"
+	  5-high = "5+";
 run;
 
 
@@ -137,6 +145,7 @@ proc summary data= COGSvacant_&year.;
 	ways 0 1;
 	weight hhwt;
 	output out= COGSvacantunits_&year. sum=;
+	format bedrooms bedroomtab.;
 run;
 
 proc sort data= COGSvacantunits_&year.;
@@ -182,6 +191,7 @@ proc summary data= COGSarea_&year.;
 	ways 0 1;
 	weight hhwt;
 	output out=COGSareaunits_&year. sum=;
+	format bedrooms bedroomtab.;
 run;
 
 proc sort data= COGSareaunits_&year.;
@@ -204,7 +214,7 @@ data COGSunits (drop = _freq_);
 	vacancyrate2017= vacantunit_2017 / sum(of vacantunit_2017 occupiedunits_2017);
 	vacancyrate2000= vacantunit_2000 / sum(of vacantunit_2000 occupiedunits_2000);
 
-	format structuretype structure. Tenure tenure.;
+	format structuretype structure. Tenure tenure. jurisdiction jurisdiction.;
 	drop _type_;
 run;
 
@@ -291,12 +301,12 @@ data allhousingburden;
 	by Jurisdiction;
 	format Jurisdiction Jurisdiction.;
 
-	%let LOUDOUN_RENT_WTADJ = (104583/145906);
+	%let LOUDOUN_WTADJ_2010 = (104583/145906);
 	if Jurisdiction=8 then do;
-		rentburdened_2010= rentburdened_2010*&LOUDOUN_RENT_WTADJ.;
-		totowner_2010= totowner_2010*&LOUDOUN_RENT_WTADJ.;
-		totrenter_2010= totrenter_2010*&LOUDOUN_RENT_WTADJ.;
-		ownerburdened_2010= ownerburdened_2010*&LOUDOUN_RENT_WTADJ.;
+		rentburdened_2010= rentburdened_2010*&LOUDOUN_WTADJ_2010.;
+		totowner_2010= totowner_2010*&LOUDOUN_WTADJ_2010.;
+		totrenter_2010= totrenter_2010*&LOUDOUN_WTADJ_2010.;
+		ownerburdened_2010= ownerburdened_2010*&LOUDOUN_WTADJ_2010.;
 	end;
 
 	if _TYPE_=0 then Jurisdiction=11;
