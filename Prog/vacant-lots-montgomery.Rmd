@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Vacant lots analysis for Arlington County"
+subtitle: "Vacant lots analysis for Montgomery County"
 author: ""
 output:
   html_document:
@@ -20,7 +20,7 @@ Library: RegHsg
 
 Project: Regional Housing Framework
 
-Author: Sarah Strochak
+Author: Patrick Spauster
 
 Version: R 3.5.1, RStudio 1.1.423
 
@@ -52,7 +52,7 @@ library(sf)
 
 set_urbn_defaults("print")
 
-source("../Macros/read-arlington.R")
+source("../Macros/read-montgomery.R")
 
 ```
 
@@ -70,8 +70,8 @@ if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
 Set FIPS code and filepath name
 ```{r fips}
 
-currentfips <- "51013"
-filepath <- "arlington"
+currentfips <- "24031"
+filepath <- "montgomery"
 
 
 ```
@@ -80,7 +80,7 @@ Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
 
 ```{r read}
 if (!exists("jur")) {
-  jur <- read_arlington()
+  jur <- read_montgomery()
 } else {
   warning(filepath, " data already read in")
 }
@@ -112,23 +112,27 @@ if (!file.exists(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
 
 ```{r read-zoning-csv}
 z <- cols(
+  Jur = col_character(),
   Code = col_character(),
-  `District Type` = col_character(),
+  `Zone` = col_character(),
   `Type of Dwelling` = col_character(),
   `Site Area` = col_number(),
+  `Site area per dwelling unit (sq. ft.) (minimum)` = col_number(),
   `Lot area` = col_number(),
   `Lot area per dwelling unit (sq. ft.) (minimum)` = col_number(),
   `Lot Width (average minimum, ft)` = col_character(),
+  `Lot Width building line (average minimum, ft)` = col_character(),
   `Height (ft)` = col_double(),
-  `Height (stories)` = col_double(),
+  `Site coverage maximum` = col_number(),
   `Lot coverage maximum` = col_number(),
   `Floor area minimum` = col_double(),
   `Maximum Density of Floor-Area-Ratio (FAR)` = col_character(),
-  `Setbacks (centerline)` = col_character(),
-  `Setbacks (right of way line)` = col_double(),
-  `Front/Side yard (ft)` = col_double(),
-  `Side yard (both sides: minimum percent of required width)` = col_number(),
-  Frontage = col_double(),
+  `Setbacks (front)` = col_character(),
+  `Side (ft)` = col_character(),
+  `Rear (ft)` = col_character(),
+  `Density (units/acre)` = col_number(),
+  `Massing Units/Row` = col_number(),
+  `Open Space minimum percentage` = col_number(),
   Comments = col_character()
 )
 
@@ -138,16 +142,16 @@ zoningcode <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
                        col_types = z)
 
 names(zoningcode) <- 
-  c("zoning_code", "district_type", "dwelling_type",
-    "site_area", "lot_area_min", "lotarea_per_unit",
-    "lot_width", "height_ft", "height_stories",
-    "lot_coverage_max", "floor_area_min", "far_max",
-    "setbacks_center", "setbacks_row",
-    "front_side_yard", "side_yard", "frontage", "comments")
+  c("juristdiction", "zoning_code", "zone", "dwelling_type",
+    "site_area_min", "sitearea_per_unit", "lot_area_min", "lotarea_per_unit",
+    "lot_width","lot_width_building", "height_ft",
+    "site_coverage_max", "lot_coverage_max", "floor_area_min", "far_max",
+    "setbacks_front", "setbacks_side",
+    "setbacks_rear", "density", "massing", "open_space", "comments")
 
 # fix variables read in as whole numbers (should be percent)
 zoningcode <- zoningcode %>% 
-  mutate_at(vars(lot_coverage_max, side_yard),
+  mutate_at(vars(lot_coverage_max, site_coverage_max, open_space),
             ~ . / 100)
 rm(z)
 
@@ -162,7 +166,7 @@ First, we look at all the options, and filter out all the observations marked as
 ```{r tab-dwellings}
 
 zoningcode %>% 
-  count(dwelling_type) %>% 
+  count(dwelling_type, juristdiction) %>% 
   knitr::kable()
 ```
 
@@ -172,19 +176,21 @@ Count the number of unique zoning codes to make sure we won't get rid of any cod
 length(unique(zoningcode$zoning_code))
 
 ```
-Filter out dwelling_types of "All", "All Other", and those that are dependent on a shared boundary.
 
-```{r purge}
-zoningcode1 <- zoningcode %>% 
-  group_by(zoning_code) %>% 
-  filter(!(dwelling_type %in% c("All",
-                               "All Other",
-                               "Duplex; share a lot line with RA, C, or M",
-                               "Semi-detatched; share a lot line with RA, C, or M")
-           & n() > 1)) %>% 
-  ungroup()
+```{r zoning by juristdiction}
+
+zoning_montgomery <- zoningcode %>% 
+  filter(juristdiction == "Montgomery")
+
+zoning_rockville <- zoningcode %>% 
+  filter(juristdiction == "Rockville")
+
+zoning_gaithersburg <- zoningcode %>% 
+  filter(juristdiction == "Gaithersburg")
+
 
 ```
+
 
  Make sure we did not lose any zoning codes entirely.
 ```{r responsible-purge}
@@ -194,14 +200,39 @@ stopifnot(length(unique(zoningcode$zoning_code))
 
 ```
 
+*For Montgomery*
+```{r list codes}
+zoning_montgomery %>% 
+  count(dwelling_type) %>% 
+  knitr::kable()
+
+```
+
+
 Since the variables are not always comparable, the following order, from most to least dense, applies:
 
-1. Multiple-family
-2. Townhouse
-3. Semi-detached
-4. Duplex
-5. Other Residential
-6. One Family Dwelling
+1. apartment
+2. townhouse
+3. duplex-over
+4. duplex-side
+5. detached house
+
+multi-use and general have the same zoning specs as apartment. I change all of the multi-use and general zoning codes to apartments for simplicity.
+
+```{r edit mont codes}
+
+zoning_montgomery <- zoning_montgomery %>% 
+  mutate(dwelling_type = ifelse(dwelling_type == "general"| dwelling_type == "multi-use", "apartment", dwelling_type))
+
+```
+Check to see if they were replaced
+```{r list codes}
+zoning_montgomery %>% 
+  count(dwelling_type) %>% 
+  knitr::kable()
+
+```
+
 
 ### Create factor variable
 To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
@@ -213,22 +244,75 @@ We will also create a designation for dwelling types that are restricted to a ce
 
 ```{r dwelling-factor}
 
-zoningcode1 <- zoningcode1 %>% 
+zoning_montgomery1 <- zoning_montgomery %>% 
   mutate(dwelling_type = factor(dwelling_type,
-                                levels = c("Multiple-family",
-                                           "Townhouse",
-                                           "Semi-detached",
-                                           "Duplex",
-                                           "Other Residential",
-                                           "One Family Dwelling")),
-         one_unit_flag = ifelse(dwelling_type == "One Family Dwelling",
+                                levels = c("apartment",
+                                           "townhouse",
+                                           "duplex-over",
+                                           "duplex-side",
+                                           "detached house"
+                                           )),
+         one_unit_flag = ifelse(dwelling_type == "detached house",
                                 1,
                                 0),
-         two_unit_flag = ifelse(dwelling_type == "Duplex",
+         two_unit_flag = ifelse(dwelling_type == "duplex-over" | dwelling_type == "duplex-side",
                                 1,
                                 0))
 
 ```
+
+*For Gaithersburg*
+```{r list codes}
+zoning_gaithersburg %>% 
+  count(dwelling_type) %>% 
+  knitr::kable()
+
+```
+
+
+Since the variables are not always comparable, the following order, from most to least dense, applies:
+
+1. multiple family condominium dwellings
+2. multiple family dwelling 
+3. townhouse
+4. two family dwellings
+5. single-family attached 
+6. single-family semidetached 
+7. single-family detached 
+
+### Create factor variable
+To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
+We will also create a designation for dwelling types that are restricted to a certain amount of units (one unit for "One Family Dwelling" and one for two units for "Duplex"). 
+
+**NOTE** This will be VERY jurisdiction specific.
+
+**NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
+
+```{r dwelling-factor}
+
+zoning_gaithersburg1 <- zoning_gaithersburg %>% 
+  mutate(dwelling_type = factor(dwelling_type,
+                                levels = c("multiple family condominium dwellings",
+                                           "multiple family dwelling",
+                                           "townhouse",
+                                           "two family dwellings",
+                                           "single-family attached",
+                                           "single-family semidetached",
+                                           "single-family detached"
+                                           )),
+         one_unit_flag = ifelse(dwelling_type == "single-family attached" | 
+                                dwelling_type == "single-family semidetached" | 
+                                dwelling_type == "single-family detached",
+                                1,
+                                0),
+         two_unit_flag = ifelse(dwelling_type == "two family dwellings",
+                                1,
+                                0))
+
+
+```
+
+
 
 
 ## Clean vacant lots data

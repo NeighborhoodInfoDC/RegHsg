@@ -95,8 +95,7 @@ zoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel
   #         pnlength = str_length(ACCT))
   #count(parcel_f_par, DISTRICT)
 ```
-
-####Find the invalid geometries
+###Find the invalid geometries
 ```{r find bad geometries}
 
 parcel_sf1 <- parcel_sf %>% 
@@ -163,6 +162,10 @@ jur_sf1 %>% as.data.frame() %>%
 
 ##Spatial Join!
 ```{r join}
+
+leftovers <- st_difference(jur_sf1, parcel_sf1)
+
+leftovers2 <- st_disjoint(jur_sf1, parcel_sf1)
 
 pjoin <- st_join(jur_sf1, parcel_sf1, join = st_intersects)
 
@@ -393,9 +396,17 @@ pzjoin_df1 %>%
 
 ```
 
+```{add back those that didn't match}
+
+pzjoin_df2 <- bind_rows(pjoindf1, leftovers)
+
+```
+
+
+
 
 ```{r save}
-saveRDS(pzjoin_df1,
+saveRDS(pzjoin_df2,
         paste0(jdir, 
                "parceljoined-",
                filepath,
@@ -406,7 +417,7 @@ saveRDS(pzjoin_df1,
 Write out clean data.
 
 ```{r write}
-write_csv(pzjoin_df1, 
+write_csv(pzjoin_df2, 
           paste0(jdir, 
                "cleaned-", filepath, "-data.csv"))
 ```
