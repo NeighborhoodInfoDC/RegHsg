@@ -262,7 +262,9 @@ zoningcode1 <- zoningcode %>%
     is.na(floor_area_ratio_max) &is.na(dwelling_units_allowed) ~ "All Other",
     floor_area_ratio_max <= 1 ~ "Other Mixed",
     zoning_code=="RA-1"|zoning_code=="RA-6" ~ "RF2-B"  
-  ))
+  )) %>% 
+  mutate(dwelling_type= (ifelse(is.na(dwelling_type)==1, "All", dwelling_type)))
+
 #RA-1 and RA-6 are most comparable to RF2-B according to zoning documentation
 
 ```
@@ -271,10 +273,10 @@ Filter out dwelling_types of "All", "All Other", and those that are dependent on
 ```{r purge}
 zoningcode2 <- zoningcode1 %>% 
   group_by(zoning_code) %>% 
-  filter(!(newdwelling_type %in% c("All Other",
-                               "Other Mixed")
-           & n() > 1)) %>% 
-  ungroup()
+  filter(!(dwelling_type %in% c("All")
+           & n() > 1)) %>%
+  ungroup() 
+
 
 # I could put IZ-detached IZ semi detached etc into other mixed and exclude from the merge?
 
@@ -310,6 +312,24 @@ zoningcode_factor <- zoningcode2 %>%
          three_unit_flag = ifelse(dwelling_units_allowed==3, 1,0),
          four_unit_flag = ifelse(dwelling_units_allowed==4, 1,0))
 
+
+#apply the original dwelling type to zoning codes, despite missing dwelling type info for some observations
+zoningcode_factor2 <- zoningcode2 %>% 
+  mutate(dwelling_type = factor(dwelling_type,
+                                levels = c("IZ attached",
+                                           "attached",
+                                           "IZ semi-detached",
+                                           "semi-detached",
+                                           "Duplex",
+                                           "IZ detached",
+                                           "detached",
+                                           "IZ",
+                                           "Non-IZ",
+                                           "All")),
+         one_unit_flag = ifelse(dwelling_units_allowed==1, 1,0),
+         two_unit_flag = ifelse(dwelling_units_allowed==2, 1,0),
+         three_unit_flag = ifelse(dwelling_units_allowed==3, 1,0),
+         four_unit_flag = ifelse(dwelling_units_allowed==4, 1,0))
 
 ```
 
@@ -531,12 +551,21 @@ dual <- vacanttotal %>%
 vacantfinal <- vacanttotal %>% 
         mutate(zoning_code=ZONING_LAB)
 
-zoningdata <- left_join(vacantfinal, zoningcode_factor, by = "zoning_code")
+vacantfinal %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
 
+zoningdata <- left_join(vacantfinal, zoningcode_factor2, by = "zoning_code")
+
+
+unique(zoningcode_factor$newdwelling_type)
+
+#after joining, we see that there's no vacant lot that's zoned RF4 RF5
 zoningdata %>% 
   group_by(newdwelling_type) %>% 
   count() %>% 
   knitr::kable()
+
 
 ```
 
@@ -544,7 +573,7 @@ There are `r ` observations that did not have a match in the zoning code. Below,
 
 ```{r antijoin}
 
-anti_join(vacantfinal,zoningcode_factor, by = c("zoning_code")) %>% 
+anti_join(vacantfinal,zoningcode_factor2, by = c("zoning_code")) %>% 
   count(ZONING_LAB) %>% 
   knitr::kable()
 
@@ -564,19 +593,19 @@ zoningdatanew <- left_join(vacantcleaned, zoningcode1, by = "zoning_code")
 
 ```
 
-After cleaning, use anti_join again to test if there are any left over residential codes that are not joined. R1 and RC-1, RC-3 not joined. Check the spreasheet and they are not in. Leave for now.
+After cleaning, use anti_join again to test if there are any left over residential codes that are not joined. R1 and RC-1, RC-3 not joined. Check the spreasheet and they are not in. 
 ```{r antijoinagain}
 
-anti_join(vacantcleaned, zoningcode_factor, by = c("zoning_code")) %>% 
+anti_join(vacantcleaned, zoningcode_factor2, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
 ```
 
-There are 2026 R1s that are not joined which is a lot, in our spreadsheet we have R1A and R1B, pull in lotsize and see which ones we should assign the R1 to. R1A has lot size of 7500, R1B has lot size of 5000. Use as threshold.
+There are 2228 R1s that are not joined which is a lot, in our spreadsheet we have R1A and R1B, pull in lotsize and see which ones we should assign the R1 to. R1A has lot size of 7500, R1B has lot size of 5000. Use as threshold.
 ```{r assign R1}
 
-anti_join(vacantcleaned, zoningcode_factor, by = c("zoning_code")) %>% 
+anti_join(vacantcleaned, zoningcode_factor2, by = c("zoning_code")) %>% 
   filter(zoning_code=="R1") %>% 
   mutate(R1Aflag= ifelse(lotsize_sf>=7500,1,0),
          R1Bflag=ifelse(lotsize_sf<7500 & lotsize_sf>= 5000,1, 0)) %>% 
@@ -594,12 +623,12 @@ vacantcleaned2 <- vacantcleaned %>%
          zoning_code= ifelse(R1Bflag==1, "R1B", zoning_code))
 
 #after cleaning there are still 1537 R1 that are not joined due to lot size not meeting standards. Not sure if we should keep some of them
-anti_join(vacantcleaned2, zoningcode_factor, by = c("zoning_code")) %>% 
+anti_join(vacantcleaned2, zoningcode_factor2, by = c("zoning_code")) %>% 
   filter(zoning_code=="R1") %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
-zoningdatanew2 <- left_join(vacantcleaned2, zoningcode_factor, by = "zoning_code")
+zoningdatanew2 <- left_join(vacantcleaned2, zoningcode_factor2, by = "zoning_code")
 
 zoningdatanew2 %>% 
   group_by(newdwelling_type) %>% 
@@ -607,7 +636,7 @@ zoningdatanew2 %>%
   knitr::kable()
 ```
 
-Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 27520 to 12459, after slicing out the least dense zoning code, we only have 2131 observation left. This need more work. 
+Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 27576 to 12515, after slicing out the least dense zoning code, we only have 1508 observation left. Part of the reason is we have duplicated propaddress???
 
 ```{r filter-small}
 
@@ -617,7 +646,7 @@ zoningdata1 <- zoningdatanew2 %>%
   filter(!is.na(zoning_code),
          lotsize_sf >= lot_area_min) %>% 
   group_by(propaddress) %>% 
-  slice(which.min(newdwelling_type)) %>% 
+  slice(which.min(dwelling_type)) %>% 
   ungroup()
 
 
@@ -722,23 +751,21 @@ get_unit_summary <- function(dataset,
                        average_unit_size) %>%
     group_by(parameters) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height),
-              units_FAR = sum(units_FAR),
-              units_lotsize = sum(units_lotsize),
-              units_total = sum(units_total),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_FAR = sum(units_FAR, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots)))
   
   y <- dataset %>% 
     get_unit_variables(construction_efficiency,
                        average_unit_size) %>%
-    group_by(parameters, dwelling_type) %>% 
+    group_by(parameters, newdwelling_type) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height),
-              units_FAR = sum(units_FAR),
-              units_lotsize = sum(units_lotsize),
-              units_total = sum(units_total),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_FAR = sum(units_FAR, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots))) %>% 
-    mutate(dwelling_type = as.character(dwelling_type))
+    mutate(newdwelling_type = as.character(newdwelling_type))
   
   
   if (dwelling_type_breakdown == TRUE) {
@@ -815,7 +842,7 @@ zoningdata1 %>%
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 900) %>% 
   filter(lotsize_sf < 50000) %>% 
-  select(lotsize_sf, newdwelling_type, units_total)%>% 
+  select(lotsize_sf, newdwelling_type, dwelling_type, units_total)%>% 
   ggplot() +
   geom_point(mapping = aes(lotsize_sf, units_total,
                            color = newdwelling_type),
@@ -832,7 +859,6 @@ zoningdata1 %>%
   theme(plot.margin = margin(t = 20,
                              r = 20))
 
-# agian the RF2 category has a two unit flag. Need to confirm with Chris. 
 
 
 ```
