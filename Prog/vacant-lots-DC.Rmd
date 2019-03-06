@@ -51,8 +51,6 @@ library(sf)
 
 set_urbn_defaults("print")
 
-source("../Macros/read-arlington.R")
-
 ```
 
 Create directory for data exports
@@ -214,6 +212,7 @@ First, we look at all the options, these categories are not as helpful because a
 zoningcode %>% 
   count(dwelling_type) %>% 
   knitr::kable()
+
 ```
 
 Count the number of unique zoning codes to make sure we won't get rid of any codes entirely.
@@ -234,18 +233,37 @@ Since the variables are not always comparable, after the recoding, from most to 
 4. RF2 
 5. One Family 
 
+Then within each category, DC has different requirements for each different type of dwelling within the same zoning code. So need to furthur break down the new dwelling type variable. 
+
 ```{r recode dwelling}
 zoningcode1 <- zoningcode %>% 
   mutate(newdwelling_type = case_when(
-    dwelling_units_allowed==1 ~ "One Family",
-    dwelling_units_allowed==2 ~ "RF2",
-    dwelling_units_allowed==3 ~ "RF3",
-    dwelling_units_allowed==4 ~ "RF4",
+    dwelling_units_allowed==1 & lot_area_min>=5000~ "One Family-A",
+    dwelling_units_allowed==1 & dwelling_type== "detached"~ "One Family-A",
+    dwelling_units_allowed==1 & dwelling_type== "IZ detached"~ "One Family-B",
+    dwelling_units_allowed==1 & dwelling_type== "semi-detached"~ "One Family-C",
+    dwelling_units_allowed==1 & dwelling_type== "attached"~ "One Family-D",
+    dwelling_units_allowed==1 & dwelling_type== "IZ attached"~ "One Family-E",
+    dwelling_units_allowed==1 & dwelling_type== "IZ semi-detached"~ "One Family-F",
+    dwelling_units_allowed==1 & dwelling_type== "all other structures"~ "All Other",
+    dwelling_units_allowed==2 & dwelling_type== "semi-detached" ~ "RF2-A",
+    dwelling_units_allowed==2 & dwelling_type== "row dwelling or flat" ~ "RF2-B",
+    dwelling_units_allowed==2 & dwelling_type== "row dwelling or flat (IZ)" ~ "RF2-C",
+    dwelling_units_allowed==2 & dwelling_type== "all other structures" ~ "All Other",
+    dwelling_units_allowed==3 & dwelling_type=="semi-detached" ~ "RF3-A",
+    dwelling_units_allowed==3 & dwelling_type=="row dwelling or flat" ~ "RF3-B",
+    dwelling_units_allowed==3 & dwelling_type=="row dwelling or flat (IZ)" ~ "RF3-C",
+    dwelling_units_allowed==3 & dwelling_type=="all other structures" ~ "All Other",
+    dwelling_units_allowed==4 & dwelling_type=="semi-detached"~ "RF4-A",
+    dwelling_units_allowed==4 & dwelling_type=="row dwelling or flat"~ "RF4-B",
+    dwelling_units_allowed==4 & dwelling_type=="row dwelling or flat (IZ)"~ "RF4-C",
+    dwelling_units_allowed==4 & dwelling_type=="all other structures"~ "All Other", 
     floor_area_ratio_max>1 & is.na(dwelling_units_allowed) ~ "RA",
     is.na(floor_area_ratio_max) &is.na(dwelling_units_allowed) ~ "All Other",
     floor_area_ratio_max <= 1 ~ "Other Mixed",
-    zoning_code=="RA-1"|zoning_code=="RA-6" ~ "RF1"
+    zoning_code=="RA-1"|zoning_code=="RA-6" ~ "RF2-B"  
   ))
+#RA-1 and RA-6 are most comparable to RF2-B according to zoning documentation
 
 ```
 Filter out dwelling_types of "All", "All Other", and those that are dependent on a shared boundary.
@@ -257,6 +275,8 @@ zoningcode2 <- zoningcode1 %>%
                                "Other Mixed")
            & n() > 1)) %>% 
   ungroup()
+
+# I could put IZ-detached IZ semi detached etc into other mixed and exclude from the merge?
 
 ```
 
@@ -281,16 +301,14 @@ We will also create a designation for dwelling types that are restricted to a ce
 zoningcode_factor <- zoningcode2 %>% 
   mutate( newdwelling_type = factor(newdwelling_type,
                                 levels = c("RA",
-                                           "RF4",
-                                           "RF3",
-                                           "RF2",
-                                           "One Family")),
-         one_unit_flag = ifelse(newdwelling_type == "One Family",
-                                1,
-                                0),
-         two_unit_flag = ifelse(newdwelling_type == "RF2"|newdwelling_type == "RF3",
-                                1,
-                                0))
+                                           "RF4-C","RF4-B", "RF4-A",
+                                           "RF3-C","RF3-B","RF3-A",
+                                           "RF2-C","RF2-B","RF2-A",
+                                           "One Family-F", "One Family-E","One Family-D", "One Family-C", "One Family-B", "One Family-A")),
+         one_unit_flag = ifelse(dwelling_units_allowed==1, 1,0),
+         two_unit_flag = ifelse(dwelling_units_allowed==2, 1,0),
+         three_unit_flag = ifelse(dwelling_units_allowed==3, 1,0),
+         four_unit_flag = ifelse(dwelling_units_allowed==4, 1,0))
 
 
 ```
@@ -664,16 +682,22 @@ get_unit_variables <- function(dataset,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height_ft / 10),
            units_height = units_per_floor * floors,
-          #lotarea_per_unit is missing for all in DC, so use units_height for units estimates
+           units_FAR= (living_area*floor_area_ratio_max)/average_unit_size,
+          #lotarea_per_unit is missing for all in DC, so use units_height and units_FAR for units estimates
            units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
-    mutate_at(vars(units_height, units_lotsize),
+    mutate_at(vars(units_height, units_FAR),
               funs(case_when(
                 one_unit_flag == 1 ~ 1,
                 two_unit_flag == 1 ~ 2,
+                three_unit_flag == 1 ~ 3,
+                four_unit_flag == 1 ~ 4,
                 TRUE ~ .))) %>% 
     mutate(units_total = case_when(
       one_unit_flag == 1 ~ 1,
       two_unit_flag == 1 ~ 2,
+      three_unit_flag == 1 ~ 3,
+      four_unit_flag == 1 ~ 4,
+      units_height < units_FAR ~ units_height,
       TRUE ~ units_height))
  
 }
@@ -699,6 +723,7 @@ get_unit_summary <- function(dataset,
     group_by(parameters) %>% 
     summarize(lots = n(),
               units_height = sum(units_height),
+              units_FAR = sum(units_FAR),
               units_lotsize = sum(units_lotsize),
               units_total = sum(units_total),
               units_per_lot = floor(sum(units_total / lots)))
@@ -709,6 +734,7 @@ get_unit_summary <- function(dataset,
     group_by(parameters, dwelling_type) %>% 
     summarize(lots = n(),
               units_height = sum(units_height),
+              units_FAR = sum(units_FAR),
               units_lotsize = sum(units_lotsize),
               units_total = sum(units_total),
               units_per_lot = floor(sum(units_total / lots))) %>% 
