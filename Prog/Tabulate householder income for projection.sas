@@ -10,7 +10,7 @@
  Description:  Produce detailed tabulation of household income distribution by holders' age group, race ethnicity and jurisciation from 2013-2017
  ACS IPUMS data for the COGS region:
  DC (11001)
- Charles Couty(24017)
+ Charles County(24017)
  Frederick County(24021)
  Montgomery County (24031)
  Prince George's County(24033)
@@ -24,7 +24,8 @@
  Manassas City (51683)
  Manassas Park City (51685)
 
- Modifications: LH revise 80% AMI category to HUD capped and date in output
+ Modifications: 01/16/19 LH revise 80% AMI category to HUD capped and date in output/
+			    02/13/19 LH Remove two 2013 serials that are GQ=5 and not really households
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -33,7 +34,7 @@
 %DCData_lib( RegHsg)
 %DCData_lib( Ipums)
 
-%let date=01222019; 
+%let date=02132019; 
 
 proc format;
 
@@ -108,6 +109,7 @@ run;
 	data Household_&year. (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1100105", "2401600", "2400301", "2400302","2401001", "2401002", "2401003", "2401004", "2401005", "2401006", "2401007", "2401101", "2401102", "2401103", "2401104", "2401105", "2401106", "2401107", "5101301", "5101302", "5159301", "5159302", "5159303", "5159304", "5159305", "5159306", "5159307", "5159308", "5159309", "5110701", "5110702" , "5110703", "5151244", "5151245", "5151246", "5151255")));
 		set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
 
+
 	  %assign_jurisdiction;
 
 	run;
@@ -115,7 +117,7 @@ run;
 
 	data Householddetail_&year.;
 		set Household_&year. (where=(relate=1));
-		keep race hispan age hhincome pernum relate gq Jurisdiction hhwt perwt year serial numprec race1 agegroup incomecat totpop_&year.;
+		keep race hispan age hhincome hhincome_a pernum relate gq Jurisdiction hhwt perwt year serial numprec race1 agegroup incomecat totpop_&year.;
 
 		%dollar_convert( hhincome, hhincome_a, &year., 2016, series=CUUR0000SA0 )
 
@@ -171,8 +173,9 @@ run;
 %householdinfo(2016);
 %householdinfo(2017);
 
+/*remove serial 560493 and 255313 from 2013 as the are classified HoH but really reflect GQ - GQ=5 - have 11 and 20 people in the household)*/
 data fiveyeartotal;
-set Householddetail_2013 Householddetail_2014 Householddetail_2015 Householddetail_2016 Householddetail_2017;
+set Householddetail_2013 (where=(serial~=560493 and serial~=255313)) Householddetail_2014 Householddetail_2015 Householddetail_2016 Householddetail_2017;
 totalpop=0.2;
 run;
 /*total COG*/

@@ -1,0 +1,299 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Pre-clean Fairfax County public records data"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Chris Davis, adapted from Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The purpose of this program is to obtain additional data from the county to supplement the Black Knight data when possible. Originally based on preclean_arlington.rmd.
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+
+source("../Macros/read-bk.R")
+source("../Macros/filter-bk.R")
+source("../Macros/select-vars.R")
+
+```
+
+
+Set FIPS code, filepath name, and directory for data storage (on L drive)
+
+```{r fips}
+currentfips <- "51059"
+filepath <- "fairfax"
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
+
+#jdir <- paste0("D:/DCDATA/RegHsg/Data/", filepath, "/")
+#rdir <- paste0("D:/DCDATA/RegHsg/Raw/", filepath, "/")
+
+
+```
+
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+
+if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
+  dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))
+}
+
+# if (!dir.exists(paste0("D:/DCDATA/RegHsg/Raw", filepath))) {
+#   dir.create(paste0("D:/DCDATA/RegHsg/Raw", filepath))
+# }
+
+
+```
+
+Load in Black Knight data for the region, select jurisdiction and standard variables
+```{r read}
+if (!exists("region")) {
+  region <- read_bk("dc-cog-assessment_20181228.csv")
+} else {
+  warning("region data already read in")
+}
+
+jur <- region %>% 
+  filter_bk(fips = currentfips) %>% 
+  select_vars()
+
+```
+## Download files
+
+Fairfax has several files of use  
+- Tax Administration's Real Estate - Parcel-level file, Buildable/non-buildable, description of property, zone  
+- Tax Administration's Real Estate - Land Area file - SF land area, # Units (although seems way too high for some), Type of building  
+- Tax Administration's Real Estate - Dwelling Data - Has number of stories of parcel  
+
+```{r download-data}
+pafile <- paste0(rdir, filepath, "-parcel-file.csv")
+landfile <-paste0(rdir, filepath, "-land-file.csv")
+dwellingfile <- paste0(rdir, filepath, "-dwelling-file.csv")
+
+# parcel file
+if (!file.exists(pafile)) {
+  download.file("https://opendata.arcgis.com/datasets/7607cf5046c5495183251d1c9dba0014_1.csv",
+                destfile = pafile)
+}
+# land file
+if (!file.exists(landfile)) {
+  download.file("https://opendata.arcgis.com/datasets/f1f0f31844cf49489134f9fa2b8f16f5_3.csv",
+                destfile = landfile)
+}
+
+# real estate file - dwelling
+if (!file.exists(dwellingfile)) {
+  download.file("https://opendata.arcgis.com/datasets/53ee1065351c4273ab91ba2e6cfbbc6d_2.csv",
+                destfile = dwellingfile)
+}
+
+```
+## Read files
+
+```{r read-files}
+
+parcel <- read_csv(pafile)
+
+land <- read_csv(landfile)
+
+dwelling <- read_csv(dwellingfile)
+
+
+rm(pafile, landfile, dwellingfile)
+
+```
+
+## Clean and merge
+
+Select variables from each dataset that we want to keep.
+
+From the parcel file, we will keep the location descriptions and the zoning data in case we need to confirm zoning information and category of the parcels. 
+
+We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.
+
+```{r select-parcel}
+parcel_temp<- parcel %>% 
+  select(raw_parcelid_par = PARID,
+         num_liv_unit = LIVUNIT,
+         loc_desc_tax = LOCATION_DESC, 
+         luc_desc_tax = LUC_DESC,
+         zone_tax = ZONING_DESC) %>% 
+  mutate(parcel_id = str_replace_all(raw_parcelid_par, " ", "")) %>%
+  filter(!is.na(raw_parcelid_par))
+
+```
+
+
+There are `r parcel_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once on the parcel file. These may be unit counts or portions of parcels, but it is unclear. 
+
+For now, for each parcel that has multiple entries, I take the first value of all of the other values. Can clean up later if we want to use this data
+```{r parcel}
+parcel_final<-parcel_temp %>% 
+  group_by(parcel_id) %>%
+  summarize(loc_desc_tax=first(loc_desc_tax),
+  luc_desc=first(luc_desc_tax),
+  zone_tax = first(zone_tax),
+  num_livunit=first(num_liv_unit))
+```
+
+
+(Chris add)
+As the parcel IDs are not comprable, we will add a variable with a pin that eliminates the "-"s from the Blacknight file. 
+
+```{r mutate}
+jur_temp <- jur %>%
+        mutate(parcel_id = str_replace_all(assessorsparcelnumberapnpin, "-", ""))
+```
+
+There are `r (!jur_temp$parcel_id%in%parcel_final$parcel_id) %>% sum` units in the Blacknight data that are not in the parcels data.  
+There are `r (!parcel_final$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the parcels data that are not in the BlackKnight data.
+
+From the dwelling file, we will keep a variable designating the number of stories and the sf of living area of the dwelling.
+
+We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.
+
+
+
+```{r select-dwelling}
+dwelling_temp <- dwelling %>% 
+  select(raw_parcelid_par = PARID,
+         stories_tax = STYLE_DESC, 
+         possibleSF_tax = SFLA) %>% 
+  mutate(parcel_id = str_replace_all(raw_parcelid_par, " ", "")) %>%
+  filter(!is.na(raw_parcelid_par))
+
+```
+
+There are `r dwelling_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once on the dwelling file.
+There are sometimes also multiple stories for the same parcel. If we do use this, I need to go back and clean this. 
+
+There are `r (!jur_temp$parcel_id%in%dwelling_temp$parcel_id) %>% sum` units in the Blacknight data that are not in the dwelling data. 
+There are `r (!dwelling_temp$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the dwelling data that are not in the Blacknight data.  
+
+
+
+For now, for each parcel that has multiple entries, I take the first value of stories and sum the possible the SF variable. 
+```{r summarize-dwelling}
+dwelling_final<-dwelling_temp %>% 
+  group_by(parcel_id) %>%
+  summarize(stories_tax=first(stories_tax), 
+            dwellings_per_parcel = n(), 
+            possibleSF_tax = sum(possibleSF_tax, na.rm=T))
+```
+
+
+
+
+From the land file, we will save land area, number of units, and category of parcel
+```{r select-land}
+land_temp  <- land %>% 
+  select(raw_parcelid_land = PARID,
+         area_tax = SF,
+         units_tax = UNITS,
+         category_tax = CODE_DESC) %>% 
+  mutate(parcel_id = str_replace_all(raw_parcelid_land, " ", "")) %>%
+  filter(!is.na(raw_parcelid_land))
+ 
+```
+
+There are `r land_temp %>% group_by(parcel_id) %>% filter(n()>1) %>% nrow()` parcels that show up more than once in the land file.  
+
+There are `r (!jur_temp$parcel_id%in%land_temp$parcel_id) %>% sum` units in the Blacknight data that are not in the dwelling data. 
+There are `r (!land_temp$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the dwelling data that are not in the Blacknight data.  
+
+For now, for each parcel that has multiple entries, I take the sum of the area and the first value of all of the other values. Can clean up later if we want to use this data.
+
+
+```{r summarize-land}
+land_final<-land_temp %>% 
+  group_by(parcel_id) %>%
+  summarize(area_tax=sum(area_tax, na.rm=T), 
+            land_per_parcel = n(),
+            units_tax = first(units_tax),
+            category_tax = first(category_tax))
+```
+
+We decide to merge the Fairfax files first in order to ensure that we maintain as much data as possible. 
+
+Congruence of Fairfax files
+
+There are `r (!parcel_final$parcel_id%in%dwelling_final$parcel_id) %>% sum` units in the parcel data that are not in the dwelling data.  
+There are `r (!dwelling_final$parcel_id%in% parcel_final$parcel_id) %>% sum` units in the dwelling data that are not in the parcel data.
+
+Merge parcels and dwellings
+```{r}
+tax_temp <- left_join(parcel_final, dwelling_final, by="parcel_id")
+```
+
+There are `r (!tax_temp$parcel_id%in%land_final$parcel_id) %>% sum` units in the combined parcel/dwelling data that are not in the land file.  
+There are `r (!land_final$parcel_id%in% tax_temp$parcel_id) %>% sum` units in the land file that are not in the parcel/dwelling data.
+
+Merge parcels/dwellings and land file
+
+```{r}
+tax_final <- left_join(tax_temp, land_final, by="parcel_id")
+```
+
+
+Merge onto Blacknight file
+
+There are `r (!tax_final$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the combined tax data that are not in the BlackKnight data.  
+There are `r (!jur_temp$parcel_id%in% tax_final$parcel_id) %>% sum` units in the BlackKnight data that are not in the tax data.
+
+
+```{r merge}
+jur_final <- left_join(tax_final, jur_temp, by="parcel_id")
+```
+
+## Save
+
+Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.
+
+```{r save}
+
+saveRDS(jur_final,
+        paste0(jdir, 
+               "precleaned-",
+               
+               filepath,
+               "-data.Rdata"))
+
+```

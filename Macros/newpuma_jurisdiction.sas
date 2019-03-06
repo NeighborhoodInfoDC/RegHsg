@@ -1,5 +1,5 @@
 /**************************************************************************
- Program:  assign_jurisdiction.sas
+ Program:  newpuma_jurisdiction.sas
  Library:  RegHsg
  Project:  Regional Housing Framework
  Author:   L. Hendey
@@ -23,10 +23,10 @@
  Manassas City (51683)
  Manassas Park City (51685)
 
- Modifications: 
+ Modifications: Renamed macro so we could distinguish it from oldpuma_jurisdiction. -RP
 **************************************************************************/
 
-%macro assign_jurisdiction;
+%macro newpuma_jurisdiction;
 
   if upuma in ("1100101", "1100102", "1100103", "1100104", "1100105") then Jurisdiction =1;
   if upuma in ("2401600") then Jurisdiction =2;
@@ -40,4 +40,4 @@
   if upuma in ("5151255") then Jurisdiction =10; 
 
  
-%mend assign_jurisdiction;
+%mend newpuma_jurisdiction;
