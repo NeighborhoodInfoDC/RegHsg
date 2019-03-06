@@ -697,7 +697,7 @@ get_unit_variables <- function(dataset,
       two_unit_flag == 1 ~ 2,
       three_unit_flag == 1 ~ 3,
       four_unit_flag == 1 ~ 4,
-      units_height < units_FAR ~ units_height,
+      units_height > units_FAR ~ units_FAR,
       TRUE ~ units_height))
  
 }
