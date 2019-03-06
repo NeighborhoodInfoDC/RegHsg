@@ -374,13 +374,13 @@ vacantsf <- vacant1 %>%
 
 Plot to make sure they are overlapping
 ```{r make-map, echo=FALSE}
-ggplot() +
-  geom_sf(data = zon, mapping = aes()) +
-  #scale_fill_manual(values = c("#1696d2", "#fdbf11", 
-                               #"#d2d2d2", "#ec008b", 
-                               #"#55b748")) +
-  geom_sf(data = vacantsf, mapping = aes(),
-          color = "black")
+# ggplot() +
+#   geom_sf(data = zon, mapping = aes()) +
+#   #scale_fill_manual(values = c("#1696d2", "#fdbf11", 
+#                                #"#d2d2d2", "#ec008b", 
+#                                #"#55b748")) +
+#   geom_sf(data = vacantsf, mapping = aes(),
+#           color = "black")
 
 ```
 
@@ -679,7 +679,9 @@ Filter out lots that are too small to build on and lots with missing zoning info
 
 zoningdata1 <- zoningdata %>% 
   filter(!is.na(zoning),
-         lotsize_sf >= density) %>% 
+         lotsize_sf >= density,
+         is.na(lot_area)|lotsize_sf >=lot_area,
+         !grepl("KATELYN ZINN PL", propaddress)) %>% 
   group_by(propaddress) %>% 
   slice(which.min(dwelling_type)) %>% 
   ungroup() %>%
@@ -727,7 +729,10 @@ get_unit_variables <- function(dataset,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height / 10),
            units_height = units_per_floor * floors,
-           units_lotsize = floor(lotsize_sf / density)) %>% 
+           units_lotsize = floor(lotsize_sf / density)) %>%    #,
+          # temp_acre = living_area/43560,
+           #units_acre = temp_acre*max_dens,
+          # units_area = ifelse(units_acre<units_height, units_acre, units_height)) %>% 
     mutate_at(vars(units_height, units_lotsize),
               funs(case_when(
                 one_unit_flag == 1 ~ 1,
@@ -765,6 +770,8 @@ get_unit_summary <- function(dataset,
               units_lotsize = sum(units_lotsize),
               units_total = sum(units_total),
               units_per_lot = floor(sum(units_total / lots)))
+             # units_area = sum(units_area),
+             # units_acre = sum(units_acre)))
   
   y <- dataset %>% 
     get_unit_variables(construction_efficiency,
@@ -774,7 +781,9 @@ get_unit_summary <- function(dataset,
               units_height = sum(units_height),
               units_lotsize = sum(units_lotsize),
               units_total = sum(units_total),
-              units_per_lot = floor(sum(units_total / lots))) %>% 
+              units_per_lot = floor(sum(units_total / lots))) %>%
+              #units_area = sum(units_area),
+             # units_acre = sum(units_acre)) %>% 
     mutate(dwelling_type = as.character(dwelling_type))
   
   
@@ -818,16 +827,16 @@ Look at the distribution of units for lots with more than 1 unit, to check for e
 zoningdata1 %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 940) %>% 
-  filter(units_total > 1) %>% 
+  filter(units_total > 2) %>% 
   ggplot() +
   geom_point(mapping = aes(lotsize_sf, units_total),
              alpha = .5) +
   scale_x_continuous(labels = scales::comma,
                      expand = expand_scale(mult = c(0, 0.002)), 
-                     limits = c(0, 300000),
+                     limits = c(0, 100000),
                      breaks = 0:6 * 50000) +
   scale_y_continuous(expand = expand_scale(mult = c(0, 0.002)), 
-                     limits = c(0, 300),
+                     limits = c(0, 50),
                      breaks = 0:7 * 50) +
   scatter_grid() +
   labs(x = "Lot size (square feet)", y = "Total units") +
