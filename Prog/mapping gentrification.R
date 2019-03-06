@@ -76,7 +76,7 @@ ggplot() +
   geom_sf(Typologymap,  mapping = aes(),
           fill = NA, color = "white", size = .05) +
   geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHHcode)), color= "#dcdbdb", size = .05)+
-  scale_fill_manual(values = c ("#a2d4ec", "#bcdeb4", "#fccb41", "#eb99c2", "#e9807d", "#e88e2d","#d2d2d2", "#9d9d9d" ),
+  scale_fill_manual(values = c ("#a2d4ec", "#bcdeb4", "#fccb41", "#eb99c2", "#af1f6b", "#ca5800","#d2d2d2", "#9d9d9d" ),
                     labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Low-moderate value: not at risk","Excluded due to missing data","Other not at risk" )) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
@@ -93,7 +93,7 @@ ggplot() +
   geom_sf(COGcounty_sf,  mapping = aes(),
           fill = NA, color = "#9d9d9d", size = .05) +
   geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAMcode)), color= "#dcdbdb", size = .05)+
-  scale_fill_manual(values = c ("#a2d4ec", "#bcdeb4", "#fccb41", "#eb99c2", "#e9807d", "#e88e2d","#d2d2d2", "#9d9d9d" ),
+  scale_fill_manual(values = c ("#a2d4ec", "#bcdeb4", "#fccb41", "#eb99c2", "#af1f6b", "#ca5800","#d2d2d2", "#9d9d9d" ),
                     labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Low-moderate value: not at risk","Excluded due to missing data","Other not at risk")) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
