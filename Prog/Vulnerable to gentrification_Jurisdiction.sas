@@ -436,7 +436,7 @@ by geo2010;
 run;
 
 proc export data = completetypology
-   outfile="&_dcdata_default_path\RegHsg\Prog\completetypology_Jurisdiction.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\completetypology_Jurisdiction_0306.csv"
    dbms=csv
    replace;
 run;
@@ -464,7 +464,7 @@ run;
 
 data adjacentflag2 ;
 set adjacentflag2 ;
-keep geoid DCMetroArea2015_tr10_adjacent;
+keep geoid COG_region_adjacent;
 geoid= geo2010char;
 run;
 
@@ -478,7 +478,7 @@ by geoid;
 run;
 
 proc freq data=allflags;
-tables potentialADJ*DCMetroArea2015_tr10_adjacent/missprint;
+tables potentialADJ*COG_region_adjacent/missprint;
 run;
 proc format;
 
@@ -489,7 +489,8 @@ proc format;
 	4="Dynamic"
 	5="Late"
 	6="Continued Loss"
-	7= "Low-moderate value: not at risk";
+	7= "Low-moderate value: not at risk"
+    8= "Excluded due to missing data";
 
 	value Jurisdiction
     1= "District of Columbia"
@@ -507,24 +508,25 @@ proc format;
 run;
 data gentrificationstage;
 set allflags;
-keep Geo2010 geoid Jurisdiction vulnerable demographicchange_MHH demographicchange_MFAM accelerating appreciated potentialADJ DCMetroArea2015_tr10_adjacent neighborhoodtypeFAM 
+keep Geo2010 geoid Jurisdiction vulnerable rank2017 demographicchange_MHH demographicchange_MFAM accelerating appreciated potentialADJ COG_region_adjacent neighborhoodtypeFAM 
 neighborhoodtypeHH neighborhoodtypeFAMcode neighborhoodtypeHHcode numhshlds_&_years. hhunder75000 ;
 
-if vulnerable=1 and demographicchange_MHH=0 and DCMetroArea2015_tr10_adjacent=1 then neighborhoodtypeHH=1;
+if vulnerable=1 and demographicchange_MHH=0 and COG_region_adjacent=1 then neighborhoodtypeHH=1;
 if vulnerable=1 and demographicchange_MHH=0 and accelerating=1 then neighborhoodtypeHH=2;
-if vulnerable=1 and demographicchange_MHH=1 and DCMetroArea2015_tr10_adjacent=1 then neighborhoodtypeHH=3;
+if vulnerable=1 and demographicchange_MHH=1 and COG_region_adjacent=1 then neighborhoodtypeHH=3;
 if vulnerable=1 and demographicchange_MHH=1 and accelerating=1 then neighborhoodtypeHH=4;
 if vulnerable=1 and demographicchange_MHH=1 and appreciated=1 then neighborhoodtypeHH=5;
 if vulnerable=0 and gentrifier_white=1 and gentrifier_college=1 and appreciated=1 then neighborhoodtypeHH=6;
+if vulnerable=.n or demographicchange_MHH=.n or gentrifier_white=.n or accelerating=.n or appreciated=.n or gentrifier_college=.n or rank2017=.n then neighborhoodtypeHH=8;
 if rank2017 =<2 and neighborhoodtypeHH=. then neighborhoodtypeHH=7;
 
-
-if vulnerable=1 and demographicchange_MFAM=0 and DCMetroArea2015_tr10_adjacent=1 then neighborhoodtypeFAM=1;
+if vulnerable=1 and demographicchange_MFAM=0 and COG_region_adjacent=1 then neighborhoodtypeFAM=1;
 if vulnerable=1 and demographicchange_MFAM=0 and accelerating=1 then neighborhoodtypeFAM=2;
-if vulnerable=1 and demographicchange_MFAM=1 and DCMetroArea2015_tr10_adjacent=1 then neighborhoodtypeFAM=3;
+if vulnerable=1 and demographicchange_MFAM=1 and COG_region_adjacent=1 then neighborhoodtypeFAM=3;
 if vulnerable=1 and demographicchange_MFAM=1 and accelerating=1 then neighborhoodtypeFAM=4;
 if vulnerable=1 and demographicchange_MFAM=1 and appreciated=1 then neighborhoodtypeFAM=5;
 if vulnerable=0 and gentrifier_white=1 and gentrifier_college=1 and appreciated=1 then neighborhoodtypeFAM=6;
+if vulnerable=.n or demographicchange_MFAM=.n or gentrifier_white=.n or accelerating=.n or appreciated=.n or gentrifier_college=.n or rank2017=.n then neighborhoodtypeFAM=8;
 if rank2017 =<2 and neighborhoodtypeFAM=. then neighborhoodtypeFAM=7;
 
 format neighborhoodtypeFAM neighborhoodtypeHH type. Jurisdiction Jurisdiction. ;

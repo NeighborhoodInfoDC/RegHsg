@@ -25,7 +25,6 @@ library(rgdal)
 
 library(sf)
 shp= "L:/Libraries/RegHsg/Maps/COG_region.shp"
-datashp="L:/Libraries/RegHsg/Maps/Export_Output.shp"
 COGregion_sf <- read_sf(dsn=shp,layer= basename(strsplit(shp, "\\.")[[1]])[1])
 
 countyshp= "L:/Libraries/General/Maps/DMVCounties.shp"
@@ -39,21 +38,24 @@ COGcounty_sf <- county_sf %>%
 plot(COGregion_sf)
 
 # load in typology dataset output from SAS program
-library(readcsv)
-Typology <- read.csv(paste0(jdir,"Neighborhood typology for mapping.csv")) 
+
+Typology <- read.csv(paste0(jdir,"Neighborhood typology for mapping_0306.csv")) 
 
 Typology_df <- Typology  %>% 
-         mutate(GEOID=as.character(geoid),
-                missing= ifelse(vulnerable=="", 1,0)) %>% 
-         filter(missing==0)
+         mutate(GEOID=as.character(geoid))
+
+
+                #missing= ifelse(vulnerable=="", 1,0)) %>% 
+         #filter(missing==0)
   
 
 #spatial join
 Typologymap <- left_join (Typology_df, COGregion_sf, by = c("GEOID"="GEOID")) 
   
 Typologymap$neighborhoodtypeHH[Typologymap$neighborhoodtypeHH==""] <- "NA"
-
 Typologymap$neighborhoodtypeFAM[Typologymap$neighborhoodtypeFAM==""] <- "NA"
+Typologymap$neighborhoodtypeHH[Typologymap$neighborhoodtypeHHcode==""] <- "NA"
+Typologymap$neighborhoodtypeFAM[Typologymap$neighborhoodtypeFAMcode==""] <- "NA"
 
 install.packages("colorspace")
 library(colorspace)
@@ -74,8 +76,8 @@ ggplot() +
   geom_sf(Typologymap,  mapping = aes(),
           fill = NA, color = "white", size = .05) +
   geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeHHcode)), color= "#dcdbdb", size = .05)+
-  scale_fill_manual(values = c ("#a2d4ec", "#fce39e", "#fccb41", "#eb99c2", "#e9807d", "#db2b27","#d2d2d2" ),
-                    labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Low-moderate value: not at risk","Other not at risk")) +
+  scale_fill_manual(values = c ("#a2d4ec", "#bcdeb4", "#fccb41", "#eb99c2", "#e9807d", "#e88e2d","#d2d2d2", "#9d9d9d" ),
+                    labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Low-moderate value: not at risk","Excluded due to missing data","Other not at risk" )) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
   labs(title = "Neighborhood Gentrification Typology by HH") + 
@@ -91,8 +93,8 @@ ggplot() +
   geom_sf(COGcounty_sf,  mapping = aes(),
           fill = NA, color = "#9d9d9d", size = .05) +
   geom_sf(Typologymap, mapping=aes(fill=factor(neighborhoodtypeFAMcode)), color= "#dcdbdb", size = .05)+
-  scale_fill_manual(values = c ("#a2d4ec", "#fce39e", "#fccb41", "#eb99c2", "#e9807d", "#db2b27","#d2d2d2" ),
-                    labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Low-moderate value: not at risk","Other not at risk")) +
+  scale_fill_manual(values = c ("#a2d4ec", "#bcdeb4", "#fccb41", "#eb99c2", "#e9807d", "#e88e2d","#d2d2d2", "#9d9d9d" ),
+                    labels= c("Susceptible", "Early type 1", "early type 2", "Dynamic", "Late", "Continued Loss", "Low-moderate value: not at risk","Excluded due to missing data","Other not at risk")) +
   theme_urbn_map() +
   labs(fill = "Type", color = NULL) +
   labs(title = "Neighborhood Gentrification Typology by Family") + 
