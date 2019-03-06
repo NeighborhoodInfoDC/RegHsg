@@ -400,7 +400,7 @@ data inflatadjustzillow_labels;
 	if _NAME_ = "MedianMFRent_a" then label = "Median multi-family monthly rent, 2016-dollars" ;
 	if _NAME_ = "MedianCondoRent_a" then label = "Median condo monthly rent, 2016-dollars" ;
 	if _NAME_ = "MedianDuplexRent_a" then label = "Median duplex monthly rent, 2016-dollars" ;
-	if _NAME_ = "inventoryMetro" then label = "Number of real property sales" ;
+	if _NAME_ = "inventoryMetro" then label = "Number of monthly home listings" ;
 
 	label label = "Variable label"
 		  _2008 = "2008"
