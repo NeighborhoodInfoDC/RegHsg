@@ -351,8 +351,8 @@ if SPOWNOC9 < 50 then mdvalhs9_a=.n ;
 if SPOWNOC0 < 50 then mdvalhs0_a=.n; 
 if numowneroccupiedhu_&_years. < 50 then medianhomevalue_&_years.=.n; 
 
-	appre90_&endyr. = (medianhomevalue_&_years.- mdvalhs9_a)/ mdvalhs9_a;
-	appre00_&endyr. = (medianhomevalue_&_years.-mdvalhs0_a)/mdvalhs0_a;
+	if (mdvalhs9_a ~= .n and medianhomevalue_&_years. ~=.n) then appre90_&endyr. = (medianhomevalue_&_years.- mdvalhs9_a)/ mdvalhs9_a; else appre90_&endyr.=.n;
+	if ( mdvalhs0_a ~= .n and medianhomevalue_&_years. ~=.n) then appre00_&endyr. = (medianhomevalue_&_years.-mdvalhs0_a)/mdvalhs0_a; else appre00_&endyr.=.n; 
 	geoid=geo2010;
 run;
 proc means data=housingmarket;
@@ -370,25 +370,25 @@ run;
 data appreciationtracts;
 set valuehousing;
 
-if rank90~=. and rank20&endyr. ~=. & rank90_&endyr. ~=. then do; 
+if rank90 >=0 and rank20&endyr. >=0  & rank90_&endyr. >=0  then do; 
 	if rank90 <= 2 &  rank20&endyr. >=3 & rank90_&endyr. >= 3 then appreciated =1; else appreciated =0;
 	end; 
-else if rank90=. or rank20&endyr.=. or rank90_&endyr.=. then appreciated=.n; 
+else if rank90 < 0 or rank20&endyr. < 0 or rank90_&endyr. < 0 then appreciated=.n; 
 
-if rank20&endyr.~=. and rank00_&endyr. ~=. then do; 
+if rank20&endyr. >=0 and rank00_&endyr. >=0 then do; 
 	if rank20&endyr.<=2 & rank00_&endyr. >=3 then accelerating=1;else accelerating=0;
 	end; 
-else if rank20&endyr.=. or rank00_&endyr.=. then accelerating=.n; 
+else if rank20&endyr. < 0 or rank00_&endyr. < 0 then accelerating=.n; 
 
-if rank20&endyr. ~=. and rank00_&endyr. ~=. then do;
+if rank20&endyr. >=0 and rank00_&endyr. >=0 then do;
 	if  rank20&endyr.<=2 & rank00_&endyr. <=2 then potentialADJ=1; else potentialADJ=0;
 	end;
-else if rank20&endyr.=. or rank00_&endyr.=. then potentialADJ=.n;
+else if rank20&endyr. < 0 or rank00_&endyr. < 0 then potentialADJ=.n;
 
-if rank20&endyr. ~=. and appre00_&endyr.~=. then do;
+if rank20&endyr. >=0 and appre00_&endyr.>=0 then do;
     if rank20&endyr.>=3 or appre00_&endyr.>=3 then adjacentbase=1; else adjacentbase=0;
 	end;
-else if rank20&endyr. ~=. or appre00_&endyr.~=. then adjacentbase=.n;
+else if rank20&endyr. < 0 or appre00_&endyr. < 0 then adjacentbase=.n;
 
 run;
 
