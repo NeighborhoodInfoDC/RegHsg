@@ -83,10 +83,9 @@ ggplot() +
   theme_urbn_map() +
   labs(fill = "Tract Gentrification and Displacement Risk for Vulnerable Populations", color = NULL) +
   labs(title = "Neighborhood Gentrification Typology by HH") + 
-  theme(legend.box = "vertical") +
+  theme(legend.position ="bottom", legend.direction = "vertical", legend.text = element_text(size=8)) +
   coord_sf(crs = 4269, datum = NA)+
-  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.5, alpha=0.5)+
-  theme_urbn_map() +
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.3, alpha=0.5)+
   coord_sf(crs = 4269, datum = NA)
 
 
@@ -100,8 +99,7 @@ ggplot() +
   theme_urbn_map() +
   labs(fill = "Tract Gentrification and Displacement Risk for Vulnerable Populations", color = NULL) +
   labs(title = "Neighborhood Gentrification Typology by Family") + 
-  theme(legend.box = "vertical") +
+  theme(legend.position ="bottom", legend.box = "vertical", legend.text = element_text(size=8)) +
   coord_sf(crs = 4269, datum = NA)+
-  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.5, alpha=0.5)+
-  theme_urbn_map() +
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.3, alpha=0.5)+
   coord_sf(crs = 4269, datum = NA)
