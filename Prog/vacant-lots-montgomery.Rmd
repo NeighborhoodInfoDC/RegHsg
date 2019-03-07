@@ -192,13 +192,7 @@ zoning_gaithersburg <- zoningcode %>%
 ```
 
 
- Make sure we did not lose any zoning codes entirely.
-```{r responsible-purge}
 
-stopifnot(length(unique(zoningcode$zoning_code))
-          == length(unique(zoningcode1$zoning_code)))
-
-```
 
 *For Montgomery*
 ```{r list codes}
@@ -344,6 +338,11 @@ zoning_rockville1 <- zoning_rockville %>%
 ```
 
 
+
+
+
+
+
 ## Clean vacant lots data
 
 Select only vacant lots
@@ -351,9 +350,13 @@ Select only vacant lots
 ```{r res}
 
 vacant <- jur %>% 
-  filter(category == "vacant")
-  
+  filter(category == "vacant", propcity != "GAITHERSBURG", propcity != "ROCKVILLE", propcity != "ROCVKILE", propcity != "GAITHERBURG")
+
+x <- count(vacant, propcity)
 ```
+
+
+
 
 See how many lots have missing key variables
 
@@ -369,6 +372,13 @@ vacant %>%
   knitr::kable(caption = "Number and percent of missing values")
 
 ```
+
+
+
+
+
+
+
 
 ### Assessment values
 
@@ -429,152 +439,34 @@ We can recategorize these observations as "vacant with structure", and will not 
 
 ```{r not-vacant-recat}
 
-vacant <- vacant %>% 
+vacant1 <- vacant %>% 
   mutate(category = ifelse(assessedimprovementvalue > 0 & 
                            !is.na(assessedimprovementvalue),
                            "vacant with structure",
                            category))
 
 count(vacant, category)
-
-vacant1 <- vacant %>% 
-  filter(category == "vacant") %>% 
-  mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
-                                1,
-                                0))
+#
+#vacant1 <- vacant %>% 
+#  filter(category == "vacant") %>% 
+#  mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
+#                                1,
+#                                0))
 ```
 
-
-### Dual zoning codes
-
-The last step is to identify a zoning designation for observations that either...
-
-1. Have missing coordinates and have a dual zoning designation from Black Knight
-2. Have a dual zoning designation from Black Knight but one of the zoning codes does not match the results from the spatial join.
-
-First, isolate these observations and separate each zoning code into its own observation. 
-**NOTE:** For Arlington, the max codes was 4- adjust the `into = ` argument accordingly for each jurisdiction.
-
-```{r real-final}
-
-dual <- vacanttotal %>% 
-  filter((str_detect(zoning, "/") == TRUE & 
-            str_detect(zoning_bk, ZN_DESIG) == FALSE) |
-          (str_detect(zoning, "/") == TRUE &
-           missing_coord == TRUE)) %>% 
-  separate(zoning_bk, 
-           into = c("z1", "z2", "z3", "z4"),
-           sep = "/",
-           remove = FALSE)
-
-```
-Get rid of values that are NOT in the cleaned zoning code data. These codes do not allow for residential development.
-
-```{r no-non-res}
-
-dual <- dual %>% 
-  mutate_at(vars(z1, z2, z3, z4),
-            ~ ifelse(!. %in% zoningcode1$zoning_code,
-                     NA,
-                     .))
-
-```
-
-Convert to long so that we can list the zoning variables- then `group_by` the parcel ID, and check the lengths to make sure that is unique, so that we can merge results back in.
-
-```{r long}
-
-vacantlong <- dual %>% 
-  gather(key = "position", value = "code", -c(1:46, 51))
-
-dual2 <- vacantlong %>% 
-  group_by(assessorsparcelnumberapnpin) %>% 
-  summarize(zlist = list(code))
-
-stopifnot(nrow(dual) == nrow(dual2))
-
-```
-
-If there is only one code left after getting rid of the ones that don't allow for residential codes, take that code.
-
-```{r true1}
-dual2 <- dual2 %>% 
-  mutate(count = map(zlist, ~ sum(!is.na(.)))) %>% 
-  mutate(zoning_true = ifelse(count == 1,
-                              map(zlist, max, na.rm = TRUE),
-                              ""))
-```
-
-Priotize codes that are purely residential (begin with R). If there are more than 1 "R" zoning codes, we want to take the one with the lower number (take the lower density code, so we do not overestimate, since part of the building will be in the lower density area). We do this by extracting the numbers from the zoning codes, taking the minimum, and then selecting the element that contains that number.
-
-```{r true2, warning=FALSE}
-
-dual2 <- dual2 %>% 
-  mutate(res = map(zlist, ~ substr(., 1, 1)),
-         reslist = map(zlist, ~ .[str_detect(., "R")]),
-         num1 = map(zlist, parse_number),
-         num2 = map(num1, abs),
-         num3 = map(num2, ~ round(min(., na.rm = TRUE), 0)),
-         num4 = as.character(num3),
-         r_count = map(res, ~ sum(. == "R", na.rm = TRUE)),
-         zoning_true = ifelse(r_count == 1 & zoning_true == "",
-                              map(zlist, ~ max(.[str_detect(., "R")],
-                                               na.rm = TRUE)),
-                              zoning_true),
-         zoning_true = ifelse(r_count == 2,
-                              map2(reslist, num4, ~ max(.[str_detect(.x, c(.y, "R"))],
-                                                      na.rm = TRUE)),
-                              zoning_true))
-
-```
-
-The remaining codes only allow for one dwelling districts, so we will just take the first code.
-
-```{r true-last}
-
-dual3 <- dual2 %>% 
-  mutate(zoning_true = ifelse(zoning_true == "",
-                       map(zlist, 1),
-                       zoning_true),
-         zoning_true = as.character(zoning_true))
-
-stopifnot(sum(is.na(dual3$zoning_true)) == 0)
-```
-
-Look at a few observations to confirm.
-
-```{r sample-weird}
-
-dual3 %>% 
-  sample_n(10) %>% 
-  select(parcel = assessorsparcelnumberapnpin, zlist, zoning_true) %>% 
-  knitr::kable()
-
-```
-
-Select only the clean zoning variable, merge back into main dataset, and replace zoning variable. Initial Black Knight variable will still be archived.
-
-```{r recomb}
-
-vacantfinal <- vacanttotal %>% 
-  left_join(select(dual3,
-                   assessorsparcelnumberapnpin, zoning = zoning_true),
-            by = "assessorsparcelnumberapnpin") %>% 
-  rename(zoning= zoning.x) %>% 
-  mutate(zoning = ifelse(!is.na(zoning.y),
-                         zoning.y,
-                         zoning)) %>% 
-  select(-zoning.y)
-
-```
 
 ## Merge with cleaned data
 
 Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original `zoning` variable.
 
 ```{r bk-clean}
+mvacant <- vacant1 %>% 
+  filter()
+z <- count(vacant1, zoning)
 
-vacantfinal <- vacantfinal %>% 
+
+
+vacantfinal <- vacant1 %>% 
   mutate(zoning_code = case_when(
     zoning == "RC" ~ "R-C",
     zoning == "C-0 Crystal City" ~ "C-O Crystal City",

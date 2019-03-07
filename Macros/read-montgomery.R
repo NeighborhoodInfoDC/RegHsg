@@ -14,9 +14,7 @@ read_montgomery <- function(rmd = TRUE) {
   
   filename <- paste0("L:/Libraries/RegHsg/Data/", filepath,
                      "/", "cleaned-", filepath, "-data.csv")
-  spec_csv(filename)
-  problems <- problems(filename)
-  
+
   if (!file.exists(filename)) {
     stop("cleaned data not found in Data directory")
   } else {
@@ -30,7 +28,7 @@ read_montgomery <- function(rmd = TRUE) {
                               propstate = col_character(),
                               propzip = col_integer(),
                               propunitno = col_integer(),
-                              prophouseno = col_integer(),
+                              prophouseno = col_character(),
                               propstreetname = col_character(),
                               propstreetsuffix = col_character(),
                               tract = col_double(),
@@ -38,7 +36,7 @@ read_montgomery <- function(rmd = TRUE) {
                               countylandusedescription = col_character(),
                               zoning = col_character(),
                               buildingarea = col_double(),
-                              noofbuildings = col_integer(),
+                              noofbuildings = col_character(),
                               noofstories = col_character(),
                               numberofunits = col_integer(),
                               yearbuilt = col_integer(),

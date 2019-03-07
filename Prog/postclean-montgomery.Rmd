@@ -163,10 +163,6 @@ jur_sf1 %>% as.data.frame() %>%
 ##Spatial Join!
 ```{r join}
 
-leftovers <- st_difference(jur_sf1, parcel_sf1)
-
-leftovers2 <- st_disjoint(jur_sf1, parcel_sf1)
-
 pjoin <- st_join(jur_sf1, parcel_sf1, join = st_intersects)
 
 ```
@@ -314,11 +310,12 @@ pzjoin_df <- st_set_geometry(pzjoin, NULL)
 I remove a stop that Sarah put in because there will not be clean join because of missing prop data from Gaithersburg and Rockville.
 ```{r count-zoning}
 
-paste0(sum(is.na(pzjoin_df$validgeo)), " observations didn't join- ",
-      round(sum(is.na(pzjoin_df$validgeo)) / nrow(pzjoin_df) * 100, 2), "%")
-
 paste0(sum(is.na(pzjoin_df$CODE)), " observations didn't join- ",
       round(sum(is.na(pzjoin_df$CODE)) / nrow(pzjoin_df) * 100, 2), "%")
+
+y <- pzjoin_df %>% 
+  filter(is.na(zoning)) %>% 
+  count(category_detail)
 ```
 
 
@@ -351,6 +348,11 @@ See how many we're filled in
 
 ```{r count-lots}
 sum(is.na(pzjoin_df1$arc_zoning)) - sum(is.na(pzjoin_df1$zoning))
+
+y <- pzjoin_df1 %>% 
+  filter(is.na(zoning)) %>% 
+  count(category_detail)
+
 ```
 
 
@@ -362,22 +364,6 @@ Test how many have different results from the Black Knight zoning variable.
 pzjoin_df1 %>% 
   group_by(is.na(zoning)) %>% 
   count(zoning == CODE)
-
-```
-
-Take a closer look how many and what percent are different "just because"- not because they didn't merge, have missing values, or have duplicate values.
-
-```{r test-spatial-again}
-
-pzjoin_df1 %>% 
-  filter(!is.na(zoning), 
-         !is.na(CODE), 
-         str_detect(zoning, "/") == FALSE) %>% 
-  mutate(different_flag = ifelse(zoning != CODE,
-                                 1,
-                                 0)) %>% 
-  summarize(different = sum(different_flag, na.rm = TRUE)) %>% 
-  mutate(percent_different = paste0(round(different / nrow(pzjoin_df) *100, 2), "%"))
 
 ```
 
@@ -395,14 +381,6 @@ pzjoin_df1 %>%
   knitr::kable(caption = "Number and percent of missing values")
 
 ```
-
-```{add back those that didn't match}
-
-pzjoin_df2 <- bind_rows(pjoindf1, leftovers)
-
-```
-
-
 
 
 ```{r save}
