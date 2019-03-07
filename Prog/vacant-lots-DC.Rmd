@@ -714,18 +714,23 @@ get_unit_variables <- function(dataset,
            units_FAR= (living_area*floor_area_ratio_max)/average_unit_size,
           #lotarea_per_unit is missing for all in DC, so use units_height and units_FAR for units estimates
            units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
-    mutate_at(vars(units_height, units_FAR),
+           mutate_at(vars(units_height, units_FAR),
               funs(case_when(
                 one_unit_flag == 1 ~ 1,
                 two_unit_flag == 1 ~ 2,
                 three_unit_flag == 1 ~ 3,
                 four_unit_flag == 1 ~ 4,
                 TRUE ~ .))) %>% 
+    mutate(subset=as.integer(lotsize_sf/lot_area_min), na.rm = TRUE) %>% 
     mutate(units_total = case_when(
-      one_unit_flag == 1 ~ 1,
-      two_unit_flag == 1 ~ 2,
-      three_unit_flag == 1 ~ 3,
-      four_unit_flag == 1 ~ 4,
+      one_unit_flag == 1 & subset<1 ~ 1,
+      two_unit_flag == 1 & subset<1~ 2,
+      three_unit_flag == 1 & subset<1~ 3,
+      four_unit_flag == 1 & subset<1~ 4,
+      one_unit_flag == 1 & subset>=1 ~ 1*subset,
+      two_unit_flag == 1 & subset>=1~ 2*subset,
+      three_unit_flag == 1 & subset>=1~ 3*subset,
+      four_unit_flag == 1 & subset>=1~ 4*subset,
       units_height > units_FAR ~ units_FAR,
       TRUE ~ units_height))
  
