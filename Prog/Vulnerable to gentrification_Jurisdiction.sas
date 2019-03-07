@@ -483,13 +483,13 @@ run;
 proc format;
 
 	value type
-	1= "Susceptible"
-	2= "Early: Type 1"
-	3="Early: Type 2"
-	4="Dynamic"
-	5="Late"
-	6="Continued Loss"
-	7= "Low-moderate value: not at risk"
+	1= "Low-moderate value and vulnerable pop: not at risk"
+	2= "Susceptible"
+	3= "Early: Type 1"
+	4="Early: Type 2"
+	5="Dynamic"
+	6="Late"
+	7="Continued Loss"
     8= "Excluded due to missing data";
 
 	value Jurisdiction
@@ -511,23 +511,23 @@ set allflags;
 keep Geo2010 geoid Jurisdiction vulnerable rank2017 demographicchange_MHH demographicchange_MFAM accelerating appreciated potentialADJ COG_region_adjacent neighborhoodtypeFAM 
 neighborhoodtypeHH neighborhoodtypeFAMcode neighborhoodtypeHHcode numhshlds_&_years. hhunder75000 ;
 
-if vulnerable=1 and demographicchange_MHH=0 and COG_region_adjacent=1 then neighborhoodtypeHH=1;
-if vulnerable=1 and demographicchange_MHH=0 and accelerating=1 then neighborhoodtypeHH=2;
-if vulnerable=1 and demographicchange_MHH=1 and COG_region_adjacent=1 then neighborhoodtypeHH=3;
-if vulnerable=1 and demographicchange_MHH=1 and accelerating=1 then neighborhoodtypeHH=4;
-if vulnerable=1 and demographicchange_MHH=1 and appreciated=1 then neighborhoodtypeHH=5;
-if vulnerable=0 and gentrifier_white=1 and gentrifier_college=1 and appreciated=1 then neighborhoodtypeHH=6;
+if vulnerable=1 and demographicchange_MHH=0 and COG_region_adjacent=1 then neighborhoodtypeHH=2;
+if vulnerable=1 and demographicchange_MHH=0 and accelerating=1 then neighborhoodtypeHH=3;
+if vulnerable=1 and demographicchange_MHH=1 and COG_region_adjacent=1 then neighborhoodtypeHH=4;
+if vulnerable=1 and demographicchange_MHH=1 and accelerating=1 then neighborhoodtypeHH=5;
+if vulnerable=1 and demographicchange_MHH=1 and appreciated=1 then neighborhoodtypeHH=6;
+if vulnerable=0 and gentrifier_white=1 and gentrifier_college=1 and appreciated=1 then neighborhoodtypeHH=7;
 if vulnerable=.n or demographicchange_MHH=.n or gentrifier_white=.n or accelerating=.n or appreciated=.n or gentrifier_college=.n or rank2017=.n then neighborhoodtypeHH=8;
-if rank2017 =<2 and neighborhoodtypeHH=. then neighborhoodtypeHH=7;
+if rank2017 =<2 and vulnerable=1 and neighborhoodtypeHH=. then neighborhoodtypeHH=1;
 
-if vulnerable=1 and demographicchange_MFAM=0 and COG_region_adjacent=1 then neighborhoodtypeFAM=1;
-if vulnerable=1 and demographicchange_MFAM=0 and accelerating=1 then neighborhoodtypeFAM=2;
-if vulnerable=1 and demographicchange_MFAM=1 and COG_region_adjacent=1 then neighborhoodtypeFAM=3;
-if vulnerable=1 and demographicchange_MFAM=1 and accelerating=1 then neighborhoodtypeFAM=4;
-if vulnerable=1 and demographicchange_MFAM=1 and appreciated=1 then neighborhoodtypeFAM=5;
-if vulnerable=0 and gentrifier_white=1 and gentrifier_college=1 and appreciated=1 then neighborhoodtypeFAM=6;
+if vulnerable=1 and demographicchange_MFAM=0 and COG_region_adjacent=1 then neighborhoodtypeFAM=2;
+if vulnerable=1 and demographicchange_MFAM=0 and accelerating=1 then neighborhoodtypeFAM=3;
+if vulnerable=1 and demographicchange_MFAM=1 and COG_region_adjacent=1 then neighborhoodtypeFAM=4;
+if vulnerable=1 and demographicchange_MFAM=1 and accelerating=1 then neighborhoodtypeFAM=5;
+if vulnerable=1 and demographicchange_MFAM=1 and appreciated=1 then neighborhoodtypeFAM=6;
+if vulnerable=0 and gentrifier_white=1 and gentrifier_college=1 and appreciated=1 then neighborhoodtypeFAM=7;
 if vulnerable=.n or demographicchange_MFAM=.n or gentrifier_white=.n or accelerating=.n or appreciated=.n or gentrifier_college=.n or rank2017=.n then neighborhoodtypeFAM=8;
-if rank2017 =<2 and neighborhoodtypeFAM=. then neighborhoodtypeFAM=7;
+if rank2017 =<2 and vulnerable=1 and neighborhoodtypeFAM=. then neighborhoodtypeFAM=1;
 
 format neighborhoodtypeFAM neighborhoodtypeHH type. Jurisdiction Jurisdiction. ;
 
