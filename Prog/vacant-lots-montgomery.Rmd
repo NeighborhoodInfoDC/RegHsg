@@ -279,6 +279,7 @@ Since the variables are not always comparable, the following order, from most to
 5. single-family attached 
 6. single-family semidetached 
 7. single-family detached 
+8. all (dwelling type is NA)
 
 ### Create factor variable
 To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
@@ -298,7 +299,8 @@ zoning_gaithersburg1 <- zoning_gaithersburg %>%
                                            "two family dwellings",
                                            "single-family attached",
                                            "single-family semidetached",
-                                           "single-family detached"
+                                           "single-family detached",
+                                           "all"
                                            )),
          one_unit_flag = ifelse(dwelling_type == "single-family attached" | 
                                 dwelling_type == "single-family semidetached" | 
@@ -312,7 +314,34 @@ zoning_gaithersburg1 <- zoning_gaithersburg %>%
 
 ```
 
+*For Rockville*
+```{r list codes}
+zoning_rockville %>% 
+  count(dwelling_type) %>% 
+  knitr::kable()
 
+```
+
+
+There are no dwelling types, so the factor is for all.
+
+### Create factor variable
+All rockville zoning codes are unique, so we do not need a factor. We will automatically select "all", or treat it as dwelling type is NA
+
+**NOTE** This will be VERY jurisdiction specific.
+
+**NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
+
+```{r dwelling-factor}
+
+zoning_rockville1 <- zoning_rockville %>% 
+  mutate(dwelling_type = factor(dwelling_type,
+                                levels = c(
+                                           "all"
+                                           )))
+
+
+```
 
 
 ## Clean vacant lots data
