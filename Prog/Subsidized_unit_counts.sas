@@ -379,7 +379,7 @@ proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
     all='Total' ProgCat=' ',
     /** Columns **/
     n='Projects'    
-    sum='Assisted Units By Subsidy Expiration Year' * (  all='Total' jurisdiction=' ' ) 
+    sum='Assisted Units By Jurisdiction' * (  all='Total' jurisdiction=' ' ) 
       * (  mid_assistedunits='Est.' moe_assistedunits='+/-' )
     ;
   format ProgCat ProgCat. jurisdiction jurisdiction.;
