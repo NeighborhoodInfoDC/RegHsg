@@ -35,7 +35,7 @@ Manassas Park City (51685)
 %include "L:\SAS\Inc\StdLocal.sas";
 
 ** Define libraries **;
-%DCData_lib( RegHsg, local=n )
+%DCData_lib( RegHsg )
 ** Year range for preservation targets **;
 %let Startyr = 2015;
 %let Endyr = 2035;
@@ -77,6 +77,19 @@ proc format;
     2026-2030 = '2026 - 2030'
     2031-2035 = '2031 - 2035';
 run;
+proc format;
+	value Jurisdiction
+		1= "DC"
+		2= "Charles County"
+		3= "Frederick County "
+		4="Montgomery County"
+		5="Prince Georges "
+		6="Arlington"
+		7="Fairfax, Fairfax city and Falls Church"
+		8="Loudoun"
+		9="Prince William, Manassas and Manassas Park"
+		10="Alexandria"
+		;
 
 
 data Work.Allassistedunits;
@@ -84,6 +97,8 @@ data Work.Allassistedunits;
 	if CountyCode in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600", "51610", "51683", "51685") then COGregion =1;
   	else COGregion=0;
   	format COGregion COG. ;
+	ucounty = CountyCode;
+	%ucounty_jurisdiction;
 	s8_all_assistedunits=min(sum(s8_1_AssistedUnits, s8_2_AssistedUnits,0),TotalUnits);
 	s202_all_assistedunits=min(sum(s202_1_AssistedUnits, s202_2_AssistedUnits,0),TotalUnits);
 	s236_all_assistedunits=min(sum(s236_1_AssistedUnits, s236_2_AssistedUnits,0),TotalUnits);
@@ -306,7 +321,7 @@ label
 data Work.ConstructionDates;
   set Work.SubsidyExpirationDates;
   format LatestConstructionDate MMDDYY10.;
-if ProgCat=1 then PHConstructionDate=LatestConstructionDate;
+if ProgCat in (1,2) then PHConstructionDate=LatestConstructionDate;
 If 1930 <= year (PHConstructionDate) <= 1950 then timecount = '1930-1950';
 else if 1951 <=  year (PHConstructionDate) <= 1970 then timecount='1951-1970';
 else if 1971 <= year (PHConstructionDate) <= 1990 then timecount='1971-1990';
@@ -345,6 +360,29 @@ proc tabulate data=Work.ConstructionDates  format=comma10. noseps missing;
     sum='Assisted Units' * ( mid_assistedunits='Est.'  moe_assistedunits='+/-' )
     ;
   format ProgCat ProgCat.;
+run;
+
+ods csvall close;
+
+ods csvall  body="&_dcdata_default_path\RegHsg\Prog\Subsidized_unit_counts_jurisdiction.csv";
+
+title3 "Projects and assisted units breakdown by jurisdiction";
+
+
+proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
+  where not missing(jurisdiction);
+  class ProgCat / preloadfmt order=data;
+  class jurisdiction;
+  var mid_assistedunits moe_assistedunits;
+  table
+    /** Rows **/
+    all='Total' ProgCat=' ',
+    /** Columns **/
+    n='Projects'    
+    sum='Assisted Units By Subsidy Expiration Year' * (  all='Total' jurisdiction=' ' ) 
+      * (  mid_assistedunits='Est.' moe_assistedunits='+/-' )
+    ;
+  format ProgCat ProgCat. jurisdiction jurisdiction.;
 run;
 
 ods csvall close;
@@ -585,7 +623,7 @@ proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
     ProgCat=' ',
     /** Columns **/
     n='Projects'    
-    sum='Public housing latest construction dates' * ( timecount=' ' ) 
+    sum='Public housing latest construction dates' * ( all= 'Total' timecount=' ' ) 
       * (  mid_assistedunits='Est.' moe_assistedunits='+/-' )
     ;
   format ProgCat ProgCat. ;
