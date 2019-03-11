@@ -66,8 +66,8 @@
 proc format;
 
 	value tenure
-		1= "Renter household"
-		2= "Owner household"
+		1= "Renter"
+		2= "Owner"
 		;
 
 	value Jurisdiction
