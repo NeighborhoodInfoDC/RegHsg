@@ -91,6 +91,13 @@ proc format;
 		4= "Large multifamily"
 		.n= "Other"
 		 ;
+
+	value bedroom_topcode
+		1 = "1 bedroom"
+		2 = "2 bedrooms"
+		3 = "3 bedrooms"
+		4 = "4+ bedrooms"
+		;
 run;
 
 
@@ -127,7 +134,11 @@ data COGSvacant_&year.(where=(vacancy in (1,2)));
 	if vacancy=1 then Tenure = 1; /*renter*/
 	if vacancy=2 then Tenure = 2; /*owner*/
 
+	if bedrooms >= 4 then bedrooms = 4; /* Top-code bedroom sizes at 4+ */
+
 	vacantunit_&year.=1;
+
+	format bedrooms bedroom_topcode.;
 
 run;
 
@@ -171,7 +182,11 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 	if ownershpd in (21, 22) then Tenure = 1; /*renter*/
 	else if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
 
+	if bedrooms >= 4 then bedrooms = 4; /* Top-code bedroom sizes at 4+ */
+
 	occupiedunits_&year.=1;
+
+	format bedrooms bedroom_topcode.;
 
 	run;
 
