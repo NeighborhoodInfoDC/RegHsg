@@ -214,9 +214,9 @@ data COGSunits (drop = _freq_);
 	merge COGSareaunits_2000 COGSvacantunits_2000 COGSareaunits_2010 COGSvacantunits_2010 COGSareaunits_2017 COGSvacantunits_2017;
 	by Jurisdiction structuretype bedrooms Tenure _TYPE_;
 
+	vacancyrate2000= vacantunit_2000 / sum(of vacantunit_2000 occupiedunits_2000);
 	vacancyrate2010= vacantunit_2010 / sum(of vacantunit_2010 occupiedunits_2010);
 	vacancyrate2017= vacantunit_2017 / sum(of vacantunit_2017 occupiedunits_2017);
-	vacancyrate2000= vacantunit_2000 / sum(of vacantunit_2000 occupiedunits_2000);
 
 	format structuretype structure. Tenure tenure.;
 	drop _type_;
