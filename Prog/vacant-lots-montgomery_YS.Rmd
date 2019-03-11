@@ -637,6 +637,29 @@ zoningdata_gaithersburg <- left_join(vacant_gaithersburg, zoning_gaithersburg2, 
 There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
 
 ```{r antijoin}
+
+
+zoning_montgomery <- zoning_montgomery %>% 
+  mutate(dwelling_type = ifelse(dwelling_type == "general"| dwelling_type == "multi-use", "apartment", dwelling_type))
+
+
+zoning_montgomery1 <- zoning_montgomery %>% 
+  mutate(dwelling_type=ifelse(is.na(dwelling_type)==1, "all", dwelling_type)) %>% 
+  mutate(dwelling_type = factor(dwelling_type,
+                                levels = c("apartment",
+                                           "townhouse",
+                                           "duplex-over",
+                                           "duplex-side",
+                                           "detached house"
+                                           )),
+         one_unit_flag = ifelse(dwelling_type == "detached house",
+                                1,
+                                0),
+         two_unit_flag = ifelse(dwelling_type == "duplex-over" | dwelling_type == "duplex-side",
+                                1,
+                                0))
+
+
 #YS edits and comments: R200, R60 R90 are in the zoning data, they are missing a dash in the middle, should be easy to fix. For the other R codes that are not in the zoning spreadsheet, need to come up with a strategy-- for example 60 vacant lots are RE2. I also noticed some zoning codes are actually from Montgomery, eg. RNC.
 
 anti_join(vacant_rockvile, zoning_rockville1, by = c("zoning_code")) %>% 
@@ -655,11 +678,21 @@ anti_join(vacant_rockvile1, zoning_rockville1, by = c("zoning_code")) %>%
   count(zoning_code) %>% 
   knitr::kable()
 
+vacant_rockvile2 <- anti_join(vacant_rockvile1, zoning_rockville1, by = c("zoning_code")) 
+#need to bring in montgomery zoning code and join with the lots that are not joined. 
+zoningdata_rockvile2 <- left_join(vacant_rockvile2, zoning_montgomery1, by = "zoning_code")
+  
+
+
+
 #YS edits and comments: Gaithersburg file has R90, R6, RA, R20 but not the other R codes. But I do see some of the R codes in the MOntgomery spreadsheet. Need to resolve the two. 
 
 anti_join(vacant_gaithersburg, zoning_gaithersburg2, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
+
+#need to bring in montgomery zoning code and join with the lots that are not joined. 
+
 
 vacant_gaithersburg1 <- vacant_gaithersburg %>% 
   mutate(zoning_code= case_when(zoning_code == "R200" ~ "R-200",
@@ -672,6 +705,11 @@ anti_join(vacant_gaithersburg1, zoning_gaithersburg2, by = c("zoning_code")) %>%
   count(zoning_code) %>% 
   knitr::kable()
 
+vacant_gaithersburg2 <- anti_join(vacant_gaithersburg1, zoning_gaithersburg2, by = c("zoning_code")) 
+
+#need to bring in montgomery zoning code and join with the lots that are not joined. 
+zoningdata_gaithersburg2 <- left_join(vacant_gaithersburg1, zoning_montgomery1, by = "zoning_code")
+
 ```
 
 
@@ -679,10 +717,9 @@ Rejoin the zoning categorization and vacant dataset after cleaning.
 ```{r rejoin}
 #YS edits and comments: rejoin vacant dataset and zoning after cleaning the zoning code for Rockvile and Gathersburg
 
+zoningdata_rockvile3 <- left_join(vacant_rockvile1, zoning_rockville1, by = "zoning_code")
 
-zoningdata_rockvile2 <- left_join(vacant_rockvile1, zoning_rockville1, by = "zoning_code")
-zoningdata_gaithersburg2 <- left_join(vacant_gaithersburg1, zoning_gaithersburg2, by = "zoning_code")
-
+zoningdata_gaithersburg3 <- left_join(vacant_gaithersburg1, zoning_gaithersburg2, by = "zoning_code")
 
 ```
 
@@ -690,20 +727,40 @@ Filter out lots that are too small to build on and lots with missing zoning info
 
 ```{r filter-small}
 
-zoningdata_rockvile3 <- zoningdata_rockvile2 %>% 
+zoningdata_rockvile2final <- zoningdata_rockvile2 %>% 
   filter(!is.na(zoning_code),
          lotsize_sf >= lot_area_min) %>% 
   group_by(propaddress) %>% 
   slice(which.min(dwelling_type)) %>% 
   ungroup()
 
-zoningdata_gaithersburg3 <- zoningdata_gaithersburg2 %>% 
+zoningdata_rockvile3final <- zoningdata_rockvile3 %>% 
   filter(!is.na(zoning_code),
          lotsize_sf >= lot_area_min) %>% 
   group_by(propaddress) %>% 
   slice(which.min(dwelling_type)) %>% 
   ungroup()
 
+zoningdata_gaithersburg2final <- zoningdata_gaithersburg2 %>% 
+  filter(!is.na(zoning_code),
+         lotsize_sf >= lot_area_min) %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  ungroup()
+
+zoningdata_gaithersburg3final <- zoningdata_gaithersburg3 %>% 
+  filter(!is.na(zoning_code),
+         lotsize_sf >= lot_area_min) %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  ungroup()
+
+#stack the dataset back together after slicing by different factor variables
+zoningdata_rockvilefinal <- zoningdata_rockvile2final %>% 
+       bind_rows(zoningdata_rockvile3final)
+
+zoningdata_gaithersburgfinal <- zoningdata_gaithersburg2final %>% 
+       bind_rows(zoningdata_gaithersburg3final)
 
 
 ```
@@ -815,14 +872,14 @@ Get summary statistics for several different parameters
 
 ```{r sum}
 
-get_unit_summary(dataset = zoningdata1,
+get_unit_summary(dataset = zoningdata_gaithersburg2final,
                  construction_efficiency = .7,
                  average_unit_size = 940,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
 
-map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata1,
+map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata_gaithersburg2final,
                                       construction_efficiency = .,
                                       average_unit_size = 940,
                                       dwelling_type_breakdown = FALSE)) %>% 
