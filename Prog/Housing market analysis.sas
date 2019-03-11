@@ -145,13 +145,13 @@ run;
 proc summary data= COGSvacant_&year.;
 	class Jurisdiction structuretype bedrooms Tenure;
 	var vacantunit_&year.;
-	ways 0 1;
+	*ways 0 1;
 	weight hhwt;
-	output out= COGSvacantunits_&year. sum=;
+	output out= COGSvacantunits_&year. (where = (_type_ in (0,1,2,4,8,9,5))) sum=;
 run;
 
 proc sort data= COGSvacantunits_&year.;
-	by _type_ Jurisdiction structuretype bedrooms Tenure;
+	by Jurisdiction structuretype bedrooms Tenure _type_;
 run;
 
 /* Calculate total number of units for each year of Ipums */
@@ -193,13 +193,13 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 proc summary data= COGSarea_&year.;
 	class Jurisdiction structuretype bedrooms Tenure;
 	var occupiedunits_&year.;
-	ways 0 1;
+	*ways 0 1;
 	weight hhwt;
-	output out=COGSareaunits_&year. sum=;
+	output out=COGSareaunits_&year. (where = (_type_ in (0,1,2,4,8,9,5))) sum=;
 run;
 
 proc sort data= COGSareaunits_&year.;
-	by _type_ Jurisdiction structuretype bedrooms Tenure ;
+	by Jurisdiction structuretype bedrooms Tenure _type_;
 run;
 
 %mend COGunits; 
@@ -212,7 +212,7 @@ run;
 /* Combine units and vacant units to calculate vacancy rate and export */
 data COGSunits (drop = _freq_);
 	merge COGSareaunits_2000 COGSvacantunits_2000 COGSareaunits_2010 COGSvacantunits_2010 COGSareaunits_2017 COGSvacantunits_2017;
-	by Jurisdiction structuretype bedrooms Tenure _TYPE_;
+	by Jurisdiction structuretype bedrooms Tenure _type_;
 
 	vacancyrate2000= vacantunit_2000 / sum(of vacantunit_2000 occupiedunits_2000);
 	vacancyrate2010= vacantunit_2010 / sum(of vacantunit_2010 occupiedunits_2010);
