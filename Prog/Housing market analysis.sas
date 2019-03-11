@@ -127,7 +127,7 @@ data COGSvacant_&year.(where=(vacancy in (1,2)));
 	%end; 
 
 	if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-	else if UNITSSTR =05 then structuretype=2; /*duplex*/
+	else if UNITSSTR =05 then structuretype=3; /*duplex now coded as small multifamily*/
 	else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
 	else if UNITSSTR in (08, 09, 10)then structuretype=4; /*large multifamily*/
 
@@ -174,8 +174,7 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 	%end; 
 
 	if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-	else if UNITSSTR = 05 then structuretype=2; /*duplex*/
-	else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
+	else if UNITSSTR in (05,06, 07) then structuretype=3; /*small multifamily*/
 	else if UNITSSTR in (08, 09, 10)then structuretype=4; /*large multifamily*/
 
 
