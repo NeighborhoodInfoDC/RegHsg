@@ -32,13 +32,28 @@ proc format;
 	value wagecat
 		1 = "Low wage"
 		2 = "Medium wage"
-		3 = "High wage";
+		3 = "High wage"
+		. = "Total";
 	value empstat_new
 		1 = "Civilian employed (at work or have a job)"
 		2 = "In military (at work or have a job)"
 		3 = "Student"
 		4 = "Unemployed"
-		5 = "Other / not in labor force";
+		5 = "Other / not in labor force"
+		. = "Total";
+	value Jurisdiction
+		0= "Total"
+   	 	1= "DC"
+		2= "Charles County"
+		3= "Frederick County "
+		4="Montgomery County"
+		5="Prince Georges "
+		6="Arlington"
+		7="Fairfax, Fairfax city and Falls Church"
+		8="Loudoun"
+		9="Prince William, Manassas and Manassas Park"
+    	10="Alexandria"
+		. ="All jurisdictinos";
 quit;
 
 
@@ -113,7 +128,7 @@ data RegWage_&year.;
 
 	keep year serial pernum incwage wagecat jurisdiction fulltime yearround ftworker empstat_new trantime perwt hhwt;
 
-	format wagecat wagecat. empstat_new empstat_new. ;
+	format wagecat wagecat. empstat_new empstat_new. jurisdiction jurisdiction.;
 
 run;
 
@@ -195,6 +210,22 @@ run;
 /* Workers average commuting time by jurisdiction */
 proc summary data = allyears;
 	class jurisdiction;
+	var trantime_:;
+	output out = trantime_t mean=;
+	weight perwt;
+run;
+
+data trantime_byyear;
+	set trantime_t;
+	drop _type_ _freq_;
+run;
+
+proc export data = trantime_byyear
+	outfile = "&_dcdata_default_path.\reghsg\prog\trantime_byyear.csv"
+	dbms=csv
+	replace;
+run;
+
 
 
 /* End of program */
