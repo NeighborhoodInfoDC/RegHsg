@@ -108,9 +108,9 @@ data RegWage_&year.;
 		else wagecat = 1;
 	end;
 
-	keep year serial pernum incwage wagecat fulltime yearround ftworker empstat_new perwt hhwt;
+	keep year serial pernum incwage wagecat fulltime yearround ftworker empstat_new trantime perwt hhwt;
 
-	format wagecat wagecat.;
+	format wagecat wagecat. empstat_new empstat_new.;
 
 run;
 
@@ -127,6 +127,7 @@ data allyears;
 	if year = 0 then do;
 		empstatd_2000 = empstat_new;
 		ftworker_2000 = ftworker;
+		trantime_2000 = trantime;
 		worker_2000 = 1;
 	end;
 
@@ -134,12 +135,14 @@ data allyears;
 	else if year = 2010 then do;
 		empstatd_2010 = empstat_new;
 		ftworker_2010 = ftworker;
+		trantime_2010 = trantime;
 		worker_2010 = 1;
 	end;
 
 	else if year = 2017 then do;
 		empstatd_2017 = empstat_new;
 		ftworker_2017 = ftworker;
+		trantime_2017 = trantime;
 		worker_2017 = 1;
 	end;
 
@@ -148,7 +151,7 @@ run;
 
 /* * Adults by employment status by year */
 proc summary data = allyears;
-	class empstatd;
+	class empstat_new;
 	var worker_: wagecat_:;
 	output out = workers_t sum=;
 	weight perwt; 
