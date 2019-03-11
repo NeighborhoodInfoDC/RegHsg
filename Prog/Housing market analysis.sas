@@ -274,6 +274,14 @@ data rentercostburden_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in (
 
 	tothh_&year. = 1;
 
+	%let LOUDOUN_RENT_WTADJ = (104583/145906);
+	if Jurisdiction=8 then do;
+		rentburdened_2010= rentburdened_2010*&LOUDOUN_RENT_WTADJ.;
+		totowner_2010= totowner_2010*&LOUDOUN_RENT_WTADJ.;
+		totrenter_2010= totrenter_2010*&LOUDOUN_RENT_WTADJ.;
+		ownerburdened_2010= ownerburdened_2010*&LOUDOUN_RENT_WTADJ.;
+	end;
+
 run;
 
 proc sort data=rentercostburden_&year.;
@@ -304,14 +312,6 @@ data allhousingburden;
 	merge rentburdened_2010 ownerburdened_2010 rentburdened_2017 ownerburdened_2017 ;
 	by Jurisdiction;
 	format Jurisdiction Jurisdiction.;
-
-	%let LOUDOUN_RENT_WTADJ = (104583/145906);
-	if Jurisdiction=8 then do;
-		rentburdened_2010= rentburdened_2010*&LOUDOUN_RENT_WTADJ.;
-		totowner_2010= totowner_2010*&LOUDOUN_RENT_WTADJ.;
-		totrenter_2010= totrenter_2010*&LOUDOUN_RENT_WTADJ.;
-		ownerburdened_2010= ownerburdened_2010*&LOUDOUN_RENT_WTADJ.;
-	end;
 
 	if _TYPE_=0 then Jurisdiction=11;
 	format Jurisdiction Jurisdiction.;
