@@ -49,6 +49,8 @@ Load libraries and functions
 library(tidyverse)
 library(urbnthemes)
 library(sf)
+library(ggplot2)
+library(urbnthemes)
 
 set_urbn_defaults("print")
 
@@ -239,6 +241,7 @@ We will also create a designation for dwelling types that are restricted to a ce
 ```{r dwelling-factor}
 
 zoning_montgomery1 <- zoning_montgomery %>% 
+  mutate(dwelling_type=ifelse(is.na(dwelling_type)==1, "all", dwelling_type)) %>% 
   mutate(dwelling_type = factor(dwelling_type,
                                 levels = c("apartment",
                                            "townhouse",
@@ -356,8 +359,6 @@ x <- count(vacant, propcity)
 ```
 
 
-
-
 See how many lots have missing key variables
 
 ```{r missing}
@@ -373,86 +374,9 @@ vacant %>%
 
 ```
 
+### Assessed Value
+I removed the assessed value section because there were no relevant properties with structures that needed to be removed fromt he list.
 
-
-
-
-
-
-
-### Assessment values
-
-The difference between the land value, improvement value, and total value can help us determine if lots are really vacant.
-
-```{r check-assess}
-
-vacant %>% 
-  group_by(category_detail) %>% 
-  summarize(nprops = n(),
-            imp_zero = sum(assessedimprovementvalue == 0, na.rm = TRUE),
-            imp_na = sum(is.na(assessedimprovementvalue))) %>% 
-  mutate(imp_none = imp_zero + imp_na,
-         percent_none = imp_none / nprops) %>% 
-  knitr::kable()
-  
-
-```
-
-
-Most of the vacant properties have either a 0 or a missing value for the improvement value, which is what we would expect. We can take a closer look at properties that have a non-zero value and decide if we need to re-categorize them as not really vacant- if there is a structure there, we do not want to include it in this calculation.
-
-```{r not-so-vacant}
-
-vacant %>% 
-  filter(assessedimprovementvalue > 0, 
-         !is.na(assessedimprovementvalue)) %>% 
-  mutate(p_total = assessedimprovementvalue / totalassessedvalue) %>% 
-  group_by(category_detail) %>% 
-  summarize(n = n(),
-            mean = mean(assessedimprovementvalue),
-            median = median(assessedimprovementvalue),
-            min = min(assessedimprovementvalue),
-            max = max(assessedimprovementvalue),
-            p_total = median(p_total)) %>% 
-  knitr::kable()
-
-```
-
-Look at the distribution of improved value as a percent of total value.
-
-```{r scatter-not-vacant, echo=FALSE}
-vacant %>% 
-  filter(assessedimprovementvalue > 0, 
-         !is.na(assessedimprovementvalue)) %>% 
-  mutate(p_total = assessedimprovementvalue / totalassessedvalue) %>% 
-  ggplot() +
-  geom_histogram(mapping = aes(p_total),
-                 bins = 30) +
-  scale_x_continuous(labels = scales::percent,
-                     breaks = c(0:10 *.1)) +
-  scale_y_continuous(expand = c(0,0)) +
-  labs(x = "Percent of total assessed value that is derived from improvement value",
-       y = NULL)
-```
-
-We can recategorize these observations as "vacant with structure", and will not include these in the calculation. We can also make a flag for missing coordinates.
-
-```{r not-vacant-recat}
-
-vacant1 <- vacant %>% 
-  mutate(category = ifelse(assessedimprovementvalue > 0 & 
-                           !is.na(assessedimprovementvalue),
-                           "vacant with structure",
-                           category))
-
-count(vacant, category)
-#
-#vacant1 <- vacant %>% 
-#  filter(category == "vacant") %>% 
-#  mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
-#                                1,
-#                                0))
-```
 
 
 ## Merge with cleaned data
@@ -468,12 +392,23 @@ z <- count(vacant1, zoning)
 
 vacantfinal <- vacant1 %>% 
   mutate(zoning_code = case_when(
-    zoning == "RC" ~ "R-C",
-    zoning == "C-0 Crystal City" ~ "C-O Crystal City",
-    zoning %in% c("C-O-ROSSLYN", "C-O-ROSS") ~ "C-O Rosslyn",
-    zoning == "RA-H-3.2" ~ "RA-H 3.2",
+    zoning == "CR1.0" ~ "CR",
+    zoning %in% c("CRT0.5","CRT075", "CRT1.5") ~ "CRT",
+    zoning %in% c("R3", "R30") ~ "R-30",
+    zoning %in% c("R200T", "R200") ~ "R-200",
+    zoning %in% c("R20") ~ "R-20",
+    zoning %in% c("R40") ~ "R-40",
+    zoning %in% c("R90","R90TD") ~ "R-90",
+    zoning %in% c("R60") ~ "R-60",
+    zoning %in% c("R10") ~ "R-10",
+    zoning %in% c("RE2") ~ "Re-2",
+    zoning %in% c("RE2C") ~ "Re-2C",
+    zoning %in% c("RE1") ~ "Re-1",
+    zoning %in% c("RURAL", "RUR") ~ "R",
     TRUE ~ zoning
   ))
+
+z <- count(vacantfinal, zoning_code)
            
 ```
 
@@ -482,7 +417,9 @@ Merge on zoning code variable. Test that all variables merged.
 
 ```{r zoning-merge}
 
-zoningdata <- left_join(vacantfinal, zoningcode1, by = "zoning_code")
+zoningdata <- left_join(vacantfinal, zoning_montgomery1, by = "zoning_code")
+
+count(zoningdata, zoning_code)
 
 ```
 
@@ -490,7 +427,7 @@ There are `r ` observations that did not have a match in the zoning code. Below,
 
 ```{r antijoin}
 
-anti_join(vacantfinal, zoningcode1, by = c("zoning_code")) %>% 
+anti_join(vacantfinal, zoning_montgomery1, by = c("zoning_code")) %>% 
   count(zoning) %>% 
   knitr::kable()
 
@@ -513,6 +450,18 @@ zoningdata1 <- zoningdata %>%
 
 
 ## Calculate missing units
+
+before we do the calculation, the montgomery density measure uses lotsize/acre. we need to fill in the lotsize_acre variable for those lot sizes that we filled in from the parcel file.
+```{r acres}
+zoningdata2 <- zoningdata1 %>% 
+  mutate(lotsize_acres = if_else(is.na(lotsize_acres), lotsize_sf / 43560, lotsize_acres)) %>% 
+  mutate(lot_area_min = if_else(is.na(lot_area_min), site_area_min, lot_area_min)) %>% 
+  mutate(lotarea_per_unit = if_else(is.na(lotarea_per_unit), sitearea_per_unit, lotarea_per_unit)) %>% 
+  mutate(lot_coverage_max = if_else(is.na(lot_coverage_max), site_coverage_max, lot_coverage_max))
+
+
+```
+
 
 There are several variables we will use to calculate how many units we can put on each vacant lot.
 
@@ -549,6 +498,7 @@ get_unit_variables <- function(dataset,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height_ft / 10),
            units_height = units_per_floor * floors,
+           units_density = floor(density * lotsize_acres),
            units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
     mutate_at(vars(units_height, units_lotsize),
               funs(case_when(
@@ -558,8 +508,7 @@ get_unit_variables <- function(dataset,
     mutate(units_total = case_when(
       one_unit_flag == 1 ~ 1,
       two_unit_flag == 1 ~ 2,
-      units_height < units_lotsize ~ units_height,
-      TRUE ~ units_lotsize))
+      TRUE ~ pmin(units_lotsize, units_height, units_density)))
   
 }
 
@@ -583,20 +532,20 @@ get_unit_summary <- function(dataset,
                        average_unit_size) %>%
     group_by(parameters) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height),
-              units_lotsize = sum(units_lotsize),
-              units_total = sum(units_total),
-              units_per_lot = floor(sum(units_total / lots)))
+              units_height = sum(units_height, na.rm = TRUE),
+              units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
+              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE)))
   
   y <- dataset %>% 
     get_unit_variables(construction_efficiency,
                        average_unit_size) %>%
     group_by(parameters, dwelling_type) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height),
-              units_lotsize = sum(units_lotsize),
-              units_total = sum(units_total),
-              units_per_lot = floor(sum(units_total / lots))) %>% 
+              units_height = sum(units_height, na.rm = TRUE),
+              units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
+              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE))) %>% 
     mutate(dwelling_type = as.character(dwelling_type))
   
   
@@ -612,20 +561,36 @@ get_unit_summary <- function(dataset,
 
 
 ```
-    
+
+```{r sum}
+results <- get_unit_variables(dataset = zoningdata2,
+                            construction_efficiency = .7,
+                            average_unit_size = 940)
+
+
+#results %>% 
+#  mutate(num = NA) %>% 
+#  group_by(category_detail) %>% 
+#  summarize_at(vars(lot_area_min, lotarea_per_unit, zoning, num),
+#               ~ sum(is.na(.))) %>% 
+#  mutate_at(vars(propaddress, lotsize_sf, zoning),
+#            .funs = funs(percent = scales::percent(. / num))) %>% 
+#  knitr::kable(caption = "Number and percent of missing values")
+```
+ 
 
 Get summary statistics for several different parameters
 
 ```{r sum}
 
-get_unit_summary(dataset = zoningdata1,
+get_unit_summary(dataset = zoningdata2,
                  construction_efficiency = .7,
                  average_unit_size = 940,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
 
-map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata1,
+map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata2,
                                       construction_efficiency = .,
                                       average_unit_size = 940,
                                       dwelling_type_breakdown = FALSE)) %>% 
@@ -637,7 +602,7 @@ Look at the distribution of units for lots with more than 1 unit, to check for e
 
 ```{r scatter, echo = FALSE}
 
-zoningdata1 %>% 
+zoningdata2 %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 940) %>% 
   filter(units_total > 1) %>% 
@@ -649,9 +614,9 @@ zoningdata1 %>%
                      limits = c(0, 300000),
                      breaks = 0:6 * 50000) +
   scale_y_continuous(expand = expand_scale(mult = c(0, 0.002)), 
-                     limits = c(0, 300),
+                     limits = c(0, 100),
                      breaks = 0:7 * 50) +
-  scatter_grid() +
+  #scatter_grid() +
   labs(x = "Lot size (square feet)", y = "Total units") +
   theme(plot.margin = margin(t = 20, r = 20))
 
@@ -662,7 +627,7 @@ Look more closely at vacant lots < 50,000 SF
 
 ```{r scatter-small, echo = FALSE}
 
-zoningdata1 %>% 
+zoningdata2 %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 940) %>% 
   filter(lotsize_sf < 50000,
@@ -678,7 +643,7 @@ zoningdata1 %>%
   scale_y_continuous(expand = expand_scale(mult = c(0, 0.0002)), 
                      limits = c(0, 60),
                      breaks = 0:4 * 15) +
-  scatter_grid() +
+  #scatter_grid() +
   labs(x = "Lot size (square feet)", y = "Total units") +
   theme(plot.margin = margin(t = 20,
                              r = 20))
