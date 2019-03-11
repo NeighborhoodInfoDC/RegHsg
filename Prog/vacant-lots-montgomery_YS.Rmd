@@ -195,7 +195,7 @@ zoningcode %>%
   knitr::kable()
 
 ```{r responsible-purge}
-
+#YS edit and comment: skip this part for jurisdiction file or it wont run
 stopifnot(length(unique(zoningcode$zoning_code))
           == length(unique(zoningcode1$zoning_code)))
 
@@ -501,7 +501,7 @@ Get rid of values that are NOT in the cleaned zoning code data. These codes do n
 
 ```{r no-non-res}
 #YS edits
-# YS: need to either merge the jurisdiction zoning code back together now or merge after all cleaned. 
+# YS: need to either merge the jurisdiction zoning code back together now or merge after all cleaned. I think we agreed on the latter?
 dual <- dual %>% 
   mutate_at(vars(z1, z2, z3, z4),
             ~ ifelse(!. %in% zoning_rockville1$zoning_code,
@@ -621,36 +621,90 @@ Merge on zoning code variable. Test that all variables merged.
 
 ```{r zoning-merge}
 #YS edits
-vacantfinal  <- vacant1 %>% 
-  mutate(zoning_code= zoning_bk)
+vacant_rockvile <- vacant1 %>% 
+  mutate(zoning_code= zoning_bk) %>% 
+  filter(propcity=="ROCKVILLE")
 
+vacant_gaithersburg <- vacant1 %>% 
+  mutate(zoning_code= zoning_bk) %>% 
+  filter(propcity=="GAITHERSBURG")
 
-zoningdata <- left_join(vacantfinal, zoning_rockville1, by = "zoning_code")
+zoningdata_rockvile <- left_join(vacant_rockvile, zoning_rockville1, by = "zoning_code")
+zoningdata_gaithersburg <- left_join(vacant_gaithersburg, zoning_gaithersburg2, by = "zoning_code")
 
 ```
 
 There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
 
 ```{r antijoin}
-#YS edits
-anti_join(vacantfinal, zoning_rockville1, by = c("zoning_code")) %>% 
-  count(zoning) %>% 
+#YS edits and comments: R200, R60 R90 are in the zoning data, they are missing a dash in the middle, should be easy to fix. For the other R codes that are not in the zoning spreadsheet, need to come up with a strategy-- for example 60 vacant lots are RE2. I also noticed some zoning codes are actually from Montgomery, eg. RNC.
+
+anti_join(vacant_rockvile, zoning_rockville1, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
+vacant_rockvile1 <- vacant_rockvile %>% 
+  mutate(zoning_code= case_when(zoning_code == "R200" ~ "R-200",
+                               zoning_code == "R60" ~ "R-60",
+                               zoning_code == "R90" ~ "R-90",
+                               zoning_code == "R75" ~ "R-75",
+                               zoning_code == "R200T" ~ "R-200",
+                               TRUE ~ zoning_code))
+
+anti_join(vacant_rockvile1, zoning_rockville1, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
+#YS edits and comments: Gaithersburg file has R90, R6, RA, R20 but not the other R codes. But I do see some of the R codes in the MOntgomery spreadsheet. Need to resolve the two. 
+
+anti_join(vacant_gaithersburg, zoning_gaithersburg2, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
+vacant_gaithersburg1 <- vacant_gaithersburg %>% 
+  mutate(zoning_code= case_when(zoning_code == "R200" ~ "R-200",
+                               zoning_code == "R60" ~ "R-60",
+                               zoning_code == "R90" ~ "R-90",
+                               zoning_code == "R75" ~ "R-75",
+                               TRUE ~ zoning_code))
+
+anti_join(vacant_gaithersburg1, zoning_gaithersburg2, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
   knitr::kable()
 
 ```
 
-Aside from those with missing zoning information, these zoning codes do not allow for residential properties, which explains why they were not found in the zoning code data.
 
-Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
+Rejoin the zoning categorization and vacant dataset after cleaning.
+```{r rejoin}
+#YS edits and comments: rejoin vacant dataset and zoning after cleaning the zoning code for Rockvile and Gathersburg
+
+
+zoningdata_rockvile2 <- left_join(vacant_rockvile1, zoning_rockville1, by = "zoning_code")
+zoningdata_gaithersburg2 <- left_join(vacant_gaithersburg1, zoning_gaithersburg2, by = "zoning_code")
+
+
+```
+
+Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough, by Jurisdiction because the factor are different for each jurisdiction. 
 
 ```{r filter-small}
 
-zoningdata1 <- zoningdata %>% 
-  filter(!is.na(zoning),
+zoningdata_rockvile3 <- zoningdata_rockvile2 %>% 
+  filter(!is.na(zoning_code),
          lotsize_sf >= lot_area_min) %>% 
   group_by(propaddress) %>% 
   slice(which.min(dwelling_type)) %>% 
   ungroup()
+
+zoningdata_gaithersburg3 <- zoningdata_gaithersburg2 %>% 
+  filter(!is.na(zoning_code),
+         lotsize_sf >= lot_area_min) %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  ungroup()
+
+
 
 ```
 
