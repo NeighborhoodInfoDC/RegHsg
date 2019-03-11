@@ -393,11 +393,11 @@ run;
 data inflatadjustzillow;
 	set zillow;
 
-	%dollar_convert( Mediansaleprice, Mediansaleprice_a, year, 2016, series=CUUR0000SA0 )
-	%dollar_convert( MedianSFRent, MedianSFRent_a, year, 2016, series=CUUR0000SA0 )
-	%dollar_convert( MedianMFRent, MedianMFRent_a, year, 2016, series=CUUR0000SA0 )
-	%dollar_convert( MedianCondoRent, MedianCondoRent_a, year, 2016, series=CUUR0000SA0 )
-	%dollar_convert( MedianDuplexRent, MedianDuplexRent_a, year, 2016, series=CUUR0000SA0 )
+	%dollar_convert( Mediansaleprice, Mediansaleprice_a, year, 2018, series=CUUR0000SA0 )
+	%dollar_convert( MedianSFRent, MedianSFRent_a, year, 2018, series=CUUR0000SA0 )
+	%dollar_convert( MedianMFRent, MedianMFRent_a, year, 2018, series=CUUR0000SA0 )
+	%dollar_convert( MedianCondoRent, MedianCondoRent_a, year, 2018, series=CUUR0000SA0 )
+	%dollar_convert( MedianDuplexRent, MedianDuplexRent_a, year, 2018, series=CUUR0000SA0 )
 run;
 
 proc transpose data=inflatadjustzillow out=inflatadjustzillow_trans ;
@@ -411,11 +411,11 @@ data inflatadjustzillow_labels;
 	retain label _2008 _2009 _2010 _2011 _2012 _2013 _2014 _2015 _2016 _2017 _2018;
 	set inflatadjustzillow_trans;
 
-	if _NAME_ = "Mediansaleprice_a" then label = "Median sales price, 2016-dollars" ;
-	if _NAME_ = "MedianSFRent_a" then label = "Median single-family monthly rent, 2016-dollars" ;
-	if _NAME_ = "MedianMFRent_a" then label = "Median multi-family monthly rent, 2016-dollars" ;
-	if _NAME_ = "MedianCondoRent_a" then label = "Median condo monthly rent, 2016-dollars" ;
-	if _NAME_ = "MedianDuplexRent_a" then label = "Median duplex monthly rent, 2016-dollars" ;
+	if _NAME_ = "Mediansaleprice_a" then label = "Median sales price, 2018-dollars" ;
+	if _NAME_ = "MedianSFRent_a" then label = "Median single-family monthly rent, 2018-dollars" ;
+	if _NAME_ = "MedianMFRent_a" then label = "Median multi-family monthly rent, 2018-dollars" ;
+	if _NAME_ = "MedianCondoRent_a" then label = "Median condo monthly rent, 2018-dollars" ;
+	if _NAME_ = "MedianDuplexRent_a" then label = "Median duplex monthly rent, 2018-dollars" ;
 	if _NAME_ = "inventoryMetro" then label = "Number of monthly home listings" ;
 
 	label label = "Variable label"
