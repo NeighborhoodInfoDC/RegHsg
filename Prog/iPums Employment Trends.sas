@@ -50,14 +50,17 @@ data RegEmp_&year.;
 	%if &year. = 2017 %then %do;
 	set ipums.Acs_&year._dc ipums.Acs_&year._md ipums.Acs_&year._va ipums.Acs_&year._wv;
 	if upuma in (&RegPumas.);
+	%newpuma_jurisdiction;
 	%end;
 	%else %if &year. = 2010 %then %do;
 	set ipums.Acs_&year._dc ipums.Acs_&year._md ipums.Acs_&year._va ipums.Acs_&year._wv;
 	if upuma in (&Reg2000Pumas.);
+	%oldpuma_jurisdiction;
 	%end; 
 	%else %if &year. = 2000 %then %do;
 	set ipums.ipums_&year._dc ipums.ipums_&year._md ipums.ipums_&year._va ipums.ipums_&year._wv;
 	if upuma in (&Reg2000Pumas.);
+	%oldpuma_jurisdiction;
 	%end; 
 
 	/* Flag 25+ hours worked as full time */
