@@ -315,6 +315,8 @@ data allhousingburden;
 
 	if _TYPE_=0 then Jurisdiction=11;
 	format Jurisdiction Jurisdiction.;
+
+	drop _type_ _freq_;
 run;
 
 proc export data = allhousingburden
