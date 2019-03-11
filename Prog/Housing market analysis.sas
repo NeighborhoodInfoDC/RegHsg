@@ -138,7 +138,7 @@ data COGSvacant_&year.(where=(vacancy in (1,2)));
 
 	vacantunit_&year.=1;
 
-	format bedrooms bedroom_topcode.;
+	format bedrooms bedroom_topcode. jurisdiction jurisdiction.;
 
 run;
 
@@ -185,7 +185,7 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 
 	occupiedunits_&year.=1;
 
-	format bedrooms bedroom_topcode.;
+	format bedrooms bedroom_topcode. jurisdiction jurisdiction.;
 
 	run;
 
