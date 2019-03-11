@@ -111,9 +111,9 @@ data RegWage_&year.;
 		else wagecat = 1;
 	end;
 
-	keep year serial pernum incwage wagecat fulltime yearround ftworker empstat_new trantime perwt hhwt;
+	keep year serial pernum incwage wagecat jurisdiction fulltime yearround ftworker empstat_new trantime perwt hhwt;
 
-	format wagecat wagecat. empstat_new empstat_new.;
+	format wagecat wagecat. empstat_new empstat_new. ;
 
 run;
 
@@ -130,29 +130,29 @@ data allyears;
 	if year = 0 then do;
 		empstatd_2000 = empstat_new;
 		ftworker_2000 = ftworker;
-		trantime_2000 = trantime;
 		worker_2000 = 1;
+		if empstat_new in (1,2) then trantime_2000 = trantime;
 	end;
 
 
 	else if year = 2010 then do;
 		empstatd_2010 = empstat_new;
 		ftworker_2010 = ftworker;
-		trantime_2010 = trantime;
 		worker_2010 = 1;
+		if empstat_new in (1,2) then trantime_2010 = trantime;
 	end;
 
 	else if year = 2017 then do;
 		empstatd_2017 = empstat_new;
 		ftworker_2017 = ftworker;
-		trantime_2017 = trantime;
 		worker_2017 = 1;
+		if empstat_new in (1,2) then trantime_2017 = trantime;
 	end;
 
 run;
 
 
-/* * Adults by employment status by year */
+/* Adults by employment status by year */
 proc summary data = allyears;
 	class empstat_new;
 	var worker_: wagecat_:;
@@ -172,7 +172,7 @@ proc export data = workers_byyear
 run;
 
 
-/* * Civilian full-time, year-round employed workers by wage (low, middle, high) by year */
+/* Civilian full-time, year-round employed workers by wage (low, middle, high) by year */
 proc summary data = allyears;
 	class wagecat;
 	var ftworker_:;
@@ -190,6 +190,11 @@ proc export data = wage_byyear
 	dbms=csv
 	replace;
 run;
+
+
+/* Workers average commuting time by jurisdiction */
+proc summary data = allyears;
+	class jurisdiction;
 
 
 /* End of program */
