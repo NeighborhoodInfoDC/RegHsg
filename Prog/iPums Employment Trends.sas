@@ -33,6 +33,12 @@ proc format;
 		1 = "Low wage"
 		2 = "Medium wage"
 		3 = "High wage";
+	value empstat_new
+		1 = "Civilian employed (at work or have a job)"
+		2 = "In military (at work or have a job)"
+		3 = "Student"
+		4 = "Unemployed"
+		5 = "Other / not in labor force";
 quit;
 
 
@@ -59,6 +65,15 @@ data RegEmp_&year.;
 
 	/* Flag 50-52 weeks per year as year-round */
 	if wkswork2 = 6  then yearround=1;
+
+	/* Recode breakdown of adults */
+	if age >= 18 then do;
+		if gradeatt ^= 0 then empstat_new = 3;
+		else if empstatd in (10,12) then empstat_new = 1;
+		else if empstatd in (14) then empstat_new = 2;
+		else if empstatd in (20) then empstat_new = 4;
+		else if empstatd in (0,30) then empstat_new = 5;
+	end;
 
 run;
 
@@ -93,7 +108,7 @@ data RegWage_&year.;
 		else wagecat = 1;
 	end;
 
-	keep year serial pernum incwage wagecat fulltime yearround ftworker empstatd perwt hhwt;
+	keep year serial pernum incwage wagecat fulltime yearround ftworker empstat_new perwt hhwt;
 
 	format wagecat wagecat.;
 
@@ -110,20 +125,20 @@ data allyears;
 	set RegWage_2017 RegWage_2010 RegWage_2000;
 
 	if year = 0 then do;
-		empstatd_2000 = empstatd;
+		empstatd_2000 = empstat_new;
 		ftworker_2000 = ftworker;
 		worker_2000 = 1;
 	end;
 
 
 	else if year = 2010 then do;
-		empstatd_2010 = empstatd;
+		empstatd_2010 = empstat_new;
 		ftworker_2010 = ftworker;
 		worker_2010 = 1;
 	end;
 
 	else if year = 2017 then do;
-		empstatd_2017 = empstatd;
+		empstatd_2017 = empstat_new;
 		ftworker_2017 = ftworker;
 		worker_2017 = 1;
 	end;
