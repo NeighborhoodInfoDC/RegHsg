@@ -38,7 +38,7 @@ Manassas Park City (51685)
 %DCData_lib( RegHsg )
 ** Year range for preservation targets **;
 %let Startyr = 2015;
-%let Endyr = 2035;
+%let Endyr = 2060;
 *Create property and unit counts for individual programs**;
 
 proc format;
@@ -75,7 +75,8 @@ proc format;
     2015-2020 = '2015 - 2020'
     2021-2025 = '2021 - 2025'
     2026-2030 = '2026 - 2030'
-    2031-2035 = '2031 - 2035';
+    2031-2035 = '2031 - 2035'
+	2036-2060 = '2036 - 2060';
 run;
 proc format;
 	value Jurisdiction
@@ -371,6 +372,7 @@ title3 "Projects and assisted units breakdown by jurisdiction";
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(jurisdiction);
+  where COGRegion=1;
   class ProgCat / preloadfmt order=data;
   class jurisdiction;
   var mid_assistedunits moe_assistedunits;
@@ -394,6 +396,7 @@ footnote1 "LIHTC expiration includes 15-year compliance and 30-year subsidy end 
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(earliest_expirationdate15);
+  where COGRegion=1;
   class ProgCat / preloadfmt order=data;
   class earliest_expirationdate15;
   var mid_assistedunits moe_assistedunits;
@@ -418,6 +421,7 @@ footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(s8_endyr);
+  where COGRegion=1;
   class s8_endyr;
   var s8_all_assistedunits;
   table 
@@ -440,6 +444,7 @@ footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(s202_endyr);
+  where COGRegion=1;
   class s202_endyr;
   var s202_all_assistedunits;
   table 
@@ -462,6 +467,7 @@ footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(s236_endyr);
+  where COGRegion=1;
   class s236_endyr;
   var s236_all_assistedunits;
   table 
@@ -484,6 +490,7 @@ footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(FHA_endyr);
+  where COGRegion=1;
   class FHA_endyr;
   var FHA_all_assistedunits;
   table 
@@ -506,6 +513,7 @@ footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(LIHTC_endyr);
+  where COGRegion=1;
   class LIHTC_endyr;
   var LIHTC_all_assistedunits;
   table 
@@ -528,6 +536,7 @@ footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(LIHTC_15yr);
+  where COGRegion=1;
   class LIHTC_15yr;
   var LIHTC_all_assistedunits;
   table 
@@ -550,6 +559,7 @@ footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(RHS515_endyr);
+  where COGRegion=1;
   class RHS515_endyr;
   var RHS515_all_assistedunits;
   table 
@@ -572,6 +582,7 @@ footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(RHS538_endyr);
+  where COGRegion=1;
   class RHS538_endyr;
   var RHS538_all_assistedunits;
   table 
@@ -594,6 +605,7 @@ footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(HOME_endyr);
+  where CogRegion=1;
   class HOME_endyr;
   var HOME_all_assistedunits;
   table 
@@ -615,6 +627,7 @@ title3 "Public housing projects and assisted units with latest construction date
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
   where not missing(PHConstructionDate);
+  where COGRegion=1;
   class ProgCat / preloadfmt order=data;
   class timecount;
   var mid_assistedunits moe_assistedunits;
