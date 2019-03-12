@@ -187,7 +187,8 @@ data industryjobs;
 	else if naics in ("1026") then icode = 6;
 	else if naics in ("1023") then icode = 7;
 	else if naics in ("1022") then icode = 8;
-	else if naics in ("1027") then icode = 9;
+	else if naics in ("1027") then icode = 9; 
+	else if naics in ("1029") then icode = 9; 
 
 	format icode icode.;
 
@@ -213,7 +214,65 @@ proc export data = industryjobs_byyear
 run;
 
 
-proc summary data = industryjobs;
+/* Calculate the residual for "other" */
+%let goodscodes = "1011","1012","1013";
+%let servicecodes = "1021","1022","1023","1024","1025","1026","1027","1029";
+
+proc summary data = Industryjobs_byyear (where = (naics in (&servicecodes.)));
+	var Annual_Average_Employment_:;
+	output out = services sum=;
+run;
+
+data service_net;
+	set Industryjobs_byyear (where = (naics = "102"))
+		services;
+
+	%macro yearloop;
+	%do yr = &start_yr. %to &end_yr.;
+		lag_N_&yr. = lag1(Annual_Average_Employment_&yr.);
+		Other_&yr. = lag_N_&yr. - Annual_Average_Employment_&yr. ;
+		Annual_Average_Employment_&yr. = Other_&yr.;
+	%end;
+	%mend yearloop;
+	%yearloop;
+
+	if naics = " " then icode = 9;
+	if icode ^= .;
+
+	keep icode Annual_Average_Employment_:;
+
+run;
+
+proc summary data = Industryjobs_byyear (where = (naics in (&goodscodes.)));
+	var Annual_Average_Employment_:;
+	output out = goods sum=;
+run;
+
+data goods_net;
+	set Industryjobs_byyear (where = (naics = "101"))
+		goods;
+
+	%macro yearloop;
+	%do yr = &start_yr. %to &end_yr.;
+		lag_N_&yr. = lag1(Annual_Average_Employment_&yr.);
+		Other_&yr. = lag_N_&yr. - Annual_Average_Employment_&yr. ;
+		Annual_Average_Employment_&yr. = Other_&yr.;
+	%end;
+	%mend yearloop;
+	%yearloop;
+
+	if naics = " " then icode = 2;
+	if icode ^= .;
+
+	keep icode Annual_Average_Employment_:;
+
+run;
+
+data industryjobs_net;
+	set industryjobs service_net goods_net;
+run;
+
+proc summary data = industryjobs_net;
 	class icode;
 	var Annual_Average_Employment_: ;
 	output out = industryjobs2_t sum=;
