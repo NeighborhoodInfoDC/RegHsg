@@ -76,7 +76,11 @@ proc format;
     2021-2025 = '2021 - 2025'
     2026-2030 = '2026 - 2030'
     2031-2035 = '2031 - 2035'
-	2036-2060 = '2036 - 2060';
+	2036-2040 = '2036 - 2040'
+	2041-2045 = '2041 - 2045'
+	2046-2050 = '2046 - 2050'
+	2051-2055 = '2051 - 2055'
+	2056-high = '2056 or higher';
 run;
 proc format;
 	value Jurisdiction
@@ -371,8 +375,7 @@ title3 "Projects and assisted units breakdown by jurisdiction";
 
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(jurisdiction);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(jurisdiction);
   class ProgCat / preloadfmt order=data;
   class jurisdiction;
   var mid_assistedunits moe_assistedunits;
@@ -395,8 +398,7 @@ title3 "Projects and assisted units with subsidies  expiring 2015 - 2035";
 footnote1 "LIHTC expiration includes 15-year compliance and 30-year subsidy end dates.";
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(earliest_expirationdate15);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(earliest_expirationdate15);
   class ProgCat / preloadfmt order=data;
   class earliest_expirationdate15;
   var mid_assistedunits moe_assistedunits;
@@ -420,8 +422,7 @@ title3 "Section 8 projects and assisted units with subsidies expiring 2015 - 203
 footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(s8_endyr);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(s8_endyr);
   class s8_endyr;
   var s8_all_assistedunits;
   table 
@@ -443,8 +444,7 @@ title3 "Section 202 projects and assisted units with subsidies expiring 2015 - 2
 footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(s202_endyr);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(s202_endyr);
   class s202_endyr;
   var s202_all_assistedunits;
   table 
@@ -466,8 +466,7 @@ title3 "Section 236 projects and assisted units with subsidies expiring 2015 - 2
 footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(s236_endyr);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(s236_endyr);
   class s236_endyr;
   var s236_all_assistedunits;
   table 
@@ -489,8 +488,7 @@ title3 "FHA projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(FHA_endyr);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(FHA_endyr);
   class FHA_endyr;
   var FHA_all_assistedunits;
   table 
@@ -512,8 +510,7 @@ title3 "LIHTC projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(LIHTC_endyr);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(LIHTC_endyr);
   class LIHTC_endyr;
   var LIHTC_all_assistedunits;
   table 
@@ -535,8 +532,7 @@ title3 "LIHTC projects and assisted units with subsidies expiring 2015 - 2035, 1
 footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(LIHTC_15yr);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(LIHTC_15yr);
   class LIHTC_15yr;
   var LIHTC_all_assistedunits;
   table 
@@ -558,8 +554,7 @@ title3 "RHS 515 projects and assisted units with subsidies expiring 2015 - 2035"
 footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(RHS515_endyr);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(RHS515_endyr);
   class RHS515_endyr;
   var RHS515_all_assistedunits;
   table 
@@ -581,8 +576,7 @@ title3 "RHS 538 projects and assisted units with subsidies expiring 2015 - 2035"
 footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(RHS538_endyr);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(RHS538_endyr);
   class RHS538_endyr;
   var RHS538_all_assistedunits;
   table 
@@ -604,8 +598,7 @@ title3 "HOME projects and assisted units with subsidies expiring 2015 - 2035";
 footnote1;
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(HOME_endyr);
-  where CogRegion=1;
+  where COGRegion=1 and not missing(HOME_endyr);
   class HOME_endyr;
   var HOME_all_assistedunits;
   table 
@@ -626,8 +619,7 @@ ods csvall  body="&_dcdata_default_path\RegHsg\Prog\PH_unit_counts.csv";
 title3 "Public housing projects and assisted units with latest construction dates";
 
 proc tabulate data=Work.ConstructionDates format=comma10. noseps missing;
-  where not missing(PHConstructionDate);
-  where COGRegion=1;
+  where COGRegion=1 and not missing(PHConstructionDate);
   class ProgCat / preloadfmt order=data;
   class timecount;
   var mid_assistedunits moe_assistedunits;
