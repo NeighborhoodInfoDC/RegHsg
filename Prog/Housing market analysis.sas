@@ -181,7 +181,7 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 	if ownershpd in (21, 22) then Tenure = 1; /*renter*/
 	else if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
 
-	if bedrooms >= 4 then bedrooms = 4; /* Top-code bedroom sizes at 4+ */
+	if bedrooms >= 5 then bedrooms = 5; /* Top-code bedroom sizes at 4+ */
 
 	occupiedunits_&year.=1;
 
