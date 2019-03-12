@@ -632,6 +632,12 @@ vacant_gaithersburg <- vacant1 %>%
 zoningdata_rockvile <- left_join(vacant_rockvile, zoning_rockville1, by = "zoning_code")
 zoningdata_gaithersburg <- left_join(vacant_gaithersburg, zoning_gaithersburg2, by = "zoning_code")
 
+parcel_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
+                     layer = pfile[1])
+zoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
+                     layer = pfile[2])
+
+
 ```
 
 There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
@@ -679,6 +685,13 @@ anti_join(vacant_rockvile1, zoning_rockville1, by = c("zoning_code")) %>%
   knitr::kable()
 
 vacant_rockvile2 <- anti_join(vacant_rockvile1, zoning_rockville1, by = c("zoning_code")) 
+
+
+issuelotrockville<- vacant_rockvile2 %>% 
+  filter(zoning_code=="RNC") %>% 
+  select(propcity, propaddress, X, Y, zoning_code, zoning_bk, zoning, propzip, LANDUSE_CO, countylandusedescription, IMPROV_ASS, assessedimprovementvalue, LU_CATEGOR, OWNERS_NAM)
+
+
 #need to bring in montgomery zoning code and join with the lots that are not joined. 
 zoningdata_rockvile2 <- left_join(vacant_rockvile2, zoning_montgomery1, by = "zoning_code")
   
@@ -693,7 +706,6 @@ anti_join(vacant_gaithersburg, zoning_gaithersburg2, by = c("zoning_code")) %>%
 
 #need to bring in montgomery zoning code and join with the lots that are not joined. 
 
-
 vacant_gaithersburg1 <- vacant_gaithersburg %>% 
   mutate(zoning_code= case_when(zoning_code == "R200" ~ "R-200",
                                zoning_code == "R60" ~ "R-60",
@@ -706,6 +718,10 @@ anti_join(vacant_gaithersburg1, zoning_gaithersburg2, by = c("zoning_code")) %>%
   knitr::kable()
 
 vacant_gaithersburg2 <- anti_join(vacant_gaithersburg1, zoning_gaithersburg2, by = c("zoning_code")) 
+
+issuelotgaithersburg<- vacant_gaithersburg2 %>% 
+  filter(zoning_code=="RNC"|zoning_code=="R-200") %>% 
+  select(propcity, propaddress, X, Y, zoning_code, zoning_bk, zoning, propzip, LANDUSE_CO, countylandusedescription, IMPROV_ASS, assessedimprovementvalue, LU_CATEGOR, OWNERS_NAM)
 
 #need to bring in montgomery zoning code and join with the lots that are not joined. 
 zoningdata_gaithersburg2 <- left_join(vacant_gaithersburg1, zoning_montgomery1, by = "zoning_code")
@@ -762,11 +778,10 @@ zoningdata_rockvilefinal <- zoningdata_rockvile2final %>%
 zoningdata_gaithersburgfinal <- zoningdata_gaithersburg2final %>% 
        bind_rows(zoningdata_gaithersburg3final)
 
-
 ```
 
 
-## Calculate missing units
+## Calculate missing units for Rockvile
 
 There are several variables we will use to calculate how many units we can put on each vacant lot.
 
@@ -790,6 +805,7 @@ We can create a function that will allow us to easily adjust these parameters an
 #' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`, `units_height`, `units_lotsize`, and `units_total`
 #'
 #' @examples
+
 get_unit_variables <- function(dataset, 
                                construction_efficiency, 
                                average_unit_size) {
@@ -802,7 +818,6 @@ get_unit_variables <- function(dataset,
            living_area = buildable_area * construction_efficiency,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height_ft / 10),
-           units_height = units_per_floor * floors,
            units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
     mutate_at(vars(units_height, units_lotsize),
               funs(case_when(
@@ -812,10 +827,9 @@ get_unit_variables <- function(dataset,
     mutate(units_total = case_when(
       one_unit_flag == 1 ~ 1,
       two_unit_flag == 1 ~ 2,
-      units_height < units_lotsize ~ units_height,
       TRUE ~ units_lotsize))
-  
 }
+
 
 #' Get maximum unit summary
 #'
