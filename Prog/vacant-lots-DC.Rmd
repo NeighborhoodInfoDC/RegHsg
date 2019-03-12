@@ -204,7 +204,7 @@ rm(z)
 
 ### Creating dwelling_type hierarchy
 
-For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most dense construction for that zone. 
+For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most and least dense construction for that zone. 
 
 First, we look at all the options, these categories are not as helpful because attached and detached can have different meaning in the context ofdifferent zoning types (both residential house and residential flat has these two types, for example)plus we have a lot of NAs for residential code. So need to create a new dwelling type variable.
 
@@ -227,10 +227,10 @@ Plus, the DC dwelling type is missing for a lot of zoning, so it is difficult to
 
 Since the variables are not always comparable, after the recoding, from most to least dense, order applies:
 
-1. RA
-2. RF4 
-3. RF3
-4. RF2 
+1. Residential apartments
+2. Residential flats with # dwelling units limit of 4
+3. Residential flats with # dwelling units limit of 3
+4. Residential flats with # dwelling units limit of 2
 5. One Family 
 
 Then within each category, DC has different requirements for each different type of dwelling within the same zoning code. So need to furthur break down the new dwelling type variable. 
@@ -258,14 +258,14 @@ zoningcode1 <- zoningcode %>%
     dwelling_units_allowed==4 & dwelling_type=="row dwelling or flat"~ "RF4-B",
     dwelling_units_allowed==4 & dwelling_type=="row dwelling or flat (IZ)"~ "RF4-C",
     dwelling_units_allowed==4 & dwelling_type=="all other structures"~ "All Other", 
-    floor_area_ratio_max>1 & is.na(dwelling_units_allowed) ~ "RA",
+    district_type== "Residential Apartment" ~ "RA",
     is.na(floor_area_ratio_max) &is.na(dwelling_units_allowed) ~ "All Other",
-    floor_area_ratio_max <= 1 ~ "Other Mixed",
-    zoning_code=="RA-1"|zoning_code=="RA-6" ~ "RF2-B"  
+    district_type== "Mixed-Use"|district_type== "Neighborhood Mixed Use"|district_type=="Downtown" ~ "Mixed",
+    district_type== "Special Purpose" ~ "Special purpose",
+    floor_area_ratio_max <= 1 ~ "Other Mixed"
   )) %>% 
   mutate(dwelling_type= (ifelse(is.na(dwelling_type)==1, "All", dwelling_type)))
 
-#RA-1 and RA-6 are most comparable to RF2-B according to zoning documentation
 
 ```
 Filter out dwelling_types of "All", "All Other", and those that are dependent on a shared boundary.
@@ -273,12 +273,9 @@ Filter out dwelling_types of "All", "All Other", and those that are dependent on
 ```{r purge}
 zoningcode2 <- zoningcode1 %>% 
   group_by(zoning_code) %>% 
-  filter(!(dwelling_type %in% c("All")
+  filter(!(dwelling_type %in% c("All Other", "All")
            & n() > 1)) %>%
   ungroup() 
-
-
-# I could put IZ-detached IZ semi detached etc into other mixed and exclude from the merge?
 
 ```
 
@@ -302,7 +299,7 @@ We will also create a designation for dwelling types that are restricted to a ce
 
 zoningcode_factor <- zoningcode2 %>% 
   mutate( newdwelling_type = factor(newdwelling_type,
-                                levels = c("RA",
+                                levels = c("RA", "Mixed", "Other Mixed", "All Other", "Special purpose",
                                            "RF4-C","RF4-B", "RF4-A",
                                            "RF3-C","RF3-B","RF3-A",
                                            "RF2-C","RF2-B","RF2-A",
@@ -314,26 +311,28 @@ zoningcode_factor <- zoningcode2 %>%
 
 
 #apply the original dwelling type to zoning codes, despite missing dwelling type info for some observations
-zoningcode_factor2 <- zoningcode2 %>% 
-  mutate(dwelling_type = factor(dwelling_type,
-                                levels = c("IZ attached",
-                                           "attached",
-                                           "IZ semi-detached",
-                                           "semi-detached",
-                                           "Duplex",
-                                           "IZ detached",
-                                           "detached",
-                                           "IZ",
-                                           "Non-IZ",
-                                           "All")),
-         one_unit_flag = ifelse(dwelling_units_allowed==1, 1,0),
-         two_unit_flag = ifelse(dwelling_units_allowed==2, 1,0),
-         three_unit_flag = ifelse(dwelling_units_allowed==3, 1,0),
-         four_unit_flag = ifelse(dwelling_units_allowed==4, 1,0))
+#zoningcode_factor2 <- zoningcode2 %>% 
+  #mutate(dwelling_type = factor(dwelling_type,
+                                #levels = c("IZ attached",
+                                           #"attached",
+                                          # "IZ semi-detached",
+                                          # "semi-detached",
+                                          # "Duplex",
+                                          # "IZ detached",
+                                          # "detached",
+                                          # "IZ",
+                                          # "Non-IZ",
+                                           #"All")),
+        # one_unit_flag = ifelse(dwelling_units_allowed==1, 1,0),
+        # two_unit_flag = ifelse(dwelling_units_allowed==2, 1,0),
+         #three_unit_flag = ifelse(dwelling_units_allowed==3, 1,0),
+        # four_unit_flag = ifelse(dwelling_units_allowed==4, 1,0))
 
 ```
 
 ## Clean vacant lots data
+
+We are switching to blacknight data here:
 
 Select only vacant lots
 
@@ -356,6 +355,12 @@ vacant %>%
             .funs = list(percent = ~scales::percent(. / num))) %>% 
   knitr::kable(caption = "Number and percent of missing values")
 
+#this is what you should be getting
+#|category_detail        | propaddress| lotsize_sf| zoning|   num|propaddress_percent |lotsize_sf_percent |zoning_percent |
+#|:----------------------|-----------:|----------:|------:|-----:|:-------------------|:------------------|:--------------|
+#|Vacant unimproved      |        1279|        784|   1471| 11565|11.06%              |6.78%              |12.72%         |
+#|Vacant with structures |          12|          4|     27|   242|4.96%               |1.65%              |11.16%         |
+
 ```
 
 ### Missing lot size
@@ -365,6 +370,8 @@ We have 788 lotsize missing after the cleaning.
 
 ```{r count-lots}
 sum(is.na(vacant$lotsize_sf))
+
+#this is what you should be getting: [1] 788
 ```
 
 ### Assessment values
@@ -377,11 +384,10 @@ The difference between the land value, improvement value, and total value can he
   #group_by(category_detail) %>% 
   #summarize(nprops = n(),
             #imp_zero = sum(assessedimprovementvalue == 0, na.rm = TRUE),
-           # imp_na = sum(is.na(assessedimprovementvalue))) %>% 
- # mutate(imp_none = imp_zero + imp_na,
-       #  percent_none = imp_none / nprops) %>% 
+            #imp_na = sum(is.na(assessedimprovementvalue))) %>% 
+  #mutate(imp_none = imp_zero + imp_na,
+         #percent_none = imp_none / nprops) %>% 
   #knitr::kable()
-
 
 
 #|category_detail        | nprops| imp_zero| imp_na| imp_none| percent_none|
@@ -413,9 +419,28 @@ vacant1 <- vacant %>%
                                 0),
          parcel_x= parcelgeo_x,
          parcel_y= parcelgeo_y,
-         missing_parcelXY= ifelse(is.na(parcelgeo_x) | is.na(parcelgeo_y),
+         missing_parcelgeoXY= ifelse(is.na(parcelgeo_x) | is.na(parcelgeo_y),
+                                1,
+                                0),
+         missing_latlon= ifelse(is.na(lat) | is.na(long),
                                 1,
                                 0)) 
+
+vacant1 %>% 
+  group_by(missing_parcelgeoXY) %>% 
+  summarize_at(vars(propaddress),
+               ~ sum(!is.na(.))) %>% 
+  knitr::kable(caption = "Number of addresses that are missing XY coordinates from parcel base")
+
+vacant1 %>%
+  filter(missing_parcelgeoXY==1) %>% 
+  group_by(missing_latlon) %>% 
+  summarize_at(vars(propaddress),
+               ~ sum(!is.na(.))) %>% 
+  knitr::kable(caption = "Number of addresses that are missing XY coordinates but not lat lon from blacknight")
+
+#so there are 1068 observations that we need to use the blacknight location for the join
+
 ```
 
 ### Missing zoning variables
@@ -439,27 +464,26 @@ zon <- st_transform(zon, crs = 4326)
 Convert vacant lots to SF, set CRS. To convert to SF, we need to use only the observations with non-missing longitude and latitude. We separate these off and recombine after the spatial join.
 
 ```{r convert-sf}
-vacantsf <- vacant1 %>% 
-  filter(missing_coord == 0) %>% 
-  st_as_sf(coords = c("long", "lat")) %>% 
-  st_set_crs(st_crs(zon))
 
 #convert the parcelbase XY to lat and lon
 vacantsfparcel <- vacant1 %>% 
-  filter(missing_parcelXY == 0) %>% 
+  filter(missing_parcelgeoXY == 0) %>% 
   st_as_sf(coords = c("parcel_x", "parcel_y")) %>% 
   st_set_crs(2804) %>% 
   st_transform(4326)
 
-#export for ArcGIS check
-vacant1 %>% 
-  filter(missing_parcelXY == 0) %>% 
-  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
-                   filepath,
-                   "DCparcelbase_XY.csv"))
+#convert missing parcelbase geo obvservations that have a blacknight lat lon
+vacantsfbk <- vacant1 %>% 
+  filter(missing_parcelgeoXY == 1 & missing_latlon==0) %>% 
+  st_as_sf(coords = c("long", "lat")) %>% 
+  st_set_crs(st_crs(zon))
 
 ggplot()+
   geom_sf(data = vacantsfparcel, mapping = aes(),
+          color = "black", size=0.1)
+
+ggplot()+
+  geom_sf(data = vacantsfbk, mapping = aes(),
           color = "black", size=0.1)
 
 ```
@@ -472,22 +496,36 @@ ggplot() +
                                "#d2d2d2", "#ec008b", 
                                "#55b748", "red", "green", "yellow", "blue")) +
   geom_sf(data = vacantsfparcel, mapping = aes(),
-          color = "black", size=0.1)
+          color = "black", size=0.1) +
+  geom_sf(data = vacantsfbk, mapping = aes(),
+          color = "black", size=0.1) 
 
 ```
 
 Spatial join
 
+spatial join with zoning shapefile separately
+
 ```{r spatial-join}
 
-vacantjoin <- st_join(vacantsfparcel, zon, join = st_intersects)
+vacantjoin_parcel <- st_join(vacantsfparcel, zon, join = st_intersects)
+
+vacantjoin_bk <- st_join(vacantsfbk, zon, join = st_intersects)
+
 
 ```
 
-After the join, we convert back to a dataframe, for ease of computations.
+After the join, we convert back to a dataframe and recombine the two vacant datasets together, for ease of computations.
+
 ```{r back-to-df}
 
-vacant2 <- st_set_geometry(vacantjoin, NULL)
+vacant2_parcel <- st_set_geometry(vacantjoin_parcel, NULL)
+
+vacant2_bk <- st_set_geometry(vacantjoin_bk, NULL)
+
+vacant2 <- vacant2_parcel %>% 
+     bind_rows(vacant2_bk)
+
 
 ```
 
@@ -504,20 +542,6 @@ if (sum(is.na(vacant2$ZONING_LAB)) / nrow(vacant2) > .05) {
       
 ```
 
-Test how many have different results from the Black Knight zoning variable. 3804 of 8661 were the same if using new zoning code. 5448 of 8661 were the same if using old zoning code in the shapefile.This is expected because blacknight data zoning code was dated and not consisted with the 2016 updated DC zoning codes.
-
-```{r test-spatial}
-
-vacant2 %>% 
-  group_by(is.na(zoning)) %>% 
-  count(zoning == ZONING_LAB)
-
-vacant2 %>% 
-  group_by(is.na(zoning)) %>% 
-  count(zoning == OLD_ZONING)
-
-```
-
 I'm skipping the comparing blacknight zoning with shapefile zoning because 1. We can only compare the old zoning data. 2. The crosswalk is one directional-- there's no way we can infer the new zoning code from old one, other than the spatial join. So I'm going to use zoning code from the spatial join and merge it with the zoning statistics spreadsheet. 
 
 Recombine with observations with missing coordinates, check that number of rows is the same.
@@ -525,7 +549,7 @@ Recombine with observations with missing coordinates, check that number of rows 
 ```{r get-final}
 
 vacanttotal <- vacant1 %>% 
-  filter(is.na(parcel_x) | is.na(parcel_y)) %>% 
+  filter(missing_parcelgeoXY == 1 & missing_latlon==1) %>% 
   mutate(zoning_bk = zoning) %>% 
   bind_rows(vacant2)
 
@@ -538,81 +562,49 @@ stopifnot(nrow(vacanttotal) == nrow(vacant1))
 The last step is to identify a zoning designation from shapefile that has more than 1 code. There's no dual zoning code from the shapefile. 
 
 ```{r real-final}
+# report out that the dataset has 0 observations
+dual1 <- vacanttotal %>% 
+  filter((str_detect(ZONING_LAB, ",") == TRUE)) %>% 
+  group_by(ZONING_LAB) %>% 
+  count() 
 
-dual <- vacanttotal %>% 
-  filter((str_detect(ZONING_LAB, ",") == TRUE)) 
+dual2 <- vacanttotal %>% 
+  filter((str_detect(ZONING_LAB, "/") == TRUE)) %>% 
+  group_by(ZONING_LAB) %>% 
+  count() 
 
-```
-
-## Merge with cleaned data
-
-```{r zoning-merge}
-
-vacantfinal <- vacanttotal %>% 
-        mutate(zoning_code=ZONING_LAB)
-
-vacantfinal %>% 
-  count(zoning_code) %>% 
-  knitr::kable()
-
-zoningdata <- left_join(vacantfinal, zoningcode_factor2, by = "zoning_code")
-
-
-unique(zoningcode_factor$newdwelling_type)
-
-#after joining, we see that there's no vacant lot that's zoned RF4 RF5
-zoningdata %>% 
-  group_by(newdwelling_type) %>% 
-  count() %>% 
-  knitr::kable()
-
+nrow(dual1)
+nrow(dual2)
 
 ```
 
-There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the shapefile data but NOT in the zoning code data.We need to take out the dashes in the zoning code. 
-
-```{r antijoin}
-
-anti_join(vacantfinal,zoningcode_factor2, by = c("zoning_code")) %>% 
-  count(ZONING_LAB) %>% 
-  knitr::kable()
-
-```
+## Merge with cleaned vacant lot data
 
 We need to clean the spatial joined zoning code, especially the Residential codes started ones that have a dash in the middle that are not joined with the zoning spreadsheet. After cleaning, use anti_join again to test if there are any left over residential codes that are not joined.
 
 ```{r remove dash}
 
-vacantcleaned <- vacantfinal %>% 
-          mutate(zoning_code.shape=zoning_code) %>% 
-          mutate(firsttwo= substr(zoning_code.shape, 1,2),
-                 badrescode=ifelse(str_detect( firsttwo, "R-")==1, 1, 0),
-                 zoning_code=ifelse(badrescode==1, paste0(substr(zoning_code.shape, 1,1),substr(zoning_code.shape,3,3)),zoning_code.shape))
+vacantcleaned <- vacanttotal %>% 
+          mutate(zoning_code=ZONING_LAB, 
+                 zoning_bk= zoning) %>% 
+          mutate(firsttwo= substr(ZONING_LAB, 1,2),
+                 badrescode=ifelse(str_detect(firsttwo, "R-")==1, 1, 0),
+                 zoning_code=ifelse(badrescode==1, paste0(substr(ZONING_LAB, 1,1),substr(ZONING_LAB,3,3)),ZONING_LAB))
 
-zoningdatanew <- left_join(vacantcleaned, zoningcode1, by = "zoning_code")
 
 ```
 
 After cleaning, use anti_join again to test if there are any left over residential codes that are not joined. R1 and RC-1, RC-3 not joined. Check the spreasheet and they are not in. 
 ```{r antijoinagain}
 
-anti_join(vacantcleaned, zoningcode_factor2, by = c("zoning_code")) %>% 
+anti_join(vacantcleaned, zoningcode_factor, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
 ```
 
 There are 2228 R1s that are not joined which is a lot, in our spreadsheet we have R1A and R1B, pull in lotsize and see which ones we should assign the R1 to. R1A has lot size of 7500, R1B has lot size of 5000. Use as threshold.
-```{r assign R1}
 
-anti_join(vacantcleaned, zoningcode_factor2, by = c("zoning_code")) %>% 
-  filter(zoning_code=="R1") %>% 
-  mutate(R1Aflag= ifelse(lotsize_sf>=7500,1,0),
-         R1Bflag=ifelse(lotsize_sf<7500 & lotsize_sf>= 5000,1, 0)) %>% 
-  count(R1Aflag, R1Bflag, zoning_code) %>% 
-  knitr::kable()
-
-```
 Reassign some of the R1s to R1A and R1B based on the flag
 ```{r reassign R1}
 
@@ -623,42 +615,49 @@ vacantcleaned2 <- vacantcleaned %>%
          zoning_code= ifelse(R1Bflag==1, "R1B", zoning_code))
 
 #after cleaning there are still 1537 R1 that are not joined due to lot size not meeting standards. Not sure if we should keep some of them
-anti_join(vacantcleaned2, zoningcode_factor2, by = c("zoning_code")) %>% 
-  filter(zoning_code=="R1") %>% 
+anti_join(vacantcleaned2, zoningcode_factor, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
-zoningdatanew2 <- left_join(vacantcleaned2, zoningcode_factor2, by = "zoning_code")
+```
 
-zoningdatanew2 %>% 
+After cleaning the zoning code from shapefile, we are merging the cleaned blacknight vacant data with the zoning code spreadsheet.
+
+```{r zoning-merge}
+
+zoningdata <- left_join(vacantcleaned2, zoningcode_factor, by = "zoning_code") %>% 
+           filter(newdwelling_type!="NA")
+#filter out observations with zoning codes that are eithing NA or not in the DC spreadsheet
+
+zoningdata %>% 
   group_by(newdwelling_type) %>% 
   count() %>% 
   knitr::kable()
+
 ```
 
-Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 27576 to 12515, after slicing out the least dense zoning code, we only have 1508 observation left. Part of the reason is we have duplicated propaddress???
+Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 25786 to 11318, after slicing out the least dense zoning code, we have 2775 observation left. 
 
 ```{r filter-small}
 
-zoningdata1 <- zoningdatanew2 %>% 
+zoningdata1 <- zoningdata %>% 
   mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
          lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
   filter(!is.na(zoning_code),
          lotsize_sf >= lot_area_min) %>% 
   group_by(propaddress) %>% 
-  slice(which.min(dwelling_type)) %>% 
+  slice(which.min(newdwelling_type)) %>% 
   ungroup()
 
+nrow(zoningdata1)
 
-# 13594 cases where lotsize_sf is less than the minimum lot area or missing. 
-# by looking at the gap, should we come up with a threshold for a acceptable negative difference?
-zoningdata1test <- zoningdatanew2 %>% 
-    mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
-         lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
+# 13580 cases where lotsize_sf is less than the minimum lot area or missing. 
+zoningdata1test <- zoningdata %>% 
      filter(lotsize_sf < lot_area_min) %>% 
      mutate(gap= lotsize_sf-lot_area_min) %>% 
     select(lotsize_sf,lot_area_min, gap)
 
+nrow(zoningdata1test)
 
 ggplot(zoningdata1, aes(lotsize_sf) )+
   geom_histogram(binwidth = 5000)
@@ -673,6 +672,7 @@ ggplot(zoningdata1test, aes(gap ))+
 
 
 ```
+
 
 ## Calculate missing units
 
@@ -731,7 +731,7 @@ get_unit_variables <- function(dataset,
       two_unit_flag == 1 & subset>=1~ 2*subset,
       three_unit_flag == 1 & subset>=1~ 3*subset,
       four_unit_flag == 1 & subset>=1~ 4*subset,
-      units_height > units_FAR ~ units_FAR,
+      units_height > units_FAR ~ units_FAR,  #taking the smaller estimate between the two
       TRUE ~ units_height))
  
 }
