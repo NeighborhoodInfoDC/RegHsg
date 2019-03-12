@@ -93,10 +93,11 @@ proc format;
 		 ;
 
 	value bedroom_topcode
-		1 = "1 bedroom"
-		2 = "2 bedrooms"
-		3 = "3 bedrooms"
-		4 = "4+ bedrooms"
+		1 = "No bedrooms"
+		2 = "1 bedroom"
+		3 = "2 bedrooms"
+		4 = "3 bedrooms"
+		5 = "4+ bedrooms"
 		;
 run;
 
@@ -134,7 +135,7 @@ data COGSvacant_&year.(where=(vacancy in (1,2)));
 	if vacancy=1 then Tenure = 1; /*renter*/
 	if vacancy=2 then Tenure = 2; /*owner*/
 
-	if bedrooms >= 4 then bedrooms = 4; /* Top-code bedroom sizes at 4+ */
+	if bedrooms >= 5 then bedrooms = 5; /* Top-code bedroom sizes at 4+ */
 
 	vacantunit_&year.=1;
 
