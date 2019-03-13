@@ -142,7 +142,12 @@ jur1 <- jur %>%
                                 0))
 jur1 <- jur1 %>% 
   mutate(latarc = lat) %>% 
-  mutate(longarc = long)
+  mutate(longarc = long) %>% 
+  mutate(lat1 = lat) %>% 
+  mutate(long1 = long) %>% 
+  mutate(lat2 = lat) %>% 
+  mutate(long2 = long)
+
 
 jur_sf <- jur1 %>% 
   filter(missing_coord == 0) %>% 
@@ -157,7 +162,7 @@ jur_sf1 %>% as.data.frame() %>%
   count(validgeo)
 
 ```
-
+No invalid points, so continue with join.
 
 
 ##Spatial Join!
@@ -166,6 +171,7 @@ jur_sf1 %>% as.data.frame() %>%
 pjoin <- st_join(jur_sf1, parcel_sf1, join = st_intersects)
 
 ```
+
 
 After the join, we convert back to a dataframe, for ease of computations.
 ```{r back-to-df}
@@ -238,26 +244,24 @@ See how many we're filled in
 sum(is.na(pjoin_df1$arc_lotsize_sf)) - sum(is.na(pjoin_df1$lotsize_sf))
 ```
 
-
-
-
-
-
 ----------------------
 Set joined parcel as SF to faciltate join with zoning layer
 
 ```{r clean}
 pjoin_df1 <- pjoin_df1 %>% 
-  mutate(missing_coord = ifelse(is.na(latarc) | is.na(longarc),
+  mutate(missing_coord = ifelse(is.na(lat1) | is.na(long1),
                                 1,
                                 0))
+
+
+
+
+
 pjoin_sf <- pjoin_df1 %>% 
   filter(missing_coord == 0) %>% 
-  st_as_sf(coords = c("longarc", "latarc")) %>% 
+  st_as_sf(coords = c("long1", "lat1")) %>% 
   st_set_crs(st_crs(parcel_sf1))
 ```
-
-
 
 
 Zoning Clean
@@ -299,16 +303,133 @@ pzjoin <- st_join(pjoin_sf, zoning_sf1, join = st_intersects)
 
 ```
 
+
+####Add flag for gaithersburg and rockville
+Our Data on the property city is not reliable, so we need to create a flag ourselves using the Rockville and Gaithersburg zoning layers to.
+
+#rockville
+```{r test join with RV}
+
+rockpfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts'), end = -5) %>% unique()
+rockzoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts',
+                     layer = rockpfile[1])
+
+rockzoning_sf1 <- rockzoning_sf %>% 
+  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
+                                1,
+                                0))
+rockzoning_sf1 %>% as.data.frame() %>% 
+  count(validgeo)
+rockzoning_sf1 <- rockzoning_sf1 %>% 
+  filter(validgeo == 1 & !is.na(validgeo))
+
+st_geometry(rockzoning_sf1)
+```
+
+```{r join}
+rockzoning_sf1 <- st_transform(rockzoning_sf1, crs = 4326)
+rockjoin1 <- st_join(pzjoin1, rockzoning_sf1, join = st_intersects)
+rockjoin2 <- st_join(rockzoning_sf1, pzjoin1, join = st_contains)
+
+
+```
+
+```{r test join}
+
+paste0(sum(!is.na(rockjoin1$ZONE)), " observations did join- ",
+      round(sum(!is.na(rockjoin1$ZONE)) / nrow(rockjoin1) * 100, 2), "%")
+
+```
+
+******************left off here 3.12.19************
+
+```{r filter to make flag}
+
+pzjoin2 <- rockjoin1 %>% 
+  mutate(rockflag = if_else(!is.na(ZONE), 1, 0))
+
+
+
+
+test <- pzjoin2 %>% 
+  filter(rockflag ==1) %>% 
+  sample_n(1000)
+ggplot() +
+  geom_sf(rockzoning_sf1, mapping = aes()) +
+  geom_sf(test, mapping = aes())
+
+#rockjoin %>% 
+#  filter(!is.na(ZONE)) %>% 
+#  count(propcity)
+#
+#rocktest <- rockjoin %>% 
+#  filter(is.na(propcity)) %>% 
+#  sample_n(1000)
+#
+#test <- sample_n(jur_sf1, 1000)
+#test1 <- sample_n(rockjoin, 1000)
+#
+#ggplot() +
+#  geom_sf(rockzoning_sf1, mapping = aes()) +
+#  geom_sf(rocktest, mapping = aes())
+
+
+
+```
+#### Gaithersburg Flag
+```{r fill in gaithersburg}
+
+gaitfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/Gaithersburg'), end = -5) %>% unique()
+gait_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/Gaithersburg',
+                     layer = gaitfile[1])
+
+gait_sf1 <- gait_sf %>% 
+  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
+                                1,
+                                0))
+gait_sf1 %>% as.data.frame() %>% 
+  count(validgeo)
+gait_sf1 <- gait_sf1 %>% 
+  filter(validgeo == 1 & !is.na(validgeo))
+
+st_geometry(gait_sf1)
+
+gait_sf1 <- st_transform(gait_sf1, crs = 4326)
+gaitjoin1 <- st_join(pzjoin2, gait_sf1, join = st_intersects)
+
+paste0(sum(!is.na(gaitjoin1$CLASSFP)), " observations did join- ",
+      round(sum(!is.na(gaitjoin1$CLASSFP)) / nrow(gaitjoin1) * 100, 2), "%")
+
+pzjoin2 <- gaitjoin1 %>% 
+  mutate(gaitflag = if_else(!is.na(CLASSFP), 1, 0))
+
+count(pzjoin2, gaitflag)
+
+test <- pzjoin2 %>% 
+  filter(gaitflag ==1) %>% 
+  sample_n(1000)
+ggplot() +
+  geom_sf(gait_sf1, mapping = aes()) +
+  geom_sf(test, mapping = aes())
+
+```
+
 After the join, we convert back to a dataframe, for ease of computations.
 ```{r back-to-df}
 
-pzjoin_df <- st_set_geometry(pzjoin, NULL)
+pzjoin_df <- st_set_geometry(pzjoin2, NULL)
+
 
 ```
 
 
 I remove a stop that Sarah put in because there will not be clean join because of missing prop data from Gaithersburg and Rockville.
 ```{r count-zoning}
+
+pzjoin_df %>% 
+  filter(rockflag == 1)
+  
+count(pzjoin_df, is.na(assessorsparcelnumberapnpin))
 
 paste0(sum(is.na(pzjoin_df$CODE)), " observations didn't join- ",
       round(sum(is.na(pzjoin_df$CODE)) / nrow(pzjoin_df) * 100, 2), "%")
@@ -337,7 +458,11 @@ pzjoin_df1 <- pzjoin_df %>%
   mutate(arc_zoning = zoning, # archive the original lot size variable
          zoning = ifelse(is.na(zoning),
                              CODE,
-                             zoning))
+                             zoning),
+         zoning = ifelse(is.na(zoning),
+                             ZONE,
+                              zoning))
+
          #lotsize_sf = ifelse(is.na(lotsize_sf),
          #                    lotsize_prop,
          #                    lotsize_sf))
@@ -383,8 +508,9 @@ pzjoin_df1 %>%
 ```
 
 
+
 ```{r save}
-saveRDS(pzjoin_df2,
+saveRDS(pzjoin_df1,
         paste0(jdir, 
                "parceljoined-",
                filepath,
@@ -395,7 +521,7 @@ saveRDS(pzjoin_df2,
 Write out clean data.
 
 ```{r write}
-write_csv(pzjoin_df2, 
+write_csv(pzjoin_df1, 
           paste0(jdir, 
                "cleaned-", filepath, "-data.csv"))
 ```

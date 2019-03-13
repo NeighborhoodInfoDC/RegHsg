@@ -21,7 +21,7 @@ Library: RegHsg
 Project: Regional Housing Framework
 
 Author: Patrick Spauster
-
+ 
 Version: R 3.5.1, RStudio 1.1.423
 
 Last updated `r format(Sys.time(), '%B %d, %Y')`
@@ -658,7 +658,7 @@ Write out the results to a csv. Include jurisdiction name in the title.
 
 ```{r write-results}
 
-get_unit_summary(dataset = zoningdata1,
+get_unit_summary(dataset = zoningdata2,
                  construction_efficiency = .7,
                  average_unit_size = 940,
                  dwelling_type_breakdown = TRUE) %>% 
