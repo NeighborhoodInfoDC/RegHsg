@@ -62,6 +62,7 @@ read_fairfax <- function(rmd = TRUE) {
                          parcel_address = col_character(),
                          parcel_area = col_character(),
                          sf_area = col_character(),
+                         units_area = col_character(),
                          containsLarge = col_character(),
                          maxsize = col_character(),
                          numberofunits_tax = col_character(),
@@ -73,12 +74,5 @@ read_fairfax <- function(rmd = TRUE) {
   }
   
                 
-
-
-
-
-
-
-
 
 
