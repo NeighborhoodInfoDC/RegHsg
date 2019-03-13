@@ -47,12 +47,12 @@ The two steps are:
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
-library(urbnthemes)
+#library(urbnthemes)
 library(sf)
 library(ggplot2)
-library(urbnthemes)
 
-set_urbn_defaults("print")
+
+#set_urbn_defaults("print")
 
 source("../Macros/read-montgomery.R")
 
@@ -74,6 +74,7 @@ Set FIPS code and filepath name
 
 currentfips <- "24031"
 filepath <- "montgomery"
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
 
 
 ```
@@ -89,7 +90,15 @@ if (!exists("jur")) {
 
 ```
 
+Load R dataset from Post clean
+```{r read}
 
+jur <- readRDS(paste0(jdir, 
+               "parceljoined-",
+               filepath,
+               "-data.Rdata"))
+
+```
 ## Clean zoning code information
 
 ### Move file 
@@ -352,10 +361,11 @@ Select only vacant lots
 
 ```{r res}
 
-vacant <- jur %>% 
-  filter(category == "vacant", propcity != "GAITHERSBURG", propcity != "ROCKVILLE", propcity != "ROCVKILE", propcity != "GAITHERBURG")
+vacant_mont <- jur %>% 
+  filter(category == "vacant", rockflag != 1, gaitflag!=1)
 
-x <- count(vacant, propcity)
+count(vacant_mont, rockflag, gaitflag)
+
 ```
 
 
@@ -363,7 +373,7 @@ See how many lots have missing key variables
 
 ```{r missing}
 
-vacant %>% 
+vacant_mont %>% 
   mutate(num = NA) %>% 
   group_by(category_detail) %>% 
   summarize_at(vars(propaddress, lotsize_sf, zoning, num),
@@ -377,6 +387,17 @@ vacant %>%
 ### Assessed Value
 I removed the assessed value section because there were no relevant properties with structures that needed to be removed fromt he list.
 
+```{r fill in assessed value data from the zoning file}
+
+vacant_mont1 <- vacant_mont %>% 
+  mutate(assessedlandvalue = if_else(is.na(assessedlandvalue), LAND_ASSMT, assessedlandvalue)) %>% 
+  mutate(assessedimprovementvalue = if_else(is.na(assessedimprovementvalue), IMPROV_ASS, assessedimprovementvalue))
+
+sum(is.na(vacant_mont$assessedlandvalue)) - sum(is.na(vacant_mont1$assessedlandvalue))
+
+```
+
+
 
 
 ## Merge with cleaned data
@@ -384,16 +405,13 @@ I removed the assessed value section because there were no relevant properties w
 Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original `zoning` variable.
 
 ```{r bk-clean}
-mvacant <- vacant1 %>% 
-  filter()
-z <- count(vacant1, zoning)
 
 
-
-vacantfinal <- vacant1 %>% 
+vacantfinal <- vacant_mont1 %>% 
   mutate(zoning_code = case_when(
-    zoning == "CR1.0" ~ "CR",
-    zoning %in% c("CRT0.5","CRT075", "CRT1.5") ~ "CRT",
+    zoning %in% c("CR1.0","CR0.5", "CR2.0", "CR5.0") ~ "CR",
+    zoning %in% c("CRN0.5","CRN1.5", "CR2.0", "CR5.0") ~ "CRN",
+    zoning %in% c("CRT0.5","CRT075", "CRT1.5", "CRT1.0", "CRT125") ~ "CRT",
     zoning %in% c("R3", "R30") ~ "R-30",
     zoning %in% c("R200T", "R200") ~ "R-200",
     zoning %in% c("R20") ~ "R-20",
