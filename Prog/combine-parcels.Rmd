@@ -214,7 +214,7 @@ all_jurs <- arl %>%
 
 Write out data
 ```{r}
-write_csv(all_jurs, "../Data/all-cleaned-data.csv")
+write_csv(all_jurs, "L:/Libraries/RegHsg/Data/parcel-all-cleaned-data.csv")
 ```
 
 
