@@ -593,7 +593,7 @@ nested <- multiples_1 %>%
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
                     yearbuilt, long, lat,
-                    area_tax, zone_tax, possibleSF_tax, stories_tax, units_tax, category_tax, land_per_parcel, dwellings_per_parcel, num_livunit), list) %>% 
+                    area_tax, zone_tax, possibleSF_tax, stories_tax, units_tax, category_tax, land_per_parcel, dwellings_per_parcel, num_livunit, assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %>% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
@@ -617,7 +617,12 @@ nested <- multiples_1 %>%
                       map(yearbuilt_list, max, na.rm = TRUE),
                       NA),
          parcel_area = map_dbl(area_tax_list, sum, na.rm = TRUE),
-         sf_area = map_dbl(possibleSF_tax_list, sum, na.rm=T))
+         sf_area = map_dbl(possibleSF_tax_list, sum, na.rm=T),
+         units_area = map_dbl(units_tax_list, sum, na.rm=T),
+         totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
+         assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
+                                            sum, na.rm = TRUE),
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))
 
 ```
 
@@ -1056,7 +1061,7 @@ singles_f <- singles_1 %>%
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
          ends_with("prop"),
-         area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax,               units_tax, parcel_id, num_livunit, dwellings_per_parcel, land_per_parcel)
+         area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, parcel_id, num_livunit, dwellings_per_parcel, land_per_parcel, assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
 
 missing_f <- missing %>% 
   select(county_fips, county_name,
