@@ -32,7 +32,28 @@ proc format;
 	value wagecat
 		1 = "Low wage"
 		2 = "Medium wage"
-		3 = "High wage";
+		3 = "High wage"
+		. = "Total";
+	value empstat_new
+		1 = "Civilian employed (at work or have a job)"
+		2 = "In military (at work or have a job)"
+		3 = "Student"
+		4 = "Unemployed"
+		5 = "Other / not in labor force"
+		. = "Total";
+	value Jurisdiction
+		0= "Total"
+   	 	1= "DC"
+		2= "Charles County"
+		3= "Frederick County "
+		4="Montgomery County"
+		5="Prince Georges "
+		6="Arlington"
+		7="Fairfax, Fairfax city and Falls Church"
+		8="Loudoun"
+		9="Prince William, Manassas and Manassas Park"
+    	10="Alexandria"
+		. ="All jurisdictinos";
 quit;
 
 
@@ -44,14 +65,17 @@ data RegEmp_&year.;
 	%if &year. = 2017 %then %do;
 	set ipums.Acs_&year._dc ipums.Acs_&year._md ipums.Acs_&year._va ipums.Acs_&year._wv;
 	if upuma in (&RegPumas.);
+	%newpuma_jurisdiction;
 	%end;
 	%else %if &year. = 2010 %then %do;
 	set ipums.Acs_&year._dc ipums.Acs_&year._md ipums.Acs_&year._va ipums.Acs_&year._wv;
 	if upuma in (&Reg2000Pumas.);
+	%oldpuma_jurisdiction;
 	%end; 
 	%else %if &year. = 2000 %then %do;
 	set ipums.ipums_&year._dc ipums.ipums_&year._md ipums.ipums_&year._va ipums.ipums_&year._wv;
 	if upuma in (&Reg2000Pumas.);
+	%oldpuma_jurisdiction;
 	%end; 
 
 	/* Flag 25+ hours worked as full time */
@@ -59,6 +83,15 @@ data RegEmp_&year.;
 
 	/* Flag 50-52 weeks per year as year-round */
 	if wkswork2 = 6  then yearround=1;
+
+	/* Recode breakdown of adults */
+	if age >= 18 then do;
+		if gradeatt ^= 0 then empstat_new = 3;
+		else if empstatd in (10,12) then empstat_new = 1;
+		else if empstatd in (14) then empstat_new = 2;
+		else if empstatd in (20) then empstat_new = 4;
+		else if empstatd in (0,30) then empstat_new = 5;
+	end;
 
 run;
 
@@ -93,9 +126,9 @@ data RegWage_&year.;
 		else wagecat = 1;
 	end;
 
-	keep year serial pernum incwage wagecat fulltime yearround ftworker empstatd perwt hhwt;
+	keep year serial pernum incwage wagecat jurisdiction fulltime yearround ftworker empstat_new trantime perwt hhwt;
 
-	format wagecat wagecat.;
+	format wagecat wagecat. empstat_new empstat_new. jurisdiction jurisdiction.;
 
 run;
 
@@ -110,30 +143,33 @@ data allyears;
 	set RegWage_2017 RegWage_2010 RegWage_2000;
 
 	if year = 0 then do;
-		empstatd_2000 = empstatd;
+		empstatd_2000 = empstat_new;
 		ftworker_2000 = ftworker;
 		worker_2000 = 1;
+		if empstat_new in (1,2) then trantime_2000 = trantime;
 	end;
 
 
 	else if year = 2010 then do;
-		empstatd_2010 = empstatd;
+		empstatd_2010 = empstat_new;
 		ftworker_2010 = ftworker;
 		worker_2010 = 1;
+		if empstat_new in (1,2) then trantime_2010 = trantime;
 	end;
 
 	else if year = 2017 then do;
-		empstatd_2017 = empstatd;
+		empstatd_2017 = empstat_new;
 		ftworker_2017 = ftworker;
 		worker_2017 = 1;
+		if empstat_new in (1,2) then trantime_2017 = trantime;
 	end;
 
 run;
 
 
-/* * Adults by employment status by year */
+/* Adults by employment status by year */
 proc summary data = allyears;
-	class empstatd;
+	class empstat_new;
 	var worker_: wagecat_:;
 	output out = workers_t sum=;
 	weight perwt; 
@@ -151,7 +187,7 @@ proc export data = workers_byyear
 run;
 
 
-/* * Civilian full-time, year-round employed workers by wage (low, middle, high) by year */
+/* Civilian full-time, year-round employed workers by wage (low, middle, high) by year */
 proc summary data = allyears;
 	class wagecat;
 	var ftworker_:;
@@ -169,6 +205,27 @@ proc export data = wage_byyear
 	dbms=csv
 	replace;
 run;
+
+
+/* Workers average commuting time by jurisdiction */
+proc summary data = allyears;
+	class jurisdiction;
+	var trantime_:;
+	output out = trantime_t mean=;
+	weight perwt;
+run;
+
+data trantime_byyear;
+	set trantime_t;
+	drop _type_ _freq_;
+run;
+
+proc export data = trantime_byyear
+	outfile = "&_dcdata_default_path.\reghsg\prog\trantime_byyear.csv"
+	dbms=csv
+	replace;
+run;
+
 
 
 /* End of program */
