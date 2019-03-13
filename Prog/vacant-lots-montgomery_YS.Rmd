@@ -623,7 +623,7 @@ Merge on zoning code variable. Test that all variables merged.
 #YS edits
 vacant_rockvile <- vacant1 %>% 
   mutate(zoning_code= zoning_bk) %>% 
-  filter(propcity=="ROCKVILLE")
+  filter(rockflag=="1")
 
 vacant_gaithersburg <- vacant1 %>% 
   mutate(zoning_code= zoning_bk) %>% 
@@ -634,6 +634,7 @@ zoningdata_gaithersburg <- left_join(vacant_gaithersburg, zoning_gaithersburg2, 
 
 parcel_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
                      layer = pfile[1])
+
 zoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
                      layer = pfile[2])
 
@@ -677,25 +678,13 @@ vacant_rockvile1 <- vacant_rockvile %>%
                                zoning_code == "R60" ~ "R-60",
                                zoning_code == "R90" ~ "R-90",
                                zoning_code == "R75" ~ "R-75",
-                               zoning_code == "R200T" ~ "R-200",
+                               zoning_code == "R150" ~ "R-150",
                                TRUE ~ zoning_code))
 
+#codes not joined are not in the rockville spreadsheet, should we keep cleaning? 
 anti_join(vacant_rockvile1, zoning_rockville1, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
-
-vacant_rockvile2 <- anti_join(vacant_rockvile1, zoning_rockville1, by = c("zoning_code")) 
-
-
-issuelotrockville<- vacant_rockvile2 %>% 
-  filter(zoning_code=="RNC") %>% 
-  select(propcity, propaddress, X, Y, zoning_code, zoning_bk, zoning, propzip, LANDUSE_CO, countylandusedescription, IMPROV_ASS, assessedimprovementvalue, LU_CATEGOR, OWNERS_NAM)
-
-
-#need to bring in montgomery zoning code and join with the lots that are not joined. 
-zoningdata_rockvile2 <- left_join(vacant_rockvile2, zoning_montgomery1, by = "zoning_code")
-  
-
 
 
 #YS edits and comments: Gaithersburg file has R90, R6, RA, R20 but not the other R codes. But I do see some of the R codes in the MOntgomery spreadsheet. Need to resolve the two. 
@@ -733,7 +722,7 @@ Rejoin the zoning categorization and vacant dataset after cleaning.
 ```{r rejoin}
 #YS edits and comments: rejoin vacant dataset and zoning after cleaning the zoning code for Rockvile and Gathersburg
 
-zoningdata_rockvile3 <- left_join(vacant_rockvile1, zoning_rockville1, by = "zoning_code")
+zoningdata_rockvile2 <- left_join(vacant_rockvile1, zoning_rockville1, by = "zoning_code")
 
 zoningdata_gaithersburg3 <- left_join(vacant_gaithersburg1, zoning_gaithersburg2, by = "zoning_code")
 
