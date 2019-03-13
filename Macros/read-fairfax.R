@@ -20,7 +20,7 @@ read_fairfax <- function(rmd = TRUE) {
   } else {
     
     read_csv(filename,
-             col_types = cols(county_fips = col_integer(),
+             col_types = cols(county_fips = col_character(),
                          county_name = col_character(),
                          assessorsparcelnumberapnpin = col_character(),
                          propaddress = col_character(),

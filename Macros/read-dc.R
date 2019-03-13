@@ -21,7 +21,7 @@ read_dc<- function(rmd = TRUE) {
     
     read_csv(filename,
              col_types = cols(
-               county_fips = col_integer(),
+               county_fips = col_character(),
                county_name = col_character(),
                parcelbase_SSL = col_character(),
                propaddress = col_character(),
