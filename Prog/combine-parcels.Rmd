@@ -68,7 +68,7 @@ if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
 ```
 
 Set filepath name
-```{r fips}
+```{r fips-fair}
 
 
 filepath <- "fairfax"
@@ -78,7 +78,7 @@ filepath <- "fairfax"
 
 Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
 
-```{r read}
+```{r readfair}
 if (!exists("fairfax")) {
  fairfax <- read_fairfax()
 } else {
@@ -88,7 +88,7 @@ if (!exists("fairfax")) {
 ```
 
 Set filepath name
-```{r fips}
+```{r fips-dc}
 
 filepath <- "DC"
 
@@ -96,7 +96,7 @@ filepath <- "DC"
 
 Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
 
-```{r read}
+```{r read-dc}
 if (!exists("dc_full")) {
  dc_full <- read_dc()
 } else {
@@ -106,7 +106,7 @@ if (!exists("dc_full")) {
 ```
 
 Set filepath name
-```{r fips}
+```{r fips-mon}
 
 filepath <- "montgomery"
 
@@ -114,7 +114,7 @@ filepath <- "montgomery"
 
 Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
 
-```{r read}
+```{r read-mon}
 if (!exists("montgomery")) {
  montgomery <- read_montgomery()
 } else {
@@ -124,7 +124,7 @@ if (!exists("montgomery")) {
 ```
 
 Set filepath name
-```{r fips}
+```{r fips-arl}
 
 filepath <- "arlington"
 
@@ -132,7 +132,7 @@ filepath <- "arlington"
 
 Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
 
-```{r read}
+```{r read-arl}
 if (!exists("arlington")) {
  arlington <- read_arlington()
 } else {
@@ -144,43 +144,53 @@ if (!exists("arlington")) {
 Select needed variables
 ```{r}
 arl <- arlington %>%
-          select(assessorsparcelnumberapnpin,
+          select(county_fips,
+                 county_name,
+                 assessorsparcelnumberapnpin,
+                 propaddress,
                  zoning, 
                  lotsize_sf, 
-                 numberofunits, 
+                 parcel_area,
+                 numberofunits,
+                 category,
                  category_detail, 
-                 propaddress, 
                  countylandusedescription, 
-                 residential, lat, long)%>%
-          mutate(juris="Arlington")
+                 residential, lat, long)
 
 fai <- fairfax %>%
-        select(assessorsparcelnumberapnpin,
+        select(county_fips,
+                 county_name,
+                 assessorsparcelnumberapnpin,
+                 propaddress,
                  zoning, 
                  lotsize_sf, 
-                 numberofunits, 
+                 numberofunits,
+                 category,
                  category_detail, 
-                 propaddress, 
                  countylandusedescription, 
-                 residential, lat, long)%>%
-          mutate(juris="Fairfax")
+                 residential, lat, long)
 
 mon <- montgomery %>%
-        select(assessorsparcelnumberapnpin,
+        select(county_fips,
+                 county_name,
+                 assessorsparcelnumberapnpin,
+                 propaddress,
                  zoning, 
                  lotsize_sf, 
-                 numberofunits, 
+                 numberofunits,
+                 category,
                  category_detail, 
-                 propaddress, 
                  countylandusedescription, 
-                 residential, lat, long)%>%
-          mutate(juris="Montgomery")
+                 residential, lat, long)
 
 dc <- dc_full %>%
-    select(parcelbase_SSL,
+    select(county_fips,
+           county_name,
+           parcelbase_SSL,
                  zoning, 
                  lotsize_sf, 
                  numberofunits, 
+                 category,
                  category_detail, 
                  parcelbase_address, 
                  countylandusedescription, 
@@ -188,8 +198,7 @@ dc <- dc_full %>%
                  lat, long,
                  parcelgeo_x, parcelgeo_y)%>%
           rename(assessorsparcelnumberapnpin=parcelbase_SSL,
-                 propaddress = parcelbase_address) %>%
-          mutate(juris="DC")
+                 propaddress = parcelbase_address)
 
 ```
 
