@@ -106,6 +106,22 @@ nodes_all <- get_node_geography(node_type = "joint",
                        "Activity",
                        "Transit"))
 
+transit <- get_node_geography(node_type = "transit",
+                              style = "buffer",
+                              transit_buffer = .5) %>% 
+  summarize()
+
+activity <- get_node_geography(node_type = "activity",
+                               style = "buffer",
+                               activity_buffer = 1) %>% 
+  summarize()
+
+joint <- get_node_geography(node_type = "joint",
+                            style = "buffer",
+                            activity_buffer = 1,
+                            transit_buffer = .5) %>% 
+  summarize()
+
 ```
 
 Read in COG boundaries, select the ones we will be using, and clip nodes layers to the correct jurisdictions.
@@ -222,7 +238,7 @@ parcel1 %>%
 
 ## Table 1
 
-See "L:\Libraries\RegHsg\Prog\Tables\Upzoning.xlsx" for table template.
+See L:/Libraries/RegHsg/Prog/Tables/Upzoning.xlsx for table template.
 
 ### Test method on one activity center.
 
@@ -260,41 +276,131 @@ bk_clar %>%
 
 ```
 
+### Apply calculation to all activity centers and transit stops
+
 Write this calculation into a function.
 
-```{r fxn}
+```{r inv-fxn}
 
-get_individual_density <- function(node_name, node_type) {
+get_individual_density <- function(dataset, node_name, node_type) {
+  
+  options(warn = -1)
   
   n <- nodes %>% 
     filter(name == node_name,
            node == node_type)
   
-  bk_clar %>% 
+  suppressMessages({
+    suppressWarnings({
+  dataset %>% 
     st_intersection(n) %>% 
     as.data.frame() %>% 
     summarize(residential_parcels = sum(residential, na.rm = TRUE),
-            residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
-                                    na.rm = TRUE),
-            total_acres = sum(lotsize_acres, na.rm = TRUE),
-            number_of_units = sum(numberofunits, na.rm = TRUE),
-            density = number_of_units / total_acres)
+              residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
+                                      na.rm = TRUE),
+              total_acres = sum(lotsize_acres, na.rm = TRUE),
+              number_of_units = sum(numberofunits, na.rm = TRUE),
+              density = number_of_units / total_acres) %>% 
+    mutate(name = node_name, type = node_type) %>% 
+    select(name, type, everything())
+    })
+  })
 }
 
 ```
 
 Test function, make sure results are the same.
 
-```{r test-fxn}
+```{r test-inv-fxn}
 
-get_individual_density("Clarendon", "Activity") %>% 
+get_individual_density(dataset = parcel1,
+                       node_name = "Clarendon", 
+                       node_type = "Activity") %>% 
   knitr::kable()
 
 ```
+Map function through all activity centers and transit zones.
+
+```{r map-inv-fxn}
+
+transit_names <- nodes %>% filter(node == "Transit") %>% pull(name) %>% as.character()
+individual_transit <- map_df(transit_names, 
+                             ~ get_individual_density(dataset = parcel1,
+                                                      node_name = ., 
+                                                      node_type = "Transit"))
+
+activity_names <- nodes %>% filter(node == "Activity") %>% pull(name) %>% as.character()
+individual_activity <- map_df(activity_names, 
+                              ~ get_individual_density(dataset = parcel1,
+                                                       node_name = ., 
+                                                       node_type = "Activity"))
+
+```
+
+
+### Calculate density inside buffers
 
 We also need the calculation for a the sum of all the transit/activity/total area for each jurisdiction, and total.
 
+Test calculation on transit zone.
+
+```{r buffer-summary}
 
 
+parcel1 %>% 
+  st_intersection(transit) %>% 
+  as.data.frame() %>% 
+  group_by(county_fips, county_name) %>% 
+  summarize(residential_parcels = sum(residential, na.rm = TRUE),
+              residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
+                                      na.rm = TRUE),
+              total_acres = sum(lotsize_acres, na.rm = TRUE),
+              number_of_units = sum(numberofunits, na.rm = TRUE),
+              density = number_of_units / total_acres)
+```
 
 
+Write into function
+
+```{r joint-fxn}  
+  
+get_joint_density <- function(area) {
+  
+  suppressMessages({
+    suppressWarnings({
+      
+        parcel1 %>% 
+          st_intersection(area) %>% 
+          as.data.frame() %>% 
+          group_by(county_fips, county_name) %>% 
+          summarize(residential_parcels = sum(residential, na.rm = TRUE),
+                      residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
+                                              na.rm = TRUE),
+                      total_acres = sum(lotsize_acres, na.rm = TRUE),
+                      number_of_units = sum(numberofunits, na.rm = TRUE),
+                      density = number_of_units / total_acres)
+    })
+  })
+}
+
+
+```
+Apply function to transit, activity, and joint buffer. Create a variable for each, and then combine.
+
+```{r joint-map}
+
+t <- get_joint_density(dataset = parcel1,
+                       area = transit) %>% 
+  mutate(node_type == "transit")
+
+a <- get_joint_density(dataset = parcel1,
+                       area = activity) %>% 
+  mutate(node_type == "activity")
+
+j <- get_joint_density(dataset = parcel1,
+                       area = joint) %>% 
+  mutate(node_type == "joint")
+
+total <- bind_rows(t, a, j)
+
+```
