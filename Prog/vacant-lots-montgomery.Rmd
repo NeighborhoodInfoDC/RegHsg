@@ -393,7 +393,31 @@ vacant_mont1 <- vacant_mont %>%
   mutate(assessedlandvalue = if_else(is.na(assessedlandvalue), LAND_ASSMT, assessedlandvalue)) %>% 
   mutate(assessedimprovementvalue = if_else(is.na(assessedimprovementvalue), IMPROV_ASS, assessedimprovementvalue))
 
-sum(is.na(vacant_mont$assessedlandvalue)) - sum(is.na(vacant_mont1$assessedlandvalue))
+sum(is.na(vacant_mont$assessedimprovementvalue)) - sum(is.na(vacant_mont$assessedimprovementvalue))
+
+
+vacant_mont1 %>% 
+  filter(assessedimprovementvalue > 0, 
+         !is.na(assessedimprovementvalue)) %>% 
+  mutate(p_total = assessedimprovementvalue / totalassessedvalue) %>% 
+  group_by(category_detail) %>% 
+  summarize(n = n(),
+            mean = mean(assessedimprovementvalue),
+            median = median(assessedimprovementvalue),
+            min = min(assessedimprovementvalue),
+            max = max(assessedimprovementvalue),
+            p_total = median(p_total)) %>% 
+  knitr::kable()
+
+vacant_mont2 <- vacant_mont1 %>% 
+  mutate(category = ifelse(assessedimprovementvalue > 0 & 
+                           !is.na(assessedimprovementvalue),
+                           "vacant with structure",
+                           category))
+count(vacant_mont2, category)
+vacant_mont2 <- vacant_mont2 %>% 
+  filter(category == "vacant")
+
 
 ```
 
@@ -407,7 +431,7 @@ Now that we have selected the correct records from the zoning code file, we can 
 ```{r bk-clean}
 
 
-vacantfinal <- vacant_mont1 %>% 
+vacantfinal <- vacant_mont2 %>% 
   mutate(zoning_code = case_when(
     zoning %in% c("CR1.0","CR0.5", "CR2.0", "CR5.0") ~ "CR",
     zoning %in% c("CRN0.5","CRN1.5", "CR2.0", "CR5.0") ~ "CRN",
@@ -679,8 +703,9 @@ Write out the results to a csv. Include jurisdiction name in the title.
 get_unit_summary(dataset = zoningdata2,
                  construction_efficiency = .7,
                  average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE) %>% 
-  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
+                 dwelling_type_breakdown = TRUE)
+
+write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-vacant-lots-analysis.csv"))
 
