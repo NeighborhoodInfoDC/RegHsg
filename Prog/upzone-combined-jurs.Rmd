@@ -64,7 +64,7 @@ if (!dir.exists("../Data")) {
 ```
 
 
-Set FIPS code, filepath name, and directory for maps
+Set directory for maps
 
 ```{r fips}
 
@@ -106,18 +106,10 @@ nodes_all <- get_node_geography(node_type = "joint",
                        "Activity",
                        "Transit"))
 
-points_all <- get_node_geography(node_type = "joint",
-                                style = "point",
-                                activity_buffer = 1,
-                                transit_buffer = .5) %>% 
-  mutate(node = ifelse(type == "Activity",
-                       "Activity",
-                       "Transit"))
-
-
 ```
 
 Read in COG boundaries, select the ones we will be using, and clip nodes layers to the correct jurisdictions.
+Some nodes are repeated (Union Station is listed as a transit node three times, one for MARC, Amtrak, and Metro). Identify them by grouping by name and node type, and select the first one (which line it is does not matter for the purposes of the calculation).
 
 ```{r cog-clip}
 
@@ -138,6 +130,25 @@ bound <- bound_cog %>%
          jurisdiction,
          jurisdiction_name = COGNAMELSA)
 
+# union the boundary layer so nodes that cross jurisdiction lines are still included
+bu <- bound %>% 
+  summarize()
+
+# select only nodes that are entirely in areas where we have parcel data
+nodes <- st_join(nodes_all, bu, join = st_covered_by,
+             left = FALSE) %>% 
+  # filter out nodes that are repeated within a type
+  group_by(name, node) %>% 
+  mutate(rownum = row_number()) %>% 
+  filter(rownum == 1)
+
+```
+
+
+Map to make sure correct nodes were selected.
+
+```{r check-nodes}
+
 ggplot() +
   geom_sf(data = bound, mapping = aes(),
           fill = "#d2d2d2") +
@@ -147,184 +158,143 @@ ggplot() +
   labs(fill = NULL) +
   coord_sf(datum = NA)
 
-
-points <- st_join(points_all, bound, st_intersects, left = FALSE) 
-
-nodes <- left_join(as.data.fr)
-
 ```
 
-
-Convert Black Knight data to spatial.
+Convert Black Knight data to spatial. Filter out DC, adjust projection, and then recombine.
 
 ```{r bk-spatial}
 
-jursf <- jur %>% 
-  filter(!(is.na(lat) | is.na(long))) %>% 
-  st_as_sf(coords = c("long", "lat")) %>% 
-  st_set_crs(st_crs(zon))
-  
+dc <- parcel %>% 
+  filter(county_fips == "11001") %>% 
+  mutate(missing_parcelgeoXY= ifelse(is.na(parcelgeo_x) | is.na(parcelgeo_y),
+                                1,
+                                0),
+         missing_latlon= ifelse(is.na(lat) | is.na(long),
+                                1,
+                                0))
+
+
+dcparcel <- dc %>% 
+  filter(missing_parcelgeoXY == 0) %>% 
+  mutate(parcelx = parcelgeo_x, parcely = parcelgeo_y) %>% 
+  st_as_sf(coords = c("parcelx", "parcely")) %>% 
+  st_set_crs(2804) %>% 
+  st_transform(4326)
+
+dcbk <- dc %>% 
+  filter(missing_parcelgeoXY == 1 & missing_latlon==0) %>% 
+  mutate(longx = long, laty = lat) %>% 
+  st_as_sf(coords = c("longx", "laty")) %>% 
+  st_set_crs(st_crs(4326))
+
+parcel1 <- parcel %>% 
+  filter(county_fips != "11001",
+         !is.na(lat),
+         !is.na(long)) %>% 
+  mutate(longx = long, laty = lat) %>% 
+  st_as_sf(coords = c("longx", "laty")) %>% 
+  st_set_crs(4326) %>% 
+  rbind(select(dcbk, -missing_parcelgeoXY, -missing_latlon)) %>% 
+  rbind(select(dcparcel, -missing_parcelgeoXY, -missing_latlon))
+
+```
+
+Test how many parcels have missing coordinates.
+
+```{r test-missing}
+
+scales::percent((nrow(parcel) - nrow(parcel1)) / nrow(parcel))
+
+```
+
+Plot a sample of the data to make sure the geographic conversion worked.
+
+```{r plot-sample}
+
+parcel1 %>% 
+  sample_n(500) %>% 
+  ggplot() +
+  geom_sf(data = bound, mapping = aes()) +
+  geom_sf(mapping = aes())
 
 ```
 
 
-## Example
+## Table 1
+
+See "L:\Libraries\RegHsg\Prog\Tables\Upzoning.xlsx" for table template.
+
+### Test method on one activity center.
 
 Pick one activity center in Arlington to test and visualize the calculation. Use Clarendon activity center as an example.
 
 ```{r clar}
 
-clarendon <- filter(act1mile, name == "Clarendon")
+clarendon <- filter(nodes, name == "Clarendon", type == "Activity")
 
-ggplot() +
-  geom_sf(zon, mapping = aes(fill = GZDC)) +
-  scale_fill_manual(values = c("#1696d2", "#ec008b", "#d2d2d2",
-                               "#fdbf11", "#55b748", "#0a4c6a")) +
-  geom_sf(clarendon, mapping = aes(),
-          fill = NA, size = 1.6, color = "black") +
-  theme_urbn_map() +
-  coord_sf(datum = NA)
 
 ```
 
-We can clip the zoning layer and the Black Knight data to the circumference of the buffer.
+Clip the Black Knight data to the extent of the activity center.
 
 ```{r clip-zon}
 
-zon_clar <- st_intersection(zon, clarendon)
-bk_clar <- st_intersection(jursf, clarendon)
+bk_clar <- st_intersection(parcel1, clarendon)
 
 ```
 
-#### {.tabset .tabset.fade}
-##### Zoning layer
 
-```{r plot1, echo=FALSE}
-ggplot() +
-  geom_sf(zon_clar, mapping = aes(fill = GZDC)) +
-  scale_fill_manual(values = c("#1696d2", "#ec008b", "#d2d2d2",
-                               "#fdbf11", "#55b748", "#0a4c6a")) +
-  theme_urbn_map() +
-  coord_sf(datum = NA)
-```
+Calculate table.
 
-##### Black knight data
+```{r calc-clar}
 
-```{r plot2, echo=FALSE}
-
-ggplot() +
-  geom_sf(zon_clar, mapping = aes()) +
-  geom_sf(bk_clar, mapping = aes(color = category),
-          show.legend = "point") +
-  scale_color_manual(values = c("#1696d2", "#fdbf11", "#000000", "#ec008b")) +
-  theme_urbn_map() +
-  coord_sf(datum = NA)
-
-```
-
-### Test zoning and land use within activity zone
-
-Test how much of the area in the buffered zone is in each zoning code.
-
-```{r calc-area}
-
-zon_clar <- zon_clar %>% 
-  mutate(area = st_area(zon_clar) %>% set_units("acre"))
-
-totalarea <- sum(zon_clar$area)
-units(totalarea) <- NULL
-units(zon_clar$area) <- NULL
-
-zon_clar %>% as.data.frame() %>% 
-  group_by(ZN_DESIG) %>% 
-  summarize(area= sum(area)) %>% 
-  mutate(p_area = (area/totalarea) %>% 
-                   set_units(NULL)) %>% 
-  arrange(desc(p_area)) %>%
-  mutate(area_sum = cumsum(p_area)) %>% 
+bk_clar %>% 
+  as.data.frame() %>% 
+  summarize(residential_parcels = sum(residential, na.rm = TRUE),
+            residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
+                                    na.rm = TRUE),
+            total_acres = sum(lotsize_acres, na.rm = TRUE),
+            number_of_units = sum(numberofunits, na.rm = TRUE),
+            density = number_of_units / total_acres) %>% 
   knitr::kable()
 
 ```
 
-Use lot size to test land use inside zone.
+Write this calculation into a function.
 
-```{r land-use}
+```{r fxn}
 
-total_area_parcel <- bk_clar %>% 
-  as.data.frame() %>% 
-  summarize(sum(lotsize_acres, na.rm = TRUE)) %>% 
-  pull()
-
-bk_clar %>% 
-  as.data.frame() %>% 
-  group_by(category) %>% 
-  summarize(area = sum(lotsize_acres, na.rm = TRUE),
-            p_area = area / total_area_parcel) %>% 
-  arrange(desc(p_area)) %>% 
-  mutate(area_sum = cumsum(p_area))
-
-```
-
-
-### Develop metric for density
-
-Calculate units per acre- only include residential properties.
-
-```{r units-per-acre}
-
-bk_clar <- bk_clar %>% 
-  mutate(numberofunits = ifelse(category == "sf" & numberofunits == 0,
-                                1,
-                                numberofunits))
-
-total_acres_residential <- bk_clar %>% 
-  as.data.frame() %>% 
-  filter(residential == 1) %>% 
-  summarize(sum(lotsize_acres, na.rm = TRUE)) %>% 
-  pull()
-
-
-total_units <- bk_clar %>% 
-  as.data.frame() %>% 
-  filter(residential == 1) %>% 
-  summarize(sum(numberofunits, na.rm = TRUE)) %>% 
-  pull()
+get_individual_density <- function(node_name, node_type) {
   
-total_units / total_acres_residential
+  n <- nodes %>% 
+    filter(name == node_name,
+           node == node_type)
+  
+  bk_clar %>% 
+    st_intersection(n) %>% 
+    as.data.frame() %>% 
+    summarize(residential_parcels = sum(residential, na.rm = TRUE),
+            residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
+                                    na.rm = TRUE),
+            total_acres = sum(lotsize_acres, na.rm = TRUE),
+            number_of_units = sum(numberofunits, na.rm = TRUE),
+            density = number_of_units / total_acres)
+}
 
 ```
 
-Calculate density for each zoning code.
+Test function, make sure results are the same.
 
-```{r density-zoning}
+```{r test-fxn}
 
-bk_clar %>% 
-  as.data.frame() %>% 
-  group_by(zoning) %>% 
-  summarize(total_units = sum(numberofunits, na.rm = TRUE),
-            total_acres_residential = sum(lotsize_acres, na.rm = TRUE)) %>% 
-  mutate(units_per_acre = total_units / total_acres_residential) %>% 
-  arrange(desc(total_acres_residential)) %>% 
-  head(20) %>% 
+get_individual_density("Clarendon", "Activity") %>% 
   knitr::kable()
 
-
 ```
 
-
-## Application
-
-
-> Our estimate takes into account the characteristics of land surrounding each of the 1,095 transit stations. 
-We filtered out regions classified as rural or remote that are thinly populated and unlikely to be developed for transit-oriented housing over the next 50 years. Within each station area, we screened out non-developable 
-land and assumed that one-third of developable land will be used for commercial purposes. On the remaining 
-land—developable residential space—we assumed that 10 percent would be needed for roads and other 
-public spaces rather than homes. We calculated the housing potential on developable residential land by 
-assuming two scenarios. In our low case, there is one new housing unit per net acre for every 100 existing 
-units within the transit-oriented development area. In our high case, station areas “upshift” to the density of the next urban type. So, suburban nodes (with fewer than 6.5 units per net acre) are developed to the average 
-current density of urban centers, at ten units per net acre. Urban centers (with 6.5 to 15 units per net acre) are developed to the average current density of regional hubs, at 31 units per net acre. And regional hubs (with more than 15 units per net acre) upshift to 31 units per net acre if they are currently below that density, and if they already have more than 31 units per net acre, we use the station area’s low-case density potential. To avoid double-counting the transit-oriented development housing opportunity with other tools discussed in this paper, we subtracted opportunities in transit areas that were identified for potential infill on vacant land (Tool 1) or redevelopment of underutilized land (Tool 4).
+We also need the calculation for a the sum of all the transit/activity/total area for each jurisdiction, and total.
 
 
 
-QUESTION- how to deal with activity zones that overlap jurisdictions??
+
 
