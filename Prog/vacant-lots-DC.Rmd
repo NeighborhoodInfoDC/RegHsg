@@ -261,7 +261,9 @@ zoningcode1 <- zoningcode %>%
     district_type== "Residential Apartment" ~ "RA",
     is.na(floor_area_ratio_max) &is.na(dwelling_units_allowed) ~ "All Other",
     district_type== "Mixed-Use"|district_type== "Neighborhood Mixed Use"|district_type=="Downtown" ~ "Mixed",
-    district_type== "Special Purpose" ~ "Special purpose",
+    district_type== "Special Purpose" & dwelling_type=="All"~ "Special purpose-All",
+    district_type== "Special Purpose" & dwelling_type=="Non-IZ"~ "Special purpose-A",
+    district_type== "Special Purpose" & dwelling_type=="IZ"~ "Special purpose-B",
     floor_area_ratio_max <= 1 ~ "Other Mixed"
   )) %>% 
   mutate(dwelling_type= (ifelse(is.na(dwelling_type)==1, "All", dwelling_type)))
@@ -299,7 +301,7 @@ We will also create a designation for dwelling types that are restricted to a ce
 
 zoningcode_factor <- zoningcode2 %>% 
   mutate( newdwelling_type = factor(newdwelling_type,
-                                levels = c("RA", "Mixed", "Other Mixed", "All Other", "Special purpose",
+                                levels = c("RA", "Mixed", "Other Mixed", "All Other", "Special purpose-All","Special purpose-B","Special purpose-A",
                                            "RF4-C","RF4-B", "RF4-A",
                                            "RF3-C","RF3-B","RF3-A",
                                            "RF2-C","RF2-B","RF2-A",
@@ -332,7 +334,7 @@ zoningcode_factor <- zoningcode2 %>%
 
 ## Clean vacant lots data
 
-We are switching to blacknight data here:
+We are switching back to blacknight data here:
 
 Select only vacant lots
 
@@ -512,10 +514,9 @@ vacantjoin_parcel <- st_join(vacantsfparcel, zon, join = st_intersects)
 
 vacantjoin_bk <- st_join(vacantsfbk, zon, join = st_intersects)
 
-
 ```
 
-After the join, we convert back to a dataframe and recombine the two vacant datasets together, for ease of computations.
+After the join, we convert back to a dataframe and recombine the two vacant datasets together, for ease of calculation.
 
 ```{r back-to-df}
 
@@ -562,7 +563,7 @@ stopifnot(nrow(vacanttotal) == nrow(vacant1))
 The last step is to identify a zoning designation from shapefile that has more than 1 code. There's no dual zoning code from the shapefile. 
 
 ```{r real-final}
-# report out that the dataset has 0 observations
+
 dual1 <- vacanttotal %>% 
   filter((str_detect(ZONING_LAB, ",") == TRUE)) %>% 
   group_by(ZONING_LAB) %>% 
@@ -584,37 +585,38 @@ We need to clean the spatial joined zoning code, especially the Residential code
 
 ```{r remove dash}
 
+vacanttotaltest <- vacanttotal %>% 
+  mutate(zoning_code=ZONING_LAB)
+
+anti_join(vacanttotaltest, zoningcode_factor, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
 vacantcleaned <- vacanttotal %>% 
           mutate(zoning_code=ZONING_LAB, 
                  zoning_bk= zoning) %>% 
           mutate(firsttwo= substr(ZONING_LAB, 1,2),
                  badrescode=ifelse(str_detect(firsttwo, "R-")==1, 1, 0),
-                 zoning_code=ifelse(badrescode==1, paste0(substr(ZONING_LAB, 1,1),substr(ZONING_LAB,3,3)),ZONING_LAB))
+                 zoning_code=str_trim(ifelse(badrescode==1, paste0(substr(ZONING_LAB, 1,1),substr(ZONING_LAB,3,4)),ZONING_LAB), side="right"),
+                 zoning_code=ifelse(ZONING_LAB== "R-1-A", "R1A", zoning_code),
+                 zoning_code= ifelse(ZONING_LAB== "R-1-B", "R1B", zoning_code))
 
 
 ```
 
-After cleaning, use anti_join again to test if there are any left over residential codes that are not joined. R1 and RC-1, RC-3 not joined. Check the spreasheet and they are not in. 
+After cleaning, use anti_join again to test if there are any left over residential codes that are not joined.PDR are not residential codes. Fix SEFC-1B and StE-14 (assign StE-14 to StE-14A)
 ```{r antijoinagain}
 
 anti_join(vacantcleaned, zoningcode_factor, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
-```
-
-There are 2228 R1s that are not joined which is a lot, in our spreadsheet we have R1A and R1B, pull in lotsize and see which ones we should assign the R1 to. R1A has lot size of 7500, R1B has lot size of 5000. Use as threshold.
-
-Reassign some of the R1s to R1A and R1B based on the flag
-```{r reassign R1}
-
 vacantcleaned2 <- vacantcleaned %>% 
-  mutate(R1Aflag= ifelse(lotsize_sf>=7500 & zoning_code=="R1",1,0),
-         R1Bflag=ifelse(lotsize_sf<7500 & lotsize_sf>= 5000 & zoning_code=="R1",1, 0)) %>% 
-  mutate(zoning_code= ifelse(R1Aflag==1, "R1A", zoning_code),
-         zoning_code= ifelse(R1Bflag==1, "R1B", zoning_code))
 
-#after cleaning there are still 1537 R1 that are not joined due to lot size not meeting standards. Not sure if we should keep some of them
+          mutate(zoning_code=ifelse(ZONING_LAB== "StE-14", "StE-14A", zoning_code),
+                 zoning_code= ifelse(ZONING_LAB== "SEFC-1B", "SEFC-1-B", zoning_code))
+
+
 anti_join(vacantcleaned2, zoningcode_factor, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
@@ -636,7 +638,7 @@ zoningdata %>%
 
 ```
 
-Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 25786 to 11318, after slicing out the least dense zoning code, we have 2775 observation left. 
+Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 25286 to 11299, after slicing out the least dense zoning code, we have 2766 observation left. 
 
 ```{r filter-small}
 
@@ -651,7 +653,7 @@ zoningdata1 <- zoningdata %>%
 
 nrow(zoningdata1)
 
-# 13580 cases where lotsize_sf is less than the minimum lot area or missing. 
+# 13987 cases where lotsize_sf is less than the minimum lot area or missing. 
 zoningdata1test <- zoningdata %>% 
      filter(lotsize_sf < lot_area_min) %>% 
      mutate(gap= lotsize_sf-lot_area_min) %>% 
@@ -682,7 +684,7 @@ There are several variables we will use to calculate how many units we can put o
 2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
 3. Units per floor: this is the living area divided by the average unit size. We use 900 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
 4. Units allowed based on height limits: This is the units per floor x the number of stories.
-5. Units allowed based on lot size: this is the lot area divided by `lotarea_per_unit`
+5. Units allowed based on FAR: use FAR to calculate gross floor area instead of coverage ratio, units     per floor *floors
 
 We can create a function that will allow us to easily adjust these parameters and compare results.
 
@@ -709,11 +711,14 @@ get_unit_variables <- function(dataset,
            buildable_area = lotsize_sf * lot_coverage_max,
            living_area = buildable_area * construction_efficiency,
            units_per_floor = floor(living_area / average_unit_size),
-           floors = floor(height_ft / 10),
+           floors = floor(height_ft /10),
            units_height = units_per_floor * floors,
-           units_FAR= (living_area*floor_area_ratio_max)/average_unit_size,
+           GFA = floor_area_ratio_max * buildable_area,
+           living_area_far=GFA*construction_efficiency,
+           units_per_floor_far=living_area/average_unit_size,
+           units_FAR= units_per_floor_far * floors) %>% 
           #lotarea_per_unit is missing for all in DC, so use units_height and units_FAR for units estimates
-           units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
+           #units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
            mutate_at(vars(units_height, units_FAR),
               funs(case_when(
                 one_unit_flag == 1 ~ 1,
@@ -722,6 +727,8 @@ get_unit_variables <- function(dataset,
                 four_unit_flag == 1 ~ 4,
                 TRUE ~ .))) %>% 
     mutate(subset=as.integer(lotsize_sf/lot_area_min), na.rm = TRUE) %>% 
+    mutate(units_height=ifelse(is.na(units_height)==1, 0, units_height),
+           units_FAR=ifelse(is.na(units_FAR)==1, 0, units_FAR)) %>% 
     mutate(units_total = case_when(
       one_unit_flag == 1 & subset<1 ~ 1,
       two_unit_flag == 1 & subset<1~ 2,
@@ -733,7 +740,7 @@ get_unit_variables <- function(dataset,
       four_unit_flag == 1 & subset>=1~ 4*subset,
       units_height > units_FAR ~ units_FAR,  #taking the smaller estimate between the two
       TRUE ~ units_height))
- 
+
 }
 
 #' Get maximum unit summary
@@ -759,7 +766,7 @@ get_unit_summary <- function(dataset,
               units_height = sum(units_height, na.rm = TRUE),
               units_FAR = sum(units_FAR, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
-              units_per_lot = floor(sum(units_total / lots)))
+              units_per_lot = floor(sum(units_total /lots)))
   
   y <- dataset %>% 
     get_unit_variables(construction_efficiency,
@@ -782,8 +789,6 @@ get_unit_summary <- function(dataset,
     }
 }
 
-
-
 ```
 
 Get summary statistics for several different parameters
@@ -795,6 +800,7 @@ get_unit_summary(dataset = zoningdata1,
                  average_unit_size = 900,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
+
 
 
 map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata1,
@@ -811,7 +817,7 @@ Look at the distribution of units for lots with more than 1 unit, to check for e
 zoningdata1 %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 900) %>% 
-             select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters, units_lotsize)%>% 
+             select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
   filter(units_total > 1) %>% 
   ggplot() +
   geom_point(mapping = aes(lotsize_sf, units_total),
@@ -831,10 +837,9 @@ zoningdata1 %>%
 zoningdata1test <- zoningdata1 %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 900) %>% 
-             select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters, units_lotsize)%>% 
+             select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
   filter(units_total > 1) %>% 
   filter(two_unit_flag==1 & lotsize_sf>150000) 
-# some of the higher lotsize_sf with only 2 units is due to the #dwelling units allowed flag. The three showed here are all RF codes that has a 2 dwelling units limit. I have yet to confirm with Chris that those are true. 
 
 
 ```
