@@ -364,12 +364,12 @@ Write into function
 
 ```{r joint-fxn}  
   
-get_joint_density <- function(area) {
+get_joint_density <- function(dataset, area) {
   
   suppressMessages({
     suppressWarnings({
       
-        parcel1 %>% 
+        dataset %>% 
           st_intersection(area) %>% 
           as.data.frame() %>% 
           group_by(county_fips, county_name) %>% 
@@ -391,16 +391,30 @@ Apply function to transit, activity, and joint buffer. Create a variable for eac
 
 t <- get_joint_density(dataset = parcel1,
                        area = transit) %>% 
-  mutate(node_type == "transit")
+  mutate(node_type = "transit")
 
 a <- get_joint_density(dataset = parcel1,
                        area = activity) %>% 
-  mutate(node_type == "activity")
+  mutate(node_type = "activity")
 
 j <- get_joint_density(dataset = parcel1,
                        area = joint) %>% 
-  mutate(node_type == "joint")
+  mutate(node_type = "joint")
 
-total <- bind_rows(t, a, j)
+total <- bind_rows(t, a, j) %>% 
+  select(node_type, everything())
+
+```
+
+### Write out results
+
+```{r write}
+
+write_csv(bind_rows(individual_activity,
+                    individual_transit),
+          "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual.csv")
+
+write_csv(total,
+          "L:/Libraries/RegHsg/Prog/Tables/upzoning-combined.csv")
 
 ```
