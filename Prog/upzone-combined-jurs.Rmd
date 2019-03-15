@@ -335,6 +335,8 @@ individual_activity <- map_df(activity_names,
                                                        node_name = ., 
                                                        node_type = "Activity"))
 
+individual <- bind_rows(individual_transit, individual_activity)
+
 ```
 
 
@@ -346,17 +348,19 @@ Test calculation on transit zone.
 
 ```{r buffer-summary}
 
+# commented out to increase speed of knitting
 
-parcel1 %>% 
-  st_intersection(transit) %>% 
-  as.data.frame() %>% 
-  group_by(county_fips, county_name) %>% 
-  summarize(residential_parcels = sum(residential, na.rm = TRUE),
-              residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
-                                      na.rm = TRUE),
-              total_acres = sum(lotsize_acres, na.rm = TRUE),
-              number_of_units = sum(numberofunits, na.rm = TRUE),
-              density = number_of_units / total_acres)
+# parcel1 %>% 
+#   st_intersection(transit) %>% 
+#   as.data.frame() %>% 
+#   group_by(county_fips, county_name) %>% 
+#   summarize(residential_parcels = sum(residential, na.rm = TRUE),
+#               residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
+#                                       na.rm = TRUE),
+#               total_acres = sum(lotsize_acres, na.rm = TRUE),
+#               number_of_units = sum(numberofunits, na.rm = TRUE),
+#               density = number_of_units / total_acres)
+
 ```
 
 
@@ -410,8 +414,7 @@ total <- bind_rows(t, a, j) %>%
 
 ```{r write}
 
-write_csv(bind_rows(individual_activity,
-                    individual_transit),
+write_csv(individual,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual.csv")
 
 write_csv(total,
