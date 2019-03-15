@@ -53,6 +53,8 @@ library(units)
 source("../Macros/read-combined-parcels.R")
 source("../Macros/get_node_geography.R")
 
+set_urbn_defaults("print")
+
 ```
 
 Create directory for data exports
@@ -90,6 +92,15 @@ parcel <- parcel %>%
                              lotsize_prop,
                              lotsize_sf),
          lotsize_acres = lotsize_sf / 43560)
+
+parcel %>% 
+  filter(county_fips == 11001,
+         category_detail == "Condominium unit") %>% 
+  count(is.na(lat),
+        is.na(parcelgeo_x))
+  
+
+
 
 ```
 
@@ -299,7 +310,9 @@ get_individual_density <- function(dataset, node_name, node_type) {
               residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
                                       na.rm = TRUE),
               total_acres = sum(lotsize_acres, na.rm = TRUE),
-              number_of_units = sum(numberofunits, na.rm = TRUE),
+              number_of_units = sum(ifelse(residential == 1,
+                                           numberofunits,
+                                           0),na.rm = TRUE),
               density = number_of_units / total_acres) %>% 
     mutate(name = node_name, type = node_type) %>% 
     select(name, type, everything())
@@ -421,3 +434,53 @@ write_csv(total,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-combined.csv")
 
 ```
+
+## Table 2
+
+Classify transit and activity centers as low-medium-high density.
+
+
+Distribution of density of activity centers and transit stops.
+
+```{r dist}
+
+individual %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(x = density),
+                 bins = 40) +
+  scale_y_continuous(expand = c(0,0)) +
+  facet_grid(~ type)
+
+
+parcel1 %>% 
+  as.data.frame() %>% 
+  filter(county_fips == "11001") %>% 
+  ungroup() %>% 
+  group_by(category_detail) %>% 
+  summarize(numberofunits = sum(numberofunits))
+
+parcel1 %>% 
+  as.data.frame() %>% 
+  filter(county_fips == "11001",
+         category == "mf") %>%
+  count(numberofunits == 0)
+  
+
+
+```
+
+```{r bar}
+individual_transit %>% 
+  mutate(name = as.character(name)) %>% 
+  arrange(desc(density)) %>% 
+  head(20) %>% 
+  ggplot() +
+  geom_bar(mapping = aes(name, reorder(density, .desc = TRUE)),
+           stat = "identity") +
+  scale_y_continuous(expand = c(0,0)) +
+  coord_flip()
+
+
+
+```
+
