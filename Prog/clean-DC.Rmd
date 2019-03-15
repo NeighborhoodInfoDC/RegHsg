@@ -58,6 +58,9 @@ source("../Macros/filter-bk.R")
 source("../Macros/select-vars.R")
 source("../Macros/sample-properties.R")
 source("../Macros/classify-addresses.R")
+source("../Macros/max_narm.R")
+source("../Macros/mode_narm.R")
+
 ```
 #### Create directory for data exports on local computer
 ```{r dir}
@@ -772,27 +775,30 @@ rm(length)
   summarize_at(vars(zoning,lotsize_sf,
                     buildingarea, parcelbase_usecode, 
                     residential, category, category_detail, building_type,
-                    yearbuilt, parcelgeo_x, parcelgeo_y), list) %>% 
+                    yearbuilt, parcelgeo_x, parcelgeo_y,
+                    lat, long), list) %>% 
   rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
-         zoning = map(zoning_list, Mode),
+         zoning = map(zoning_list, mode_narm),
          lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
          buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
-         usecode = map(parcelbase_usecode_list, Mode),
-         residential = map(residential_list, max, na.rm = FALSE),
-         category = map(category_list, Mode),
-         category_detail = map(category_detail_list, Mode),
+         usecode = map(parcelbase_usecode_list, mode_narm),
+         residential = map(residential_list, max_narm),
+         category = map(category_list, mode_narm),
+         category_detail = map(category_detail_list, mode_narm),
          building_type = ifelse(category == "mf",
-                                map(building_type_list, Mode),
+                                map(building_type_list, mode_narm),
                                 NA),
-         Xcoord = map(parcelgeo_x_list, median),
-         Ycoord = map(parcelgeo_y_list, median),
+         Xcoord = map(parcelgeo_x_list, median, na.rm = TRUE),
+         Ycoord = map(parcelgeo_y_list, median, na.rm = TRUE),
+         lat = map(lat_list, median, na.rm = TRUE),
+         long = map(long_list, median, na.rm = TRUE),
          # year built handled differently due to missing values
          yearbuilt_list = ifelse(as.integer(map(yearbuilt_list, function(x) sum(!is.na(x)))) == 0,
                                  NA,
                                  yearbuilt_list),
          yearbuilt = ifelse(!is.na(yearbuilt_list),
-                      map(yearbuilt_list, max, na.rm = TRUE),
+                      map(yearbuilt_list, max_narm),
                       NA))
 
 #nestedtest should have 0 observation
@@ -835,7 +841,7 @@ There are a few variables needed:
 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode and mode is larger than 8000).
 3. The max, this is for dealing with the fourth instance in the table above
 
-``` {r lot-vars}
+```{r lot-vars}
 nested <- nested %>% 
   mutate(nprops = as.integer(nprops),
          lotsize_sf_sum = as.integer(lotsize_sf_sum),
@@ -851,7 +857,7 @@ nested <- nested %>%
 
 Based on these variables, we can identify when`sum()` is definitely the right function (when the number of unique values in `lotsize_sf_list` is the same as `nprops`), and when we want to take the first argument is definitely the right function (there is only one unique value in `lotsize_sf_list`). In addition, we want a threshold for when we are using the "first" because sometimes even if all properties have the same lot size we still want to sum them. Here threshold is 8000. 
 
-``` {r fx-choice}
+```{r fx-choice}
 nested <- nested %>% 
   mutate(fxn = case_when(
     lotsize_sf_sum < 1 ~ "missing",   
@@ -871,12 +877,12 @@ nested_done <- nested %>%
 
 There are a total of 2032 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah's logic, but had some with the nprops one. 
 
-1. The lotsize seems reasonable, the nprop is extremely large.
+1. he lotsize seems reasonable, the nprop is extremely large.
 2. In addition, For cases (also presented in the table above) where one lotzie equals the sum of all other lotsize in the same address, use the max for now, even if it is not true for all cases, shouldn't change the result too much since I was only to identiy 13 cases. 
 
 Other than the two issues, following sarah's instruction, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
 
-``` {r fx-choice2}
+```{r fx-choice2}
 nested_other <- nested %>% 
   filter(fxn == "other") %>% 
   mutate(lsmode_num = ifelse(map(lsmode, length) > 1, NA,lsmode), 
@@ -1163,7 +1169,9 @@ multiples_f <- nested_final %>%
          -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %>% 
   mutate_at(vars(category, category_detail, building_type, yearbuilt, zoning, parcelbase_usecode),
             as.character) %>% 
-  mutate_at(vars(buildingarea, residential), as.double) %>% 
+  mutate_at(vars(buildingarea, residential, lat, long), as.double) %>% 
+  mutate(parcelgeo_x = as.numeric(Xcoord),
+         parcelgeo_y = as.numeric(Ycoord)) %>% 
   rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops) %>% 
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = "multiple")
@@ -1171,9 +1179,7 @@ multiples_f <- nested_final %>%
 finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>% 
   fill(county_fips) %>% 
   fill(county_name) %>% 
-  select(-Xcoord, -Ycoord, -usecode) 
-
-
+  select(-Xcoord, -Ycoord, -usecode)
 
 finaljur[finaljur == "NULL"] = NA
 finaljur[finaljur == "character(0)"] = NA
