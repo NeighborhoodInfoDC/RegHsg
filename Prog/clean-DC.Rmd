@@ -772,7 +772,7 @@ rm(length)
   summarize_at(vars(zoning,lotsize_sf,
                     buildingarea, parcelbase_usecode, 
                     residential, category, category_detail, building_type,
-                    yearbuilt, parcelgeo_x, parcelgeo_y), list) %>% 
+                    yearbuilt, parcelgeo_x, parcelgeo_y, assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %>% 
   rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
@@ -793,7 +793,11 @@ rm(length)
                                  yearbuilt_list),
          yearbuilt = ifelse(!is.na(yearbuilt_list),
                       map(yearbuilt_list, max, na.rm = TRUE),
-                      NA))
+                      NA),
+         totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
+         assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
+                                            sum, na.rm = TRUE),
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))
 
 #nestedtest should have 0 observation
 nestedtest<- nested %>%
@@ -1144,7 +1148,7 @@ singles_f <- singles %>%
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
-         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y)
+         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
 
 missing_f <- missing %>% 
   select(county_fips, county_name,
@@ -1156,7 +1160,7 @@ missing_f <- missing %>%
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
-         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y)
+         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
 
 multiples_f <- nested_final %>% 
   select(-ends_with("_list"), -lsmode, -lsfirst, 

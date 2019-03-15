@@ -243,8 +243,8 @@ zoningcode1 <- zoningcode %>%
     dwelling_units_allowed==1 & dwelling_type== "IZ detached"~ "One Family-B",
     dwelling_units_allowed==1 & dwelling_type== "semi-detached"~ "One Family-C",
     dwelling_units_allowed==1 & dwelling_type== "attached"~ "One Family-D",
-    dwelling_units_allowed==1 & dwelling_type== "IZ attached"~ "One Family-E",
-    dwelling_units_allowed==1 & dwelling_type== "IZ semi-detached"~ "One Family-F",
+    dwelling_units_allowed==1 & dwelling_type== "IZ semi-detached"~ "One Family-E",
+    dwelling_units_allowed==1 & dwelling_type== "IZ attached"~ "One Family-F",
     dwelling_units_allowed==1 & dwelling_type== "all other structures"~ "All Other",
     dwelling_units_allowed==2 & dwelling_type== "semi-detached" ~ "RF2-A",
     dwelling_units_allowed==2 & dwelling_type== "row dwelling or flat" ~ "RF2-B",
@@ -259,15 +259,12 @@ zoningcode1 <- zoningcode %>%
     dwelling_units_allowed==4 & dwelling_type=="row dwelling or flat (IZ)"~ "RF4-C",
     dwelling_units_allowed==4 & dwelling_type=="all other structures"~ "All Other", 
     district_type== "Residential Apartment" ~ "RA",
-    is.na(floor_area_ratio_max) &is.na(dwelling_units_allowed) ~ "All Other",
     district_type== "Mixed-Use"|district_type== "Neighborhood Mixed Use"|district_type=="Downtown" ~ "Mixed",
     district_type== "Special Purpose" & dwelling_type=="All"~ "Special purpose-All",
     district_type== "Special Purpose" & dwelling_type=="Non-IZ"~ "Special purpose-A",
-    district_type== "Special Purpose" & dwelling_type=="IZ"~ "Special purpose-B",
-    floor_area_ratio_max <= 1 ~ "Other Mixed"
+    district_type== "Special Purpose" & dwelling_type=="IZ"~ "Special purpose-B"
   )) %>% 
   mutate(dwelling_type= (ifelse(is.na(dwelling_type)==1, "All", dwelling_type)))
-
 
 ```
 Filter out dwelling_types of "All", "All Other", and those that are dependent on a shared boundary.
@@ -275,7 +272,7 @@ Filter out dwelling_types of "All", "All Other", and those that are dependent on
 ```{r purge}
 zoningcode2 <- zoningcode1 %>% 
   group_by(zoning_code) %>% 
-  filter(!(dwelling_type %in% c("All Other", "All")
+  filter(!(newdwelling_type %in% c("All Other")
            & n() > 1)) %>%
   ungroup() 
 
@@ -301,7 +298,7 @@ We will also create a designation for dwelling types that are restricted to a ce
 
 zoningcode_factor <- zoningcode2 %>% 
   mutate( newdwelling_type = factor(newdwelling_type,
-                                levels = c("RA", "Mixed", "Other Mixed", "All Other", "Special purpose-All","Special purpose-B","Special purpose-A",
+                                levels = c("RA", "Mixed", "Special purpose-B","Special purpose-A","Special purpose-All",
                                            "RF4-C","RF4-B", "RF4-A",
                                            "RF3-C","RF3-B","RF3-A",
                                            "RF2-C","RF2-B","RF2-A",
@@ -311,24 +308,6 @@ zoningcode_factor <- zoningcode2 %>%
          three_unit_flag = ifelse(dwelling_units_allowed==3, 1,0),
          four_unit_flag = ifelse(dwelling_units_allowed==4, 1,0))
 
-
-#apply the original dwelling type to zoning codes, despite missing dwelling type info for some observations
-#zoningcode_factor2 <- zoningcode2 %>% 
-  #mutate(dwelling_type = factor(dwelling_type,
-                                #levels = c("IZ attached",
-                                           #"attached",
-                                          # "IZ semi-detached",
-                                          # "semi-detached",
-                                          # "Duplex",
-                                          # "IZ detached",
-                                          # "detached",
-                                          # "IZ",
-                                          # "Non-IZ",
-                                           #"All")),
-        # one_unit_flag = ifelse(dwelling_units_allowed==1, 1,0),
-        # two_unit_flag = ifelse(dwelling_units_allowed==2, 1,0),
-         #three_unit_flag = ifelse(dwelling_units_allowed==3, 1,0),
-        # four_unit_flag = ifelse(dwelling_units_allowed==4, 1,0))
 
 ```
 
@@ -357,23 +336,22 @@ vacant %>%
             .funs = list(percent = ~scales::percent(. / num))) %>% 
   knitr::kable(caption = "Number and percent of missing values")
 
-#this is what you should be getting
-#|category_detail        | propaddress| lotsize_sf| zoning|   num|propaddress_percent |lotsize_sf_percent |zoning_percent |
-#|:----------------------|-----------:|----------:|------:|-----:|:-------------------|:------------------|:--------------|
-#|Vacant unimproved      |        1279|        784|   1471| 11565|11.06%              |6.78%              |12.72%         |
-#|Vacant with structures |          12|          4|     27|   242|4.96%               |1.65%              |11.16%         |
+# |category_detail        | propaddress| lotsize_sf| zoning|  num|propaddress_percent |lotsize_sf_percent |zoning_percent |
+# |:----------------------|-----------:|----------:|------:|----:|:-------------------|:------------------|:--------------|
+# |Vacant unimproved      |        6299|        152|    990| 8833|71.3%               |1.721%             |11.21%         |
+# |Vacant with structures |         197|          2|     22|  216|91.2%               |0.926%             |10.19%              |
 
 ```
 
 ### Missing lot size
 We filled in the missing lot size, when we can, with the cleaned parcelbase lot area data in the clean DC step. So skip this step.
 
-We have 788 lotsize missing after the cleaning. 
+We have 154 lotsize missing after the cleaning. 
 
 ```{r count-lots}
 sum(is.na(vacant$lotsize_sf))
 
-#this is what you should be getting: [1] 788
+#this is what you should be getting: [1] 154
 ```
 
 ### Assessment values
@@ -382,14 +360,14 @@ The difference between the land value, improvement value, and total value can he
 
 ```{r check-assess}
 #this part wont knit not sure why, I'm pasting the table in the comment
-#vacant %>% 
-  #group_by(category_detail) %>% 
-  #summarize(nprops = n(),
-            #imp_zero = sum(assessedimprovementvalue == 0, na.rm = TRUE),
-            #imp_na = sum(is.na(assessedimprovementvalue))) %>% 
-  #mutate(imp_none = imp_zero + imp_na,
-         #percent_none = imp_none / nprops) %>% 
-  #knitr::kable()
+vacant %>% 
+  group_by(category_detail) %>% 
+  summarize(nprops = n(),
+            imp_zero = sum(assessedimprovementvalue == 0, na.rm = TRUE),
+            imp_na = sum(is.na(assessedimprovementvalue))) %>% 
+  mutate(imp_none = imp_zero + imp_na,
+         percent_none = imp_none / nprops) %>% 
+  knitr::kable()
 
   
 ```
@@ -405,7 +383,7 @@ vacantstructure <- vacant%>%
 
 ```
 
-We will not include vacant with structures (242 cases) in the calculation. We can also make a flag for missing coordinates.
+We will not include vacant with structures (216 cases) in the calculation. We can also make a flag for missing coordinates.
 
 ```{r not-vacant-recat}
 
@@ -436,7 +414,7 @@ vacant1 %>%
                ~ sum(!is.na(.))) %>% 
   knitr::kable(caption = "Number of addresses that are missing XY coordinates but not lat lon from blacknight")
 
-#so there are 1068 observations that we need to use the blacknight location for the join
+#so there are 308 observations that we need to use the blacknight location for the join
 
 ```
 
@@ -596,7 +574,6 @@ vacantcleaned <- vacant2 %>%
                  zoning_code=ifelse(ZONING_LAB== "R-1-A", "R1A", zoning_code),
                  zoning_code= ifelse(ZONING_LAB== "R-1-B", "R1B", zoning_code))
 
-
 ```
 
 After cleaning, use anti_join again to test if there are any left over residential codes that are not joined.PDR are not residential codes. Fix SEFC-1B and StE-14 (assign StE-14 to StE-14A)
@@ -633,7 +610,7 @@ zoningdata %>%
 
 ```
 
-Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 27472 to 11415, after slicing out the least dense zoning code, we have 2807 observation left. 
+Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 15942 to 8140, after slicing out the least dense zoning code, we have 1356 observation left. 
 
 ```{r filter-small}
 
@@ -649,7 +626,7 @@ zoningdata1 <- zoningdata %>%
 nrow(zoningdata1)
 nrow(zoningdata)
 
-# 13987 cases where lotsize_sf is less than the minimum lot area or missing. 
+# 7790 cases where lotsize_sf is less than the minimum lot area or missing. 
 zoningdata1test <- zoningdata %>% 
      filter(lotsize_sf < lot_area_min) %>% 
      mutate(gap= lotsize_sf-lot_area_min) %>% 
@@ -668,18 +645,28 @@ ggplot(zoningdata1, aes(lot_area_min) )+
 ggplot(zoningdata1test, aes(gap ))+
   geom_histogram(binwidth = 500)
 
-testzoning <- zoningdata1 %>% 
-  filter(newdwelling_type=="Special purpose-B") %>% 
-  select(lotsize_sf, lot_area_min, lot_coverage_max, floor_area_ratio_max, height_ft, zoning_code,  propaddress)
-
-
 ```
 
-filter out special zoning codes that are not for housing
+filter out special zoning codes that are not for housing. Recategorize for exporting tables. Leah-- please let me know if there are better categories. We can also just export the unit estimates by each zoning code-- more precise that way and we can categorize those codes later.
 ```{r filter-special purpose}
 
 zoningdata2 <- zoningdata1 %>% 
   filter(zoning_code != "SEFC-4") 
+
+zoningdata2 %>% 
+  group_by(newdwelling_type) %>% 
+  count() %>% 
+  knitr::kable()
+
+zoningdata3 <-zoningdata2 %>% 
+  mutate(dwelling_type2= case_when(newdwelling_type=="RA" ~ "Multifamily", #residential apartments
+                                   newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"| newdwelling_type=="Special purpose-B"~ "Mixed use and Special Purpose Multifamily",
+                                   newdwelling_type=="RF2-C" ~ "Semi-detached", #RF-1/2/3 row houses
+                                   newdwelling_type=="One Family-F" ~ "Semi-detached", #R3 row dwelling
+                                   newdwelling_type=="One Family-E" ~ "Semi-detached", #R2 semidetached
+                                   newdwelling_type=="One Family-A" ~ "Single Family" #residential house detached
+                                   ))
+
 
 ```
 ## Calculate missing units
@@ -778,18 +765,18 @@ get_unit_summary <- function(dataset,
   y <- dataset %>% 
     get_unit_variables(construction_efficiency,
                        average_unit_size) %>%
-    group_by(parameters, newdwelling_type) %>% 
+    group_by(parameters, dwelling_type2) %>% 
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_FAR = sum(units_FAR, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots))) %>% 
-    mutate(newdwelling_type = as.character(newdwelling_type))
+    mutate(dwelling_type2 = as.character(dwelling_type2))
   
   
   if (dwelling_type_breakdown == TRUE) {
    
-      bind_rows(y, mutate(x, dwelling_type = "All"))  
+      bind_rows(y, mutate(x, dwelling_type2 = "All"))  
   
   } else if (dwelling_type_breakdown == FALSE) {
       x
@@ -802,13 +789,13 @@ Get summary statistics for several different parameters
 
 ```{r sum}
 
-get_unit_summary(dataset = zoningdata2,
+get_unit_summary(dataset = zoningdata3,
                  construction_efficiency = .7,
                  average_unit_size = 900,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
-map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata2,
+map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata3,
                                       construction_efficiency = .,
                                       average_unit_size = 900,
                                       dwelling_type_breakdown = TRUE)) %>% 
@@ -819,7 +806,7 @@ Look at the distribution of units for lots with more than 1 unit, to check for e
 
 ```{r scatter, echo = FALSE}
 
-zoningdata2 %>% 
+zoningdata3 %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 900) %>% 
              select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
@@ -839,7 +826,7 @@ zoningdata2 %>%
   theme(plot.margin = margin(t = 20, r = 20))
 
 
-zoningdata1test <- zoningdata2 %>% 
+zoningdata1test <- zoningdata3 %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 900) %>% 
              select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
@@ -853,14 +840,14 @@ Look more closely at vacant lots < 50,000 SF
 
 ```{r scatter-small, echo = FALSE}
 
-zoningdata2 %>% 
+zoningdata3 %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 900) %>% 
   filter(lotsize_sf < 50000) %>% 
-  select(lotsize_sf, newdwelling_type, dwelling_type, units_total)%>% 
+  select(lotsize_sf, newdwelling_type, dwelling_type2, units_total)%>% 
   ggplot() +
   geom_point(mapping = aes(lotsize_sf, units_total,
-                           color = newdwelling_type),
+                           color = dwelling_type2),
              alpha = .8) +
   scale_x_continuous(labels = scales::comma,
                      expand = expand_scale(mult = c(0, 0.0002)), 
@@ -884,7 +871,7 @@ Write out the results to a csv. Include jurisdiction name in the title.
 
 ```{r write-results}
 
-get_unit_summary(dataset = zoningdata2,
+get_unit_summary(dataset = zoningdata3,
                  construction_efficiency = .7,
                  average_unit_size = 940,
                  dwelling_type_breakdown = TRUE) %>% 
