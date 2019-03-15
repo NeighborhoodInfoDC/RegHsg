@@ -808,6 +808,15 @@ calculateunit_data <- get_unit_variables(dataset = zoningdata3,
                  average_unit_size = 900) %>% 
                select(parameters,lotsize_sf, buildable_area, living_area, height_ft, floors, units_height, units_FAR, units_per_floor_far, units_total, propaddress, zoning_code )
 
+
+get_unit_variables(dataset = zoningdata3,
+                 construction_efficiency = .7,
+                 average_unit_size = 940) %>% 
+  select(parameters,lotsize_sf, buildable_area, living_area, height_ft, floors, units_height, units_FAR, units_per_floor_far, units_total, propaddress, zoning_code ) %>% 
+  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
+                   filepath,
+                   "-vacant-lots-analysis-basedata.csv"))
+
 ```
 Look at the distribution of units for lots with more than 1 unit, to check for extreme outliers.
 
@@ -838,7 +847,6 @@ zoningdata1test <- zoningdata3 %>%
                      average_unit_size = 940) %>% 
              select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
   filter(units_total > 1) 
-
 
 
 ```
