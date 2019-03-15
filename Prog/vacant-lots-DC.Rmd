@@ -676,7 +676,7 @@ There are several variables we will use to calculate how many units we can put o
 
 1. Buildable area: this is `lotsize_sf` x the coverage ratio (`lot_coverage_max`)
 2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
-3. Units per floor: this is the living area divided by the average unit size. We use 900 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
+3. Units per floor: this is the living area divided by the average unit size. We use 940 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
 4. Units allowed based on height limits: This is the units per floor x the number of stories.
 5. Units allowed based on FAR: use FAR to calculate gross floor area instead of coverage ratio, units     per floor *floors
 
@@ -792,20 +792,20 @@ Get summary statistics for several different parameters
 
 get_unit_summary(dataset = zoningdata3,
                  construction_efficiency = .7,
-                 average_unit_size = 900,
+                 average_unit_size = 940,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
 map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata3,
                                       construction_efficiency = .,
-                                      average_unit_size = 900,
+                                      average_unit_size = 940,
                                       dwelling_type_breakdown = TRUE)) %>% 
   knitr::kable()
 
 
 calculateunit_data <- get_unit_variables(dataset = zoningdata3,
                  construction_efficiency = .7,
-                 average_unit_size = 900) %>% 
+                 average_unit_size = 940) %>% 
                select(parameters,parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, units_height, units_FAR, units_per_floor_far, units_total, propaddress, zoning_code  )
 
 
@@ -857,7 +857,7 @@ Look more closely at vacant lots < 50,000 SF
 
 zoningdata3 %>% 
   get_unit_variables(construction_efficiency = .7,
-                     average_unit_size = 900) %>% 
+                     average_unit_size = 940) %>% 
   filter(lotsize_sf < 50000) %>% 
   select(lotsize_sf, newdwelling_type, dwelling_type2, units_total)%>% 
   ggplot() +
