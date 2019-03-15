@@ -709,7 +709,7 @@ get_unit_variables <- function(dataset,
            units_height = units_per_floor * floors,
            GFA = floor_area_ratio_max * buildable_area,
            living_area_far=GFA*construction_efficiency,
-           units_per_floor_far=living_area/average_unit_size,
+           units_per_floor_far=living_area_far/average_unit_size,
            units_FAR= units_per_floor_far * floors) %>% 
           #lotarea_per_unit is missing for all in DC, so use units_height and units_FAR for units estimates
            #units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
@@ -808,7 +808,7 @@ Look at the distribution of units for lots with more than 1 unit, to check for e
 
 zoningdata3 %>% 
   get_unit_variables(construction_efficiency = .7,
-                     average_unit_size = 900) %>% 
+                     average_unit_size = 940) %>% 
              select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
   filter(units_total > 1) %>% 
   ggplot() +
@@ -828,7 +828,7 @@ zoningdata3 %>%
 
 zoningdata1test <- zoningdata3 %>% 
   get_unit_variables(construction_efficiency = .7,
-                     average_unit_size = 900) %>% 
+                     average_unit_size = 940) %>% 
              select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
   filter(units_total > 1) %>% 
   filter(two_unit_flag==1 & lotsize_sf>150000) 
