@@ -723,7 +723,7 @@ get_unit_variables <- function(dataset,
                 TRUE ~ .))) %>%
     mutate(subset=floor(lotsize_sf/lot_area_min), na.rm = TRUE) %>% 
     mutate(units_height=ifelse(is.na(units_height)==1, 0, units_height),
-           units_FAR=ifelse(is.na(units_FAR)==1, 0, units_FAR)) %>% 
+           units_FAR= ifelse(is.na(floor_area_ratio_max)==1, NA, units_FAR)) %>% 
     mutate(units_total = case_when(
       one_unit_flag == 1 & subset<1 ~ 1,
       two_unit_flag == 1 & subset<1~ 2,
@@ -733,7 +733,7 @@ get_unit_variables <- function(dataset,
       two_unit_flag == 1 & subset>=1~ 2*subset,
       three_unit_flag == 1 & subset>=1~ 3*subset,
       four_unit_flag == 1 & subset>=1~ 4*subset,
-      units_height > units_FAR ~ units_FAR,  #taking the smaller estimate between the two
+      units_height > units_FAR & !is.na(units_FAR) ~ units_FAR,  #taking the smaller estimate between the two
       TRUE ~ units_height))
 
 }
@@ -806,13 +806,13 @@ map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata3,
 calculateunit_data <- get_unit_variables(dataset = zoningdata3,
                  construction_efficiency = .7,
                  average_unit_size = 900) %>% 
-               select(parameters,lotsize_sf, buildable_area, living_area, height_ft, floors, units_height, units_FAR, units_per_floor_far, units_total, propaddress, zoning_code )
+               select(parameters,parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, units_height, units_FAR, units_per_floor_far, units_total, propaddress, zoning_code  )
 
 
 get_unit_variables(dataset = zoningdata3,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-  select(parameters,lotsize_sf, buildable_area, living_area, height_ft, floors, units_height, units_FAR, units_per_floor_far, units_total, propaddress, zoning_code ) %>% 
+  select(parameters,parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, units_height, units_FAR, units_per_floor_far, units_total, propaddress, zoning_code ) %>% 
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-vacant-lots-analysis-basedata.csv"))
