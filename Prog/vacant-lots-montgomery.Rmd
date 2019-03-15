@@ -76,7 +76,7 @@ currentfips <- "24031"
 filepath <- "montgomery"
 jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
 
-
+count(jur, rockflag != 1, gaitflag != 1)
 ```
 
 Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
@@ -97,6 +97,7 @@ jur <- readRDS(paste0(jdir,
                "parceljoined-",
                filepath,
                "-data.Rdata"))
+count(jur, category_detail)
 
 ```
 ## Clean zoning code information
@@ -366,6 +367,8 @@ vacant_mont <- jur %>%
 
 count(vacant_mont, rockflag, gaitflag)
 
+count(jur, category == "vacant", rockflag !=1, gaitflag !=1)
+
 ```
 
 
@@ -417,6 +420,8 @@ vacant_mont2 <- vacant_mont1 %>%
 count(vacant_mont2, category)
 vacant_mont2 <- vacant_mont2 %>% 
   filter(category == "vacant")
+
+count(vacant_mont2, category == "vacant", rockflag !=1, gaitflag !=1)
 
 
 ```
@@ -477,6 +482,18 @@ anti_join(vacantfinal, zoning_montgomery1, by = c("zoning_code")) %>%
 
 Aside from those with missing zoning information, these zoning codes do not allow for residential properties, which explains why they were not found in the zoning code data.
 
+```{r count total lots before figuring out which ones we can build on}
+zoningdata %>% 
+    group_by(propaddress) %>% 
+    slice(which.min(dwelling_type)) %>% 
+    ungroup() %>% 
+    count(dwelling_type)
+
+count(zoningdata, category_detail)
+
+```
+
+
 Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
 
 ```{r filter-small}
@@ -487,6 +504,33 @@ zoningdata1 <- zoningdata %>%
   group_by(propaddress) %>% 
   slice(which.min(dwelling_type)) %>% 
   ungroup()
+
+count(zoningdata1, dwelling_type)
+
+zoningdata %>% 
+  filter(!is.na(zoning),
+         # lotsize_sf >= lot_area_min,
+         dwelling_type == "apartment")  %>% 
+    group_by(propaddress) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  nrow()
+
+zoningdata %>% 
+  filter(!is.na(zoning),
+         # lotsize_sf >= lot_area_min,
+         dwelling_type == "townhouse")  %>% 
+    group_by(propaddress) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  nrow()
+
+
+zoningdata %>% 
+  filter(!is.na(zoning),
+         lotsize_sf >= lot_area_min,
+         dwelling_type == "apartment")  %>% 
+    group_by(propaddress) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  nrow()
 
 ```
 
@@ -499,10 +543,20 @@ zoningdata2 <- zoningdata1 %>%
   mutate(lotsize_acres = if_else(is.na(lotsize_acres), lotsize_sf / 43560, lotsize_acres)) %>% 
   mutate(lot_area_min = if_else(is.na(lot_area_min), site_area_min, lot_area_min)) %>% 
   mutate(lotarea_per_unit = if_else(is.na(lotarea_per_unit), sitearea_per_unit, lotarea_per_unit)) %>% 
-  mutate(lot_coverage_max = if_else(is.na(lot_coverage_max), site_coverage_max, lot_coverage_max))
+  mutate(lot_coverage_max = if_else(is.na(lot_coverage_max), site_coverage_max, lot_coverage_max)) %>% 
+  mutate(lot_coverage_max = if_else(is.na(lot_coverage_max) & dwelling_type == "townhouse", .4, lot_coverage_max)) %>% #here I assume a max townhouse density of 40%
+  mutate(density = if_else(is.na(density) & dwelling_type == "townhouse" & zoning_code %in% c("CRN", "CRT", "CR"), 15.02, density)) # here I assume a maximum townhouse density of 15.02
+
+count(zoningdata1, lot_coverage_max)
+count(zoningdata2, lot_coverage_max)
+
+count(zoningdata1, density)
+count(zoningdata2, density)
 
 
 ```
+
+
 
 
 There are several variables we will use to calculate how many units we can put on each vacant lot.
@@ -541,8 +595,11 @@ get_unit_variables <- function(dataset,
            floors = floor(height_ft / 10),
            units_height = units_per_floor * floors,
            units_density = floor(density * lotsize_acres),
-           units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
-    mutate_at(vars(units_height, units_lotsize),
+           units_lotsize = floor(lotsize_sf / lotarea_per_unit),
+           units_per_floor_FAR = floor(living_area/average_unit_size),
+           units_massing = massing,
+           units_FAR = units_per_floor_FAR * floors) %>% 
+    mutate_at(vars(units_height, units_lotsize, units_density, units_FAR),
               funs(case_when(
                 one_unit_flag == 1 ~ 1,
                 two_unit_flag == 1 ~ 2,
@@ -550,7 +607,7 @@ get_unit_variables <- function(dataset,
     mutate(units_total = case_when(
       one_unit_flag == 1 ~ 1,
       two_unit_flag == 1 ~ 2,
-      TRUE ~ pmin(units_lotsize, units_height, units_density)))
+      TRUE ~ pmin(units_lotsize, units_height, units_density, units_FAR, units_massing, na.rm = TRUE)))
   
 }
 
@@ -576,6 +633,8 @@ get_unit_summary <- function(dataset,
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              #units_density = sum(units_density, na.rm = TRUE),
+              #units_per_floor_FAR = sum(units_per_floor_FAR, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots, na.rm = TRUE)))
   
@@ -586,6 +645,8 @@ get_unit_summary <- function(dataset,
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              #units_density = sum(units_density, na.rm = TRUE),
+              #units_per_floor_FAR = sum(units_per_floor_FAR, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots, na.rm = TRUE))) %>% 
     mutate(dwelling_type = as.character(dwelling_type))
@@ -607,8 +668,14 @@ get_unit_summary <- function(dataset,
 ```{r sum}
 results <- get_unit_variables(dataset = zoningdata2,
                             construction_efficiency = .7,
-                            average_unit_size = 940)
+                            average_unit_size = 940) %>% 
+  select(dwelling_type, zoning_code, units_height, units_lotsize, units_density, units_massing, units_per_floor_FAR, units_FAR, living_area, units_total, lotsize_sf, lot_coverage_max, units_per_floor_FAR, floors) %>% 
+  filter(units_total > 0)
 
+results %>% 
+  filter(dwelling_type == "townhouse", units_total > 12) %>% 
+  count(zoning_code, units_total)
+  
 
 #results %>% 
 #  mutate(num = NA) %>% 
@@ -631,6 +698,15 @@ get_unit_summary(dataset = zoningdata2,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
+th <- get_unit_variables(dataset = zoningdata2,
+                         construction_efficiency = .7,
+                         average_unit_size = 940) %>% 
+  filter(dwelling_type == "townhouse")
+
+
+ggplot() +
+  geom_histogram(th, mapping = aes(units_height),
+                 bins = 60)
 
 map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata2,
                                       construction_efficiency = .,
