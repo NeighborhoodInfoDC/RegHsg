@@ -1205,11 +1205,11 @@ singles1 %>%
   filter(!is.na(numberofunits),
          numberofunits != 0,
          !is.na(numberofunits_mar)) %>% 
-  mutate(difference = abs(numberofunits_mar - numberofunits)) %>%
+  mutate(difference = numberofunits_mar - numberofunits) %>%
   filter(difference != 0) %>% 
   ggplot() +
   geom_histogram(mapping = aes(difference),
-                 bims = 50)
+                 bins = 70)
 
 ```
 Replace `numberofunits` with `numberofunits_mar` when missing or 0.
@@ -1217,8 +1217,7 @@ Replace `numberofunits` with `numberofunits_mar` when missing or 0.
 ```{r replace-units}
 
 singles2 <- singles1 %>% 
-  mutate(numberofunits = ifelse(!is.na(numberofunits_mar) &
-                                  (is.na(numberofunits) | numberofunits == 0),
+  mutate(numberofunits = ifelse((!is.na(numberofunits_mar) | numberofunits_mar != 0),
                                 numberofunits_mar,
                                 numberofunits))
 
