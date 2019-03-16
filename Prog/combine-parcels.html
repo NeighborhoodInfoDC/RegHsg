@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated March 13, 2019</p>
+<p>Last updated March 16, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -320,25 +320,11 @@ div.tocify {
 <h2>Set-up</h2>
 <p>Load libraries and functions</p>
 <pre class="r"><code>library(tidyverse)
-library(urbnthemes)
-library(sf)
-library(magrittr)
-set_urbn_defaults(&quot;print&quot;)
-
-
 
 source(&quot;../Macros/read-fairfax.R&quot;)
 source(&quot;../Macros/read-arlington.R&quot;)
 source(&quot;../Macros/read-montgomery.R&quot;)
 source(&quot;../Macros/read-DC.R&quot;)</code></pre>
-<p>Create directory for data exports</p>
-<pre class="r"><code>if (!dir.exists(&quot;../Data&quot;)) {
-  dir.create(&quot;../Data&quot;)
-}
-
-if (!dir.exists(&quot;L:/Libraries/RegHsg/Prog/Tables&quot;)) {
-  dir.create(&quot;L:/Libraries/RegHsg/Prog/Tables&quot;)
-}</code></pre>
 <p>Set filepath name</p>
 <pre class="r"><code>filepath &lt;- &quot;fairfax&quot;</code></pre>
 <p>Load in cleaned Black Knight data for Fairfax County.</p>
@@ -388,51 +374,51 @@ if (!dir.exists(&quot;L:/Libraries/RegHsg/Prog/Tables&quot;)) {
 
 fai &lt;- fairfax %&gt;%
         select(county_fips,
-                 county_name,
-                 assessorsparcelnumberapnpin,
-                 propaddress,
-                 zoning, 
-                 lotsize_sf, 
-                 numberofunits,
-                 category,
-                 category_detail, 
-                 countylandusedescription, 
-                 residential, lat, long)
+               county_name,
+               assessorsparcelnumberapnpin,
+               propaddress,
+               zoning, 
+               lotsize_sf, 
+               numberofunits,
+               category,
+               category_detail, 
+               countylandusedescription, 
+               residential, lat, long)
 
 mon &lt;- montgomery %&gt;%
         select(county_fips,
-                 county_name,
-                 assessorsparcelnumberapnpin,
-                 propaddress,
-                 zoning, 
-                 lotsize_sf, 
-                 numberofunits,
-                 category,
-                 category_detail, 
-                 countylandusedescription, 
-                 residential, lat, long)
+               county_name,
+               assessorsparcelnumberapnpin,
+               propaddress,
+               zoning, 
+               lotsize_sf, 
+               numberofunits,
+               category,
+               category_detail, 
+               countylandusedescription, 
+               residential, lat, long)
 
 dc &lt;- dc_full %&gt;%
     select(county_fips,
            county_name,
            parcelbase_SSL,
-                 zoning, 
-                 lotsize_sf, 
-                 numberofunits, 
-                 category,
-                 category_detail, 
-                 parcelbase_address, 
-                 countylandusedescription, 
-                 residential, 
-                 lat, long,
-                 parcelgeo_x, parcelgeo_y)%&gt;%
-          rename(assessorsparcelnumberapnpin=parcelbase_SSL,
+           zoning, 
+           lotsize_sf, 
+           numberofunits, 
+           category,
+           category_detail, 
+           parcelbase_address, 
+           countylandusedescription, 
+           residential, 
+           lat, long,
+           parcelgeo_x, parcelgeo_y)%&gt;%
+    rename(assessorsparcelnumberapnpin=parcelbase_SSL,
                  propaddress = parcelbase_address)</code></pre>
 <p>Bind rows together</p>
 <pre class="r"><code>all_jurs &lt;- arl %&gt;% 
-            bind_rows(fai) %&gt;%
-            bind_rows(mon) %&gt;%
-            bind_rows(dc)</code></pre>
+  bind_rows(fai) %&gt;%
+  bind_rows(mon) %&gt;%
+  bind_rows(dc)</code></pre>
 <p>Write out data</p>
 <pre class="r"><code>write_csv(all_jurs, &quot;L:/Libraries/RegHsg/Data/parcel-all-cleaned-data.csv&quot;)</code></pre>
 </div>
