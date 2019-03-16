@@ -79,7 +79,7 @@ Load in  cleaned data for Arlington, Fairfax, Montgomery, and DC. Fill in lot si
 if (!exists("parcel")) {
   parcel <- read_combined_parcels()
 } else {
-  warning(filepath, " data already read in")
+  warning("Parcel data already read in")
 }
 
 
@@ -92,15 +92,6 @@ parcel <- parcel %>%
                              lotsize_prop,
                              lotsize_sf),
          lotsize_acres = lotsize_sf / 43560)
-
-parcel %>% 
-  filter(county_fips == 11001,
-         category_detail == "Condominium unit") %>% 
-  count(is.na(lat),
-        is.na(parcelgeo_x))
-  
-
-
 
 ```
 
@@ -258,7 +249,6 @@ Pick one activity center in Arlington to test and visualize the calculation. Use
 ```{r clar}
 
 clarendon <- filter(nodes, name == "Clarendon", type == "Activity")
-
 
 ```
 
