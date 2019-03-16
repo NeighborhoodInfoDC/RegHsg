@@ -1192,9 +1192,24 @@ singles1 %>%
   filter(!is.na(numberofunits),
          numberofunits != 0,
          !is.na(numberofunits_mar)) %>% 
-  mutate(difference = numberofunits_mar - numberofunits) %>%
+  mutate(difference = abs(numberofunits_mar - numberofunits)) %>%
   filter(difference != 0) %>% 
-  nrow()
+  summarize(avg_difference = mean(difference),
+            median_difference = median(difference),
+            difference_2 = sum(difference <= 2),
+            difference_100 = sum(difference >= 100),
+            max_difference = max(difference))
+
+# plot the difference
+singles1 %>% 
+  filter(!is.na(numberofunits),
+         numberofunits != 0,
+         !is.na(numberofunits_mar)) %>% 
+  mutate(difference = abs(numberofunits_mar - numberofunits)) %>%
+  filter(difference != 0) %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(difference),
+                 bims = 50)
 
 ```
 Replace `numberofunits` with `numberofunits_mar` when missing or 0.
