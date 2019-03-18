@@ -453,7 +453,28 @@ vacant_gaithersburg <- vacant1 %>%
 zoningdata_rockvile <- left_join(vacant_rockvile, zoning_rockville1, by = "zoning_code")
 zoningdata_gaithersburg <- left_join(vacant_gaithersburg, zoning_gaithersburg2, by = "zoning_code")
 
+total_rockvile <- jurYS %>% 
+  mutate(X= SHAPE_LEN.x,
+         Y=SHAPE_LEN.y) %>% 
+  mutate(zoning_bk = zoning) %>% 
+  mutate(zoning_code= zoning_bk) %>% 
+  mutate(missing_coord = ifelse(is.na(X) | is.na(Y),
+                                1,
+                                0)) %>% 
+  filter(rockflag=="1")
 
+total_gaithersburg <- jurYS %>% 
+    mutate(X= SHAPE_LEN.x,
+         Y=SHAPE_LEN.y) %>% 
+  mutate(zoning_bk = zoning) %>% 
+  mutate(zoning_code= zoning_bk) %>% 
+  mutate(missing_coord = ifelse(is.na(X) | is.na(Y),
+                                1,
+                                0)) %>% 
+  filter(gaitflag=="1")
+
+zoningtotal_rockvile <- left_join(total_rockvile, zoning_rockville1, by = "zoning_code")
+zoningtotal_gaithersburg <- left_join(total_gaithersburg, zoning_gaithersburg2, by = "zoning_code")
 ```
 
 There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
@@ -462,6 +483,10 @@ There are `r ` observations that did not have a match in the zoning code. Below,
 
 #Rockville
 anti_join(vacant_rockvile, zoning_rockville1, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
+anti_join(total_rockvile, zoning_rockville1, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
@@ -477,21 +502,39 @@ anti_join(vacant_rockvile1, zoning_rockville1, by = c("zoning_code")) %>%
   count(zoning_code) %>% 
   knitr::kable()
 
-#Gaithersburg: There are still montgomery codes under the new Gaithersburg flag: R200. DOn't know what RMH RMX are. 
+total_rockvile1 <- total_rockvile %>% 
+  mutate(zoning_code= case_when(zoning_code == "R200" ~ "R-200",
+                               zoning_code == "R60" ~ "R-60",
+                               zoning_code == "R90" ~ "R-90",
+                               zoning_code == "R75" ~ "R-75",
+                               zoning_code == "R150" ~ "R-150",
+                               TRUE ~ zoning_code))
+
+anti_join(total_rockvile1, zoning_rockville1, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+# Rockvile flag still has codes from other jurisdiciton ( R20 etc?) Patrick-- check if the flag is complete
+
 anti_join(vacant_gaithersburg, zoning_gaithersburg2, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
 
-vacant_gaithersburg1 <- vacant_gaithersburg %>% 
+anti_join(total_gaithersburg, zoning_gaithersburg2, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+#gaithershburg also has R200 which should be a montegomery code
+
+total_gaithersburg1 <- total_gaithersburg %>% 
   mutate(zoning_code= case_when(zoning_code == "R20" ~ "R-20",
+                                zoning_code == "R18" ~ "R-18",
                                zoning_code == "R6" ~ "R-6",
                                zoning_code == "R90" ~ "R-90",
                                zoning_code == "RA" ~ "R-A",
                                zoning_code == "RPT" ~ "RP-T",
                                TRUE ~ zoning_code))
 
-test <-anti_join(vacant_gaithersburg1, zoning_gaithersburg2, by = c("zoning_code")) %>% 
+anti_join(total_gaithersburg1, zoning_gaithersburg2, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
@@ -501,20 +544,23 @@ issuelotgaithersburg<- vacant_gaithersburg2 %>%
   filter(zoning_code=="RMX"|zoning_code=="RMH") %>% 
   select(propcity, propaddress, X, Y, zoning_code, zoning_bk, zoning, propzip, LANDUSE_CO, countylandusedescription, IMPROV_ASS, assessedimprovementvalue, LU_CATEGOR, OWNERS_NAM)
 
+
+
+
 ```
 
 Merge on zoning code variable. Test that all variables merged.
 
 ```{r zoning-merge}
 
-zoningdata_rockvile1 <- left_join(vacant_rockvile1, zoning_rockville1, by = "zoning_code")
+zoningdata_rockvile1_total <- left_join(total_rockvile1, zoning_rockville1, by = "zoning_code")
 
-zoningdata_gaithersburg1 <- left_join(vacant_gaithersburg1, zoning_gaithersburg2, by = "zoning_code")
+zoningdata_gaithersburg1_total<- left_join(total_gaithersburg1, zoning_gaithersburg2, by = "zoning_code")
 
 
-count(zoningdata_rockvile1, zoning_code)
+count(zoningdata_rockvile1_total, zoning_code)
 
-count(zoningdata_gaithersburg1, zoning_code)
+count(zoningdata_gaithersburg1_total, zoning_code)
 ```
 Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough, by Jurisdiction because the factor are different for each jurisdiction. 
 
