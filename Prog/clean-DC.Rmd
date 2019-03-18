@@ -1212,7 +1212,7 @@ singles1 %>%
                  bins = 70)
 
 ```
-Replace `numberofunits` with `numberofunits_mar` when missing or 0.
+Since there are significant differences- give preference to the variable from the master address repository. Replace `numberofunits` with `numberofunits_mar` unless `numberofunits_mar` is missing or 0.
 
 ```{r replace-units}
 
