@@ -42,12 +42,6 @@ The goal of this analysis is to combine parcels for Sarah.
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
-library(urbnthemes)
-library(sf)
-library(magrittr)
-set_urbn_defaults("print")
-
-
 
 source("../Macros/read-fairfax.R")
 source("../Macros/read-arlington.R")
@@ -56,23 +50,11 @@ source("../Macros/read-DC.R")
 
 ```
 
-Create directory for data exports
-```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
-}
-
-if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
-  dir.create("L:/Libraries/RegHsg/Prog/Tables")
-}
-```
 
 Set filepath name
 ```{r fips-fair}
 
-
 filepath <- "fairfax"
-
 
 ```
 
@@ -159,45 +141,45 @@ arl <- arlington %>%
 
 fai <- fairfax %>%
         select(county_fips,
-                 county_name,
-                 assessorsparcelnumberapnpin,
-                 propaddress,
-                 zoning, 
-                 lotsize_sf, 
-                 numberofunits,
-                 category,
-                 category_detail, 
-                 countylandusedescription, 
-                 residential, lat, long)
+               county_name,
+               assessorsparcelnumberapnpin,
+               propaddress,
+               zoning, 
+               lotsize_sf, 
+               numberofunits,
+               category,
+               category_detail, 
+               countylandusedescription, 
+               residential, lat, long)
 
 mon <- montgomery %>%
         select(county_fips,
-                 county_name,
-                 assessorsparcelnumberapnpin,
-                 propaddress,
-                 zoning, 
-                 lotsize_sf, 
-                 numberofunits,
-                 category,
-                 category_detail, 
-                 countylandusedescription, 
-                 residential, lat, long)
+               county_name,
+               assessorsparcelnumberapnpin,
+               propaddress,
+               zoning, 
+               lotsize_sf, 
+               numberofunits,
+               category,
+               category_detail, 
+               countylandusedescription, 
+               residential, lat, long)
 
 dc <- dc_full %>%
     select(county_fips,
            county_name,
            parcelbase_SSL,
-                 zoning, 
-                 lotsize_sf, 
-                 numberofunits, 
-                 category,
-                 category_detail, 
-                 parcelbase_address, 
-                 countylandusedescription, 
-                 residential, 
-                 lat, long,
-                 parcelgeo_x, parcelgeo_y)%>%
-          rename(assessorsparcelnumberapnpin=parcelbase_SSL,
+           zoning, 
+           lotsize_sf, 
+           numberofunits, 
+           category,
+           category_detail, 
+           parcelbase_address, 
+           countylandusedescription, 
+           residential, 
+           lat, long,
+           parcelgeo_x, parcelgeo_y)%>%
+    rename(assessorsparcelnumberapnpin=parcelbase_SSL,
                  propaddress = parcelbase_address)
 
 ```
@@ -205,9 +187,9 @@ dc <- dc_full %>%
 Bind rows together
 ```{r}
 all_jurs <- arl %>% 
-            bind_rows(fai) %>%
-            bind_rows(mon) %>%
-            bind_rows(dc)
+  bind_rows(fai) %>%
+  bind_rows(mon) %>%
+  bind_rows(dc)
 
 ```
 
