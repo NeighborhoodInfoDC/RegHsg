@@ -73,6 +73,7 @@ Set directory for maps
 rhfdir <- "L:/Libraries/RegHsg/Maps"
 ```
 
+### Get parcel data 
 Load in  cleaned data for Arlington, Fairfax, Montgomery, and DC. Fill in lot size for Arlington, as done in vacant lots analysis.
 
 ```{r read}
@@ -92,6 +93,18 @@ parcel <- parcel %>%
                              lotsize_prop,
                              lotsize_sf),
          lotsize_acres = lotsize_sf / 43560)
+
+```
+
+
+### Missing-ness
+
+Fill in single family homes that have single addresses with 1 unit.
+
+```{r fill-sf}
+
+parcel1 <- parcel %>% 
+  mutate(numberofunits = case_when(category == "single" & address_type == ))
 
 ```
 
