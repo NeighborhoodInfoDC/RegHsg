@@ -401,6 +401,20 @@ vacant1 <- vacant %>%
                                 1,
                                 0)) 
 
+jur1 <- jur %>% 
+  mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
+                                1,
+                                0),
+         parcel_x= parcelgeo_x,
+         parcel_y= parcelgeo_y,
+         missing_parcelgeoXY= ifelse(is.na(parcelgeo_x) | is.na(parcelgeo_y),
+                                1,
+                                0),
+         missing_latlon= ifelse(is.na(lat) | is.na(long),
+                                1,
+                                0))
+
+
 vacant1 %>% 
   group_by(missing_parcelgeoXY) %>% 
   summarize_at(vars(propaddress),
@@ -454,13 +468,25 @@ vacantsfbk <- vacant1 %>%
   st_as_sf(coords = c("long", "lat")) %>% 
   st_set_crs(st_crs(zon))
 
+
+jursfparcel <- jur1 %>% 
+  filter(missing_parcelgeoXY == 0) %>% 
+  st_as_sf(coords = c("parcel_x", "parcel_y")) %>% 
+  st_set_crs(2804) %>% 
+  st_transform(4326)
+
+
+jursfbk <- jur1 %>% 
+  filter(missing_parcelgeoXY == 1 & missing_latlon==0) %>% 
+  st_as_sf(coords = c("long", "lat")) %>% 
+  st_set_crs(st_crs(zon))
+
 ggplot()+
   geom_sf(data = vacantsfparcel, mapping = aes(),
           color = "black", size=0.1)
 
-ggplot()+
-  geom_sf(data = vacantsfbk, mapping = aes(),
-          color = "black", size=0.1)
+
+
 
 ```
 
@@ -476,6 +502,8 @@ ggplot() +
   geom_sf(data = vacantsfbk, mapping = aes(),
           color = "black", size=0.1) 
 
+
+
 ```
 
 Spatial join
@@ -487,6 +515,12 @@ spatial join with zoning shapefile separately
 vacantjoin_parcel <- st_join(vacantsfparcel, zon, join = st_intersects)
 
 vacantjoin_bk <- st_join(vacantsfbk, zon, join = st_intersects)
+
+
+jurjoin_parcel <- st_join(jursfparcel, zon, join = st_intersects)
+
+jurjoin_bk <- st_join(jursfbk, zon, join = st_intersects)
+
 
 ```
 
@@ -501,6 +535,12 @@ vacant2_bk <- st_set_geometry(vacantjoin_bk, NULL)
 vacant2 <- vacant2_parcel %>% 
      bind_rows(vacant2_bk)
 
+jur2_parcel <- st_set_geometry(jurjoin_parcel, NULL)
+
+jur2_bk <- st_set_geometry(jurjoin_bk, NULL)
+
+jur2 <- jur2_parcel %>% 
+     bind_rows(jur2_bk)
 
 ```
 
@@ -566,7 +606,23 @@ anti_join(vacanttotaltest, zoningcode_factor, by = c("zoning_code")) %>%
   count(zoning_code) %>% 
   knitr::kable()
 
+jurtotaltest <- jur2 %>% 
+  mutate(zoning_code=ZONING_LAB)
+
+anti_join(jurtotaltest, zoningcode_factor, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
 vacantcleaned <- vacant2 %>% 
+          mutate(zoning_code=ZONING_LAB, 
+                 zoning_bk= zoning) %>% 
+          mutate(firsttwo= substr(ZONING_LAB, 1,2),
+                 badrescode=ifelse(str_detect(firsttwo, "R-")==1, 1, 0),
+                 zoning_code=str_trim(ifelse(badrescode==1, paste0(substr(ZONING_LAB, 1,1),substr(ZONING_LAB,3,4)),ZONING_LAB), side="right"),
+                 zoning_code=ifelse(ZONING_LAB== "R-1-A", "R1A", zoning_code),
+                 zoning_code= ifelse(ZONING_LAB== "R-1-B", "R1B", zoning_code))
+
+jurcleaned <- jur2 %>% 
           mutate(zoning_code=ZONING_LAB, 
                  zoning_bk= zoning) %>% 
           mutate(firsttwo= substr(ZONING_LAB, 1,2),
@@ -584,8 +640,11 @@ anti_join(vacantcleaned, zoningcode_factor, by = c("zoning_code")) %>%
   count(zoning_code) %>% 
   knitr::kable()
 
-vacantcleaned2 <- vacantcleaned %>% 
+anti_join(jurcleaned, zoningcode_factor, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
 
+vacantcleaned2 <- vacantcleaned %>% 
           mutate(zoning_code=ifelse(ZONING_LAB== "StE-14", "StE-14A", zoning_code),
                  zoning_code= ifelse(ZONING_LAB== "SEFC-1B", "SEFC-1-B", zoning_code))
 
@@ -593,6 +652,16 @@ vacantcleaned2 <- vacantcleaned %>%
 anti_join(vacantcleaned2, zoningcode_factor, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
+
+jurcleaned2 <- jurcleaned %>% 
+          mutate(zoning_code=ifelse(ZONING_LAB== "StE-14", "StE-14A", zoning_code),
+                 zoning_code= ifelse(ZONING_LAB== "SEFC-1B", "SEFC-1-B", zoning_code))
+
+
+anti_join(jurcleaned2, zoningcode_factor, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
 
 ```
 
@@ -609,11 +678,32 @@ zoningdata %>%
   count() %>% 
   knitr::kable()
 
+
+jurzoningdata <- left_join(jurcleaned2, zoningcode_factor, by = "zoning_code") %>% 
+           filter(newdwelling_type!="NA")
+#filter out observations with zoning codes that are eithing NA or not in the DC spreadsheet
+
+jurzoningdata %>% 
+  group_by(newdwelling_type) %>% 
+  count() %>% 
+  knitr::kable()
+
+
 ```
 
 Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 15942 to 8140, after slicing out the least dense zoning code, we have 1356 observation left. 
 
 ```{r filter-small}
+
+jurzoningdata1 <- jurzoningdata %>% 
+  mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
+         lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
+  filter(!is.na(zoning_code),
+         lotsize_sf >= lot_area_min) %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(newdwelling_type)) %>% 
+  ungroup()
+
 
 zoningdata1 <- zoningdata %>% 
   mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
@@ -654,18 +744,37 @@ filter out special zoning codes that are not for housing. Recategorize for expor
 zoningdata2 <- zoningdata1 %>% 
   filter(zoning_code != "SEFC-4") 
 
+#filter out codes that can't be used for residential even if it is a code for residential 
+jurzoningdata2 <- jurzoningdata1 %>% 
+    filter(zoning_code != "SEFC-4"| zoning_code!= "WR-6") 
+
 zoningdata2 %>% 
   group_by(newdwelling_type) %>% 
   count() %>% 
   knitr::kable()
 
+zoningdata2 %>% 
+  group_by(zoning_code, newdwelling_type, parcelbase_usecode) %>% 
+  count() %>% 
+  knitr::kable()
+
+
 zoningdata3 <-zoningdata2 %>% 
-  mutate(dwelling_type2= case_when(newdwelling_type=="RA" ~ "Multifamily", #residential apartments
-                                   newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"| newdwelling_type=="Special purpose-B"~ "Mixed use and Special Purpose Multifamily",
-                                   newdwelling_type=="RF2-C" ~ "Semi-detached", #RF-1/2/3 row houses
-                                   newdwelling_type=="One Family-F" ~ "Semi-detached", #R3 row dwelling
-                                   newdwelling_type=="One Family-E" ~ "Semi-detached", #R2 semidetached
-                                   newdwelling_type=="One Family-A" ~ "Single Family" #residential house detached
+  mutate(housing_type= case_when(newdwelling_type=="RA" ~ "Multifamily",
+                                   newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"| newdwelling_type=="Special purpose-B"~ "Multifamily",
+                                   newdwelling_type=="RF2-C" ~ "SF-attached", 
+                                   newdwelling_type=="One Family-F" ~ "SF-attached",
+                                   newdwelling_type=="One Family-E" ~ "SF-attached", 
+                                   newdwelling_type=="One Family-A" ~ "Single Family" 
+                                   ))
+
+jurzoningdata3 <- jurzoningdata2 %>% 
+  mutate(housing_type= case_when(newdwelling_type=="RA" ~ "Multifamily",
+                                   newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"| newdwelling_type=="Special purpose-B"~ "Multifamily",
+                                   newdwelling_type=="RF2-C" ~ "SF-attached", 
+                                   newdwelling_type=="One Family-F" ~ "SF-attached",
+                                   newdwelling_type=="One Family-E" ~ "SF-attached", 
+                                   newdwelling_type=="One Family-A" ~ "Single Family" 
                                    ))
 
 
@@ -705,37 +814,31 @@ get_unit_variables <- function(dataset,
            buildable_area = lotsize_sf * lot_coverage_max,
            living_area = buildable_area * construction_efficiency,
            units_per_floor = floor(living_area / average_unit_size),
-           floors = as.integer(height_ft /10),
-           floors=ifelse(newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"|newdwelling_type=="Special purpose-B", floors-1, floors),
-           units_height = units_per_floor * floors,
-           GFA = floor_area_ratio_max * buildable_area,
-           living_area_far=GFA*construction_efficiency,
-           units_per_floor_far=living_area_far/average_unit_size,
-           units_FAR= units_per_floor_far * floors) %>% 
-          #lotarea_per_unit is missing for all in DC, so use units_height and units_FAR for units estimates
-           #units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
-           mutate_at(vars(units_height, units_FAR),
-              funs(case_when(
-                one_unit_flag == 1 ~ 1,
-                two_unit_flag == 1 ~ 2,
-                three_unit_flag == 1 ~ 3,
-                four_unit_flag == 1 ~ 4,
-                TRUE ~ .))) %>%
+           FAR_stories = floor_area_ratio_max/lot_coverage_max,
+           floors = floor(height_ft /10),
+          stories = ifelse(FAR_stories>=floors, floors, FAR_stories),
+          stories = case_when(is.na(floors) ~ FAR_stories,
+                               is.na(FAR_stories) ~ floors,
+                               TRUE ~ stories),
+           stories=ifelse(newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"|newdwelling_type=="Special purpose-B", stories-1, stories),
+           units_min= units_per_floor * stories,
+           units_FAR= units_per_floor * FAR_stories,
+           units_FAR= ifelse(is.na(floor_area_ratio_max)==1, NA, units_FAR),
+           units_height= units_per_floor * floors
+           ) %>%
     mutate(subset=floor(lotsize_sf/lot_area_min), na.rm = TRUE) %>% 
-    mutate(units_height=ifelse(is.na(units_height)==1, 0, units_height),
-           units_FAR= ifelse(is.na(floor_area_ratio_max)==1, NA, units_FAR)) %>% 
-    mutate(units_total = case_when(
-      one_unit_flag == 1 & subset<1 ~ 1,
-      two_unit_flag == 1 & subset<1~ 2,
-      three_unit_flag == 1 & subset<1~ 3,
-      four_unit_flag == 1 & subset<1~ 4,
-      one_unit_flag == 1 & subset>=1 ~ 1*subset,
-      two_unit_flag == 1 & subset>=1~ 2*subset,
-      three_unit_flag == 1 & subset>=1~ 3*subset,
-      four_unit_flag == 1 & subset>=1~ 4*subset,
-      units_height > units_FAR & !is.na(units_FAR) ~ units_FAR,  #taking the smaller estimate between the two
+    mutate(units_min=ifelse(is.na(units_min)==1, 0, units_min)) %>% 
+    mutate( units_total = case_when(
+      one_unit_flag == 1 & subset<1 & units_min>=1 ~ 1,
+      two_unit_flag == 1 & subset<1 & units_min>=2 ~ 2,
+      three_unit_flag == 1 & subset<1 & units_min>=3 ~ 3,
+      four_unit_flag == 1 & subset<1 & units_min>=4 ~ 4,
+      one_unit_flag == 1 & subset>=1 & units_min/subset>=1 ~ 1*subset,
+      two_unit_flag == 1 & subset>=1 & units_min/subset>=2 ~ 2*subset,
+      three_unit_flag == 1 & subset>=1 & units_min/subset>=3 ~ 3*subset,
+      four_unit_flag == 1 & subset>=1 & units_min/subset>=4~ 4*subset, 
+      units_height > units_FAR & !is.na(units_FAR) ~ units_FAR,
       TRUE ~ units_height))
-
 }
 
 #' Get maximum unit summary
@@ -758,26 +861,26 @@ get_unit_summary <- function(dataset,
                        average_unit_size) %>%
     group_by(parameters) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height, na.rm = TRUE),
-              units_FAR = sum(units_FAR, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
+              units_FAR = sum(units_FAR, na.rm = TRUE),
+              units_height = sum(units_height, na.rm = TRUE),
               units_per_lot = floor(sum(units_total /lots)))
   
   y <- dataset %>% 
     get_unit_variables(construction_efficiency,
                        average_unit_size) %>%
-    group_by(parameters, dwelling_type2) %>% 
+    group_by(parameters, housing_type) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height, na.rm = TRUE),
-              units_FAR = sum(units_FAR, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
+              units_FAR = sum(units_FAR, na.rm = TRUE),
+              units_height = sum(units_height, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots))) %>% 
-    mutate(dwelling_type2 = as.character(dwelling_type2))
+    mutate(dwelling_type2 = as.character(housing_type))
   
   
   if (dwelling_type_breakdown == TRUE) {
    
-      bind_rows(y, mutate(x, dwelling_type2 = "All"))  
+      bind_rows(y, mutate(x, housing_type = "All"))  
   
   } else if (dwelling_type_breakdown == FALSE) {
       x
@@ -790,39 +893,62 @@ Get summary statistics for several different parameters
 
 ```{r sum}
 
-get_unit_summary(dataset = zoningdata3,
-                 construction_efficiency = .7,
-                 average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE) %>% 
-  knitr::kable()
+# get_unit_summary(dataset = zoningdata3,
+#                  construction_efficiency = .7,
+#                  average_unit_size = 940,
+#                  dwelling_type_breakdown = TRUE) %>% 
+#   knitr::kable()
+# 
+# map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata3,
+#                                       construction_efficiency = .,
+#                                       average_unit_size = 940,
+#                                       dwelling_type_breakdown = TRUE)) %>% 
+#   knitr::kable()
 
-map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata3,
-                                      construction_efficiency = .,
-                                      average_unit_size = 940,
-                                      dwelling_type_breakdown = TRUE)) %>% 
-  knitr::kable()
+
+#filter out usecode 093 and 193 for vacant lot anlaysis
+vacantlotunits <- zoningdata3 %>% 
+  filter(parcelbase_usecode!= "093"| parcelbase_usecode!= "193")
 
 
-calculateunit_data <- get_unit_variables(dataset = zoningdata3,
+get_unit_variables(dataset = vacantlotunits,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-               select(parameters,parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, units_height, units_FAR, units_per_floor_far, units_total, propaddress, zoning_code  )
-
-
-get_unit_variables(dataset = zoningdata3,
-                 construction_efficiency = .7,
-                 average_unit_size = 940) %>% 
-  select(parameters,parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, units_height, units_FAR, units_per_floor_far, units_total, propaddress, zoning_code ) %>% 
+  select(parameters, parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,             units_per_floor, units_min, units_FAR, units_height, propaddress, zoning_code ) %>% 
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-vacant-lots-analysis-basedata.csv"))
+
+jurzoningdata3 %>% 
+  group_by(category, category_detail) %>% 
+  count() %>% 
+  knitr::kable()
+
+
+get_unit_variables(dataset = jurzoningdata3,
+                 construction_efficiency = .7,
+                 average_unit_size = 940) %>% 
+  mutate(units_bk= case_when(category=="vacant" ~ 0,
+                            category=="sf"~ 1,
+                            TRUE ~ numberofunits)) %>% 
+  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
+                   filepath,
+                   "-units.csv"))
+
+jurzoningdata3 %>% 
+    group_by(category) %>% 
+    summarize(lots = n()) %>% 
+    write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
+                   filepath,
+                   "-units-summary.csv"))
+
 
 ```
 Look at the distribution of units for lots with more than 1 unit, to check for extreme outliers.
 
 ```{r scatter, echo = FALSE}
 
-zoningdata3 %>% 
+vacantlotunits %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 940) %>% 
              select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
@@ -842,7 +968,7 @@ zoningdata3 %>%
   theme(plot.margin = margin(t = 20, r = 20))
 
 
-zoningdata1test <- zoningdata3 %>% 
+zoningdata1test <- vacantlotunits %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 940) %>% 
              select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
@@ -855,14 +981,14 @@ Look more closely at vacant lots < 50,000 SF
 
 ```{r scatter-small, echo = FALSE}
 
-zoningdata3 %>% 
+vacantlotunits %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 940) %>% 
   filter(lotsize_sf < 50000) %>% 
-  select(lotsize_sf, newdwelling_type, dwelling_type2, units_total)%>% 
+  select(lotsize_sf, newdwelling_type, housing_type, units_total)%>% 
   ggplot() +
   geom_point(mapping = aes(lotsize_sf, units_total,
-                           color = dwelling_type2),
+                           color = housing_type),
              alpha = .8) +
   scale_x_continuous(labels = scales::comma,
                      expand = expand_scale(mult = c(0, 0.0002)), 
@@ -885,7 +1011,7 @@ Write out the results to a csv. Include jurisdiction name in the title.
 
 ```{r write-results}
 
-get_unit_summary(dataset = zoningdata3,
+get_unit_summary(dataset = vacantlotunits,
                  construction_efficiency = .7,
                  average_unit_size = 940,
                  dwelling_type_breakdown = TRUE) %>% 
