@@ -104,10 +104,45 @@ Fill in single family homes that have single addresses with 1 unit.
 ```{r fill-sf}
 
 parcel1 <- parcel %>% 
-  mutate(numberofunits = case_when(category == "single" & address_type == ))
+  mutate(numberofunits = ifelse(category == "sf" & address_type == "single",
+                                1,
+                                numberofunits))
 
 ```
 
+
+Tabulate missing number of units.
+
+```{r tab-missing-units}
+
+# all properties
+parcel1 %>% 
+  filter(residential == 1,
+         category != "vacant") %>% 
+  group_by(county_name) %>% 
+  summarize(count = n(),
+            units.na = sum(is.na(numberofunits)),
+            units.zero = sum(numberofunits == 0, na.rm = TRUE),
+            p.na = units.na / n(),
+            p.zero = units.zero / n()) %>% 
+  knitr::kable(caption = "All residential, non-vacant properties")
+
+
+# multifamily properties
+parcel1 %>% 
+  filter(residential == 1,
+         category == "mf") %>% 
+  group_by(county_name,
+           category_detail) %>% 
+  summarize(count = n(),
+            units.na = sum(is.na(numberofunits)),
+            units.zero = sum(numberofunits == 0, na.rm = TRUE),
+            p.na = units.na / n(),
+            p.zero = units.zero / n()) %>% 
+  knitr::kable(caption = "Multifamily properties")
+
+
+```
 
 Use the functions established in `clean-node-geographies.Rmd` to read in shapefiles for nodes. Use 1 mile buffer for activity centers, 1/2 mile for transit.
 
