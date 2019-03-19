@@ -414,7 +414,6 @@ jur1 <- jur %>%
                                 1,
                                 0))
 
-
 vacant1 %>% 
   group_by(missing_parcelgeoXY) %>% 
   summarize_at(vars(propaddress),
@@ -698,24 +697,23 @@ Filter out lots that are too small to build on and lots with missing zoning info
 jurzoningdata1 <- jurzoningdata %>% 
   mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
          lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
-  filter(!is.na(zoning_code),
-         lotsize_sf >= lot_area_min) %>% 
+  filter(!is.na(zoning_code)) %>% 
+  mutate( smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 0,1)) %>% 
   group_by(propaddress) %>% 
   slice(which.min(newdwelling_type)) %>% 
   ungroup()
 
-
 zoningdata1 <- zoningdata %>% 
   mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
          lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
-  filter(!is.na(zoning_code),
-         lotsize_sf >= lot_area_min) %>% 
+  filter(!is.na(zoning_code)) %>% 
+  mutate( smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 0,1)) %>% 
   group_by(propaddress) %>% 
   slice(which.min(newdwelling_type)) %>% 
   ungroup()
 
 nrow(zoningdata1)
-nrow(zoningdata)
+nrow(jurzoningdata1)
 
 # 7790 cases where lotsize_sf is less than the minimum lot area or missing. 
 zoningdata1test <- zoningdata %>% 
@@ -817,9 +815,9 @@ get_unit_variables <- function(dataset,
            FAR_stories = floor_area_ratio_max/lot_coverage_max,
            floors = floor(height_ft /10),
           stories = ifelse(FAR_stories>=floors, floors, FAR_stories),
-          stories = case_when(is.na(floors) ~ FAR_stories,
+          stories = as.numeric(case_when(is.na(floors) ~ FAR_stories,
                                is.na(FAR_stories) ~ floors,
-                               TRUE ~ stories),
+                               TRUE ~ stories)),
            stories=ifelse(newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"|newdwelling_type=="Special purpose-B", stories-1, stories),
            units_min= units_per_floor * stories,
            units_FAR= units_per_floor * FAR_stories,
@@ -928,9 +926,9 @@ jurzoningdata3 %>%
 get_unit_variables(dataset = jurzoningdata3,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-  mutate(units_bk= case_when(category=="vacant" ~ 0,
-                            category=="sf"~ 1,
-                            TRUE ~ numberofunits)) %>% 
+  mutate(units_bk= as.numeric(case_when(category== "vacant" ~ 0,
+                                        category=="sf"~ 1,
+                                        TRUE ~ as.numeric(numberofunits)))) %>% 
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-units.csv"))
