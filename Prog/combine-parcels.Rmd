@@ -39,6 +39,7 @@ knitr::opts_chunk$set(message = FALSE)
 The goal of this analysis is to combine parcels for Sarah.
 
 ## Set-up
+
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
@@ -50,6 +51,7 @@ source("../Macros/read-DC.R")
 
 ```
 
+## Read each jurisdiction
 
 Set filepath name
 ```{r fips-fair}
@@ -123,9 +125,206 @@ if (!exists("arlington")) {
 
 ```
 
-Select needed variables
+
+## Fill in variables
+
+For each jurisdiction:
+
+* Fill in missing variables
+* Select variables needed for upzoning and soft sites analysis
+
+Make function to sum missing units 
+
+```{r missing-fxn}
+
+sum_missing_units <- function(dataset) {
+  
+  dataset %>% 
+    group_by(category_detail) %>% 
+    filter(residential == 1, category != "vacant") %>% 
+    summarize(count = n(),
+              units.na = sum(is.na(numberofunits)),
+              units.zero = sum(numberofunits == 0, na.rm = TRUE),
+              p.na = units.na / n(),
+              p.zero = units.zero / n())
+}
+
+
+```
+
+Make function to sum missing lotsize 
+
+```{r missing-fxn}
+sum_missing_lotsize <- function(dataset) {
+  
+  dataset %>% 
+    group_by(category_detail) %>% 
+    filter(residential == 1, category != "vacant") %>% 
+    summarize(count = n(),
+              lotsize.na = sum(is.na(lotsize_sf)),
+              lotsize.zero = sum(lotsize_sf == 0, na.rm = TRUE),
+              p.na = lotsize.na / n(),
+              p.zero = lotsize.zero / n())
+}
+
+
+```
+
+### Arlington
+
+#### Number of units
+
+```{r arl-missing}
+
+arlington %>% 
+  sum_missing_units() %>% 
+  knitr::kable()
+
+```
+
+Fill in lot size with variables from parcel file, property file. Fill in number of units as 2 for duplex, 1 for single-family. If `numberofunits` is stil missing after those steps, supplement with the `numberofunits_prop` variable, which came from the county. (See `preclean-Arlington.Rmd`)
+
+```{r arl-fill}
+
+arlington1 <- arlington %>% 
+  mutate(lotsize_sf = ifelse(county_name == "Arlington" & is.na(lotsize_sf),
+                             parcel_area,
+                             lotsize_sf),
+         lotsize_sf = ifelse(county_name == "Arlington" & is.na(lotsize_sf),
+                             lotsize_prop,
+                             lotsize_sf),
+         lotsize_acres = lotsize_sf / 43560) %>% 
+  mutate(numberofunits = ifelse(category_detail == "duplex" & numberofunits == 0,
+                                2,
+                                numberofunits),
+         numberofunits = ifelse(category == "sf" & address_type == "single",
+                                1,
+                                numberofunits),
+         numberofunits = ifelse((is.na(numberofunits) | numberofunits == 0) & !is.na(numberofunits_prop),
+                                numberofunits_prop,
+                                numberofunits))
+
+arlington1 %>% 
+  sum_missing_units() %>% 
+  knitr::kable()
+
+```
+
+#### Lot size
+
+```{r arl-ls}
+arlington1 %>% 
+  sum_missing_lotsize()
+
+
+```
+
+### Fairfax
+
+```{r ff-tab}
+fairfax %>% 
+  sum_missing_units() %>% 
+  knitr::kable()
+
+```
+
+Fill in duplex, SF, and townhouse.
+```{r ff-sf}
+
+
+fairfax1 <- fairfax %>% 
+  mutate(numberofunits = ifelse(category_detail == "duplex" & numberofunits == 0,
+                                2,
+                                numberofunits),
+         numberofunits = ifelse(category_detail == "townhouse" & address_type == "single",
+                                1,
+                                numberofunits),
+         numberofunits = ifelse(category == "sf" & address_type == "single",
+                                1,
+                                numberofunits))
+
+fairfax1 %>% 
+  sum_missing_units() %>% 
+  knitr::kable()
+
+```
+
+Look at all the additional units variables.
+
+```{r ff-units}
+
+fairfax %>% 
+  filter(residential == 1, category != "vacant") %>% 
+  group_by(category_detail) %>% 
+  summarize_at(vars(numberofunits, num_livunit, dwellings_per_parcel,
+                    units_area, numberofunits_tax),
+               ~ sum(is.na(.)) / n()) %>% 
+  knitr::kable()
+
+```
+
+Fill in with `num_livunit`, and then `numberofunits_tax` when possible.
+
+```{r ff-mf}
+
+fairfax2 <- fairfax1 %>% 
+  mutate(numberofunits = ifelse(numberofunits == 0 & !is.na(num_livunit),
+                                num_livunit,
+                                numberofunits),
+         numberofunits = ifelse(numberofunits == 0 & !is.na(numberofunits_tax),
+                                numberofunits_tax,
+                                numberofunits))
+
+fairfax2 %>% 
+  sum_missing_units() %>% 
+  knitr::kable()
+
+```
+Look at missing lot size
+
+```{r ff-ls}
+fairfax2 %>% 
+  sum_missing_lotsize() %>% 
+  knitr::kable()
+
+fairfax2 %>% 
+  group_by(category_detail) %>% 
+  summarize_at(vars(area_tax, parcel_area),
+               ~ sum(is.na(.)) / n()) %>% 
+  knitr::kable()
+
+```
+
+Fill in where possible.
+
+```{r ff-fill-ls}
+
+fairfax3 <- fairfax2 %>% 
+  mutate(lotsize_sf = ifelse(is.na(lotsize_sf) & !is.na(parcel_area) & parcel_area != 0,
+                             parcel_area,
+                             lotsize_sf),
+         lotsize_sf = ifelse(is.na(lotsize_sf) & !is.na(area_tax) & area_tax != 0,
+                             area_tax,
+                             lotsize_sf),
+         lotsize_sf = as.numeric(lotsize_sf),
+         lotsize_acres = lotsize_sf / 43560)
+
+fairfax3 %>% 
+  sum_missing_lotsize() %>% 
+  knitr::kable()
+
+```
+### Montgomery
+
+
+### DC
+
+Units were already filled in `clean-DC.Rmd`
+
+## Select and combine
+
 ```{r}
-arl <- arlington %>%
+arl <- arlington1 %>%
           select(county_fips,
                  county_name,
                  assessorsparcelnumberapnpin,
@@ -134,14 +333,13 @@ arl <- arlington %>%
                  address_type,
                  zoning, 
                  lotsize_sf, 
-                 parcel_area,
                  numberofunits,
                  category,
                  category_detail, 
                  countylandusedescription, 
                  residential, lat, long)
 
-fai <- fairfax %>%
+fai <- fairfax3 %>%
         select(county_fips,
                county_name,
                assessorsparcelnumberapnpin,
@@ -187,13 +385,14 @@ dc <- dc_full %>%
            residential, 
            lat, long,
            parcelgeo_x, parcelgeo_y)%>%
-    rename(assessorsparcelnumberapnpin=parcelbase_SSL,
-                 propaddress = parcelbase_address)
+    rename(assessorsparcelnumberapnpin = parcelbase_SSL,
+           propaddress = parcelbase_address)
 
 ```
 
 Bind rows together
 ```{r}
+
 all_jurs <- arl %>% 
   bind_rows(fai) %>%
   bind_rows(mon) %>%
