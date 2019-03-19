@@ -234,20 +234,11 @@ zoningcode1 <- zoningcode1 %>%
 
 ## Clean vacant lots data
 
-Select only vacant lots
-
-```{r res}
-
-vacant <- jur %>% 
-  filter(category == "vacant")
-  
-```
-
 See how many lots have missing key variables
 
 ```{r missing}
 
-vacant %>% 
+jur %>% 
   mutate(num = NA) %>% 
   group_by(category_detail) %>% 
   summarize_at(vars(propaddress, lotsize_sf, zoning, num),
@@ -263,7 +254,7 @@ We will fill in the missing lot size, when we can, with the area of the lot, obt
 
 ```{r fill-lots}
 
-vacant <- vacant %>% 
+jur1 <- jur %>% 
   mutate(arc_lotsize_sf = lotsize_sf, # archive the original lot size variable
          lotsize_sf = ifelse(is.na(lotsize_sf),
                              parcel_area,
@@ -274,10 +265,10 @@ vacant <- vacant %>%
 
 ```
 
-See how many we're filled in
+See how many were filled in
 
 ```{r count-lots}
-sum(is.na(vacant$arc_lotsize_sf)) - sum(is.na(vacant$lotsize_sf))
+sum(is.na(jur$lotsize_sf)) - sum(is.na(jur1$lotsize_sf))
 ```
 
 ### Assessment values
@@ -286,7 +277,7 @@ The difference between the land value, improvement value, and total value can he
 
 ```{r check-assess}
 
-vacant %>% 
+jur1 %>% 
   group_by(category_detail) %>% 
   summarize(nprops = n(),
             imp_zero = sum(assessedimprovementvalue == 0, na.rm = TRUE),
@@ -303,8 +294,9 @@ Most of the vacant properties have either a 0 or a missing value for the improve
 
 ```{r not-so-vacant}
 
-vacant %>% 
-  filter(assessedimprovementvalue > 0, 
+jur1 %>% 
+  filter(category == "vacant",
+         assessedimprovementvalue > 0, 
          !is.na(assessedimprovementvalue)) %>% 
   mutate(p_total = assessedimprovementvalue / totalassessedvalue) %>% 
   group_by(category_detail) %>% 
@@ -321,8 +313,9 @@ vacant %>%
 Look at the distribution of improved value as a percent of total value.
 
 ```{r scatter-not-vacant, echo=FALSE}
-vacant %>% 
-  filter(assessedimprovementvalue > 0, 
+jur1 %>% 
+  filter(category == "vacant",
+         assessedimprovementvalue > 0, 
          !is.na(assessedimprovementvalue)) %>% 
   mutate(p_total = assessedimprovementvalue / totalassessedvalue) %>% 
   ggplot() +
@@ -339,16 +332,16 @@ We can recategorize these observations as "vacant with structure", and will not 
 
 ```{r not-vacant-recat}
 
-vacant <- vacant %>% 
+jur2 <- jur1 %>% 
   mutate(category = ifelse(assessedimprovementvalue > 0 & 
-                           !is.na(assessedimprovementvalue),
+                           !is.na(assessedimprovementvalue) &
+                             category == "vacant",
                            "vacant with structure",
                            category))
 
-count(vacant, category)
+count(jur2, category)
 
-vacant1 <- vacant %>% 
-  filter(category == "vacant") %>% 
+jur2 <- jur2 %>% 
   mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
                                 1,
                                 0))
@@ -377,7 +370,7 @@ Convert vacant lots to SF, set CRS. To convert to SF, we need to use only the ob
 
 ```{r convert-sf}
 
-vacantsf <- vacant1 %>% 
+jursf <- jur2 %>% 
   filter(missing_coord == 0) %>% 
   st_as_sf(coords = c("long", "lat")) %>% 
   st_set_crs(st_crs(zon))
@@ -390,7 +383,7 @@ ggplot() +
   scale_fill_manual(values = c("#1696d2", "#fdbf11", 
                                "#d2d2d2", "#ec008b", 
                                "#55b748")) +
-  geom_sf(data = vacantsf, mapping = aes(),
+  geom_sf(data = sample_n(jursf, 500), mapping = aes(),
           color = "black")
 
 ```
@@ -399,14 +392,14 @@ Spatial join
 
 ```{r spatial-join}
 
-vacantjoin <- st_join(vacantsf, zon, join = st_intersects)
+jurjoin <- st_join(jursf, zon, join = st_intersects)
 
 ```
 
 After the join, we convert back to a dataframe, for ease of computations.
 ```{r back-to-df}
 
-vacant2 <- st_set_geometry(vacantjoin, NULL)
+jur3 <- st_set_geometry(jurjoin, NULL)
 
 ```
 
@@ -414,10 +407,10 @@ Count how many observations did not join. This will throw an error if more than 
 
 ```{r count-spatial}
 
-paste0(sum(is.na(vacant2$ZN_DESIG)), " observations didn't join- ",
-      round(sum(is.na(vacant2$ZN_DESIG)) / nrow(vacant2) * 100, 2), "%")
+paste0(sum(is.na(jur3$ZN_DESIG)), " observations didn't join- ",
+      round(sum(is.na(jur3$ZN_DESIG)) / nrow(jur3) * 100, 2), "%")
 
-if (sum(is.na(vacant2$ZN_DESIG)) / nrow(vacant2) > .05) {
+if (sum(is.na(jur3$ZN_DESIG)) / nrow(jur3) > .05) {
   stop("More than 5% of observations could not be spatially joined.")
 }
       
@@ -427,7 +420,7 @@ Test how many have different results from the Black Knight zoning variable.
 
 ```{r test-spatial}
 
-vacant2 %>% 
+jur3 %>% 
   group_by(is.na(zoning)) %>% 
   count(zoning == ZN_DESIG)
 
@@ -437,7 +430,7 @@ Take a closer look how many and what percent are different "just because"- not b
 
 ```{r test-spatial-again}
 
-vacant2 %>% 
+jur3 %>% 
   filter(!is.na(zoning), 
          !is.na(ZN_DESIG), 
          str_detect(zoning, "/") == FALSE) %>% 
@@ -445,7 +438,7 @@ vacant2 %>%
                                  1,
                                  0)) %>% 
   summarize(different = sum(different_flag, na.rm = TRUE)) %>% 
-  mutate(percent_different = paste0(round(different / nrow(vacant1) *100, 2), "%"))
+  mutate(percent_different = paste0(round(different / nrow(jur3) *100, 2), "%"))
 
 ```
 
@@ -453,7 +446,7 @@ Many are different because the Black Knight zoning has two zoning codes, separat
 
 ```{r slashes}
 
-vacant2 %>% 
+jur3 %>% 
   filter(str_detect(zoning, "/")) %>% 
   count(str_detect(zoning, ZN_DESIG))
 
@@ -463,7 +456,7 @@ If the zoning is missing OR the zoning contains a slash and the spatially joined
 
 ```{r zoning-swap}
 
-vacant3 <- vacant2 %>% 
+jur4 <- jur3 %>% 
   mutate(zoning_bk = zoning,
          zoning = ifelse(is.na(zoning), 
                          ZN_DESIG, 
@@ -480,12 +473,12 @@ Recombine with observations with missing coordinates, check that number of rows 
 
 ```{r get-final}
 
-vacanttotal <- vacant1 %>% 
+jurtotal <- jur2 %>% 
   filter(is.na(lat) | is.na(long)) %>% 
   mutate(zoning_bk = zoning) %>% 
-  bind_rows(vacant3)
+  bind_rows(jur4)
 
-stopifnot(nrow(vacanttotal) == nrow(vacant1))
+stopifnot(nrow(jurtotal) == nrow(jur))
 
 ```
 
@@ -501,7 +494,7 @@ First, isolate these observations and separate each zoning code into its own obs
 
 ```{r real-final}
 
-dual <- vacanttotal %>% 
+dual <- jurtotal %>% 
   filter((str_detect(zoning, "/") == TRUE & 
             str_detect(zoning_bk, ZN_DESIG) == FALSE) |
           (str_detect(zoning, "/") == TRUE &
@@ -528,10 +521,10 @@ Convert to long so that we can list the zoning variables- then `group_by` the pa
 
 ```{r long}
 
-vacantlong <- dual %>% 
+long <- dual %>% 
   gather(key = "position", value = "code", -c(1:46, 51))
 
-dual2 <- vacantlong %>% 
+dual2 <- long %>% 
   group_by(assessorsparcelnumberapnpin) %>% 
   summarize(zlist = list(code))
 
@@ -600,7 +593,7 @@ Select only the clean zoning variable, merge back into main dataset, and replace
 
 ```{r recomb}
 
-vacantfinal <- vacanttotal %>% 
+jurfinal <-jurtotal %>% 
   left_join(select(dual3,
                    assessorsparcelnumberapnpin, zoning = zoning_true),
             by = "assessorsparcelnumberapnpin") %>% 
@@ -616,8 +609,8 @@ Save the final vacant lots data so it can be used for the special exceptions (th
 
 ```{r save-vacant}
 
-saveRDS(vacantfinal, "L:/Libraries/RegHsg/Data/arlington/arlington-vacant-lots.Rdata")
-saveRDS(zoningcode1, "L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.Rdata")
+# saveRDS(vacantfinal, "L:/Libraries/RegHsg/Data/arlington/arlington-vacant-lots.Rdata")
+# saveRDS(zoningcode1, "L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.Rdata")
 
 ```
 
@@ -627,12 +620,13 @@ Now that we have selected the correct records from the zoning code file, we can 
 
 ```{r bk-clean}
 
-vacantfinal <- vacantfinal %>% 
+jurfinal <- jurfinal %>% 
   mutate(zoning_code = case_when(
     zoning == "RC" ~ "R-C",
     zoning == "C-0 Crystal City" ~ "C-O Crystal City",
     zoning %in% c("C-O-ROSSLYN", "C-O-ROSS") ~ "C-O Rosslyn",
     zoning == "RA-H-3.2" ~ "RA-H 3.2",
+    zoning == "C-1-O" ~ "C-1-0",
     TRUE ~ zoning
   ))
            
@@ -643,7 +637,7 @@ Merge on zoning code variable. Test that all variables merged.
 
 ```{r zoning-merge}
 
-zoningdata <- left_join(vacantfinal, zoningcode1, by = "zoning_code")
+zoningdata <- left_join(jurfinal, zoningcode1, by = "zoning_code")
 
 ```
 
@@ -651,7 +645,7 @@ There are `r nrow(anti_join(vacantfinal, zoningcode1, by = c("zoning_code")))` o
 
 ```{r antijoin}
 
-anti_join(vacantfinal, zoningcode1, by = c("zoning_code")) %>% 
+anti_join(jurfinal, zoningcode1, by = c("zoning_code")) %>% 
   count(zoning) %>% 
   knitr::kable()
 
@@ -664,14 +658,32 @@ Filter out lots that are too small to build on and lots with missing zoning info
 ```{r filter-small}
 
 zoningdata1 <- zoningdata %>% 
-  filter(!is.na(zoning),
-         lotsize_sf >= lot_area_min) %>% 
-  group_by(propaddress) %>% 
+  filter(!is.na(district_type)) %>% 
+  mutate(smallsize_flag = ifelse(lotsize_sf >= lot_area_min, 0, 1)) %>% 
+  mutate(smallsize_flag = ifelse(is.na(smallsize_flag), 0, smallsize_flag)) %>% 
+  group_by(propaddress, smallsize_flag) %>% 
   slice(which.min(dwelling_type)) %>% 
+  ungroup() %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(smallsize_flag)) %>% 
   ungroup()
 
-```
+# check observations
+nrow(zoningdata1) + nrow(filter(zoningdata, is.na(zoning_code)))
 
+# this is the number of all parcels, including those with 
+zoningdata %>% group_by(propaddress) %>% count() %>% nrow()
+
+# check observations
+nrow(zoningdata1) + nrow(filter(zoningdata, is.na(zoning_code)))
+
+# remaning 112 observations have no residential buildings allowed
+zoningdata %>% 
+  filter(!propaddress %in% zoningdata1$propaddress) %>% 
+  count(zoning_code)
+
+
+```
 
 ## Calculate missing units
 
@@ -773,20 +785,60 @@ get_unit_summary <- function(dataset,
 
 
 ```
-    
 
-Get summary statistics for several different parameters
+### All lots
 
-```{r sum}
+Run the function on the entire dataset, and export for soft sites analysis.
 
-get_unit_summary(dataset = zoningdata1,
-                 construction_efficiency = .7,
+```{r units-all}
+
+units <- get_unit_variables(dataset = zoningdata1,
+                            construction_efficiency = .7,
+                            average_unit_size = 940)
+
+```
+
+
+Write out for soft sites.
+```{r write-units}
+
+saveRDS(units,
+        "L:/Libraries/RegHsg/Data/arlington/arlington-max-density.Rdata")
+
+```
+
+
+### Vacant lots
+
+Run the function for all vacant lots with sufficient lot size to build.
+
+```{r units-vacant}
+units_vacant <- zoningdata1 %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
+  get_unit_variables(construction_efficiency = .7,
+                     average_unit_size = 940)
+
+
+zoningdata1 %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
+  get_unit_summary(construction_efficiency = .7,
                  average_unit_size = 940,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
 
-map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata1,
+```
+
+
+Get summary statistics for several different parameters
+
+```{r sum}
+
+map_df(c(.7, .85), ~ get_unit_summary(dataset = filter(zoningdata1,
+                                                       category == "vacant",
+                                                       smallsize_flag == 0),
                                       construction_efficiency = .,
                                       average_unit_size = 940,
                                       dwelling_type_breakdown = FALSE)) %>% 
@@ -799,6 +851,8 @@ Look at the distribution of units for lots with more than 1 unit, to check for e
 ```{r scatter, echo = FALSE}
 
 zoningdata1 %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 940) %>% 
   filter(units_total > 1) %>% 
@@ -824,6 +878,8 @@ Look more closely at vacant lots < 50,000 SF
 ```{r scatter-small, echo = FALSE}
 
 zoningdata1 %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 940) %>% 
   filter(lotsize_sf < 50000,
@@ -848,19 +904,4 @@ zoningdata1 %>%
 
 ```
 
-## Write out results
-
-Write out the results to a csv. Include jurisdiction name in the title.
-
-```{r write-results}
-
-get_unit_summary(dataset = zoningdata1,
-                 construction_efficiency = .7,
-                 average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE) %>% 
-  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
-                   filepath,
-                   "-vacant-lots-analysis.csv"))
-
-
-```
+## Get values for table
