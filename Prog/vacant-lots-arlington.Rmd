@@ -609,8 +609,8 @@ Save the final vacant lots data so it can be used for the special exceptions (th
 
 ```{r save-vacant}
 
-# saveRDS(vacantfinal, "L:/Libraries/RegHsg/Data/arlington/arlington-vacant-lots.Rdata")
-# saveRDS(zoningcode1, "L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.Rdata")
+saveRDS(jurfinal, "L:/Libraries/RegHsg/Data/arlington/arlington-lots.Rdata")
+saveRDS(zoningcode1, "L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.Rdata")
 
 ```
 
@@ -813,6 +813,7 @@ saveRDS(units,
 Run the function for all vacant lots with sufficient lot size to build.
 
 ```{r units-vacant}
+
 units_vacant <- zoningdata1 %>% 
   filter(category == "vacant",
          smallsize_flag == 0) %>% 
