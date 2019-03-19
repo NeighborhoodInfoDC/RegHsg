@@ -597,13 +597,13 @@ nrow(dual2)
 We need to clean the spatial joined zoning code, especially the Residential codes started ones that have a dash in the middle that are not joined with the zoning spreadsheet. After cleaning, use anti_join again to test if there are any left over residential codes that are not joined.
 
 ```{r remove dash}
-
-vacanttotaltest <- vacant2 %>% 
-  mutate(zoning_code=ZONING_LAB)
-
-anti_join(vacanttotaltest, zoningcode_factor, by = c("zoning_code")) %>% 
-  count(zoning_code) %>% 
-  knitr::kable()
+# 
+# vacanttotaltest <- vacant2 %>% 
+#   mutate(zoning_code=ZONING_LAB)
+# 
+# anti_join(vacanttotaltest, zoningcode_factor, by = c("zoning_code")) %>% 
+#   count(zoning_code) %>% 
+#   knitr::kable()
 
 jurtotaltest <- jur2 %>% 
   mutate(zoning_code=ZONING_LAB)
@@ -612,14 +612,14 @@ anti_join(jurtotaltest, zoningcode_factor, by = c("zoning_code")) %>%
   count(zoning_code) %>% 
   knitr::kable()
 
-vacantcleaned <- vacant2 %>% 
-          mutate(zoning_code=ZONING_LAB, 
-                 zoning_bk= zoning) %>% 
-          mutate(firsttwo= substr(ZONING_LAB, 1,2),
-                 badrescode=ifelse(str_detect(firsttwo, "R-")==1, 1, 0),
-                 zoning_code=str_trim(ifelse(badrescode==1, paste0(substr(ZONING_LAB, 1,1),substr(ZONING_LAB,3,4)),ZONING_LAB), side="right"),
-                 zoning_code=ifelse(ZONING_LAB== "R-1-A", "R1A", zoning_code),
-                 zoning_code= ifelse(ZONING_LAB== "R-1-B", "R1B", zoning_code))
+# vacantcleaned <- vacant2 %>% 
+#           mutate(zoning_code=ZONING_LAB, 
+#                  zoning_bk= zoning) %>% 
+#           mutate(firsttwo= substr(ZONING_LAB, 1,2),
+#                  badrescode=ifelse(str_detect(firsttwo, "R-")==1, 1, 0),
+#                  zoning_code=str_trim(ifelse(badrescode==1, paste0(substr(ZONING_LAB, 1,1),substr(ZONING_LAB,3,4)),ZONING_LAB), side="right"),
+#                  zoning_code=ifelse(ZONING_LAB== "R-1-A", "R1A", zoning_code),
+#                  zoning_code= ifelse(ZONING_LAB== "R-1-B", "R1B", zoning_code))
 
 jurcleaned <- jur2 %>% 
           mutate(zoning_code=ZONING_LAB, 
@@ -635,22 +635,22 @@ jurcleaned <- jur2 %>%
 After cleaning, use anti_join again to test if there are any left over residential codes that are not joined.PDR are not residential codes. Fix SEFC-1B and StE-14 (assign StE-14 to StE-14A)
 ```{r antijoinagain}
 
-anti_join(vacantcleaned, zoningcode_factor, by = c("zoning_code")) %>% 
-  count(zoning_code) %>% 
+# anti_join(vacantcleaned, zoningcode_factor, by = c("zoning_code")) %>%
+#   count(zoning_code) %>%
+#   knitr::kable()
+
+anti_join(jurcleaned, zoningcode_factor, by = c("zoning_code")) %>%
+  count(zoning_code) %>%
   knitr::kable()
 
-anti_join(jurcleaned, zoningcode_factor, by = c("zoning_code")) %>% 
-  count(zoning_code) %>% 
-  knitr::kable()
-
-vacantcleaned2 <- vacantcleaned %>% 
-          mutate(zoning_code=ifelse(ZONING_LAB== "StE-14", "StE-14A", zoning_code),
-                 zoning_code= ifelse(ZONING_LAB== "SEFC-1B", "SEFC-1-B", zoning_code))
-
-
-anti_join(vacantcleaned2, zoningcode_factor, by = c("zoning_code")) %>% 
-  count(zoning_code) %>% 
-  knitr::kable()
+# vacantcleaned2 <- vacantcleaned %>%
+#           mutate(zoning_code=ifelse(ZONING_LAB== "StE-14", "StE-14A", zoning_code),
+#                  zoning_code= ifelse(ZONING_LAB== "SEFC-1B", "SEFC-1-B", zoning_code))
+# 
+# 
+# anti_join(vacantcleaned2, zoningcode_factor, by = c("zoning_code")) %>%
+#   count(zoning_code) %>%
+#   knitr::kable()
 
 jurcleaned2 <- jurcleaned %>% 
           mutate(zoning_code=ifelse(ZONING_LAB== "StE-14", "StE-14A", zoning_code),
@@ -668,14 +668,14 @@ After cleaning the zoning code from shapefile, we are merging the cleaned blackn
 
 ```{r zoning-merge}
 
-zoningdata <- left_join(vacantcleaned2, zoningcode_factor, by = "zoning_code") %>% 
-           filter(newdwelling_type!="NA")
-#filter out observations with zoning codes that are eithing NA or not in the DC spreadsheet
-
-zoningdata %>% 
-  group_by(newdwelling_type) %>% 
-  count() %>% 
-  knitr::kable()
+# zoningdata <- left_join(vacantcleaned2, zoningcode_factor, by = "zoning_code") %>% 
+#            filter(newdwelling_type!="NA")
+# #filter out observations with zoning codes that are eithing NA or not in the DC spreadsheet
+# 
+# zoningdata %>% 
+#   group_by(newdwelling_type) %>% 
+#   count() %>% 
+#   knitr::kable()
 
 
 jurzoningdata <- left_join(jurcleaned2, zoningcode_factor, by = "zoning_code") %>% 
@@ -699,72 +699,80 @@ jurzoningdata1 <- jurzoningdata %>%
          lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
   filter(!is.na(zoning_code)) %>% 
   mutate( smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 0,1)) %>% 
-  group_by(propaddress) %>% 
+  mutate(smallsize_flag= ifelse(is.na(smallsize_flag)==1, 0, smallsize_flag)) %>% 
+  group_by(propaddress, smallsize_flag) %>% 
   slice(which.min(newdwelling_type)) %>% 
-  ungroup()
-
-zoningdata1 <- zoningdata %>% 
-  mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
-         lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
-  filter(!is.na(zoning_code)) %>% 
-  mutate( smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 0,1)) %>% 
+  ungroup() %>% 
   group_by(propaddress) %>% 
-  slice(which.min(newdwelling_type)) %>% 
-  ungroup()
+  slice(which.min(smallsize_flag))
 
-nrow(zoningdata1)
+# 
+# zoningdata1 <- zoningdata %>% 
+#   mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
+#          lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
+#   filter(!is.na(zoning_code)) %>% 
+#   mutate( smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 0,1)) %>% 
+#   mutate(smallsize_flag= ifelse(is.na(smallsize_flag)==1, 0, smallsize_flag)) %>% 
+#   group_by(propaddress, smallsize_flag) %>% 
+#   slice(which.min(newdwelling_type)) %>% 
+#   ungroup() %>% 
+#   group_by(propaddress) %>% 
+#   slice(which.min(smallsize_flag))
+
+
+# nrow(zoningdata1)
 nrow(jurzoningdata1)
 
-# 7790 cases where lotsize_sf is less than the minimum lot area or missing. 
-zoningdata1test <- zoningdata %>% 
-     filter(lotsize_sf < lot_area_min) %>% 
-     mutate(gap= lotsize_sf-lot_area_min) %>% 
-    select(lotsize_sf,lot_area_min, gap)
+# # 7790 cases where lotsize_sf is less than the minimum lot area or missing. 
+# zoningdata1test <- zoningdata %>% 
+#      filter(lotsize_sf < lot_area_min) %>% 
+#      mutate(gap= lotsize_sf-lot_area_min) %>% 
+#     select(lotsize_sf,lot_area_min, gap)
 
-nrow(zoningdata1test)
+# nrow(zoningdata1test)
 
-ggplot(zoningdata1, aes(lotsize_sf) )+
-  geom_histogram(binwidth = 5000)
-
-
-ggplot(zoningdata1, aes(lot_area_min) )+
-  geom_histogram(binwidth = 500)
-
-
-ggplot(zoningdata1test, aes(gap ))+
-  geom_histogram(binwidth = 500)
+# ggplot(zoningdata1, aes(lotsize_sf) )+
+#   geom_histogram(binwidth = 5000)
+# 
+# 
+# ggplot(zoningdata1, aes(lot_area_min) )+
+#   geom_histogram(binwidth = 500)
+# 
+# 
+# ggplot(zoningdata1test, aes(gap ))+
+#   geom_histogram(binwidth = 500)
 
 ```
 
 filter out special zoning codes that are not for housing. Recategorize for exporting tables. Leah-- please let me know if there are better categories. We can also just export the unit estimates by each zoning code-- more precise that way and we can categorize those codes later.
 ```{r filter-special purpose}
 
-zoningdata2 <- zoningdata1 %>% 
-  filter(zoning_code != "SEFC-4") 
+# zoningdata2 <- zoningdata1 %>% 
+#   filter(zoning_code != "SEFC-4") 
 
 #filter out codes that can't be used for residential even if it is a code for residential 
 jurzoningdata2 <- jurzoningdata1 %>% 
     filter(zoning_code != "SEFC-4"| zoning_code!= "WR-6") 
 
-zoningdata2 %>% 
-  group_by(newdwelling_type) %>% 
-  count() %>% 
-  knitr::kable()
-
-zoningdata2 %>% 
-  group_by(zoning_code, newdwelling_type, parcelbase_usecode) %>% 
-  count() %>% 
-  knitr::kable()
-
-
-zoningdata3 <-zoningdata2 %>% 
-  mutate(housing_type= case_when(newdwelling_type=="RA" ~ "Multifamily",
-                                   newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"| newdwelling_type=="Special purpose-B"~ "Multifamily",
-                                   newdwelling_type=="RF2-C" ~ "SF-attached", 
-                                   newdwelling_type=="One Family-F" ~ "SF-attached",
-                                   newdwelling_type=="One Family-E" ~ "SF-attached", 
-                                   newdwelling_type=="One Family-A" ~ "Single Family" 
-                                   ))
+# zoningdata2 %>% 
+#   group_by(newdwelling_type) %>% 
+#   count() %>% 
+#   knitr::kable()
+# 
+# zoningdata2 %>% 
+#   group_by(zoning_code, newdwelling_type, parcelbase_usecode) %>% 
+#   count() %>% 
+#   knitr::kable()
+# 
+# 
+# zoningdata3 <-zoningdata2 %>% 
+#   mutate(housing_type= case_when(newdwelling_type=="RA" ~ "Multifamily",
+#                                    newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"| newdwelling_type=="Special purpose-B"~ "Multifamily",
+#                                    newdwelling_type=="RF2-C" ~ "SF-attached", 
+#                                    newdwelling_type=="One Family-F" ~ "SF-attached",
+#                                    newdwelling_type=="One Family-E" ~ "SF-attached", 
+#                                    newdwelling_type=="One Family-A" ~ "Single Family" 
+#                                    ))
 
 jurzoningdata3 <- jurzoningdata2 %>% 
   mutate(housing_type= case_when(newdwelling_type=="RA" ~ "Multifamily",
@@ -811,7 +819,7 @@ get_unit_variables <- function(dataset,
                                " sf"),
            buildable_area = lotsize_sf * lot_coverage_max,
            living_area = buildable_area * construction_efficiency,
-           units_per_floor = floor(living_area / average_unit_size),
+           units_per_floor = floor(living_area / average_unit_size), # it will set to 0 when less than 1. 
            FAR_stories = floor_area_ratio_max/lot_coverage_max,
            floors = floor(height_ft /10),
           stories = ifelse(FAR_stories>=floors, floors, FAR_stories),
@@ -904,10 +912,17 @@ Get summary statistics for several different parameters
 #   knitr::kable()
 
 
-#filter out usecode 093 and 193 for vacant lot anlaysis
-vacantlotunits <- zoningdata3 %>% 
-  filter(parcelbase_usecode!= "093"| parcelbase_usecode!= "193")
+#filter out usecode 093 and 193, vacant lots and lotsize that are big enough for vacant lot anlaysis
+vacantlotunits <- jurzoningdata3 %>% 
+  filter(parcelbase_usecode!= "093"| parcelbase_usecode!= "193") %>% 
+  filter(category=="vacant" & smallsize_flag==0)
 
+testvacant <- get_unit_variables(dataset = vacantlotunits,
+                 construction_efficiency = .7,
+                 average_unit_size = 940) %>% 
+  filter(housing_type=="SF-attached") %>% 
+  select(parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,             units_per_floor, units_min, units_FAR, units_height, units_total, propaddress, zoning_code ) 
+ 
 
 get_unit_variables(dataset = vacantlotunits,
                  construction_efficiency = .7,
