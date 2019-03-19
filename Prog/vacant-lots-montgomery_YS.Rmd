@@ -586,17 +586,24 @@ Filter out lots that are too small to build on and lots with missing zoning info
 zoningdata_rockvile1_final <- zoningdata_rockvile1_total %>% 
   filter(!is.na(zoning_code)) %>% 
   mutate(smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 0, 1)) %>% 
-  group_by(propaddress) %>% 
+  mutate(smallsize_flag= ifelse(is.na(smallsize_flag)==1, 0, smallsize_flag)) %>% 
+  group_by(propaddress, smallsize_flag) %>% 
   slice(which.min(newdwelling_type)) %>% 
-  ungroup()
+  ungroup() %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(smallsize_flag))
+
 
 zoningdata_gaithersburg1_final <- zoningdata_gaithersburg1_total %>% 
   mutate(lot_area_min = ifelse(is.na(lot_area_min)==1, 0, lot_area_min)) %>% 
   filter(!is.na(zoning_code)) %>% 
   mutate(smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 0, 1)) %>% 
-  group_by(propaddress) %>% 
+  mutate(smallsize_flag= ifelse(is.na(smallsize_flag)==1, 0, smallsize_flag)) %>% 
+  group_by(propaddress, smallsize_flag) %>% 
   slice(which.min(dwelling_type)) %>% 
-  ungroup() 
+  ungroup() %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(smallsize_flag))
 
 
 ```
@@ -675,8 +682,8 @@ get_unit_summary_r <- function(dataset,
                        average_unit_size) %>%
     group_by(parameters) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height),
-              units_total = sum(units_total),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots)))
   
   y <- dataset %>% 
@@ -684,8 +691,8 @@ get_unit_summary_r <- function(dataset,
                        average_unit_size) %>%
     group_by(parameters, housing_type) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height),
-              units_total = sum(units_total),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots))) %>% 
     mutate(housing_type = as.character(housing_type))
   
@@ -804,7 +811,7 @@ zoningdata_rockvile1_final2 <- get_unit_variables_r(dataset =zoningdata_rockvile
 
 
 Rockvillevacant <- zoningdata_rockvile1_final2 %>% 
-            filter(category=="vacant"|smallsize_flag==0) 
+            filter(category=="vacant"& smallsize_flag==0) 
             
 
 get_unit_variables_r(dataset =  zoningdata_rockvile1_final2,
@@ -864,15 +871,15 @@ get_unit_variables_g <- function(dataset,
            units_height= ifelse(zoning_code=="MXD", units_per_floor*(floors-1),units_height),
            units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
     mutate(subset=floor(lotsize_sf/lot_area_min)) %>% 
-    mutate(units_total = case_when(
-      units_lotsize> units_height ~ units_height,
-      TRUE ~ units_lotsize)) %>% 
-    mutate(units_total = case_when(
+    mutate(units_total= pmin(units_height, units_lotsize, na.rm = TRUE )) %>% 
+    mutate( units_total = ifelse(is.na(units_total)==1, (density *lotsize_sf/43560),units_total)) %>% 
+    mutate (units_total = case_when(
       one_unit_flag == 1 & subset<= 1 & units_total >1 ~ 1,
       one_unit_flag ==1 & subset> 1 & units_total > subset ~ subset,
       two_unit_flag ==1 & subset<=  1 & units_total > 2~ 2,
-      two_unit_flag ==1 & subset> 1 & units_total > subset~ 2*subset)) %>% 
-    mutate(units_total = ifelse(units_total> (density*lotsize_sf/43560),(density*lotsize_sf/43560),units_total))
+      two_unit_flag ==1 & subset> 1 & units_total > subset~ 2*subset,
+      TRUE ~ units_total)) %>% 
+    mutate(units_total = ifelse(units_total > (density *lotsize_sf/43560),(density*lotsize_sf/43560), units_total))
   
 }
 
@@ -897,9 +904,9 @@ get_unit_summary_g <- function(dataset,
                        average_unit_size) %>%
     group_by(parameters) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height),
-              units_lotsize = sum(units_lotsize),
-              units_total = sum(units_total),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots)))
   
   y <- dataset %>% 
@@ -907,10 +914,10 @@ get_unit_summary_g <- function(dataset,
                        average_unit_size) %>%
     group_by(parameters, housing_type) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height),
-              units_lotsize = sum(units_lotsize),
-              units_total = sum(units_total),
-              units_per_lot = floor(sum(units_total / lots))) %>% 
+              units_height = sum(units_height, na.rm = TRUE),
+              units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
+              units_per_lot = floor(sum(units_total/lots))) %>% 
     mutate(housing_type = as.character(housing_type))
   
   
@@ -942,10 +949,8 @@ get_unit_summary_g(dataset = zoningdata_gaithersburg1_final,
 testg <- get_unit_variables_g(dataset = zoningdata_gaithersburg1_final,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-  filter(housing_type=="MF") %>% 
-  select(lotsize_sf, density, units_height, units_lotsize, one_unit_flag, units_total)
-
-
+  filter(zoning_code=="MXD") %>% 
+  select(zoning_code, lotsize_sf, lotarea_per_unit, height_ft, density, units_height, units_lotsize, one_unit_flag, units_total, smallsize_flag)
 
 map_df(c(.7, .85), ~ get_unit_summary_g(dataset = zoningdata_gaithersburg1_final,
                                       construction_efficiency = .,
@@ -1022,7 +1027,7 @@ zoningdata_gaithersburg1_final2 <- get_unit_variables_g(dataset =zoningdata_gait
 
 
 gaithersburg1vacant <- zoningdata_gaithersburg1_final2 %>% 
-            filter(category=="vacant"|smallsize_flag==0) 
+            filter(category=="vacant"& smallsize_flag==0) 
 
 
 get_unit_variables_g(dataset =  zoningdata_gaithersburg1_final2,
