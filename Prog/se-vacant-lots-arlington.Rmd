@@ -73,7 +73,7 @@ Load in cleaned vacant lots and zoning code.
 
 ```{r read}
 
-vacant <- readRDS("L:/Libraries/RegHsg/Data/arlington/arlington-vacant-lots.Rdata")
+jur <- readRDS("L:/Libraries/RegHsg/Data/arlington/arlington-lots.Rdata")
 zoningcode <- readRDS("L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.Rdata") %>% 
   # create flag to indicate these do not come from the special exceptions file
   mutate(special_exception = 0)
@@ -246,14 +246,16 @@ zoningcode2 <- zoningcode1 %>%
  
 Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original `zoning` variable.
 
+
 ```{r bk-clean}
 
-vacantfinal <- vacant %>% 
+jurfinal <- jur %>% 
   mutate(zoning_code = case_when(
     zoning == "RC" ~ "R-C",
     zoning == "C-0 Crystal City" ~ "C-O Crystal City",
     zoning %in% c("C-O-ROSSLYN", "C-O-ROSS") ~ "C-O Rosslyn",
     zoning == "RA-H-3.2" ~ "RA-H 3.2",
+    zoning == "C-1-O" ~ "C-1-0",
     TRUE ~ zoning
   ))
            
@@ -263,15 +265,15 @@ Merge on zoning code variable. Test that all variables merged.
 
 ```{r zoning-merge}
 
-zoningdata <- left_join(vacantfinal, zoningcode2, by = "zoning_code")
+zoningdata <- left_join(jurfinal, zoningcode2, by = "zoning_code")
 
 ```
 
-There are `r nrow(anti_join(vacantfinal, zoningcode1, by = c("zoning_code")))` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
+There are `r nrow(anti_join(jurfinal, zoningcode1, by = c("zoning_code")))` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
 
 ```{r antijoin}
 
-anti_join(vacantfinal, zoningcode1, by = c("zoning_code")) %>% 
+anti_join(jurfinal, zoningcode1, by = c("zoning_code")) %>% 
   count(zoning) %>% 
   knitr::kable()
 
