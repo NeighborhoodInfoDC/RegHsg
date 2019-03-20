@@ -882,3 +882,43 @@ write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
 
 
 ```
+
+
+
+##Calculate values needed to fill table
+
+```{r table}
+mf.br <- zoningdata1 %>% 
+  filter(!is.na(dwelling_type),
+         dwelling_type == "apartment",
+         category == "vacant") %>% 
+  group_by(propaddress) %>%
+  count() %>% 
+  nrow()
+
+br.summary <- 
+  c(nrow(jur), 
+    nrow(filter(jur, category == "vacant")), 
+    mf.br, 
+    brsum %>% filter(dwelling_type == "apartment") %>% pull(lots) %>% sum(),
+    brsum %>% filter(dwelling_type == "apartment") %>% pull(units_total) %>% sum())
+
+
+br.breakdown <- brsum %>% 
+  ungroup() %>% 
+  mutate(dwelling_type = ifelse(dwelling_type %in% c("townhouse", "duplex-over", "duplex-side"),
+                                "sf attached",
+                                dwelling_type)) %>% 
+  group_by(dwelling_type) %>% 
+  summarize_at(vars(lots, units_total),sum) %>% 
+  filter(dwelling_type != "All") %>% 
+  arrange(desc(units_total))
+
+
+br.summary
+
+br.breakdown %>% knitr::kable()
+
+```
+
+
