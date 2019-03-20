@@ -940,7 +940,7 @@ jurzoningdata3 %>%
   count() %>% 
   knitr::kable()
 
-
+#write out whole dataset for Sarah
 get_unit_variables(dataset = jurzoningdata3,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
@@ -950,6 +950,17 @@ get_unit_variables(dataset = jurzoningdata3,
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-units.csv"))
+
+#write out a Rdata version
+DCmaxunit <- get_unit_variables(dataset = jurzoningdata3,
+                 construction_efficiency = .7,
+                 average_unit_size = 940) %>% 
+  mutate(units_bk= as.numeric(case_when(category== "vacant" ~ 0,
+                                        category=="sf"~ 1,
+                                        TRUE ~ as.numeric(numberofunits)))) 
+
+
+ saveRDS(DCmaxunit, "L:/Libraries/RegHsg/Data/DC/DC-max-units.Rdata")
 
 jurzoningdata3 %>% 
     group_by(category) %>% 
