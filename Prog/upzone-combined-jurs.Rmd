@@ -83,66 +83,9 @@ if (!exists("parcel")) {
   warning("Parcel data already read in")
 }
 
-
-parcel <- parcel %>% 
-  mutate(arc_lotsize_sf = lotsize_sf, # archive the original lot size variable
-         lotsize_sf = ifelse(county_name == "Arlington" & is.na(lotsize_sf),
-                             parcel_area,
-                             lotsize_sf),
-         lotsize_sf = ifelse(county_name == "Arlington" & is.na(lotsize_sf),
-                             lotsize_prop,
-                             lotsize_sf),
-         lotsize_acres = lotsize_sf / 43560)
-
 ```
 
-
-### Missing-ness
-
-Fill in single family homes that have single addresses with 1 unit.
-
-```{r fill-sf}
-
-parcel1 <- parcel %>% 
-  mutate(numberofunits = ifelse(category == "sf" & address_type == "single",
-                                1,
-                                numberofunits))
-
-```
-
-
-Tabulate missing number of units.
-
-```{r tab-missing-units}
-
-# all properties
-parcel1 %>% 
-  filter(residential == 1,
-         category != "vacant") %>% 
-  group_by(county_name) %>% 
-  summarize(count = n(),
-            units.na = sum(is.na(numberofunits)),
-            units.zero = sum(numberofunits == 0, na.rm = TRUE),
-            p.na = units.na / n(),
-            p.zero = units.zero / n()) %>% 
-  knitr::kable(caption = "All residential, non-vacant properties")
-
-
-# multifamily properties
-parcel1 %>% 
-  filter(residential == 1,
-         category == "mf") %>% 
-  group_by(county_name,
-           category_detail) %>% 
-  summarize(count = n(),
-            units.na = sum(is.na(numberofunits)),
-            units.zero = sum(numberofunits == 0, na.rm = TRUE),
-            p.na = units.na / n(),
-            p.zero = units.zero / n()) %>% 
-  knitr::kable(caption = "Multifamily properties")
-
-
-```
+## Get nodes
 
 Use the functions established in `clean-node-geographies.Rmd` to read in shapefiles for nodes. Use 1 mile buffer for activity centers, 1/2 mile for transit.
 
@@ -309,18 +252,23 @@ bk_clar <- st_intersection(parcel1, clarendon)
 ```
 
 
-Calculate table.
+Calculate table. Remove obsevations that are missing either lot size of number of units- having one absent from the numerator or denominator will skew the calculation.
 
 ```{r calc-clar}
 
 bk_clar %>% 
   as.data.frame() %>% 
+  filter(!is.na(lotsize_sf), !is.na(numberofunits)) %>% 
   summarize(residential_parcels = sum(residential, na.rm = TRUE),
             residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
                                     na.rm = TRUE),
             total_acres = sum(lotsize_acres, na.rm = TRUE),
             number_of_units = sum(numberofunits, na.rm = TRUE),
-            density = number_of_units / total_acres) %>% 
+            density = number_of_units / total_acres,
+            pmf = sum(ifelse(category == "mf", lotsize_acres, 0)) / total_acres,
+            psf = sum(ifelse(category == "sf", lotsize_acres, 0)) / total_acres,
+            pvac = sum(ifelse(category == "vacant", lotsize_acres, 0)) / total_acres,
+            pother = sum(ifelse(category == "other", lotsize_acres, 0)) / total_acres) %>% 
   knitr::kable()
 
 ```
@@ -331,6 +279,15 @@ Write this calculation into a function.
 
 ```{r inv-fxn}
 
+#' Generate density for individual transit stops and activity centers
+#'
+#' This function returns a dataframe witht the density within each node. It clips the spatial parcel data to the radius of the node, and then uses the lot size and number of units to get a measure of density. Also included are variables that describe the land use within the node- what percent of lots are devoted to multifamily, singly family, vacant lots, and other uses.
+#'
+#' @param dataset SF object, parcel data, must contain the category of parcel, number of units, and lot size in acres
+#' @param node_name Name of the transit stop or activity center
+#' @param node_type Either "Transit" or "Activity"
+#'
+#' @return A dataframe witht the density within each node.
 get_individual_density <- function(dataset, node_name, node_type) {
   
   options(warn = -1)
@@ -343,17 +300,24 @@ get_individual_density <- function(dataset, node_name, node_type) {
     suppressWarnings({
   dataset %>% 
     st_intersection(n) %>% 
-    as.data.frame() %>% 
-    summarize(residential_parcels = sum(residential, na.rm = TRUE),
-              residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
-                                      na.rm = TRUE),
-              total_acres = sum(lotsize_acres, na.rm = TRUE),
-              number_of_units = sum(ifelse(residential == 1,
-                                           numberofunits,
-                                           0),na.rm = TRUE),
-              density = number_of_units / total_acres) %>% 
-    mutate(name = node_name, type = node_type) %>% 
-    select(name, type, everything())
+        as.data.frame() %>% 
+        filter(!is.na(lotsize_sf), !is.na(numberofunits)) %>% 
+        summarize(residential_parcels = sum(residential, na.rm = TRUE),
+                  residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
+                                          na.rm = TRUE),
+                   total_acres = sum(lotsize_acres, na.rm = TRUE),
+                   number_of_units = sum(numberofunits, na.rm = TRUE),
+                   density = number_of_units / total_acres,
+                   pmf = sum(ifelse(category == "mf", lotsize_acres, 0),
+                             na.rm = TRUE) / total_acres,
+                   psf = sum(ifelse(category == "sf", lotsize_acres, 0),
+                             na.rm = TRUE) / total_acres,
+                   pvac = sum(ifelse(category == "vacant", lotsize_acres, 0),
+                              na.rm = TRUE) / total_acres,
+                   pother = sum(ifelse(category == "other", lotsize_acres, 0),
+                                na.rm = TRUE) / total_acres) %>% 
+        mutate(name = node_name, type = node_type) %>% 
+        select(name, type, everything())
     })
   })
 }
@@ -419,6 +383,17 @@ Write into function
 
 ```{r joint-fxn}  
   
+#' Generate density for joint area
+#'
+#' This function returns a dataframe witht the density within a given area. It clips the spatial parcel data to the area, and then uses the lot size and number of units to get a measure of density. Also included are variables that describe the land use within the node- what percent of lots are devoted to multifamily, singly family, vacant lots, and other uses.
+#'
+#' @param dataset SF object, parcel data, must contain the category of parcel, number of units, and lot size in acres
+#' @param area SF object with of the area the calculation should be done for
+#'
+#' @return
+#' @export
+#'
+#' @examples
 get_joint_density <- function(dataset, area) {
   
   suppressMessages({
