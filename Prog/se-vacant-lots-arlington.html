@@ -913,7 +913,66 @@ se.breakdown &lt;- sesum %&gt;%
   group_by(dwelling_type) %&gt;% 
   summarize_at(vars(lots, units_total),sum) %&gt;% 
   filter(dwelling_type != &quot;All&quot;) %&gt;% 
-  arrange(desc(units_total))</code></pre>
+  arrange(desc(units_total))
+
+br.summary</code></pre>
+<pre><code>## [1] 42046  2224    82    48  2137</code></pre>
+<pre class="r"><code>se.summary</code></pre>
+<pre><code>## [1] 42046  2224   124    75  8524</code></pre>
+<pre class="r"><code>br.breakdown %&gt;% knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">dwelling_type</th>
+<th align="right">lots</th>
+<th align="right">units_total</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Multiple-family</td>
+<td align="right">48</td>
+<td align="right">2137</td>
+</tr>
+<tr class="even">
+<td align="left">One Family Dwelling</td>
+<td align="right">323</td>
+<td align="right">323</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">31</td>
+<td align="right">44</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>se.breakdown %&gt;% knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">dwelling_type</th>
+<th align="right">lots</th>
+<th align="right">units_total</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Multiple-family</td>
+<td align="right">75</td>
+<td align="right">8524</td>
+</tr>
+<tr class="even">
+<td align="left">One Family Dwelling</td>
+<td align="right">297</td>
+<td align="right">297</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">31</td>
+<td align="right">44</td>
+</tr>
+</tbody>
+</table>
 </div>
 
 

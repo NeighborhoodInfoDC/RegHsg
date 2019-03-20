@@ -569,6 +569,12 @@ se.breakdown <- sesum %>%
   filter(dwelling_type != "All") %>% 
   arrange(desc(units_total))
 
+br.summary
+se.summary
+
+br.breakdown %>% knitr::kable()
+se.breakdown %>% knitr::kable()
+
 ```
 
 
