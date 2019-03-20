@@ -43,6 +43,7 @@ The goal of this analysis is to combine parcels for Sarah.
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
+library(sf)
 
 source("../Macros/read-fairfax.R")
 source("../Macros/read-arlington.R")
@@ -205,6 +206,8 @@ arlington1 %>%
 
 ```
 
+
+
 #### Lot size
 
 Fill in with parcel shapefile area and lot size from property file.
@@ -225,6 +228,49 @@ arlington2 %>%
   sum_missing_lotsize() %>% 
   knitr::kable()
 
+
+```
+Spatial join to parcel file to fill in remaining missing lot size.
+
+```{r spat-arlington}
+
+par <- st_read(dsn = "L:/Libraries/RegHsg/Maps/arlington-parcel-map",
+               layer = "Parcel_Polygons") %>% 
+  st_transform(crs = 4326)
+
+# calculate area in square feet
+par <- par %>% 
+  mutate(area = st_area(par) %>% units::set_units("feet^2") %>% units::set_units(NULL))
+
+
+# convert arlington to spatial
+arlsf <- arlington2 %>% 
+  filter(!is.na(lat), !is.na(long)) %>% 
+  mutate(longx = long, laty = lat) %>% 
+  st_as_sf(coords = c("longx", "laty")) %>% 
+  st_set_crs(st_crs(4326))
+
+# join to zoning layer
+
+arlj <- st_join(arlsf, par, st_intersects)
+
+# check match rate
+arlj %>% 
+  as.data.frame() %>% 
+  count(is.na(OBJECTID))
+
+arlington3 <- arlj %>% 
+  # strip geometry
+  st_set_geometry(NULL) %>% 
+  mutate(lotsize_sf = ifelse(lotsize_sf == 0 & !is.na(OBJECTID),
+                             area,
+                             lotsize_sf)) %>% 
+  select(-OBJECTID, -EVENT_ID, -RPCMSTR) %>% 
+  bind_rows(filter(arlington2, is.na(lat)))
+
+arlington3 %>% 
+  sum_missing_lotsize() %>% 
+  knitr::kable()
 
 ```
 
@@ -345,6 +391,7 @@ montgomery1 <- montgomery %>%
 montgomery1 %>% 
   sum_missing_units() %>% 
   knitr::kable()
+
 ```
 
 #### Lot size
@@ -391,7 +438,7 @@ dc1 %>%
 ## Select and combine
 
 ```{r}
-arl <- arlington1 %>%
+arl <- arlington3 %>%
           select(county_fips,
                  county_name,
                  assessorsparcelnumberapnpin,
@@ -464,14 +511,40 @@ Bind rows together
 all_jurs <- arl %>% 
   bind_rows(fai) %>%
   bind_rows(mon) %>%
-  bind_rows(dc)
+  bind_rows(dc) %>% 
+  mutate_at(vars(lotsize_sf, numberofunits),
+            ~ ifelse(. == 0, NA, .))
+            
+
+```
+
+Look at combined missing variables.
+
+```{r com-missing}
+
+all_jurs %>% 
+  sum_missing_units() %>% 
+  knitr::kable(caption = "Missing units for all jurisdictions")
+
+
+all_jurs %>% 
+  sum_missing_lotsize() %>% 
+  knitr::kable(caption = "Missing lot size for all jurisdictions")
+
+
+all_jurs %>% 
+  filter(category != "vacant", residential == 1) %>% 
+  summarize(sum(is.na(numberofunits)) / n(),
+            sum(is.na(lotsize_sf))/ n())
 
 ```
 
 
 Write out data
-```{r}
-# write_csv(all_jurs, "L:/Libraries/RegHsg/Data/parcel-all-cleaned-data.csv")
+```{r write-all}
+
+write_csv(all_jurs, "L:/Libraries/RegHsg/Data/parcel-all-cleaned-data.csv")
+
 ```
 
 
