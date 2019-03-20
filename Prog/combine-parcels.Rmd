@@ -1,0 +1,210 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Combining Parcels"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Chris Davis, adapting from Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+## Description
+
+The goal of this analysis is to combine parcels for Sarah.
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+
+source("../Macros/read-fairfax.R")
+source("../Macros/read-arlington.R")
+source("../Macros/read-montgomery.R")
+source("../Macros/read-DC.R")
+
+```
+
+
+Set filepath name
+```{r fips-fair}
+
+filepath <- "fairfax"
+
+```
+
+Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
+
+```{r readfair}
+if (!exists("fairfax")) {
+ fairfax <- read_fairfax()
+} else {
+  warning(filepath, " data already read in")
+}
+
+```
+
+Set filepath name
+```{r fips-dc}
+
+filepath <- "DC"
+
+```
+
+Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
+
+```{r read-dc}
+if (!exists("dc_full")) {
+ dc_full <- read_dc()
+} else {
+  warning(filepath, " data already read in")
+}
+
+```
+
+Set filepath name
+```{r fips-mon}
+
+filepath <- "montgomery"
+
+```
+
+Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
+
+```{r read-mon}
+if (!exists("montgomery")) {
+ montgomery <- read_montgomery()
+} else {
+  warning(filepath, " data already read in")
+}
+
+```
+
+Set filepath name
+```{r fips-arl}
+
+filepath <- "arlington"
+
+```
+
+Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
+
+```{r read-arl}
+if (!exists("arlington")) {
+ arlington <- read_arlington()
+} else {
+  warning(filepath, " data already read in")
+}
+
+```
+
+Select needed variables
+```{r}
+arl <- arlington %>%
+          select(county_fips,
+                 county_name,
+                 assessorsparcelnumberapnpin,
+                 propaddress,
+                 propcity,
+                 address_type,
+                 zoning, 
+                 lotsize_sf, 
+                 parcel_area,
+                 numberofunits,
+                 category,
+                 category_detail, 
+                 countylandusedescription, 
+                 residential, lat, long)
+
+fai <- fairfax %>%
+        select(county_fips,
+               county_name,
+               assessorsparcelnumberapnpin,
+               propaddress,
+               propcity,
+               address_type,
+               zoning, 
+               lotsize_sf, 
+               numberofunits,
+               category,
+               category_detail, 
+               countylandusedescription, 
+               residential, lat, long)
+
+mon <- montgomery %>%
+        select(county_fips,
+               county_name,
+               assessorsparcelnumberapnpin,
+               propaddress,
+               propcity,
+               address_type,
+               zoning, 
+               lotsize_sf, 
+               numberofunits,
+               category,
+               category_detail, 
+               countylandusedescription, 
+               residential, lat, long)
+
+dc <- dc_full %>%
+    select(county_fips,
+           county_name,
+           parcelbase_SSL,
+           propcity,
+           address_type,           
+           zoning, 
+           lotsize_sf, 
+           numberofunits, 
+           category,
+           category_detail, 
+           parcelbase_address, 
+           countylandusedescription, 
+           residential, 
+           lat, long,
+           parcelgeo_x, parcelgeo_y)%>%
+    rename(assessorsparcelnumberapnpin=parcelbase_SSL,
+                 propaddress = parcelbase_address)
+
+```
+
+Bind rows together
+```{r}
+all_jurs <- arl %>% 
+  bind_rows(fai) %>%
+  bind_rows(mon) %>%
+  bind_rows(dc)
+
+```
+
+
+Write out data
+```{r}
+write_csv(all_jurs, "L:/Libraries/RegHsg/Data/parcel-all-cleaned-data.csv")
+```
+
+
