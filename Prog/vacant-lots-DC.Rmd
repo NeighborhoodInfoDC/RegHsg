@@ -690,7 +690,7 @@ jurzoningdata %>%
 
 ```
 
-Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.Notice after filtering out lotsize_sf>= lot_area_min, observation dropped from 15942 to 8140, after slicing out the least dense zoning code, we have 1356 observation left. 
+Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
 
 ```{r filter-small}
 
@@ -917,17 +917,20 @@ vacantlotunits <- jurzoningdata3 %>%
   filter(parcelbase_usecode!= "093"| parcelbase_usecode!= "193") %>% 
   filter(category=="vacant" & smallsize_flag==0)
 
+
+#for SF vacant lots, some lots are extremely large and are driving up the unit per lot var: 3001 R ST NW (172), 3842 ALABAMA AVE SE (116), 1801 FOXHALL RD NW (67), 3900 RESERVOIR RD NW (47), 4530 MACARTHUR BLVD NW (43)
+
 testvacant <- get_unit_variables(dataset = vacantlotunits,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-  filter(housing_type=="SF-attached") %>% 
-  select(parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,             units_per_floor, units_min, units_FAR, units_height, units_total, propaddress, zoning_code ) 
+  filter(housing_type=="Single Family") %>% 
+  select(propaddress, parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,             units_per_floor, units_min, units_FAR, units_height, units_total, zoning_code, one_unit_flag, two_unit_flag, subset ) 
  
 
 get_unit_variables(dataset = vacantlotunits,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-  select(parameters, parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,             units_per_floor, units_min, units_FAR, units_height, propaddress, zoning_code ) %>% 
+  select(parameters, parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,             units_per_floor, units_min, units_FAR, units_height, propaddress, zoning_code, one_unit_flag, two_unit_flag, subset ) %>% 
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-vacant-lots-analysis-basedata.csv"))
