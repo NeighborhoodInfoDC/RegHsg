@@ -178,6 +178,10 @@ After the join, we convert back to a dataframe, for ease of computations.
 
 pjoin_df <- st_set_geometry(pjoin, NULL)
 
+count(pjoin_df, is.na(lotsize_sf), category_detail)
+
+count(pjoin_df, is.na(SHAPE_AREA), category_detail)
+
 ```
 
 
@@ -205,7 +209,7 @@ if (sum(is.na(pjoin_df$ACCT)) / nrow(pjoin_df) > .05) {
 
 
 
-## Clean vacant lots data
+## Clean lots data
 
 See how many lots have missing key variables
 
@@ -236,12 +240,21 @@ pjoin_df1 <- pjoin_df %>%
          #                    lotsize_prop,
          #                    lotsize_sf))
 
+count(pjoin_df, is.na(lotsize_sf), category_detail)
+
+count(pjoin_df1, is.na(lotsize_sf), category_detail)
+
+
+count(pjoin_df1, is.na(category_detail))
+
+count(pjoin_df1, is.na(SHAPE_AREA), category_detail)
+
 ```
 
 See how many we're filled in
 
 ```{r count-lots}
-sum(is.na(pjoin_df1$arc_lotsize_sf)) - sum(is.na(pjoin_df1$lotsize_sf))
+sum(is.na(pjoin_df$lotsize_sf)) - sum(is.na(pjoin_df1$lotsize_sf))
 ```
 
 ----------------------
@@ -254,13 +267,14 @@ pjoin_df1 <- pjoin_df1 %>%
                                 0))
 
 
-
-
-
 pjoin_sf <- pjoin_df1 %>% 
   filter(missing_coord == 0) %>% 
   st_as_sf(coords = c("long1", "lat1")) %>% 
   st_set_crs(st_crs(parcel_sf1))
+
+pjoin_sf %>% as.data.frame() %>% 
+  count( is.na(lotsize_sf), category_detail)
+
 ```
 
 
@@ -270,6 +284,7 @@ Zoning Clean
 ```{r find bad geometries}
 
 zoning_sf1 <- zoning_sf %>% 
+  filter(PERIMETER == 0) %>% 
   mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
                                 1,
                                 0))
@@ -281,13 +296,13 @@ zoning_sf1 %>% as.data.frame() %>%
 #count(parcel_sf1, validgeo == 0)
 
 
-zoning_sf1 <- zoning_sf1 %>% 
-  filter(validgeo == 1 & !is.na(validgeo))
+#zoning_sf1 <- zoning_sf1 %>% 
+  #filter(validgeo == 1 & !is.na(validgeo))
 
 ```
 
 
-###clean the dataset and filter out the bad geometries to faciltate a join
+#set geometry
 ```{r clean}
 st_geometry(zoning_sf1)
 
@@ -300,6 +315,40 @@ zoning_sf1 <- st_transform(zoning_sf1, crs = 4326)
 ```{r join}
 
 pzjoin <- st_join(pjoin_sf, zoning_sf1, join = st_intersects)
+
+zoning_sf1 %>% as.data.frame() %>% 
+  count(is.na(ZONE_))
+pzjoin %>% as.data.frame() %>% 
+  count(is.na(ZONE_.x), !is.na(ZONE_.x))
+
+
+pzjoin <- pzjoin %>% 
+  mutate(notinmont = if_else(is.na(ZONE_.x), 1, 0))
+
+pzjoin %>%  as.data.frame() %>% 
+  count(notinmont)
+
+
+```
+
+```{r look at shape file}
+ggplot() +
+  geom_sf(zoning_sf1, mapping = aes())
+
+ggplot() +
+  geom_sf(zoning_sf, mapping = aes())
+
+zoning_sf %>% 
+  as.data.frame() %>% 
+  count(PERIMETER)
+
+test <- pjoin_sf
+
+zoning_sf1 %>% 
+  summarize() %>% 
+  ggplot() +
+  geom_sf(mapping = aes(),
+          fill = "blue")
 
 ```
 
@@ -328,28 +377,34 @@ st_geometry(rockzoning_sf1)
 
 ```{r join}
 rockzoning_sf1 <- st_transform(rockzoning_sf1, crs = 4326)
-rockjoin1 <- st_join(pzjoin1, rockzoning_sf1, join = st_intersects)
+pzjoin1 <- st_join(pzjoin, rockzoning_sf1, join = st_intersects)
 rockjoin2 <- st_join(rockzoning_sf1, pzjoin1, join = st_contains)
 
-
+pzjoin1 %>%  as.data.frame() %>% 
+  count(notinmont)
 ```
 
 ```{r test join}
 
-paste0(sum(!is.na(rockjoin1$ZONE)), " observations did join- ",
-      round(sum(!is.na(rockjoin1$ZONE)) / nrow(rockjoin1) * 100, 2), "%")
+paste0(sum(!is.na(pzjoin1$ZONE)), " observations did join- ",
+      round(sum(!is.na(pzjoin1$ZONE)) / nrow(pzjoin1) * 100, 2), "%")
 
 ```
 
-******************left off here 3.12.19************
+
+Make Rockville flag
 
 ```{r filter to make flag}
 
-pzjoin2 <- rockjoin1 %>% 
+pzjoin2 <- pzjoin1 %>% 
   mutate(rockflag = if_else(!is.na(ZONE), 1, 0))
 
+pzjoin2 <- pzjoin2 %>% 
+  mutate(zoning = if_else(rockflag ==1, ZONE, zoning))
 
-
+pzjoin2 %>% 
+  filter(rockflag ==1) %>% 
+  count(zoning)
 
 test <- pzjoin2 %>% 
   filter(rockflag ==1) %>% 
@@ -358,6 +413,10 @@ ggplot() +
   geom_sf(rockzoning_sf1, mapping = aes()) +
   geom_sf(test, mapping = aes())
 
+count(pzjoin2, is.na(lotsize_sf), category_detail)
+
+pzjoin2 %>%  as.data.frame() %>% 
+  count(notinmont, rockflag)
 #rockjoin %>% 
 #  filter(!is.na(ZONE)) %>% 
 #  count(propcity)
@@ -395,29 +454,34 @@ gait_sf1 <- gait_sf1 %>%
 st_geometry(gait_sf1)
 
 gait_sf1 <- st_transform(gait_sf1, crs = 4326)
-gaitjoin1 <- st_join(pzjoin2, gait_sf1, join = st_intersects)
+pzjoin3 <- st_join(pzjoin2, gait_sf1, join = st_intersects)
 
-paste0(sum(!is.na(gaitjoin1$CLASSFP)), " observations did join- ",
-      round(sum(!is.na(gaitjoin1$CLASSFP)) / nrow(gaitjoin1) * 100, 2), "%")
+paste0(sum(!is.na(pzjoin3$CLASSFP)), " observations did join- ",
+      round(sum(!is.na(pzjoin3$CLASSFP)) / nrow(pzjoin3) * 100, 2), "%")
 
-pzjoin2 <- gaitjoin1 %>% 
+pzjoin4 <- pzjoin3 %>% 
   mutate(gaitflag = if_else(!is.na(CLASSFP), 1, 0))
 
-count(pzjoin2, gaitflag)
+count(pzjoin4, gaitflag)
+count(pzjoin2, is.na(lotsize_sf), category_detail)
 
-test <- pzjoin2 %>% 
+
+test <- pzjoin4 %>% 
   filter(gaitflag ==1) %>% 
   sample_n(1000)
 ggplot() +
   geom_sf(gait_sf1, mapping = aes()) +
   geom_sf(test, mapping = aes())
 
+
+pzjoin4 %>%  as.data.frame() %>% 
+  count(notinmont, rockflag, gaitflag)
 ```
 
 After the join, we convert back to a dataframe, for ease of computations.
 ```{r back-to-df}
 
-pzjoin_df <- st_set_geometry(pzjoin2, NULL)
+pzjoin_df <- st_set_geometry(pzjoin4, NULL)
 
 
 ```
@@ -437,6 +501,9 @@ paste0(sum(is.na(pzjoin_df$CODE)), " observations didn't join- ",
 y <- pzjoin_df %>% 
   filter(is.na(zoning)) %>% 
   count(category_detail)
+
+pzjoin_df %>%  as.data.frame() %>% 
+  count(notinmont, rockflag, gaitflag)
 ```
 
 
@@ -466,6 +533,9 @@ pzjoin_df1 <- pzjoin_df %>%
          #lotsize_sf = ifelse(is.na(lotsize_sf),
          #                    lotsize_prop,
          #                    lotsize_sf))
+
+pzjoin_df1 %>%  as.data.frame() %>% 
+  count(notinmont, rockflag, gaitflag)
 
 ```
 
@@ -505,14 +575,21 @@ pzjoin_df1 %>%
             .funs = funs(percent = scales::percent(. / num))) %>% 
   knitr::kable(caption = "Number and percent of missing values")
 
+
+count(pzjoin_df1, is.na(lotsize_sf), category_detail)
+
 ```
 
 
 
 ```{r save}
+
+pzjoin_df1 %>%  as.data.frame() %>% 
+  count(notinmont, rockflag, gaitflag)
+
 saveRDS(pzjoin_df1,
         paste0(jdir, 
-               "parceljoined-",
+               "postcleaned-",
                filepath,
                "-data.Rdata"))
 ```
@@ -523,7 +600,7 @@ Write out clean data.
 ```{r write}
 write_csv(pzjoin_df1, 
           paste0(jdir, 
-               "cleaned-", filepath, "-data.csv"))
+               "postcleaned-", filepath, "-data.csv"))
 ```
 
 
