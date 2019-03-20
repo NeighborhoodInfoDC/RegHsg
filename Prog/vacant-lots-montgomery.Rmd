@@ -785,6 +785,11 @@ get_unit_summary(dataset = vacant_mont2,
                  dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
+brsum <- get_unit_summary(dataset = vacant_mont2,
+                 construction_efficiency = .7,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE)
+
 
 ```
 
