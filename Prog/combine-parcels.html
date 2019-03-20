@@ -558,11 +558,108 @@ arlington1 %&gt;%
 </tr>
 </tbody>
 </table>
+<p>Join to address file to fill in missing apartments.</p>
+<pre class="r"><code>add &lt;- read_csv(&quot;https://data.arlingtonva.us/rest/datastreams/254138/data.csv&quot;)
+names(add) &lt;- tolower(names(add))
+
+add1 &lt;- add %&gt;% 
+  mutate(address_cap = toupper(full_address)) %&gt;% 
+  select(address_cap, unitcount)
+
+arlingtonjoin &lt;- arlington1 %&gt;% 
+  mutate(address_cap = toupper(propaddress)) %&gt;% 
+  left_join(add1, by = &quot;address_cap&quot;)
+
+# check how many didn't join
+arlington1 %&gt;% 
+  mutate(address_cap = toupper(propaddress)) %&gt;% 
+  anti_join(add1, by = &quot;address_cap&quot;) %&gt;% 
+  nrow()</code></pre>
+<pre><code>## [1] 2917</code></pre>
+<pre class="r"><code>arlington2 &lt;- arlingtonjoin %&gt;% 
+  mutate(numberofunits = ifelse(numberofunits == 0 &amp; unitcount != 0 &amp; !is.na(unitcount),
+                                unitcount,
+                                numberofunits)) %&gt;% 
+  select(-unitcount)
+
+arlington2 %&gt;% 
+  sum_missing_units() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">units.na</th>
+<th align="right">units.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">620</td>
+<td align="right">0</td>
+<td align="right">8</td>
+<td align="right">0</td>
+<td align="right">0.0129032</td>
+</tr>
+<tr class="even">
+<td align="left">commercial</td>
+<td align="right">11</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="odd">
+<td align="left">condo</td>
+<td align="right">1730</td>
+<td align="right">0</td>
+<td align="right">6</td>
+<td align="right">0</td>
+<td align="right">0.0034682</td>
+</tr>
+<tr class="even">
+<td align="left">duplex</td>
+<td align="right">271</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">4131</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">27507</td>
+<td align="right">0</td>
+<td align="right">13</td>
+<td align="right">0</td>
+<td align="right">0.0004726</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">4390</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="lot-size" class="section level4">
 <h4>Lot size</h4>
 <p>Fill in with parcel shapefile area and lot size from property file.</p>
-<pre class="r"><code>arlington2 &lt;- arlington1 %&gt;% 
+<pre class="r"><code>arlington3 &lt;- arlington2 %&gt;% 
   mutate(lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) &amp; !is.na(parcel_area),
                              parcel_area,
                              lotsize_sf),
@@ -572,7 +669,7 @@ arlington1 %&gt;%
          lotsize_acres = lotsize_sf / 43560)
 
 
-arlington2 %&gt;% 
+arlington3 %&gt;% 
   sum_missing_lotsize() %&gt;% 
   knitr::kable()</code></pre>
 <table>
@@ -589,11 +686,11 @@ arlington2 %&gt;%
 <tbody>
 <tr class="odd">
 <td align="left">apartment</td>
-<td align="right">618</td>
+<td align="right">620</td>
 <td align="right">0</td>
 <td align="right">10</td>
 <td align="right">0</td>
-<td align="right">0.0161812</td>
+<td align="right">0.0161290</td>
 </tr>
 <tr class="even">
 <td align="left">commercial</td>
@@ -621,15 +718,15 @@ arlington2 %&gt;%
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
-<td align="right">4129</td>
+<td align="right">4131</td>
 <td align="right">0</td>
 <td align="right">2128</td>
 <td align="right">0</td>
-<td align="right">0.5153790</td>
+<td align="right">0.5151295</td>
 </tr>
 <tr class="even">
 <td align="left">sf detached</td>
-<td align="right">27494</td>
+<td align="right">27507</td>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
@@ -637,22 +734,15 @@ arlington2 %&gt;%
 </tr>
 <tr class="odd">
 <td align="left">townhouse</td>
-<td align="right">4292</td>
+<td align="right">4390</td>
 <td align="right">0</td>
-<td align="right">549</td>
+<td align="right">569</td>
 <td align="right">0</td>
-<td align="right">0.1279124</td>
-</tr>
-<tr class="even">
-<td align="left">Spatial join to pa</td>
-<td align="right">rcel fil</td>
-<td align="right">e to fill in</td>
-<td align="right">remaining missi</td>
-<td align="right">ng lot</td>
-<td align="right">size.</td>
+<td align="right">0.1296128</td>
 </tr>
 </tbody>
 </table>
+<p>Spatial join to parcel file to fill in remaining missing lot size.</p>
 <pre class="r"><code>par &lt;- st_read(dsn = &quot;L:/Libraries/RegHsg/Maps/arlington-parcel-map&quot;,
                layer = &quot;Parcel_Polygons&quot;) %&gt;% 
   st_transform(crs = 4326)</code></pre>
@@ -669,7 +759,7 @@ par &lt;- par %&gt;%
 
 
 # convert arlington to spatial
-arlsf &lt;- arlington2 %&gt;% 
+arlsf &lt;- arlington3 %&gt;% 
   filter(!is.na(lat), !is.na(long)) %&gt;% 
   mutate(longx = long, laty = lat) %&gt;% 
   st_as_sf(coords = c(&quot;longx&quot;, &quot;laty&quot;)) %&gt;% 
@@ -686,9 +776,9 @@ arlj %&gt;%
 <pre><code>## # A tibble: 2 x 2
 ##   `is.na(OBJECTID)`     n
 ##   &lt;lgl&gt;             &lt;int&gt;
-## 1 FALSE             41465
+## 1 FALSE             41609
 ## 2 TRUE                269</code></pre>
-<pre class="r"><code>arlington3 &lt;- arlj %&gt;% 
+<pre class="r"><code>arlington4 &lt;- arlj %&gt;% 
   # strip geometry
   st_set_geometry(NULL) %&gt;% 
   mutate(lotsize_sf = ifelse(lotsize_sf == 0 &amp; !is.na(OBJECTID),
@@ -697,7 +787,7 @@ arlj %&gt;%
   select(-OBJECTID, -EVENT_ID, -RPCMSTR) %&gt;% 
   bind_rows(filter(arlington2, is.na(lat)))
 
-arlington3 %&gt;% 
+arlington4 %&gt;% 
   sum_missing_lotsize() %&gt;% 
   knitr::kable()</code></pre>
 <table>
@@ -714,59 +804,59 @@ arlington3 %&gt;%
 <tbody>
 <tr class="odd">
 <td align="left">apartment</td>
-<td align="right">618</td>
+<td align="right">620</td>
 <td align="right">0</td>
 <td align="right">1</td>
-<td align="right">0</td>
-<td align="right">0.0016181</td>
+<td align="right">0.0000000</td>
+<td align="right">0.0016129</td>
 </tr>
 <tr class="even">
 <td align="left">commercial</td>
 <td align="right">11</td>
 <td align="right">0</td>
 <td align="right">0</td>
-<td align="right">0</td>
+<td align="right">0.0000000</td>
 <td align="right">0.0000000</td>
 </tr>
 <tr class="odd">
 <td align="left">condo</td>
 <td align="right">1730</td>
-<td align="right">0</td>
-<td align="right">33</td>
-<td align="right">0</td>
-<td align="right">0.0190751</td>
+<td align="right">2</td>
+<td align="right">31</td>
+<td align="right">0.0011561</td>
+<td align="right">0.0179191</td>
 </tr>
 <tr class="even">
 <td align="left">duplex</td>
 <td align="right">271</td>
 <td align="right">0</td>
 <td align="right">0</td>
-<td align="right">0</td>
+<td align="right">0.0000000</td>
 <td align="right">0.0000000</td>
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
-<td align="right">4129</td>
+<td align="right">4131</td>
 <td align="right">0</td>
 <td align="right">27</td>
-<td align="right">0</td>
-<td align="right">0.0065391</td>
+<td align="right">0.0000000</td>
+<td align="right">0.0065359</td>
 </tr>
 <tr class="even">
 <td align="left">sf detached</td>
-<td align="right">27494</td>
+<td align="right">27507</td>
 <td align="right">0</td>
 <td align="right">0</td>
-<td align="right">0</td>
+<td align="right">0.0000000</td>
 <td align="right">0.0000000</td>
 </tr>
 <tr class="odd">
 <td align="left">townhouse</td>
-<td align="right">4292</td>
+<td align="right">4390</td>
 <td align="right">0</td>
 <td align="right">11</td>
-<td align="right">0</td>
-<td align="right">0.0025629</td>
+<td align="right">0.0000000</td>
+<td align="right">0.0025057</td>
 </tr>
 </tbody>
 </table>
@@ -795,17 +885,17 @@ arlington3 %&gt;%
 <td align="left">apartment</td>
 <td align="right">465</td>
 <td align="right">0</td>
-<td align="right">413</td>
+<td align="right">399</td>
 <td align="right">0</td>
-<td align="right">0.8881720</td>
+<td align="right">0.8580645</td>
 </tr>
 <tr class="even">
 <td align="left">condo</td>
-<td align="right">4216</td>
+<td align="right">4217</td>
 <td align="right">0</td>
 <td align="right">38</td>
 <td align="right">0</td>
-<td align="right">0.0090133</td>
+<td align="right">0.0090111</td>
 </tr>
 <tr class="odd">
 <td align="left">duplex</td>
@@ -819,15 +909,15 @@ arlington3 %&gt;%
 <td align="left">other</td>
 <td align="right">165</td>
 <td align="right">0</td>
-<td align="right">162</td>
+<td align="right">157</td>
 <td align="right">0</td>
-<td align="right">0.9818182</td>
+<td align="right">0.9515152</td>
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
-<td align="right">7911</td>
+<td align="right">7910</td>
 <td align="right">0</td>
-<td align="right">7911</td>
+<td align="right">7910</td>
 <td align="right">0</td>
 <td align="right">1.0000000</td>
 </tr>
@@ -880,17 +970,17 @@ fairfax1 %&gt;%
 <td align="left">apartment</td>
 <td align="right">465</td>
 <td align="right">0</td>
-<td align="right">413</td>
+<td align="right">399</td>
 <td align="right">0</td>
-<td align="right">0.8881720</td>
+<td align="right">0.8580645</td>
 </tr>
 <tr class="even">
 <td align="left">condo</td>
-<td align="right">4216</td>
+<td align="right">4217</td>
 <td align="right">0</td>
 <td align="right">38</td>
 <td align="right">0</td>
-<td align="right">0.0090133</td>
+<td align="right">0.0090111</td>
 </tr>
 <tr class="odd">
 <td align="left">duplex</td>
@@ -904,13 +994,13 @@ fairfax1 %&gt;%
 <td align="left">other</td>
 <td align="right">165</td>
 <td align="right">0</td>
-<td align="right">142</td>
+<td align="right">137</td>
 <td align="right">0</td>
-<td align="right">0.8606061</td>
+<td align="right">0.8303030</td>
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
-<td align="right">7911</td>
+<td align="right">7910</td>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
@@ -957,18 +1047,18 @@ fairfax1 %&gt;%
 <tr class="odd">
 <td align="left">apartment</td>
 <td align="right">0</td>
-<td align="right">0.3741935</td>
+<td align="right">0.3870968</td>
 <td align="right">0.9913978</td>
-<td align="right">0.8881720</td>
-<td align="right">0.8881720</td>
+<td align="right">0.8580645</td>
+<td align="right">0.8580645</td>
 </tr>
 <tr class="even">
 <td align="left">condo</td>
 <td align="right">0</td>
-<td align="right">0.9940702</td>
-<td align="right">0.9940702</td>
-<td align="right">0.0090133</td>
-<td align="right">0.0090133</td>
+<td align="right">0.9940716</td>
+<td align="right">0.9940716</td>
+<td align="right">0.0090111</td>
+<td align="right">0.0090111</td>
 </tr>
 <tr class="odd">
 <td align="left">duplex</td>
@@ -981,23 +1071,23 @@ fairfax1 %&gt;%
 <tr class="even">
 <td align="left">other</td>
 <td align="right">0</td>
-<td align="right">0.8121212</td>
+<td align="right">0.8606061</td>
 <td align="right">0.9272727</td>
-<td align="right">0.9818182</td>
-<td align="right">0.9818182</td>
+<td align="right">0.9515152</td>
+<td align="right">0.9515152</td>
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
 <td align="right">0</td>
-<td align="right">0.0048034</td>
-<td align="right">0.0096069</td>
+<td align="right">0.0121365</td>
+<td align="right">0.0094817</td>
 <td align="right">1.0000000</td>
 <td align="right">1.0000000</td>
 </tr>
 <tr class="even">
 <td align="left">sf detached</td>
 <td align="right">0</td>
-<td align="right">0.0045707</td>
+<td align="right">0.0049053</td>
 <td align="right">0.0038019</td>
 <td align="right">0.9970767</td>
 <td align="right">0.9970767</td>
@@ -1005,7 +1095,7 @@ fairfax1 %&gt;%
 <tr class="odd">
 <td align="left">townhouse</td>
 <td align="right">0</td>
-<td align="right">0.0016565</td>
+<td align="right">0.0016918</td>
 <td align="right">0.0009281</td>
 <td align="right">1.0000000</td>
 <td align="right">1.0000000</td>
@@ -1040,17 +1130,17 @@ fairfax2 %&gt;%
 <td align="left">apartment</td>
 <td align="right">465</td>
 <td align="right">0</td>
-<td align="right">125</td>
+<td align="right">114</td>
 <td align="right">0</td>
-<td align="right">0.2688172</td>
+<td align="right">0.2451613</td>
 </tr>
 <tr class="even">
 <td align="left">condo</td>
-<td align="right">4216</td>
+<td align="right">4217</td>
 <td align="right">0</td>
 <td align="right">13</td>
 <td align="right">0</td>
-<td align="right">0.0030835</td>
+<td align="right">0.0030828</td>
 </tr>
 <tr class="odd">
 <td align="left">duplex</td>
@@ -1070,7 +1160,7 @@ fairfax2 %&gt;%
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
-<td align="right">7911</td>
+<td align="right">7910</td>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
@@ -1122,10 +1212,10 @@ fairfax2 %&gt;%
 </tr>
 <tr class="even">
 <td align="left">condo</td>
-<td align="right">4216</td>
+<td align="right">4217</td>
 <td align="right">122</td>
 <td align="right">0</td>
-<td align="right">0.0289374</td>
+<td align="right">0.0289305</td>
 <td align="right">0.0000000</td>
 </tr>
 <tr class="odd">
@@ -1146,11 +1236,11 @@ fairfax2 %&gt;%
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
-<td align="right">7911</td>
+<td align="right">7910</td>
 <td align="right">0</td>
 <td align="right">361</td>
 <td align="right">0.0000000</td>
-<td align="right">0.0456327</td>
+<td align="right">0.0456384</td>
 </tr>
 <tr class="even">
 <td align="left">sf detached</td>
@@ -1194,14 +1284,14 @@ fairfax2 %&gt;%
 <tr class="even">
 <td align="left">apartment</td>
 <td align="right">0.3161290</td>
-<td align="right">0.8881720</td>
-<td align="right">0.8881720</td>
+<td align="right">0.8580645</td>
+<td align="right">0.8580645</td>
 </tr>
 <tr class="odd">
 <td align="left">condo</td>
-<td align="right">0.9902751</td>
-<td align="right">0.0090133</td>
-<td align="right">0.0090133</td>
+<td align="right">0.9902774</td>
+<td align="right">0.0090111</td>
+<td align="right">0.0090111</td>
 </tr>
 <tr class="even">
 <td align="left">duplex</td>
@@ -1212,8 +1302,8 @@ fairfax2 %&gt;%
 <tr class="odd">
 <td align="left">other</td>
 <td align="right">0.0909091</td>
-<td align="right">0.9818182</td>
-<td align="right">0.9818182</td>
+<td align="right">0.9515152</td>
+<td align="right">0.9515152</td>
 </tr>
 <tr class="even">
 <td align="left">sf attached</td>
@@ -1277,10 +1367,10 @@ fairfax3 %&gt;%
 </tr>
 <tr class="even">
 <td align="left">condo</td>
-<td align="right">4216</td>
+<td align="right">4217</td>
 <td align="right">122</td>
 <td align="right">0</td>
-<td align="right">0.0289374</td>
+<td align="right">0.0289305</td>
 <td align="right">0.0000000</td>
 </tr>
 <tr class="odd">
@@ -1301,11 +1391,11 @@ fairfax3 %&gt;%
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
-<td align="right">7911</td>
+<td align="right">7910</td>
 <td align="right">0</td>
 <td align="right">361</td>
 <td align="right">0.0000000</td>
-<td align="right">0.0456327</td>
+<td align="right">0.0456384</td>
 </tr>
 <tr class="even">
 <td align="left">sf detached</td>
@@ -1703,7 +1793,7 @@ dc1 %&gt;%
 </div>
 <div id="select-and-combine" class="section level2">
 <h2>Select and combine</h2>
-<pre class="r"><code>arl &lt;- arlington3 %&gt;%
+<pre class="r"><code>arl &lt;- arlington4 %&gt;%
           select(county_fips,
                  county_name,
                  assessorsparcelnumberapnpin,
@@ -1773,7 +1863,8 @@ dc &lt;- dc1 %&gt;%
   bind_rows(mon) %&gt;%
   bind_rows(dc) %&gt;% 
   mutate_at(vars(lotsize_sf, numberofunits),
-            ~ ifelse(. == 0, NA, .))</code></pre>
+            ~ ifelse(. == 0, NA, .)) %&gt;% 
+  mutate(lotsize_acres = lotsize_sf / 43560)</code></pre>
 <p>Look at combined missing variables.</p>
 <pre class="r"><code>all_jurs %&gt;% 
   sum_missing_units() %&gt;% 
@@ -1793,10 +1884,10 @@ dc &lt;- dc1 %&gt;%
 <tbody>
 <tr class="odd">
 <td align="left">apartment</td>
-<td align="right">1997</td>
-<td align="right">184</td>
+<td align="right">1999</td>
+<td align="right">131</td>
 <td align="right">0</td>
-<td align="right">0.0921382</td>
+<td align="right">0.0655328</td>
 <td align="right">0</td>
 </tr>
 <tr class="even">
@@ -1809,10 +1900,10 @@ dc &lt;- dc1 %&gt;%
 </tr>
 <tr class="odd">
 <td align="left">condo</td>
-<td align="right">23580</td>
+<td align="right">23581</td>
 <td align="right">19</td>
 <td align="right">0</td>
-<td align="right">0.0008058</td>
+<td align="right">0.0008057</td>
 <td align="right">0</td>
 </tr>
 <tr class="even">
@@ -1921,7 +2012,7 @@ dc &lt;- dc1 %&gt;%
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
-<td align="right">12040</td>
+<td align="right">12041</td>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0.0000000</td>
@@ -1929,7 +2020,7 @@ dc &lt;- dc1 %&gt;%
 </tr>
 <tr class="even">
 <td align="left">sf detached</td>
-<td align="right">398776</td>
+<td align="right">398789</td>
 <td align="right">18</td>
 <td align="right">0</td>
 <td align="right">0.0000451</td>
@@ -1945,7 +2036,7 @@ dc &lt;- dc1 %&gt;%
 </tr>
 <tr class="even">
 <td align="left">townhouse</td>
-<td align="right">145726</td>
+<td align="right">145824</td>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0.0000000</td>
@@ -1971,10 +2062,10 @@ dc &lt;- dc1 %&gt;%
 <tbody>
 <tr class="odd">
 <td align="left">apartment</td>
-<td align="right">1997</td>
+<td align="right">1999</td>
 <td align="right">41</td>
 <td align="right">0</td>
-<td align="right">0.0205308</td>
+<td align="right">0.0205103</td>
 <td align="right">0</td>
 </tr>
 <tr class="even">
@@ -1987,10 +2078,10 @@ dc &lt;- dc1 %&gt;%
 </tr>
 <tr class="odd">
 <td align="left">condo</td>
-<td align="right">23580</td>
+<td align="right">23581</td>
 <td align="right">155</td>
 <td align="right">0</td>
-<td align="right">0.0065734</td>
+<td align="right">0.0065731</td>
 <td align="right">0</td>
 </tr>
 <tr class="even">
@@ -2099,15 +2190,15 @@ dc &lt;- dc1 %&gt;%
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
-<td align="right">12040</td>
+<td align="right">12041</td>
 <td align="right">388</td>
 <td align="right">0</td>
-<td align="right">0.0322259</td>
+<td align="right">0.0322232</td>
 <td align="right">0</td>
 </tr>
 <tr class="even">
 <td align="left">sf detached</td>
-<td align="right">398776</td>
+<td align="right">398789</td>
 <td align="right">5</td>
 <td align="right">0</td>
 <td align="right">0.0000125</td>
@@ -2123,10 +2214,10 @@ dc &lt;- dc1 %&gt;%
 </tr>
 <tr class="even">
 <td align="left">townhouse</td>
-<td align="right">145726</td>
+<td align="right">145824</td>
 <td align="right">79</td>
 <td align="right">0</td>
-<td align="right">0.0005421</td>
+<td align="right">0.0005417</td>
 <td align="right">0</td>
 </tr>
 </tbody>
@@ -2136,7 +2227,7 @@ dc &lt;- dc1 %&gt;%
   summarize(sum(is.na(numberofunits)) / n(),
             sum(is.na(lotsize_sf))/ n())</code></pre>
 <pre><code>##   sum(is.na(numberofunits))/n() sum(is.na(lotsize_sf))/n()
-## 1                  0.0008319871                 0.00105423</code></pre>
+## 1                  0.0007563575                0.001054057</code></pre>
 <p>Write out data</p>
 <pre class="r"><code>write_csv(all_jurs, &quot;L:/Libraries/RegHsg/Data/parcel-all-cleaned-data.csv&quot;)</code></pre>
 </div>

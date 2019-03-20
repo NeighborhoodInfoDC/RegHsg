@@ -206,6 +206,40 @@ arlington1 %>%
 
 ```
 
+Join to address file to fill in missing apartments.
+
+```{r address-file}
+
+add <- read_csv("https://data.arlingtonva.us/rest/datastreams/254138/data.csv")
+names(add) <- tolower(names(add))
+
+add1 <- add %>% 
+  mutate(address_cap = toupper(full_address)) %>% 
+  select(address_cap, unitcount)
+
+arlingtonjoin <- arlington1 %>% 
+  mutate(address_cap = toupper(propaddress)) %>% 
+  left_join(add1, by = "address_cap")
+
+# check how many didn't join
+arlington1 %>% 
+  mutate(address_cap = toupper(propaddress)) %>% 
+  anti_join(add1, by = "address_cap") %>% 
+  nrow()
+
+
+arlington2 <- arlingtonjoin %>% 
+  mutate(numberofunits = ifelse(numberofunits == 0 & unitcount != 0 & !is.na(unitcount),
+                                unitcount,
+                                numberofunits)) %>% 
+  select(-unitcount)
+
+arlington2 %>% 
+  sum_missing_units() %>% 
+  knitr::kable()
+
+```
+
 
 
 #### Lot size
@@ -214,7 +248,7 @@ Fill in with parcel shapefile area and lot size from property file.
 
 ```{r arl-ls}
 
-arlington2 <- arlington1 %>% 
+arlington3 <- arlington2 %>% 
   mutate(lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) & !is.na(parcel_area),
                              parcel_area,
                              lotsize_sf),
@@ -224,12 +258,13 @@ arlington2 <- arlington1 %>%
          lotsize_acres = lotsize_sf / 43560)
 
 
-arlington2 %>% 
+arlington3 %>% 
   sum_missing_lotsize() %>% 
   knitr::kable()
 
 
 ```
+
 Spatial join to parcel file to fill in remaining missing lot size.
 
 ```{r spat-arlington}
@@ -244,7 +279,7 @@ par <- par %>%
 
 
 # convert arlington to spatial
-arlsf <- arlington2 %>% 
+arlsf <- arlington3 %>% 
   filter(!is.na(lat), !is.na(long)) %>% 
   mutate(longx = long, laty = lat) %>% 
   st_as_sf(coords = c("longx", "laty")) %>% 
@@ -259,7 +294,7 @@ arlj %>%
   as.data.frame() %>% 
   count(is.na(OBJECTID))
 
-arlington3 <- arlj %>% 
+arlington4 <- arlj %>% 
   # strip geometry
   st_set_geometry(NULL) %>% 
   mutate(lotsize_sf = ifelse(lotsize_sf == 0 & !is.na(OBJECTID),
@@ -268,7 +303,7 @@ arlington3 <- arlj %>%
   select(-OBJECTID, -EVENT_ID, -RPCMSTR) %>% 
   bind_rows(filter(arlington2, is.na(lat)))
 
-arlington3 %>% 
+arlington4 %>% 
   sum_missing_lotsize() %>% 
   knitr::kable()
 
@@ -428,17 +463,17 @@ dc1 %>%
 #### Lot size
 
 ```{r dc-ls}
+
 dc1 %>% 
   sum_missing_lotsize() %>% 
   knitr::kable()
-
 
 ```
 
 ## Select and combine
 
 ```{r}
-arl <- arlington3 %>%
+arl <- arlington4 %>%
           select(county_fips,
                  county_name,
                  assessorsparcelnumberapnpin,
@@ -513,7 +548,8 @@ all_jurs <- arl %>%
   bind_rows(mon) %>%
   bind_rows(dc) %>% 
   mutate_at(vars(lotsize_sf, numberofunits),
-            ~ ifelse(. == 0, NA, .))
+            ~ ifelse(. == 0, NA, .)) %>% 
+  mutate(lotsize_acres = lotsize_sf / 43560)
             
 
 ```
