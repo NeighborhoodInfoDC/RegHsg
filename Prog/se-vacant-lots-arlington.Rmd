@@ -290,24 +290,35 @@ Filter out lots that are too small to build on and lots with missing zoning info
 ```{r filter-small}
 
 byright <- zoningdata %>% 
-  filter(!is.na(zoning),
-         lotsize_sf >= lot_area_min,
+  filter(!is.na(dwelling_type),
          special_exception == 0) %>% 
-  group_by(propaddress) %>% 
+  mutate(smallsize_flag = ifelse(lotsize_sf >= lot_area_min, 0, 1)) %>% 
+  mutate(smallsize_flag = ifelse(is.na(smallsize_flag), 0, smallsize_flag)) %>% 
+  group_by(propaddress, smallsize_flag) %>% 
   slice(which.min(dwelling_type)) %>% 
+  ungroup() %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(smallsize_flag)) %>% 
   ungroup()
 
+
 specialexception <- zoningdata %>% 
-  filter(!is.na(zoning),
-         lotsize_sf >= lot_area_min) %>% 
-  group_by(propaddress) %>% 
+  filter(!is.na(dwelling_type)) %>% 
+  mutate(smallsize_flag = ifelse(lotsize_sf >= lot_area_min, 0, 1)) %>% 
+  mutate(smallsize_flag = ifelse(is.na(smallsize_flag), 0, smallsize_flag)) %>% 
+  group_by(propaddress, smallsize_flag) %>% 
   slice(which.min(dwelling_type)) %>% 
+  ungroup() %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(smallsize_flag)) %>% 
   ungroup()
+
 
 count(byright, dwelling_type)
 count(specialexception, dwelling_type)
 
 ```
+
 
 ### Fill in stipulations for mixed use zones
 
@@ -423,21 +434,43 @@ get_unit_summary <- function(dataset,
 
 ```
 
+Export all lots for soft sites.
+
+```{r export}
+
+seunits <- get_unit_variables(dataset = specialexception1,
+                              construction_efficiency = .7,
+                              average_unit_size = 940)
+brunits <- get_unit_variables(dataset = byright,
+                              construction_efficiency = .7,
+                              average_unit_size = 940)
+
+saveRDS(seunits, "L:/Libraries/RegHsg/Data/arlington/arlington-max-units-se.Rdata")
+saveRDS(brunits, "L:/Libraries/RegHsg/Data/arlington/arlington-max-units-br.Rdata")
+
+```
+
 
 Compare different between special exception and by right.
 
 ```{r compare-se-br}
 
-get_unit_summary(byright,
-                 construction_efficiency = .75,
+brsum <- byright %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
+  get_unit_summary(construction_efficiency = .75,
                  average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE) %>% 
+                 dwelling_type_breakdown = TRUE) 
+brsum %>% 
   knitr::kable(caption = "By right only")
 
-get_unit_summary(specialexception1,
-                 construction_efficiency = .70,
+sesum <- specialexception1 %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
+  get_unit_summary(construction_efficiency = .75,
                  average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE) %>% 
+                 dwelling_type_breakdown = TRUE)
+sesum %>% 
   knitr::kable(caption = "With special exceptions")
 
 ```
@@ -469,6 +502,72 @@ specialexception1 %>%
                              r = 20))
 
 
+
+```
+
+
+Calculate values needed to fill table.
+
+```{r table}
+
+mf.br <- zoningdata %>% 
+  filter(!is.na(dwelling_type),
+         special_exception == 0,
+         dwelling_type == "Multiple-family",
+         category == "vacant") %>% 
+  group_by(propaddress) %>%
+  count() %>% 
+  nrow()
+
+mf.se <- zoningdata %>% 
+  filter(!is.na(dwelling_type),
+         dwelling_type %in% c("Multiple-family", "Multiple-family special exception"),
+         category == "vacant") %>% 
+  group_by(propaddress) %>%
+  slice(which.min(dwelling_type)) %>% 
+  nrow()
+
+br.summary <- 
+  c(nrow(jur), 
+    nrow(filter(jur, category == "vacant")), 
+    mf.br, 
+    brsum %>% filter(dwelling_type == "Multiple-family") %>% pull(lots) %>% sum(),
+    brsum %>% filter(dwelling_type == "Multiple-family") %>% pull(units_total) %>% sum())
+
+
+se.summary <- 
+  c(nrow(jur), 
+    nrow(filter(jur, category == "vacant")), 
+    mf.se, 
+    sesum %>% filter(dwelling_type %in% 
+                       c("Multiple-family", "Multiple-family special exception")) 
+    %>% pull(lots) %>% sum(),
+    sesum %>% filter(dwelling_type %in% 
+                       c("Multiple-family", "Multiple-family special exception")) 
+    %>% pull(units_total) %>% sum())
+
+
+br.breakdown <- brsum %>% 
+  ungroup() %>% 
+  mutate(dwelling_type = ifelse(dwelling_type %in% c("Townhouse", "Semi-detached"),
+                                "sf attached",
+                                dwelling_type)) %>% 
+  group_by(dwelling_type) %>% 
+  summarize_at(vars(lots, units_total),sum) %>% 
+  filter(dwelling_type != "All") %>% 
+  arrange(desc(units_total))
+
+
+se.breakdown <- sesum %>% 
+  ungroup() %>% 
+  mutate(dwelling_type = case_when(
+    dwelling_type %in% c("Townhouse", "Semi-detached") ~ "sf attached",
+    dwelling_type %in% c("Multiple-family", "Multiple-family special exception") ~ "Multiple-family",
+    TRUE ~ dwelling_type)) %>% 
+  group_by(dwelling_type) %>% 
+  summarize_at(vars(lots, units_total),sum) %>% 
+  filter(dwelling_type != "All") %>% 
+  arrange(desc(units_total))
 
 ```
 
