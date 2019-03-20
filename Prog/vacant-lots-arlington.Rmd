@@ -40,8 +40,9 @@ knitr::opts_chunk$set(message = FALSE)
 The goal of this analysis is to determine how many units could be added by filling vacant lots with the most-dense developments allowed under the current zoning codes.
 The two steps are:
 
-1. Merge cleaned vacant lots data with zoning code data.
-2. Calculate how many units are allowed one each vacant lot.
+1. Merge cleaned parcel data with zoning code data.
+2. Calculate how many units are allowed one each parcel.
+3. Filter out and sum for vacant lots.
 
 ## Set-up
 Load libraries and functions
@@ -232,7 +233,7 @@ zoningcode1 <- zoningcode1 %>%
 ```
 
 
-## Clean vacant lots data
+## Clean parcel data
 
 See how many lots have missing key variables
 
@@ -366,7 +367,7 @@ zon <- st_transform(zon, crs = 4326)
 
 ```
 
-Convert vacant lots to SF, set CRS. To convert to SF, we need to use only the observations with non-missing longitude and latitude. We separate these off and recombine after the spatial join.
+Convert parcel data to SF, set CRS. To convert to SF, we need to use only the observations with non-missing longitude and latitude. We separate these off and recombine after the spatial join.
 
 ```{r convert-sf}
 
@@ -605,7 +606,7 @@ jurfinal <-jurtotal %>%
 
 ```
 
-Save the final vacant lots data so it can be used for the special exceptions (this is only required for Arlington county).
+Save the final parcel data so it can be used for the special exceptions (this is only required for Arlington county).
 
 ```{r save-vacant}
 
@@ -613,6 +614,9 @@ saveRDS(jurfinal, "L:/Libraries/RegHsg/Data/arlington/arlington-lots.Rdata")
 saveRDS(zoningcode1, "L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.Rdata")
 
 ```
+
+
+** Stop reading here! Switch to `se-vacant-lots-arlington.Rmd` **
 
 ## Merge with cleaned data
 
@@ -641,7 +645,7 @@ zoningdata <- left_join(jurfinal, zoningcode1, by = "zoning_code")
 
 ```
 
-There are `r nrow(anti_join(vacantfinal, zoningcode1, by = c("zoning_code")))` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
+There are `r nrow(anti_join(jurfinal, zoningcode1, by = c("zoning_code")))` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
 
 ```{r antijoin}
 
@@ -687,7 +691,7 @@ zoningdata %>%
 
 ## Calculate missing units
 
-There are several variables we will use to calculate how many units we can put on each vacant lot.
+There are several variables we will use to calculate how many units we can put on each lot.
 
 1. Buildable area: this is `lotsize_sf` x the coverage ratio (`lot_coverage_max`)
 2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
@@ -808,6 +812,9 @@ saveRDS(units,
 ```
 
 
+** These results are replicated in the other file 
+
+
 ### Vacant lots
 
 Run the function for all vacant lots with sufficient lot size to build.
@@ -905,4 +912,4 @@ zoningdata1 %>%
 
 ```
 
-## Get values for table
+Table values are generated in `se-vacant-lots-arlington.Rmd`
