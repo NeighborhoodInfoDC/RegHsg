@@ -510,7 +510,6 @@ jur2 <- jur2 %>%
                                     sep = " "),
                               propaddress))
 
-
 ```
 
 Compare the first 20 addresses . Leah-- I'm not sure if we need to clean up the parcelbase_address again. It seems like using propaddress is better in this case for collapsing. We can replace propaddress NAs with parcelbase_address.
@@ -777,7 +776,6 @@ nested <- multiples %>%
                     parcelgeo_x, parcelgeo_y, 
                     lat, long,
                     assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %>% 
-
   rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, mode_narm),
@@ -804,7 +802,11 @@ nested <- multiples %>%
          totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
          assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
                                             sum, na.rm = TRUE),
-         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE)) %>% 
+  mutate(ties_cat = ifelse(map(category, length) > 1, 1, 0)) %>% 
+  mutate(category = ifelse(ties_cat == 1,
+                         NA,
+                         category))
 
 
 
@@ -813,6 +815,8 @@ nested <- multiples %>%
 stopifnot(
   nested %>% filter(nprops == 1) %>% nrow() == 0
 )
+
+
 ```
 
 #### Lot size
@@ -1055,6 +1059,7 @@ novac <- cdties %>%
                            map(parcelbase_usecode_list, 2))) %>% 
   select(-test_res1, -test_res2, -argnum)
 
+
 ```
 
 **If one value is vacant:**
@@ -1109,6 +1114,7 @@ nested_final <- bind_rows(
   filter(nested_all, map(category_detail, length) <= 1),
   novac, bothvac, onevac) %>% 
   select(-test_vacant)
+
 
 stopifnot(nrow(nested_all) == nrow(nested_final))
 
@@ -1283,6 +1289,7 @@ finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>%
 
 finaljur[finaljur == "NULL"] = NA
 finaljur[finaljur == "character(0)"] = NA
+
 ```
 
 Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were `r nrow(filter(cdties, test_vacant == 1))` multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, `r nunits`,  minus `r nrow(filter(cdties, test_vacant == 1))`.
