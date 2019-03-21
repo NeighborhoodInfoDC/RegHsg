@@ -34,6 +34,17 @@ knitr::opts_chunk$set(warning = FALSE, message = F)
 # knitr::opts_chunk$set(eval = FALSE)
 ```
 
+Note: The following jurisdictions are not inside Fairfax County: 
+
+City of Fairfax
+
+The folowing jurisdictions are inside Fairfax County but not zoned by Fairfax County: 
+
+Town of Vienna
+City of Falls Church
+Town of Herndon
+Town of Clifton
+
 ## Description
 
 Adapted from clean-arlington.rmd 
@@ -83,6 +94,9 @@ jur <- readRDS(paste0(jdir,
                "-data.Rdata"))
 
 ```
+
+
+
 ## Recatagorize county land use
 In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates four variables:
 
@@ -381,7 +395,21 @@ jur_1 <- jur %>%
   mutate(lotsize_acres = case_when(lotsizeareaunit == "AC" ~ lotsizeorarea ,
                                    lotsizeareaunit == "SF" ~ lotsizeorarea / 43560),
          lotsize_sf = lotsize_acres * 43560) %>% 
-  mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA))
+  mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %>%
+   mutate(lotsize_sf = case_when(
+         is.na(lotsize_sf) ~ jur$area_legal%>%as.double,
+         T ~ lotsize_sf
+  )) %>% 
+  mutate(lotsize_sf = case_when(
+        is.na(lotsize_sf) ~
+         jur$parcel_area %>% as.double(),
+        T ~ lotsize_sf)) %>%
+  mutate(num_livunit=case_when(
+         num_livunit==0|is.na(num_livunit) ~ units_rental,
+         T~num_livunit
+  ))
+
+
 
 ```
 

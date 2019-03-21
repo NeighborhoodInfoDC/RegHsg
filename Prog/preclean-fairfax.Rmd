@@ -43,6 +43,7 @@ The purpose of this program is to obtain additional data from the county to supp
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
+library(sf)
 
 source("../Macros/read-bk.R")
 source("../Macros/filter-bk.R")
@@ -107,6 +108,7 @@ Fairfax has several files of use
 pafile <- paste0(rdir, filepath, "-parcel-file.csv")
 landfile <-paste0(rdir, filepath, "-land-file.csv")
 dwellingfile <- paste0(rdir, filepath, "-dwelling-file.csv")
+legalfile <- paste0(rdir, filepath, "-legal-file.csv")
 
 # parcel file
 if (!file.exists(pafile)) {
@@ -125,6 +127,12 @@ if (!file.exists(dwellingfile)) {
                 destfile = dwellingfile)
 }
 
+
+if (!file.exists(legalfile)) {
+  download.file("https://opendata.arcgis.com/datasets/0c3415baff124473832c0e821c0a4ddc_1.csv",
+                destfile = legalfile)
+}
+
 ```
 ## Read files
 
@@ -132,13 +140,18 @@ if (!file.exists(dwellingfile)) {
 
 parcel <- read_csv(pafile)
 
+parcelshp <- st_read("L:/Libraries/RegHsg/Maps/Fairfax_Parcels/Parcels.shp")
+
 land <- read_csv(landfile)
 
 dwelling <- read_csv(dwellingfile)
 
+legal <- read_csv(legalfile)
 
-rm(pafile, landfile, dwellingfile)
+rm(pafile, landfile, dwellingfile, legalfile)
 
+
+rental_units <- read_csv("L:/Libraries/RegHsg/Raw/fairfax/rental_buildings.csv")
 ```
 
 ## Clean and merge
@@ -175,6 +188,10 @@ parcel_final<-parcel_temp %>%
 ```
 
 
+
+
+
+
 (Chris add)
 As the parcel IDs are not comprable, we will add a variable with a pin that eliminates the "-"s from the Blacknight file. 
 
@@ -185,6 +202,37 @@ jur_temp <- jur %>%
 
 There are `r (!jur_temp$parcel_id%in%parcel_final$parcel_id) %>% sum` units in the Blacknight data that are not in the parcels data.  
 There are `r (!parcel_final$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the parcels data that are not in the BlackKnight data.
+
+
+```{r}
+parcelshp_temp <- parcelshp %>%
+   select(raw_parcelid_par = PIN,
+          parcel_area = SHAPEAREA,
+          condo_type = PARCEL_TYP) %>% 
+  mutate(parcel_id = str_replace_all(raw_parcelid_par, " ", "")) %>%
+  filter(!is.na(raw_parcelid_par))
+```
+
+
+
+
+```{r}
+rental_units %<>% 
+                  mutate(Number = case_when(
+                        is.na(Number)~"",
+                        T~Number)) %>% 
+                  mutate(parcel_id=paste0(Map, Reference, Number)) %>%
+                  select(parcel_id, units_rental = `Total Units`)
+
+
+```
+
+
+
+
+
+
+
 
 From the dwelling file, we will keep a variable designating the number of stories and the sf of living area of the dwelling.
 
@@ -253,6 +301,24 @@ land_final<-land_temp %>%
 
 We decide to merge the Fairfax files first in order to ensure that we maintain as much data as possible. 
 
+
+From the legal file, we will save squarefeet and parcelid
+```{r select-legal}
+legal_temp  <- legal %>% 
+  select(raw_parcelid_legal = PARID,
+         area_legal = SQFT) %>% 
+  mutate(parcel_id = str_replace_all(raw_parcelid_legal, " ", "")) %>%
+  filter(!is.na(raw_parcelid_legal))
+ 
+```
+
+There are `r (!jur_temp$parcel_id%in%legal_temp$parcel_id) %>% sum` units in the Blacknight data that are not in the legal data. 
+There are `r (!legal_temp$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the dwelling data that are not in the Blacknight data.  
+
+Each parcel is unique in the legal dataset. 
+
+
+
 Congruence of Fairfax files
 
 There are `r (!parcel_final$parcel_id%in%dwelling_final$parcel_id) %>% sum` units in the parcel data that are not in the dwelling data.  
@@ -260,7 +326,7 @@ There are `r (!dwelling_final$parcel_id%in% parcel_final$parcel_id) %>% sum` uni
 
 Merge parcels and dwellings
 ```{r}
-tax_temp <- left_join(parcel_final, dwelling_final, by="parcel_id")
+tax_temp <- full_join(parcel_final, dwelling_final, by="parcel_id")
 ```
 
 There are `r (!tax_temp$parcel_id%in%land_final$parcel_id) %>% sum` units in the combined parcel/dwelling data that are not in the land file.  
@@ -269,18 +335,40 @@ There are `r (!land_final$parcel_id%in% tax_temp$parcel_id) %>% sum` units in th
 Merge parcels/dwellings and land file
 
 ```{r}
-tax_final <- left_join(tax_temp, land_final, by="parcel_id")
+tax_final <- full_join(tax_temp, land_final, by="parcel_id")
 ```
+
+
+There are `r (!tax_final$parcel_id%in%legal_temp$parcel_id) %>% sum` units in the combined tax file that are not in the legal file.  
+There are `r (!legal_temp$parcel_id%in% tax_final$parcel_id) %>% sum` units in the legal file that are not in the tax final file.
+
+
+Merge parcels/dwellings/land file and legal file
+```{r}
+other_temp<- full_join(legal_temp, tax_final, by="parcel_id")
+```
+
+```{r}
+other_temp_1<-full_join(other_temp, rental_units, by="parcel_id")
+```
+
+
+```{r}
+other_final<-full_join(other_temp_1, parcelshp_temp, by="parcel_id")
+```
+
+
+
 
 
 Merge onto Blacknight file
 
-There are `r (!tax_final$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the combined tax data that are not in the BlackKnight data.  
-There are `r (!jur_temp$parcel_id%in% tax_final$parcel_id) %>% sum` units in the BlackKnight data that are not in the tax data.
+There are `r (!other_final$parcel_id%in%jur_temp$parcel_id) %>% sum` units in the combined tax data that are not in the BlackKnight data.  
+There are `r (!jur_temp$parcel_id%in% other_final$parcel_id) %>% sum` units in the BlackKnight data that are not in the tax data.
 
 
 ```{r merge}
-jur_final <- left_join(tax_final, jur_temp, by="parcel_id")
+jur_final <- left_join(jur_temp, other_final, by="parcel_id")
 ```
 
 ## Save
