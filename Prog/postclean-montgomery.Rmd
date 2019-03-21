@@ -7,7 +7,7 @@ output: html_document
 
 ---
 title: "Regional Housing Framework"
-subtitle: "Pre Clean Arlington County public records data"
+subtitle: "Post Clean Montgomery BK data and join it with county data"
 author: "Patrick Spauster"
 output:
   html_document:
@@ -117,7 +117,7 @@ parcel_sf1 <- parcel_sf1 %>%
 
 
 ###clean the dataset and filter out the bad geometries to faciltate a join
-```{r clean}
+```{r set geo}
 st_geometry(parcel_sf1)
 
 parcel_sf1 <- st_transform(parcel_sf1, crs = 4326)
@@ -127,7 +127,7 @@ parcel_sf1 <- st_transform(parcel_sf1, crs = 4326)
 
 
 ## Load in Cleaned Black Knight data and clean the dataset.
-```{r read}
+```{r readR}
 jur <- readRDS(paste0(jdir, 
                "cleaned-",
                filepath,
@@ -135,7 +135,7 @@ jur <- readRDS(paste0(jdir,
 ```
 
 ####clean and set geometries
-```{r clean}
+```{r cleanjur}
 jur1 <- jur %>% 
   mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
                                 1,
@@ -166,7 +166,7 @@ No invalid points, so continue with join.
 
 
 ##Spatial Join!
-```{r join}
+```{r joinparcel}
 
 pjoin <- st_join(jur_sf1, parcel_sf1, join = st_intersects)
 
@@ -213,7 +213,7 @@ if (sum(is.na(pjoin_df$ACCT)) / nrow(pjoin_df) > .05) {
 
 See how many lots have missing key variables
 
-```{r missing}
+```{r missing parcel join}
 
 pjoin_df %>% 
   mutate(num = NA) %>% 
@@ -229,7 +229,7 @@ pjoin_df %>%
 ### Missing lot size
 We will fill in the missing lot size, when we can, with the area of the lot, obtained from the parcel shapefile in the precleaning step. If that is also missing, we use the lot size variables from the property file. All variables are in square feet.
 
-```{r fill-lots}
+```{r fill-lots size}
 
 pjoin_df1 <- pjoin_df %>% 
   mutate(arc_lotsize_sf = lotsize_sf, # archive the original lot size variable
@@ -253,14 +253,14 @@ count(pjoin_df1, is.na(SHAPE_AREA), category_detail)
 
 See how many we're filled in
 
-```{r count-lots}
+```{r count-lots size}
 sum(is.na(pjoin_df$lotsize_sf)) - sum(is.na(pjoin_df1$lotsize_sf))
 ```
 
 ----------------------
 Set joined parcel as SF to faciltate join with zoning layer
 
-```{r clean}
+```{r clean zoning}
 pjoin_df1 <- pjoin_df1 %>% 
   mutate(missing_coord = ifelse(is.na(lat1) | is.na(long1),
                                 1,
@@ -281,7 +281,7 @@ pjoin_sf %>% as.data.frame() %>%
 Zoning Clean
 
 ####Find the invalid geometries
-```{r find bad geometries}
+```{r find bad geometries zoning}
 
 zoning_sf1 <- zoning_sf %>% 
   filter(PERIMETER == 0) %>% 
@@ -303,7 +303,7 @@ zoning_sf1 %>% as.data.frame() %>%
 
 
 #set geometry
-```{r clean}
+```{r clean and set geo zoning}
 st_geometry(zoning_sf1)
 
 zoning_sf1 <- st_transform(zoning_sf1, crs = 4326)
@@ -312,7 +312,7 @@ zoning_sf1 <- st_transform(zoning_sf1, crs = 4326)
 
 
 ##Spatial Join!
-```{r join}
+```{r join zoning onto parcel}
 
 pzjoin <- st_join(pjoin_sf, zoning_sf1, join = st_intersects)
 
@@ -375,7 +375,7 @@ rockzoning_sf1 <- rockzoning_sf1 %>%
 st_geometry(rockzoning_sf1)
 ```
 
-```{r join}
+```{r join rockville}
 rockzoning_sf1 <- st_transform(rockzoning_sf1, crs = 4326)
 pzjoin1 <- st_join(pzjoin, rockzoning_sf1, join = st_intersects)
 rockjoin2 <- st_join(rockzoning_sf1, pzjoin1, join = st_contains)
@@ -384,7 +384,7 @@ pzjoin1 %>%  as.data.frame() %>%
   count(notinmont)
 ```
 
-```{r test join}
+```{r test join rockville}
 
 paste0(sum(!is.na(pzjoin1$ZONE)), " observations did join- ",
       round(sum(!is.na(pzjoin1$ZONE)) / nrow(pzjoin1) * 100, 2), "%")
@@ -479,7 +479,7 @@ pzjoin4 %>%  as.data.frame() %>%
 ```
 
 After the join, we convert back to a dataframe, for ease of computations.
-```{r back-to-df}
+```{r back-to-df again}
 
 pzjoin_df <- st_set_geometry(pzjoin4, NULL)
 
@@ -488,7 +488,7 @@ pzjoin_df <- st_set_geometry(pzjoin4, NULL)
 
 
 I remove a stop that Sarah put in because there will not be clean join because of missing prop data from Gaithersburg and Rockville.
-```{r count-zoning}
+```{r count-zoning withflags}
 
 pzjoin_df %>% 
   filter(rockflag == 1)
@@ -519,7 +519,7 @@ Count how many observations did not join. This will throw an error if more than 
 
 ### Missing zoning
 
-```{r fill-lots}
+```{r fill-lots zoning}
 
 pzjoin_df1 <- pzjoin_df %>% 
   mutate(arc_zoning = zoning, # archive the original lot size variable
@@ -541,7 +541,7 @@ pzjoin_df1 %>%  as.data.frame() %>%
 
 See how many we're filled in
 
-```{r count-lots}
+```{r count-lotsZ}
 sum(is.na(pzjoin_df1$arc_zoning)) - sum(is.na(pzjoin_df1$zoning))
 
 y <- pzjoin_df1 %>% 
@@ -554,7 +554,7 @@ y <- pzjoin_df1 %>%
 
 Test how many have different results from the Black Knight zoning variable.
 
-```{r test-spatial}
+```{r test-spatialZ}
 
 pzjoin_df1 %>% 
   group_by(is.na(zoning)) %>% 
@@ -564,7 +564,7 @@ pzjoin_df1 %>%
 
 
 
-```{r missing}
+```{r missingZ}
 
 pzjoin_df1 %>% 
   mutate(num = NA) %>% 

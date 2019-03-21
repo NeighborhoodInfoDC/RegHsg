@@ -82,7 +82,7 @@ source("../Macros/read-montgomery.R")
 
 Load in cleaned Black Knight data for `r str_to_title(filepath)` County. First is R dataset
 
-```{r read}
+```{r readR}
 if (!exists("jur")) {
   jur <- readRDS(paste0(jdir, 
                "postcleaned-",
@@ -99,7 +99,7 @@ count(jur, rockflag != 1, gaitflag != 1, notinmont == 1)
 
 This uses read_montgomery
 
-```{r read}
+```{r readF}
 if (!exists("jur")) {
   jur <- read_montgomery()
 } else {
@@ -217,7 +217,7 @@ zoning_gaithersburg <- zoningcode %>%
 
 
 *For Montgomery*
-```{r list codes}
+```{r list codesM}
 zoning_montgomery %>% 
   count(dwelling_type) %>% 
   knitr::kable()
@@ -242,7 +242,7 @@ zoning_montgomery <- zoning_montgomery %>%
 
 ```
 Check to see if they were replaced
-```{r list codes}
+```{r check codesM}
 zoning_montgomery %>% 
   count(dwelling_type) %>% 
   knitr::kable()
@@ -258,7 +258,7 @@ We will also create a designation for dwelling types that are restricted to a ce
 
 **NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
 
-```{r dwelling-factor}
+```{r dwelling-factorM}
 
 zoning_montgomery1 <- zoning_montgomery %>% 
   mutate(dwelling_type=ifelse(is.na(dwelling_type)==1, "all", dwelling_type)) %>% 
@@ -279,7 +279,7 @@ zoning_montgomery1 <- zoning_montgomery %>%
 ```
 
 *For Gaithersburg*
-```{r list codes}
+```{r list codesG}
 zoning_gaithersburg %>% 
   count(dwelling_type) %>% 
   knitr::kable()
@@ -306,7 +306,7 @@ We will also create a designation for dwelling types that are restricted to a ce
 
 **NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
 
-```{r dwelling-factor}
+```{r dwelling-factorG}
 
 zoning_gaithersburg1 <- zoning_gaithersburg %>% 
   mutate(dwelling_type = factor(dwelling_type,
@@ -332,7 +332,7 @@ zoning_gaithersburg1 <- zoning_gaithersburg %>%
 ```
 
 *For Rockville*
-```{r list codes}
+```{r list codesR}
 zoning_rockville %>% 
   count(dwelling_type) %>% 
   knitr::kable()
@@ -349,7 +349,7 @@ All rockville zoning codes are unique, so we do not need a factor. We will autom
 
 **NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
 
-```{r dwelling-factor}
+```{r dwelling-factorR}
 
 zoning_rockville1 <- zoning_rockville %>% 
   mutate(dwelling_type = factor(dwelling_type,
@@ -369,7 +369,7 @@ zoning_rockville1 <- zoning_rockville %>%
 Filter out really large lots that should not be part of the calculation
 Fliter out rockville and gaithersburg
 Count how many vacant lots
-```{r }
+```{r filtering}
 
 jur %>% 
   filter(lotsize_sf>1000000) %>% 
@@ -473,7 +473,7 @@ anti_join(montfinal, zoning_montgomery1, by = c("zoning_code")) %>%
   
 7. finally, we need to fill in the lotsize_acre variable for those lot sizes that we filled in from the parcel file.
 
-```{r }
+```{r fillin for caluculation}
 zoningdata1 <- zoningdata %>% 
   filter(residential == 1) %>% 
   mutate(lot_area_min = case_when(
@@ -497,7 +497,7 @@ count(zoningdata1, is.na(lotsize_acres), is.na(lotsize_sf))#check that we got al
 
 
 Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
-```{r }
+```{r slice and dice}
 
 
 zoningdata2 <- zoningdata1 %>% 
@@ -646,7 +646,7 @@ get_unit_summary <- function(dataset,
 
 
 I created a dataset with results for troubleshooting purposes. Then I checked to make sure there aren't more townhouses than are allowed to be built on any one property.
-```{r sum}
+```{r sumassign}
 resultsall <- get_unit_variables(dataset = zoningdata2,
                             construction_efficiency = .7,
                             average_unit_size = 940)
@@ -656,7 +656,7 @@ resultsall <- get_unit_variables(dataset = zoningdata2,
 
 Get summary statistics for several different parameters
 
-```{r sum}
+```{r sumtable}
 
 get_unit_summary(dataset = zoningdata2,
                  construction_efficiency = .7,
@@ -696,7 +696,7 @@ get_unit_variables(dataset = zoningdata2, #write out file for sarah
 
 Select only vacant lots, filter out for rockville and gaithersburg which will be calculated separately, and check that I got them all.
 
-```{r res}
+```{r resV}
 
 vacant_mont <- zoningdata2 %>% 
   filter(category == "vacant", smallsize_flag == 0) #filter out all but vacant and small size flag
@@ -708,7 +708,7 @@ count(vacant_mont, category)
 
 See how many lots have missing key variables
 
-```{r missing}
+```{r missingV}
 
 vacant_mont %>% 
   mutate(num = NA) %>% 
@@ -760,7 +760,7 @@ vacant_mont2 <- vacant_mont2 %>%
 
 
 I created a dataset with results for troubleshooting purposes. Then I checked to make sure there aren't more townhouses than are allowed to be built on any one property.
-```{r sum}
+```{r sumVassign}
 resultsvacant <- get_unit_variables(dataset = vacant_mont2,
                             construction_efficiency = .7,
                             average_unit_size = 940)
@@ -777,7 +777,7 @@ resultsvacant %>%
 
 Get summary statistics for several different parameters
 
-```{r sum}
+```{r sumV}
 
 get_unit_summary(dataset = vacant_mont2,
                  construction_efficiency = .7,
@@ -795,7 +795,7 @@ brsum <- get_unit_summary(dataset = vacant_mont2,
 
 
 Here I did trouble shooting for the units that produced no units. ignore
-```{r}
+```{r troubleshoot}
 th <- get_unit_variables(dataset = vacant_mont2,
                          construction_efficiency = .7,
                          average_unit_size = 940) %>% 
@@ -874,7 +874,7 @@ vacant_mont2 %>%
 
 Write out the results to a csv. Include jurisdiction name in the title.
 
-```{r write-results}
+```{r write-resultsV}
 
 get_unit_summary(dataset = vacant_mont2,
                  construction_efficiency = .7,
@@ -892,7 +892,7 @@ write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
 
 ##Calculate values needed to fill table
 
-```{r table}
+```{r tableV}
 mf.br <- zoningdata1 %>% 
   filter(!is.na(dwelling_type),
          dwelling_type == "apartment",
