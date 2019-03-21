@@ -805,11 +805,9 @@ nested <- multiples %>%
          assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE)) %>% 
   mutate(ties_cat = ifelse(map(category, length) > 1, 1, 0)) %>% 
   mutate(category = ifelse(ties_cat == 1,
-                         NA,
-                         category))
-
-
-
+                           map(category_list, 1),
+                           category)) 
+  
 # nestedtest should have 0 observation
   
 stopifnot(
@@ -1088,6 +1086,8 @@ onevac <- cdties %>%
          vacant_flag = 1) %>% 
   select(-vac1)
 
+#YS comment: here I get a list of category
+
 # this value will be used later to check the number of rows
 nunits <- cdties %>% filter(test_vacant == 1) %>% summarize(sum(nprops)) %>% pull()
 ```
@@ -1281,6 +1281,11 @@ multiples_f <- nested_final %>%
   rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops) %>% 
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = "multiple")
+
+finaljur %>% 
+  group_by(category) %>% 
+  count() %>% 
+  knitr::kable()
 
 finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>% 
   fill(county_fips) %>% 
