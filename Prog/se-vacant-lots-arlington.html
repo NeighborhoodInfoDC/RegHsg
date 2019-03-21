@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated March 20, 2019</p>
+<p>Last updated March 21, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -431,7 +431,7 @@ se1 &lt;- se %&gt;%
 <div id="dwelling-type-hierarchy" class="section level3">
 <h3>Dwelling type hierarchy</h3>
 <p>We can adjust the hierarchy we used to select the most dense zoning codes in the previous analysis by adding those that now occur, and prioritizing the multiple-family dwelling type from the special exception over the by-right.</p>
-<p>First, remove dwelling types that are not possible to include.</p>
+<p>First, remove dwelling types that are not possible to include. These cannot be calculated since they depend on adjacent lots, or which lots share a lot line with the lot in question. Additionally, we take out those with a dwelling type with All or All Other, as long as that zoning code has another dwelling type we can use in the calculation.</p>
 <pre class="r"><code>count(zoningcode1, dwelling_type)</code></pre>
 <pre><code>## # A tibble: 7 x 2
 ##   dwelling_type           n

@@ -209,7 +209,7 @@ zoningcode1 <- mf_fill %>%
 
 We can adjust the hierarchy we used to select the most dense zoning codes in the previous analysis by adding those that now occur, and prioritizing the multiple-family dwelling type from the special exception over the by-right. 
 
-First, remove dwelling types that are not possible to include.
+First, remove dwelling types that are not possible to include. These cannot be calculated since they depend on adjacent lots, or which lots share a lot line with the lot in question. Additionally, we take out those with a dwelling type with All or All Other, as long as that zoning code has another dwelling type we can use in the calculation.
 
 ```{r hier-dwell}
 count(zoningcode1, dwelling_type)
