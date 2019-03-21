@@ -467,9 +467,9 @@ ggplot() +
   scale_fill_manual(values = c("#1696d2", "#fdbf11", 
                                "#d2d2d2", "#ec008b", 
                                "#55b748", "red", "green", "yellow", "blue")) +
-  geom_sf(data = vacantparcel, mapping = aes(),
+  geom_sf(data = jursfparcel, mapping = aes(),
           color = "black", size=0.1) +
-  geom_sf(data = vacantsfbk, mapping = aes(),
+  geom_sf(data = jursfbk, mapping = aes(),
           color = "black", size=0.1) 
 
 
@@ -642,8 +642,8 @@ jurzoningdata1 <- jurzoningdata %>%
 
 nrow(jurzoningdata1)
 
- ggplot(jurzoningdata1, aes(lotsize_sf) )+
-   geom_histogram(binwidth = 5000)
+ # ggplot(jurzoningdata1, aes(lotsize_sf) )+
+ #   geom_histogram(binwidth = 5000)
 # 
 # 
 # ggplot(jurzoningdata1, aes(lot_area_min) )+
