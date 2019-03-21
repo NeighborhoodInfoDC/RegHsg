@@ -296,6 +296,8 @@ get_individual_density <- function(dataset, node_name, node_type) {
     filter(name == node_name,
            node == node_type)
   
+  area <- st_area(n) %>% units::set_units("acres") %>% set_units(NULL)
+  
   suppressMessages({
     suppressWarnings({
   dataset %>% 
@@ -308,6 +310,7 @@ get_individual_density <- function(dataset, node_name, node_type) {
                    total_acres = sum(lotsize_acres, na.rm = TRUE),
                    number_of_units = sum(numberofunits, na.rm = TRUE),
                    density = number_of_units / total_acres,
+                   density_area = number_of_units / area,
                    pmf = sum(ifelse(category == "mf", lotsize_acres, 0),
                              na.rm = TRUE) / total_acres,
                    psf = sum(ifelse(category == "sf", lotsize_acres, 0),
