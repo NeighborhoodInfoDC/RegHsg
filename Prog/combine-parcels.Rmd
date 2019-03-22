@@ -453,6 +453,7 @@ dc1 <- dc_full %>%
                                   address_type %in% c("single", "missing"),
                                 1,
                                 numberofunits)) %>% 
+  # align categories with other jurisdictions
   mutate(category = ifelse(category == "all other category",
                            "other",
                            category))
