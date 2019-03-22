@@ -84,6 +84,11 @@ if (!exists("parcel")) {
   warning("Parcel data already read in")
 }
 
+
+parcel %>% 
+  group_by(county_name, category) %>% 
+  count()
+
 ```
 
 ## Get nodes
