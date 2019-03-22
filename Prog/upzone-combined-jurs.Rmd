@@ -499,6 +499,9 @@ total <- bind_rows(t, a, j) %>%
 write_csv(individual,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual.csv")
 
+write_csv(tidy_clusters,
+          "L:/Libraries/RegHsg/Prog/Tables/clusters.csv")
+
 write_csv(total,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-combined.csv")
 
@@ -547,6 +550,15 @@ tidy_clusters <-augment(x = clusters, individual)
 Plot clusters
 
 ```{r plot-clusters}
+
+tidy_clusters %>% 
+  left_join(nodes, by = c("name", "type")) %>% 
+  ggplot() +
+  geom_sf(bound, mapping = aes(),
+          fill = "grey") +
+  scale_fill_discrete(labels = c("Low", "Medium", "High")) +
+  geom_sf(mapping = aes(fill = .cluster),
+          alpha = .5)
 
 
 
