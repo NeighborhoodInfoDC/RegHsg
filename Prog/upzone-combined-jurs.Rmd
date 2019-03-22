@@ -244,12 +244,9 @@ First- make sure that vacant and other parcels have a 0 for number of units.
 ```{r replace-other}
 
 parcel2 <- parcel1 %>%
-  mutate(category = ifelse(category == "all other category",
-                           "other",
-                           category)) %>% 
-  mutate(numberofunits = ifelse(category %in% c("vacant", "other"),
-                                0,
-                                numberofunits)) %>% 
+  # mutate(category = ifelse(category == "all other category",
+  #                          "other",
+  #                          category)) %>% 
          mutate(category = ifelse(is.na(category) & numberofunits > 1 & !is.na(numberofunits),
                                   "mf",
                                   category),
@@ -258,13 +255,16 @@ parcel2 <- parcel1 %>%
                                   category),
                 category = ifelse(is.na(category) & is.na(numberofunits),
                                   "other",
-                                  category))
+                                  category)) %>% 
+    mutate(numberofunits = ifelse(category %in% c("vacant", "other"),
+                                0,
+                                numberofunits))
 
 parcel2 %>% 
   as.data.frame() %>% 
   group_by(county_name, category) %>% 
   summarize(n(),
-            numberofunits = sum(numberofunits, na.rm = TRUE),
+            numberofunits = sum(numberofunits),
             lotsize = sum(lotsize_sf, na.rm = TRUE),
             missing_ls = sum(is.na(numberofunits)))
 
@@ -508,8 +508,12 @@ write_csv(total,
 
 Classify transit and activity centers as low-medium-high density.
 
-
 Distribution of density of activity centers and transit stops.
+```{r}
+
+library(broom)
+
+```
 
 ```{r dist}
 
@@ -520,25 +524,39 @@ individual %>%
   scale_y_continuous(expand = c(0,0)) +
   facet_grid(~ type)
 
+```
 
-parcel1 %>% 
-  as.data.frame() %>% 
-  filter(county_fips == "11001") %>% 
-  ungroup() %>% 
-  group_by(category_detail) %>% 
-  summarize(numberofunits = sum(numberofunits))
+```{r cluster}
 
-parcel1 %>% 
-  as.data.frame() %>% 
-  filter(county_fips == "11001",
-         category == "mf") %>%
-  count(numberofunits == 0)
-  
+set.seed(20190322)
+
+rescaled_data <- individual %>% 
+  select(-name, -type) %>% 
+  mutate(density_residential = ifelse(density_residential == "NaN",
+                0,
+                density_residential)) %>% 
+  mutate_if(is.numeric, scales::rescale, to = c(1, 100))
+
+clusters <- kmeans(rescaled_data, centers = 3, nstart = 3)
+
+tidy_clusters <-augment(x = clusters, individual)
 
 
 ```
 
+Plot clusters
+
+```{r plot-clusters}
+
+
+
+```
+
+
+
+
 ```{r bar}
+
 individual_transit %>% 
   mutate(name = as.character(name)) %>% 
   arrange(desc(density)) %>% 
