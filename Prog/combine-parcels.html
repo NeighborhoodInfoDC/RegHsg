@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated March 20, 2019</p>
+<p>Last updated March 22, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -1605,7 +1605,10 @@ montgomery1 %&gt;%
                                   category_detail == &quot;Single-family home&quot; &amp;
                                   address_type %in% c(&quot;single&quot;, &quot;missing&quot;),
                                 1,
-                                numberofunits))
+                                numberofunits)) %&gt;% 
+  mutate(category = ifelse(category == &quot;all other category&quot;,
+                           &quot;other&quot;,
+                           category))
 
 dc1 %&gt;% 
   sum_missing_units() %&gt;% 

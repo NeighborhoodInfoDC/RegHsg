@@ -452,7 +452,10 @@ dc1 <- dc_full %>%
                                   category_detail == "Single-family home" &
                                   address_type %in% c("single", "missing"),
                                 1,
-                                numberofunits))
+                                numberofunits)) %>% 
+  mutate(category = ifelse(category == "all other category",
+                           "other",
+                           category))
 
 dc1 %>% 
   sum_missing_units() %>% 
