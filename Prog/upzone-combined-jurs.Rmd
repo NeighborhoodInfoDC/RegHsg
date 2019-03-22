@@ -71,6 +71,7 @@ Set directory for maps
 ```{r fips}
 
 rhfdir <- "L:/Libraries/RegHsg/Maps"
+
 ```
 
 ### Get parcel data 
@@ -233,6 +234,42 @@ parcel1 %>%
 
 See L:/Libraries/RegHsg/Prog/Tables/Upzoning.xlsx for table template.
 
+First- make sure that vacant and other parcels have a 0 for number of units.
+
+```{r replace-other}
+
+parcel2 <- parcel1 %>%
+  mutate(category = ifelse(category == "all other category",
+                           "other",
+                           category)) %>% 
+  mutate(numberofunits = ifelse(category %in% c("vacant", "other"),
+                                0,
+                                numberofunits)) %>% 
+         mutate(category = ifelse(is.na(category) & numberofunits > 1 & !is.na(numberofunits),
+                                  "mf",
+                                  category),
+                category = ifelse(is.na(category) & numberofunits == 1 & !is.na(numberofunits),
+                                  "sf",
+                                  category),
+                category = ifelse(is.na(category) & is.na(numberofunits),
+                                  "other",
+                                  category))
+
+parcel2 %>% 
+  as.data.frame() %>% 
+  group_by(county_name, category) %>% 
+  summarize(n(),
+            numberofunits = sum(numberofunits, na.rm = TRUE),
+            lotsize = sum(lotsize_sf, na.rm = TRUE),
+            missing_ls = sum(is.na(numberofunits)))
+
+parcel2 %>% 
+  as.data.frame() %>% 
+  filter(county_name == "Fairfax County") %>% 
+  count(category)
+
+```
+
 ### Test method on one activity center.
 
 Pick one activity center in Arlington to test and visualize the calculation. Use Clarendon activity center as an example.
@@ -247,7 +284,7 @@ Clip the Black Knight data to the extent of the activity center.
 
 ```{r clip-zon}
 
-bk_clar <- st_intersection(parcel1, clarendon)
+bk_clar <- st_intersection(parcel2, clarendon)
 
 ```
 
@@ -307,18 +344,19 @@ get_individual_density <- function(dataset, node_name, node_type) {
         summarize(residential_parcels = sum(residential, na.rm = TRUE),
                   residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
                                           na.rm = TRUE),
-                   total_acres = sum(lotsize_acres, na.rm = TRUE),
-                   number_of_units = sum(numberofunits, na.rm = TRUE),
-                   density = number_of_units / total_acres,
-                   density_area = number_of_units / area,
-                   pmf = sum(ifelse(category == "mf", lotsize_acres, 0),
+                  total_acres = sum(lotsize_acres, na.rm = TRUE),
+                  number_of_units = sum(numberofunits, na.rm = TRUE),
+                  density = number_of_units / total_acres,
+                  density_area = number_of_units / area,
+                  density_residential = number_of_units / residential_acres,
+                  pmf = sum(ifelse(category == "mf", lotsize_acres, 0),
+                            na.rm = TRUE) / total_acres,
+                  psf = sum(ifelse(category == "sf", lotsize_acres, 0),
+                            na.rm = TRUE) / total_acres,
+                  pvac = sum(ifelse(category == "vacant", lotsize_acres, 0),
                              na.rm = TRUE) / total_acres,
-                   psf = sum(ifelse(category == "sf", lotsize_acres, 0),
-                             na.rm = TRUE) / total_acres,
-                   pvac = sum(ifelse(category == "vacant", lotsize_acres, 0),
-                              na.rm = TRUE) / total_acres,
-                   pother = sum(ifelse(category == "other", lotsize_acres, 0),
-                                na.rm = TRUE) / total_acres) %>% 
+                  pother = sum(ifelse(category == "other", lotsize_acres, 0),
+                              na.rm = TRUE) / total_acres) %>% 
         mutate(name = node_name, type = node_type) %>% 
         select(name, type, everything())
     })
@@ -331,7 +369,7 @@ Test function, make sure results are the same.
 
 ```{r test-inv-fxn}
 
-get_individual_density(dataset = parcel1,
+get_individual_density(dataset = parcel2,
                        node_name = "Clarendon", 
                        node_type = "Activity") %>% 
   knitr::kable()
@@ -343,13 +381,13 @@ Map function through all activity centers and transit zones.
 
 transit_names <- nodes %>% filter(node == "Transit") %>% pull(name) %>% as.character()
 individual_transit <- map_df(transit_names, 
-                             ~ get_individual_density(dataset = parcel1,
+                             ~ get_individual_density(dataset = parcel2,
                                                       node_name = ., 
                                                       node_type = "Transit"))
 
 activity_names <- nodes %>% filter(node == "Activity") %>% pull(name) %>% as.character()
 individual_activity <- map_df(activity_names, 
-                              ~ get_individual_density(dataset = parcel1,
+                              ~ get_individual_density(dataset = parcel2,
                                                        node_name = ., 
                                                        node_type = "Activity"))
 
@@ -404,14 +442,24 @@ get_joint_density <- function(dataset, area) {
       
         dataset %>% 
           st_intersection(area) %>% 
-          as.data.frame() %>% 
-          group_by(county_fips, county_name) %>% 
-          summarize(residential_parcels = sum(residential, na.rm = TRUE),
-                      residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
-                                              na.rm = TRUE),
-                      total_acres = sum(lotsize_acres, na.rm = TRUE),
-                      number_of_units = sum(numberofunits, na.rm = TRUE),
-                      density = number_of_units / total_acres)
+        as.data.frame() %>% 
+        filter(!is.na(lotsize_sf), !is.na(numberofunits)) %>% 
+        summarize(residential_parcels = sum(residential, na.rm = TRUE),
+                  residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
+                                          na.rm = TRUE),
+                  total_acres = sum(lotsize_acres, na.rm = TRUE),
+                  number_of_units = sum(numberofunits, na.rm = TRUE),
+                  density = number_of_units / total_acres,
+                  density_area = number_of_units / area,
+                  density_residential = number_of_units / residential_acres,
+                  pmf = sum(ifelse(category == "mf", lotsize_acres, 0),
+                            na.rm = TRUE) / total_acres,
+                  psf = sum(ifelse(category == "sf", lotsize_acres, 0),
+                            na.rm = TRUE) / total_acres,
+                  pvac = sum(ifelse(category == "vacant", lotsize_acres, 0),
+                             na.rm = TRUE) / total_acres,
+                  pother = sum(ifelse(category == "other", lotsize_acres, 0),
+                              na.rm = TRUE) / total_acres)
     })
   })
 }
@@ -422,15 +470,15 @@ Apply function to transit, activity, and joint buffer. Create a variable for eac
 
 ```{r joint-map}
 
-t <- get_joint_density(dataset = parcel1,
+t <- get_joint_density(dataset = parcel2,
                        area = transit) %>% 
   mutate(node_type = "transit")
 
-a <- get_joint_density(dataset = parcel1,
+a <- get_joint_density(dataset = parcel2,
                        area = activity) %>% 
   mutate(node_type = "activity")
 
-j <- get_joint_density(dataset = parcel1,
+j <- get_joint_density(dataset = parcel2,
                        area = joint) %>% 
   mutate(node_type = "joint")
 
