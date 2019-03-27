@@ -1,0 +1,90 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Vacant lots analysis for Arlington County"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The goal of this analysis is to determine how many units could be added by filling vacant lots with the most-dense developments allowed under the current zoning codes.
+The two steps are:
+
+1. Merge cleaned parcel data with zoning code data.
+2. Calculate how many units are allowed one each parcel.
+3. Filter out and sum for vacant lots.
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(urbnthemes)
+library(sf)
+
+set_urbn_defaults("print")
+
+source("../Macros/read-arlington.R")
+
+```
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+
+if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
+  dir.create("L:/Libraries/RegHsg/Prog/Tables")
+}
+```
+
+Set FIPS code and filepath name
+```{r fips}
+
+currentfips <- "51013"
+filepath <- "arlington"
+
+
+```
+
+Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
+
+```{r read}
+if (!exists("jur")) {
+  jur <- read_arlington()
+} else {
+  warning(filepath, " data already read in")
+}
+
+```
+
