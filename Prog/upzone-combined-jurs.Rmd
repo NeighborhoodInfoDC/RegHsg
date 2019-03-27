@@ -49,6 +49,7 @@ library(tidyverse)
 library(sf)
 library(urbnthemes)
 library(units)
+library(broom)
 
 source("../Macros/read-combined-parcels.R")
 source("../Macros/get_node_geography.R")
@@ -475,20 +476,20 @@ Apply function to transit, activity, and joint buffer. Create a variable for eac
 
 ```{r joint-map}
 
-t <- get_joint_density(dataset = parcel2,
-                       area = transit) %>% 
-  mutate(node_type = "transit")
-
-a <- get_joint_density(dataset = parcel2,
-                       area = activity) %>% 
-  mutate(node_type = "activity")
-
-j <- get_joint_density(dataset = parcel2,
-                       area = joint) %>% 
-  mutate(node_type = "joint")
-
-total <- bind_rows(t, a, j) %>% 
-  select(node_type, everything())
+# t <- get_joint_density(dataset = parcel2,
+#                        area = transit) %>% 
+#   mutate(node_type = "transit")
+# 
+# a <- get_joint_density(dataset = parcel2,
+#                        area = activity) %>% 
+#   mutate(node_type = "activity")
+# 
+# j <- get_joint_density(dataset = parcel2,
+#                        area = joint) %>% 
+#   mutate(node_type = "joint")
+# 
+# total <- bind_rows(t, a, j) %>% 
+#   select(node_type, everything())
 
 ```
 
@@ -499,11 +500,11 @@ total <- bind_rows(t, a, j) %>%
 write_csv(individual,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual.csv")
 
-write_csv(tidy_clusters,
-          "L:/Libraries/RegHsg/Prog/Tables/clusters.csv")
+# write_csv(tidy_clusters,
+#           "L:/Libraries/RegHsg/Prog/Tables/clusters.csv")
 
-write_csv(total,
-          "L:/Libraries/RegHsg/Prog/Tables/upzoning-combined.csv")
+# write_csv(total,
+#           "L:/Libraries/RegHsg/Prog/Tables/upzoning-combined.csv")
 
 ```
 
@@ -512,13 +513,12 @@ write_csv(total,
 Classify transit and activity centers as low-medium-high density.
 
 Distribution of density of activity centers and transit stops.
-```{r}
 
-library(broom)
+#### {.tabset .tabset.fade}
 
-```
+##### Density based on total lot area
 
-```{r dist}
+```{r dist1}
 
 individual %>% 
   ggplot() +
@@ -528,6 +528,34 @@ individual %>%
   facet_grid(~ type)
 
 ```
+
+##### Density based on area in buffer
+
+```{r dist2}
+
+individual %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(x = density_area),
+                 bins = 40) +
+  scale_y_continuous(expand = c(0,0)) +
+  facet_grid(~ type)
+
+```
+
+##### Density based on residential lot area
+
+```{r dist3}
+
+individual %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(x = density_residential),
+                 bins = 40) +
+  scale_y_continuous(expand = c(0,0)) +
+  facet_grid(~ type)
+
+```
+
+### Use cluster analysis sort nodes
 
 ```{r cluster}
 
@@ -544,6 +572,49 @@ clusters <- kmeans(rescaled_data, centers = 3, nstart = 3)
 
 tidy_clusters <-augment(x = clusters, individual)
 
+x <- tidy(clusters)
+
+names(x) <- c(names(rescaled_data), "size", "withinss", "cluster")
+
+
+data <- individual %>% 
+  select(name, type, density_area, pmf)
+
+rs1 <- individual %>% 
+  select(density_area, pmf) %>% 
+  mutate_if(is.numeric, scales::rescale, to = c(1, 100)) %>% 
+  mutate(d1 = density_area,
+         d2 = density_area)
+
+
+clusters1 <- kmeans(rs1, centers = 3, nstart = 3)
+
+tidy_clusters1 <-augment(x = clusters1, data)
+
+x1 <- tidy(clusters1)
+
+names(x1) <- c(names(rs1), "size", "withinss", "cluster")
+
+map_clusters <- function(dataset) {
+  
+  dataset %>% 
+    left_join(nodes, by = c("name", "type")) %>% 
+    ggplot() +
+    geom_sf(bound, mapping = aes(),
+            fill = "grey") +
+    # scale_fill_discrete(labels = c("Low", "Medium", "High")) +
+    geom_sf(mapping = aes(fill = .cluster),
+            alpha = .5)
+  
+}
+
+
+tidy_clusters1 %>% 
+  map_clusters()
+
+tidy_clusters1 %>% 
+  ggplot() +
+  geom_point(mapping = aes(density_area, pmf, color = .cluster))
 
 ```
 
@@ -551,14 +622,17 @@ Plot clusters
 
 ```{r plot-clusters}
 
+
 tidy_clusters %>% 
   left_join(nodes, by = c("name", "type")) %>% 
   ggplot() +
   geom_sf(bound, mapping = aes(),
           fill = "grey") +
-  scale_fill_discrete(labels = c("Low", "Medium", "High")) +
   geom_sf(mapping = aes(fill = .cluster),
-          alpha = .5)
+          alpha = .5) +
+  # scale_fill_discrete(labels = c("Low", "Medium", "High"))
+  NULL
+  
 
 
 
@@ -569,15 +643,15 @@ tidy_clusters %>%
 
 ```{r bar}
 
-individual_transit %>% 
-  mutate(name = as.character(name)) %>% 
-  arrange(desc(density)) %>% 
-  head(20) %>% 
-  ggplot() +
-  geom_bar(mapping = aes(name, reorder(density, .desc = TRUE)),
-           stat = "identity") +
-  scale_y_continuous(expand = c(0,0)) +
-  coord_flip()
+# individual_transit %>% 
+#   mutate(name = as.character(name)) %>% 
+#   arrange(desc(density)) %>% 
+#   head(20) %>% 
+#   ggplot() +
+#   geom_bar(mapping = aes(name, reorder(density, .desc = TRUE)),
+#            stat = "identity") +
+#   scale_y_continuous(expand = c(0,0)) +
+#   coord_flip()
 
 
 
