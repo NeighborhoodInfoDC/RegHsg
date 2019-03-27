@@ -1,6 +1,6 @@
 ---
 title: "Regional Housing Framework"
-subtitle: "Vacant lots analysis for Montgomery County"
+subtitle: "Vacant lots analysis for Rockville and Gaithersburg in Montgomery county"
 author: ""
 output:
   html_document:
@@ -20,7 +20,7 @@ Library: RegHsg
 
 Project: Regional Housing Framework
 
-Author: Patrick Spauster
+Author: Yipeng Su
 
 Version: R 3.5.1, RStudio 1.1.423
 
@@ -37,7 +37,7 @@ knitr::opts_chunk$set(message = FALSE)
 
 ## Description
 
-The goal of this analysis is to determine how many units could be added by filling vacant lots with the most-dense developments allowed under the current zoning codes.
+The goal of this analysis is to determine how many units could be added by filling vacant lots with the most-dense developments allowed under the current zoning codes in Rockville and Gaithersburg.
 The two steps are:
 
 1. Merge cleaned vacant lots data with zoning code data.
@@ -76,7 +76,7 @@ filepath <- "montgomery"
 
 ```
 
-Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
+Since Rockville and Gaithersburg blacknight data was cleaned together with Mongomery data, so we need to load in cleaned Montgomery Black Knight data first and then filter out Rockville and Gaithersburg for separate calculation. 
 
 ```{r read}
 if (!exists("jur")) {
@@ -304,7 +304,7 @@ First- **manually** move file from Box to the `zoning-codes` directory in the `D
 
 ### Read file
 
-Read in zoning code, rename variables so that they are machine readable
+Read in zoning code, rename variables so that they are machine readable. Again, rockville and Gaithersburg zoing information is in the same document with Montgomery, we are reading in the whole file and filtering out zoning by jurisdiction. 
 
 ```{r file-check}
 
@@ -364,26 +364,6 @@ rm(z)
 
 ```
 
-### Creating dwelling_type hierarchy
-
-For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most dense construction for that zone. 
-
-First, we look at all the options, and filter out all the observations marked as "other", since we cannot be sure what property type that refers to. We will also filter out categories that are dependent on adjacent lot lines.
-
-```{r tab-dwellings}
-
-zoningcode %>% 
-  count(dwelling_type, juristdiction) %>% 
-  knitr::kable()
-```
-
-Count the number of unique zoning codes to make sure we won't get rid of any codes entirely.
-
-```{r count-zoning}
-length(unique(zoningcode$zoning_code))
-
-```
-
 ```{r zoning by juristdiction}
 
 zoning_montgomery <- zoningcode %>% 
@@ -397,9 +377,16 @@ zoning_gaithersburg <- zoningcode %>%
 
 ```
 
+### Creating dwelling_type hierarchy
+
+For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most dense construction for that zone. 
+
+First, we look at all the options, and filter out all the observations marked as "other", since we cannot be sure what property type that refers to. We will also filter out categories that are dependent on adjacent lot lines.
+
 *For Gaithersburg*
+
 ```{r list codes Gaithersburg} 
-#YS edits
+
 zoning_gaithersburg %>% 
   count(dwelling_type) %>% 
   knitr::kable()
@@ -422,11 +409,10 @@ zoning_gaithersburg1 %>%
 
 ```
 
-
 Since the variables are not always comparable, the following order, from most to least dense, applies:
 
-1. multiple family condominium dwellings
-2. multiple family dwelling 
+1. multiple family dwelling 
+2. multiple family condominium dwellings
 3. townhouse
 4. two family dwellings
 5. single-family attached 
@@ -434,8 +420,8 @@ Since the variables are not always comparable, the following order, from most to
 7. single-family detached 
 8. all (dwelling type is NA)
 
-### Create factor variable
-To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
+### Create factor variable for Gaithersburg
+To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-8, as listed above).
 We will also create a designation for dwelling types that are restricted to a certain amount of units (one unit for "One Family Dwelling" and one for two units for "Duplex"). 
 
 **NOTE** This will be VERY jurisdiction specific.
@@ -443,7 +429,7 @@ We will also create a designation for dwelling types that are restricted to a ce
 **NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
 
 ```{r dwelling-factor Gaithersburg}
-#YS edits
+#create housing type that are consistent with the table shell for reporting unit estimates later. For MXD code, the zoning code doesn't have parameters specified, and I'm here using R20 as an assumption for MX, because R20 is a medium density residential code.  
 
 SF_g <- c("R-A", "R-90", "R-6")
 SFA_g <- c()
@@ -454,8 +440,8 @@ MXD_g <- c("MXD")
 zoning_gaithersburg2 <- zoning_gaithersburg1 %>% 
   mutate(dwelling_type=ifelse(is.na(dwelling_type)==1, "all", dwelling_type)) %>% 
   mutate(dwelling_type = factor(dwelling_type,
-                                levels = c("multiple family condominium dwellings",
-                                           "multiple family dwelling",
+                                levels = c("multiple family dwelling", 
+                                           "multiple family condominium dwellings",
                                            "townhouse",
                                            "two family dwellings",
                                            "single-family attached",
@@ -489,7 +475,7 @@ zoning_gaithersburg2 <- zoning_gaithersburg1 %>%
 zoning_rockville %>% 
   count(dwelling_type) %>% 
   knitr::kable()
-
+# as the table shows, rockville zoning code doesn't break out by the dwelling type we have been using for other jurisdictions.
 
 zoning_rockville %>% 
   count(zoning_code) %>% 
@@ -497,7 +483,7 @@ zoning_rockville %>%
 
 ```
 
-### Create factor variable
+### Create factor variable for Rockville
 All rockville zoning codes are unique, so we do not need a factor. We will automatically select "all", or treat it as dwelling type is NA. In addition, rockville zoning code doesn't have dups except for MXTD and LPNC, which are for parks and mixes use transition. We don't have a density preference over the two. 
 
 **NOTE** This will be VERY jurisdiction specific.
@@ -505,7 +491,7 @@ All rockville zoning codes are unique, so we do not need a factor. We will autom
 **NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
 
 ```{r dwelling-factor Rockville}
-#YS edits
+#create housing type that are consistent with the table shell for reporting unit estimates later.
 sfcodes <- c("R-400","R-200","R-150","R-90","R-75", "R-40","R-60")
 
 sfacodes <- c("RMD-10")
@@ -541,7 +527,6 @@ See how many lots have missing key variables
 ```{r missing}
 
 jur %>% 
-  filter(category=="vacant") %>% 
   mutate(num = NA) %>% 
   group_by(category_detail) %>% 
   summarize_at(vars(propaddress, lotsize_sf, zoning, num),
@@ -631,13 +616,6 @@ jur1 <- jur %>%
 
 count(jur1, category)
 
-# vacant1 <- vacant %>% 
-#   mutate(X= SHAPE_LEN.x,
-#          Y=SHAPE_LEN.y) %>% 
-#   mutate(zoning_bk = zoning) %>% 
-#   mutate(missing_coord = ifelse(is.na(X) | is.na(Y),
-#                                 1,
-#                                 0)) 
 
 ```
 
@@ -648,18 +626,17 @@ The last step is to identify a zoning designation for observations that either..
 1. Have missing coordinates and have a dual zoning designation from Black Knight
 2. Have a dual zoning designation from Black Knight but one of the zoning codes does not match the results from the spatial join.
 
-First, isolate these observations and separate each zoning code into its own observation. 
-**NOTE:** For Arlington, the max codes was 4- adjust the `into = ` argument accordingly for each jurisdiction.
+Blacknight for Montgomery don't have dual codes. skip this par for Rockville and Gaithersburg. The code below is commented out but is how you test whether there are dual codes. 
 
 ```{r real-final}
-#YS edits and comments: Seems like blacknight for Montgomery don't have dual codes. skip this part.
-dual <- jur1  %>% 
-  filter(category=="vacant") %>% 
-  filter( str_detect(zoning, "/") == TRUE) %>% 
-  separate(zoning, 
-           into = c("z1", "z2", "z3", "z4"),
-           sep = "/",
-           remove = FALSE)
+
+# dual <- jur1  %>% 
+#   filter(category=="vacant") %>% 
+#   filter( str_detect(zoning, "/") == TRUE) %>% 
+#   separate(zoning, 
+#            into = c("z1", "z2", "z3", "z4"),
+#            sep = "/",
+#            remove = FALSE)
 
 ```
 
@@ -669,17 +646,6 @@ dual <- jur1  %>%
 Merge on zoning code variable. Test that all variables merged.
 
 ```{r pre zoning-merge}
-#YS edits
-# vacant_rockvile <- vacant1 %>% 
-#   mutate(zoning_code= zoning_bk) %>% 
-#   filter(rockflag=="1")
-# 
-# vacant_gaithersburg <- vacant1 %>% 
-#   mutate(zoning_code= zoning_bk) %>% 
-#   filter(gaitflag=="1")
-# 
-# zoningdata_rockvile <- left_join(vacant_rockvile, zoning_rockville1, by = "zoning_code")
-# zoningdata_gaithersburg <- left_join(vacant_gaithersburg, zoning_gaithersburg2, by = "zoning_code")
 
 total_rockvile <- jur1 %>% 
   mutate(X= SHAPE_LEN.x,
@@ -709,27 +675,6 @@ zoningtotal_gaithersburg <- left_join(total_gaithersburg, zoning_gaithersburg2, 
 There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
 
 ```{r antijoin}
-# 
-# #Rockville
-# anti_join(vacant_rockvile, zoning_rockville1, by = c("zoning_code")) %>% 
-#   count(zoning_code) %>% 
-#   knitr::kable()
-# 
-# anti_join(total_rockvile, zoning_rockville1, by = c("zoning_code")) %>% 
-#   count(zoning_code) %>% 
-#   knitr::kable()
-# 
-# vacant_rockvile1 <- vacant_rockvile %>% 
-#   mutate(zoning_code= case_when(zoning_code == "R200" ~ "R-200",
-#                                zoning_code == "R60" ~ "R-60",
-#                                zoning_code == "R90" ~ "R-90",
-#                                zoning_code == "R75" ~ "R-75",
-#                                zoning_code == "R150" ~ "R-150",
-#                                TRUE ~ zoning_code))
-# 
-# anti_join(vacant_rockvile1, zoning_rockville1, by = c("zoning_code")) %>% 
-#   count(zoning_code) %>% 
-#   knitr::kable()
 
 total_rockvile1 <- total_rockvile %>% 
   mutate(zoning_code= case_when(zoning_code == "R200" ~ "R-200",
@@ -737,17 +682,19 @@ total_rockvile1 <- total_rockvile %>%
                                zoning_code == "R90" ~ "R-90",
                                zoning_code == "R75" ~ "R-75",
                                zoning_code == "R150" ~ "R-150",
+                               zoning_code == "MXT" ~ "MXTD", #fix naming inconsistency for mixed use transition districts
                                TRUE ~ zoning_code))
 
 anti_join(total_rockvile1, zoning_rockville1, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
+#the three codes in rockville blacknight that didn't join was IL, MXT, PARK, or light industrial, mixed use transition and park. According to the zoning ordiance, IL and Park are not allowed for residential. 
 
 anti_join(total_gaithersburg, zoning_gaithersburg2, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
 
-#gaithershburg also has R200(5) RE2C(1) which should be a montegomery codes -- what to do? 
+#gaithershburg also has R200(5) RE2C(1) which should be a montegomery codes -- what to do? Leave for now, because these lots fall in the gaithersburg shapefile, so they are not actually montgomery lots. 
 total_gaithersburg1 <- total_gaithersburg %>% 
   mutate(zoning_code= case_when(zoning_code == "R20" ~ "R-20",
                                 zoning_code == "R18" ~ "R-18",
@@ -755,12 +702,16 @@ total_gaithersburg1 <- total_gaithersburg %>%
                                zoning_code == "R90" ~ "R-90",
                                zoning_code == "RA" ~ "R-A",
                                zoning_code == "RPT" ~ "RP-T",
-                               TRUE ~ zoning_code))
+                               zoning_code == "RH" ~ "R-H",
+                               TRUE ~ zoning_code)) %>% 
+  mutate(one_unit_flag= ifelse(zoning_code=="R-A"|zoning_code=="R-90", 1, 0))
 
+         
+         
 anti_join(total_gaithersburg1, zoning_gaithersburg2, by = c("zoning_code")) %>% 
   count(zoning_code) %>% 
   knitr::kable()
-
+# the codes didn't merge are : NAs, commercial codes (codes start with C) urban employment (codes start with E) industrial codes (start with I)that are not permited for residential, codes that are either from montgomery(R200(5) RE2C(1)) or not clear (R (1), RMX (32), RMH (2), MXN (52) )
 
 ```
 
@@ -814,7 +765,7 @@ There are several variables we will use to calculate how many units we can put o
 
 1. Buildable area: this is `lotsize_sf` x the coverage ratio (`lot_coverage_max`)
 2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
-3. Units per floor: this is the living area divided by the average unit size. We use 900 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
+3. Units per floor: this is the living area divided by the average unit size. We use 940 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
 4. Units allowed based on height limits: This is the units per floor x the number of stories.
 3. Units allowed based on lot size: this is the lot area divided by `lotarea_per_unit`
 
@@ -915,7 +866,7 @@ Get summary statistics for several different parameters
 
 ```{r sum Rockville}
 
-get_unit_summary_r(dataset = zoningdata_rockvile1_final,
+get_unit_summary_r(dataset = v,
                  construction_efficiency = .7,
                  average_unit_size = 940,
                  dwelling_type_breakdown = TRUE) %>% 
@@ -925,11 +876,10 @@ get_unit_summary_r(dataset = zoningdata_rockvile1_final,
 testdataset <- get_unit_variables_r(dataset = zoningdata_rockvile1_final,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-filter(housing_type=="SFA") %>% 
- filter(category=="vacant") %>% 
+ filter(housing_type=="SFA") %>% 
+  filter(category=="vacant") %>% 
   filter(smallsize_flag==0) %>% 
-  select(zoning_code, propaddress, dwelling_type, lotsize_sf, height_ft, lot_coverage_max, units_height, buildable_area, living_area, units_total, units_per_floor, floors, one_unit_flag,  subset, lot_area_min, lotarea_per_unit, smallsize_flag, zone)
-
+  select(zoning_code, propaddress, dwelling_type, lotsize_sf, height_ft, lot_coverage_max, units_height, buildable_area, living_area, units_total, units_per_floor, floors, one_unit_flag,  subset, lot_area_min, lotarea_per_unit, smallsize_flag, housing_type, zone)
 
 map_df(c(.7, .85), ~ get_unit_summary_r(dataset = zoningdata_rockvile1_final,
                                       construction_efficiency = .,
@@ -1046,7 +996,7 @@ There are several variables we will use to calculate how many units we can put o
 
 1. Buildable area: this is `lotsize_sf` x the coverage ratio (`lot_coverage_max`)
 2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
-3. Units per floor: this is the living area divided by the average unit size. We use 900 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
+3. Units per floor: this is the living area divided by the average unit size. We use 940 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
 4. Units allowed based on height limits: This is the units per floor x the number of stories.
 3. Units allowed based on lot size: this is the lot area divided by `lotarea_per_unit`
 
@@ -1081,7 +1031,9 @@ get_unit_variables_g <- function(dataset,
            units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
     mutate(subset=as.numeric(floor(lotsize_sf/lot_area_min))) %>% 
     mutate(units_total= pmin(units_height, units_lotsize, na.rm = TRUE )) %>% 
-    mutate( units_total = ifelse(is.na(units_total)==1|units_total > (density *(lotsize_sf/43560)), floor(density *(lotsize_sf/43560)),units_total))
+    mutate(units_total= case_when(one_unit_flag == 1 & subset<1 & units_total >1 ~ 0,
+                                  one_unit_flag == 1 & subset>=1 & units_total > subset ~ subset)) %>% 
+    mutate( units_total = ifelse(is.na(units_total)==0 |units_total > (density *(lotsize_sf/43560)), floor(density *(lotsize_sf/43560)),units_total))
 
 }
 
