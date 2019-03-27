@@ -92,10 +92,12 @@ jur <- region %>%
 Arlington has several files of use
 - Parcel-level file, could provide alternative lot area metric
 - Property file, can account for missing address/other geographic information
+- Address file can fill in missing units for apartments.
 
 ```{r download-data}
 pafile <- paste0(rdir, filepath, "-parcel-file.csv")
 prfile <- paste0(rdir, filepath, "-property-file.csv")
+adfile <- paste0(rdir, filepath, "-address-file.csv")
 
 # parcel file
 if (!file.exists(pafile)) {
@@ -107,6 +109,12 @@ if (!file.exists(pafile)) {
 if (!file.exists(prfile)) {
   download.file("https://data.arlingtonva.us/rest/datastreams/255011/data.csv",
                 destfile = prfile)
+}
+
+# address file
+if (!file.exists(adfile)) {
+  download.file("https://data.arlingtonva.us/rest/datastreams/254138/data.csv",
+                destfile = adfile)
 }
 
 ```
@@ -181,6 +189,8 @@ property <- read_csv(prfile,
   physicalAddressKey = col_double()
 )
 )
+
+address <- read_csv(adfile)
 
 rm(pafile, prfile)
 
