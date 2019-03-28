@@ -38,6 +38,8 @@ quit;
 
 %macro ipumsyear(year);
 
+title2 "-- &year --";
+
 /* Load Ipums for region, flag full-time year-round workers */
 data RegEmp_&year.;
 
@@ -66,10 +68,10 @@ proc freq data = RegEmp_&year.; tables empstatd ; run;
 
 
 /* Caclulate average salary for full-time year-round workers */
-proc means data = RegEmp_&year. (where = (fulltime=1 and yearround=1));
+proc means data = RegEmp_&year. (where = (fulltime=1 and yearround=1)) noprint;
 	var incwage;
 	weight perwt;
-	output out = avewage_&year. mean=;
+	output out = avewage_&year. median=;
 run;
 
 
@@ -81,23 +83,21 @@ proc sql;
 quit;
 
 
-/* Calculate high/medium/low from average */
+/* Add average salary to data */
 data RegWage_&year.;
 	set RegEmp_&year.;
 
 	if fulltime = 1 and yearround = 1 then do;
 		ftworker = 1;
+    avewage = &avesalary.;
 
-		if incwage >= (1.5 * &avesalary.) then wagecat = 3;
-		else if incwage <= (0.5 * &avesalary.) then wagecat = 2;
-		else wagecat = 1;
 	end;
 
-	keep year serial pernum incwage wagecat fulltime yearround ftworker empstatd perwt hhwt;
-
-	format wagecat wagecat.;
+	keep year serial pernum incwage avewage fulltime yearround ftworker empstatd perwt hhwt;
 
 run;
+
+title2;
 
 %mend ipumsyear;
 %ipumsyear (2017);
@@ -108,6 +108,12 @@ run;
 /* Stack years, create colums for year data */
 data allyears;
 	set RegWage_2017 RegWage_2010 RegWage_2000;
+
+  if ftworker then do;
+    if incwage >= ((4/3) * avewage) then wagecat = 3;
+		else if incwage <= ((2/3) * avewage) then wagecat = 1;
+		else wagecat = 2;
+  end;
 
 	if year = 0 then do;
 		empstatd_2000 = empstatd;
@@ -128,7 +134,26 @@ data allyears;
 		worker_2017 = 1;
 	end;
 
+	format wagecat wagecat.;
+
 run;
+
+proc tabulate data=allyears format=comma10.0 noseps missing;
+  where ftworker;
+  class year wagecat;
+  var ftworker incwage;
+  weight perwt;
+  table 
+    /** Pages **/
+    year=' ',
+    /** Rows **/
+    all='Total' wagecat=' ',
+    /** Columns **/
+    ftworker='Workers' * sum=' '
+    incwage='Annual earnings' * ( mean min max )
+    / condense;
+run;
+
 
 
 /* * Adults by employment status by year */
