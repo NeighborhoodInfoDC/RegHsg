@@ -494,7 +494,7 @@ jurjoin_bk <- st_join(jursfbk, zon, join = st_intersects)
 
 ```
 
-After the join, we convert back to a dataframe and recombine the two vacant datasets together.
+After the join, we convert back to a dataframe and recombine the two datasets together.
 
 ```{r back-to-df}
 
