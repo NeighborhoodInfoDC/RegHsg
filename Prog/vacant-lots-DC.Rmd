@@ -568,6 +568,7 @@ anti_join(jurtotaltest, zoningcode_factor, by = c("zoning_code")) %>%
   count(zoning_code) %>% 
   knitr::kable()
 
+#we are using jur2 instead of jur total here to genereate the jurcleaned dataset because jur2 only have observatinos that are not missing geo information in them. 
 jurcleaned <- jur2 %>% 
           mutate(zoning_code=ZONING_LAB, 
                  zoning_bk= zoning) %>% 
