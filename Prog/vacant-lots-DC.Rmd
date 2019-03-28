@@ -482,10 +482,6 @@ spatial join with zoning shapefile separately
 
 ```{r spatial-join}
 
-# vacantjoin_parcel <- st_join(vacantsfparcel, zon, join = st_intersects)
-# 
-# vacantjoin_bk <- st_join(vacantsfbk, zon, join = st_intersects)
-
 
 jurjoin_parcel <- st_join(jursfparcel, zon, join = st_intersects)
 
@@ -498,12 +494,6 @@ After the join, we convert back to a dataframe and recombine the two datasets to
 
 ```{r back-to-df}
 
-# vacant2_parcel <- st_set_geometry(vacantjoin_parcel, NULL)
-# 
-# vacant2_bk <- st_set_geometry(vacantjoin_bk, NULL)
-# 
-# vacant2 <- vacant2_parcel %>% 
-#      bind_rows(vacant2_bk)
 
 jur2_parcel <- st_set_geometry(jurjoin_parcel, NULL)
 
