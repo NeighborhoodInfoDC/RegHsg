@@ -56,13 +56,13 @@ read_arlington <- function(rmd = TRUE) {
                               lotsize_prop = col_double(),
                               propaddress_prop = col_character(),
                               numberofunits_prop = col_character(),
-                              lat_prop = col_double(),
-                              long_prop = col_double(),
                               parcel_area = col_double(),
                               parcel_length = col_double(),
                               raw_parcelid_par = col_character(),
                               parcel_address = col_character(),
-                              vacant_flag = col_integer()))
+                              vacant_flag = col_integer(),
+                              units_address = col_double(),
+                              area = col_double()))
   }
 }
 
