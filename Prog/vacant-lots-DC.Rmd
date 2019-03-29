@@ -599,16 +599,20 @@ anti_join(jurcleaned2, zoningcode_factor, by = c("zoning_code")) %>%
 
 ```
 
-After cleaning the zoning code from shapefile, we are merging the cleaned blacknight vacant data with the zoning code spreadsheet.
+After cleaning the zoning code from shapefile, we are merging the cleaned blacknight data with the zoning code spreadsheet.
 
 ```{r zoning-merge}
 
-jurzoningdata <- left_join(jurcleaned2, zoningcode_factor, by = "zoning_code") %>% 
-           filter(newdwelling_type!="NA")
-#filter out observations with zoning codes that are eithing NA or not in the DC spreadsheet
+jurzoningdata <- left_join(jurcleaned2, zoningcode_factor, by = "zoning_code") 
+#since we cleaned the jur dataset in the previous step, the codes in jur that are not joined are all codes that are not in the DC residential zoning spreasheet we have. Those didn't join include PDR-1= PDR-7, and UNZONED.
 
 jurzoningdata %>% 
   group_by(newdwelling_type) %>% 
+  count() %>% 
+  knitr::kable()
+
+jurzoningdata %>% 
+  group_by(zoning_code) %>% 
   count() %>% 
   knitr::kable()
 
@@ -622,7 +626,7 @@ Filter out lots that are too small to build on and lots with missing zoning info
 jurzoningdata1 <- jurzoningdata %>% 
   mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
          lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
-  filter(!is.na(zoning_code)) %>% 
+#since we cleaned the jur dataset in the previous step, the codes in jur that are not joined are all codes that are not in the DC residential zoning spreasheet we have. Those didn't join include PDR-1= PDR-7, and UNZONED.
   mutate( smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 0,1)) %>% 
   mutate(smallsize_flag= ifelse(is.na(smallsize_flag)==1, 0, smallsize_flag)) %>% 
   group_by(propaddress, smallsize_flag) %>% 
