@@ -108,6 +108,10 @@ Part 1: Compile housing units by characteristics from Ipums.
 
 %macro COGunits(year);
 
+title2 "-- &year --";
+
+%local cost_year;
+
 /* Calculate vacant untis for each year of Ipums */
 data COGSvacant_&year.(where=(vacancy in (1,2)));
 
@@ -136,6 +140,10 @@ data COGSvacant_&year.(where=(vacancy in (1,2)));
 	if vacancy=2 then Tenure = 2; /*owner*/
 
 	if bedrooms >= 5 then bedrooms = 5; /* Top-code bedroom sizes at 4+ */
+	
+	** Housing costs **;
+	
+	
 
 	vacantunit_&year.=1;
 
@@ -182,12 +190,50 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 	else if ownershpd in ( 12,13 ) then Tenure = 2; /*owner*/
 
 	if bedrooms >= 5 then bedrooms = 5; /* Top-code bedroom sizes at 4+ */
+	
+	** Housing costs **;
+	
+	 *adjust housing costs for inflation; 
+	 
+	 %if &year = 2000 %then %let cost_year = %eval( &year - 1 );
+	 %else %let cost_year = &year;
+
+	  %dollar_convert( rentgrs, rentgrs_a, &cost_year., 2016, series=CUUR0000SA0L2 )
+	  %dollar_convert( owncost, owncost_a, &cost_year., 2016, series=CUUR0000SA0L2 )
+	  %dollar_convert( valueh, valueh_a, &cost_year., 2016, series=CUUR0000SA0L2 )
+
+    * For owner costs, use first-time homebuyer mortgage payment and other monthly costs *;
+	  
+	    **** 
+	    Calculate monthly payment for first-time homebuyers. 
+	    Using 3.69% as the effective mortgage rate for DC in 2016, 
+	    calculate monthly P & I payment using monthly mortgage rate and compounded interest calculation
+	    ******; 
+	    
+	    loan = .9 * valueh_a;
+	    month_mortgage= (3.69 / 12) / 100; 
+	    monthly_PI = loan * month_mortgage * ((1+month_mortgage)**360)/(((1+month_mortgage)**360)-1);
+
+	    ****
+	    Calculate PMI and taxes/insurance to add to Monthly_PI to find total monthly payment
+	    ******;
+	    
+	    PMI = (.007 * loan ) / 12; **typical annual PMI is .007 of loan amount;
+	    tax_ins = .25 * monthly_PI; **taxes assumed to be 25% of monthly PI; 
+	    total_month = monthly_PI + PMI + tax_ins; **Sum of monthly payment components;
+
+	  if Tenure = 1 then housing_cost_a = rentgrs_a;
+	  else if Tenure = 2 then housing_cost_a = total_month;
 
 	occupiedunits_&year.=1;
 
 	format bedrooms bedroom_topcode. jurisdiction jurisdiction.;
 
 	run;
+
+  proc means data=COGSarea_&year.;
+    var rentgrs rentgrs_a owncost owncost_a valueh valueh_a total_month housing_cost_a;
+  run;
 
 
 proc summary data= COGSarea_&year.;
@@ -200,6 +246,8 @@ run;
 proc sort data= COGSareaunits_&year.;
 	by Tenure Jurisdiction structuretype bedrooms _type_;
 run;
+
+title2;
 
 %mend COGunits; 
 
