@@ -132,6 +132,7 @@ if (!exists("arlington")) {
 For each jurisdiction:
 
 * Fill in missing variables
+* Replace 0 with NA when appropriate
 * Select variables needed for upzoning and soft sites analysis
 
 ### Missing units functions
@@ -177,6 +178,8 @@ sum_missing_lotsize <- function(dataset) {
 
 #### Number of units
 
+Replace `0` with `NA` for multifamily
+
 ```{r arl-missing}
 
 arlington %>% 
@@ -192,62 +195,23 @@ arlington1 <- arlington %>%
 
 
 
-
 #### Lot size
 
-Fill in with parcel shapefile area and lot size from property file.
+Replace `0` with `NA` for all parcels.
 
 ```{r arl-ls}
 
-arlington %>% 
+arlington1 %>% 
   sum_missing_lotsize() %>% 
   knitr::kable()
 
-```
-
-Spatial join to parcel file to fill in remaining missing lot size.
-
-```{r spat-arlington}
-
-par <- st_read(dsn = "L:/Libraries/RegHsg/Maps/arlington-parcel-map",
-               layer = "Parcel_Polygons") %>% 
-  st_transform(crs = 4326)
-
-# calculate area in square feet
-par <- par %>% 
-  mutate(area = st_area(par) %>% units::set_units("feet^2") %>% units::set_units(NULL))
-
-
-# convert arlington to spatial
-arlsf <- arlington3 %>% 
-  filter(!is.na(lat), !is.na(long)) %>% 
-  mutate(longx = long, laty = lat) %>% 
-  st_as_sf(coords = c("longx", "laty")) %>% 
-  st_set_crs(st_crs(4326))
-
-# join to zoning layer
-
-arlj <- st_join(arlsf, par, st_intersects)
-
-# check match rate
-arlj %>% 
-  as.data.frame() %>% 
-  count(is.na(OBJECTID))
-
-arlington4 <- arlj %>% 
-  # strip geometry
-  st_set_geometry(NULL) %>% 
-  mutate(lotsize_sf = ifelse(lotsize_sf == 0 & !is.na(OBJECTID),
-                             area,
-                             lotsize_sf)) %>% 
-  select(-OBJECTID, -EVENT_ID, -RPCMSTR) %>% 
-  bind_rows(filter(arlington2, is.na(lat)))
-
-arlington4 %>% 
-  sum_missing_lotsize() %>% 
-  knitr::kable()
+arlington2 <- arlington1 %>% 
+  mutate(lotsize_sf = ifelse(lotsize_sf == 0,
+                             NA,
+                             lotsize_sf))
 
 ```
+
 
 ### Fairfax
 
@@ -417,7 +381,7 @@ dc1 %>%
 ## Select and combine
 
 ```{r}
-arl <- arlington4 %>%
+arl <- arlington2 %>%
           select(county_fips,
                  county_name,
                  assessorsparcelnumberapnpin,
@@ -430,7 +394,12 @@ arl <- arlington4 %>%
                  category,
                  category_detail, 
                  countylandusedescription, 
-                 residential, lat, long) %>% 
+                 residential, 
+                 totalassessedvalue,
+                 assessedimprovementvalue,
+                 assessedlandvalue,
+                 lat, 
+                 long) %>% 
   mutate(numberofunits = as.integer(numberofunits))
 
 fai <- fairfax3 %>%
@@ -446,7 +415,12 @@ fai <- fairfax3 %>%
                category,
                category_detail, 
                countylandusedescription, 
-               residential, lat, long)
+               residential, 
+               totalassessedvalue,
+               assessedimprovementvalue,
+               assessedlandvalue,
+               lat, 
+               long)
 
 mon <- montgomery1 %>%
         select(county_fips,
@@ -462,6 +436,9 @@ mon <- montgomery1 %>%
                category_detail, 
                countylandusedescription, 
                residential, 
+               totalassessedvalue,
+               assessedimprovementvalue,
+               assessedlandvalue,
                lat = latarc, 
                long = longarc)
 
@@ -478,7 +455,10 @@ dc <- dc1 %>%
            category_detail, 
            propaddress = parcelbase_address, 
            countylandusedescription, 
-           residential, 
+           residential,
+           totalassessedvalue,
+           assessedimprovementvalue,
+           assessedlandvalue,
            lat, long,
            parcelgeo_x, parcelgeo_y)
 
