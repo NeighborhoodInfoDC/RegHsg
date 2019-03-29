@@ -183,62 +183,13 @@ arlington %>%
   sum_missing_units() %>% 
   knitr::kable()
 
-```
-
-Fill in lot size with variables from parcel file, property file. Fill in number of units as 2 for duplex, 1 for single-family. If `numberofunits` is stil missing after those steps, supplement with the `numberofunits_prop` variable, which came from the county. (See `preclean-Arlington.Rmd`)
-
-```{r arl-fill}
-
 arlington1 <- arlington %>% 
-  mutate(numberofunits = ifelse(category_detail == "duplex" & numberofunits == 0,
-                                2,
-                                numberofunits),
-         numberofunits = ifelse(category == "sf" & address_type == "single",
-                                1,
-                                numberofunits),
-         numberofunits = ifelse((is.na(numberofunits) | numberofunits == 0) & !is.na(numberofunits_prop),
-                                numberofunits_prop,
+  mutate(numberofunits = ifelse(category == "mf" & numberofunits == 0,
+                                NA,
                                 numberofunits))
 
-arlington1 %>% 
-  sum_missing_units() %>% 
-  knitr::kable()
-
 ```
 
-Join to address file to fill in missing apartments.
-
-```{r address-file}
-
-add <- read_csv("https://data.arlingtonva.us/rest/datastreams/254138/data.csv")
-names(add) <- tolower(names(add))
-
-add1 <- add %>% 
-  mutate(address_cap = toupper(full_address)) %>% 
-  select(address_cap, unitcount)
-
-arlingtonjoin <- arlington1 %>% 
-  mutate(address_cap = toupper(propaddress)) %>% 
-  left_join(add1, by = "address_cap")
-
-# check how many didn't join
-arlington1 %>% 
-  mutate(address_cap = toupper(propaddress)) %>% 
-  anti_join(add1, by = "address_cap") %>% 
-  nrow()
-
-
-arlington2 <- arlingtonjoin %>% 
-  mutate(numberofunits = ifelse(numberofunits == 0 & unitcount != 0 & !is.na(unitcount),
-                                unitcount,
-                                numberofunits)) %>% 
-  select(-unitcount)
-
-arlington2 %>% 
-  sum_missing_units() %>% 
-  knitr::kable()
-
-```
 
 
 
@@ -248,20 +199,9 @@ Fill in with parcel shapefile area and lot size from property file.
 
 ```{r arl-ls}
 
-arlington3 <- arlington2 %>% 
-  mutate(lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) & !is.na(parcel_area),
-                             parcel_area,
-                             lotsize_sf),
-         lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) & !is.na(lotsize_prop),
-                             lotsize_prop,
-                             lotsize_sf),
-         lotsize_acres = lotsize_sf / 43560)
-
-
-arlington3 %>% 
+arlington %>% 
   sum_missing_lotsize() %>% 
   knitr::kable()
-
 
 ```
 
