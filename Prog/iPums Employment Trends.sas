@@ -31,7 +31,7 @@
 proc format;
 	value wagecat
 		1 = "Low wage"
-		2 = "Medium wage"
+		2 = "Middle wage"
 		3 = "High wage";
 quit;
 
@@ -56,7 +56,7 @@ data RegEmp_&year.;
 	if upuma in (&Reg2000Pumas.);
 	%end; 
 
-	/* Flag 25+ hours worked as full time */
+	/* Flag 35+ hours worked as full time */
 	if uhrswork >= 35 then fulltime=1;
 
 	/* Flag 50-52 weeks per year as year-round */
@@ -110,8 +110,8 @@ data allyears;
 	set RegWage_2017 RegWage_2010 RegWage_2000;
 
   if ftworker then do;
-    if incwage >= ((4/3) * medianwage) then wagecat = 3;  /** High wage **/
-		else if incwage <= ((2/3) * medianwage) then wagecat = 1;  /** Low wage **/
+    if incwage > ((4/3) * medianwage) then wagecat = 3;  /** High wage **/
+		else if incwage < ((2/3) * medianwage) then wagecat = 1;  /** Low wage **/
 		else wagecat = 2;  /** Middle wage **/
   end;
 
