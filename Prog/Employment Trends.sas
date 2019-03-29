@@ -55,6 +55,18 @@
 					"51685"  /* Manassas Park */
 					;
 
+proc format;
+	value icode
+		1 = "Construction"
+		2 = "Other goods-producing"
+		3 = "Professional and business services"
+		4 = "Education and health services"
+		5 = "Trade, transport, and utilities"
+		6 = "Leisure and hospitality"
+		7 = "Financial"
+		8 = "Information services"
+		9 = "Other services";
+quit;
 
 /* Macro to tanspose by year */
 %macro byyear (var);
@@ -167,6 +179,20 @@ data industryjobs;
 	%mend yearloop;
 	%yearloop;
 
+	if naics = "1012" then icode = 1;
+	else if naics in ("1011","1013") then icode = 2;
+	else if naics in ("1024") then icode = 3;
+	else if naics in ("1025") then icode = 4;
+	else if naics in ("1021") then icode = 5;
+	else if naics in ("1026") then icode = 6;
+	else if naics in ("1023") then icode = 7;
+	else if naics in ("1022") then icode = 8;
+	else if naics in ("1027") then icode = 9; 
+	else if naics in ("1029") then icode = 9; 
+
+	format icode icode.;
+
+
 run;
 
 proc summary data = industryjobs;
@@ -183,6 +209,83 @@ run;
 
 proc export data = industryjobs_byyear
 	outfile = "&_dcdata_default_path.\reghsg\prog\industryjobs_byyear.csv"
+	dbms=csv
+	replace;
+run;
+
+
+/* Calculate the residual for "other" */
+%let goodscodes = "1011","1012","1013";
+%let servicecodes = "1021","1022","1023","1024","1025","1026","1027","1029";
+
+proc summary data = Industryjobs_byyear (where = (naics in (&servicecodes.)));
+	var Annual_Average_Employment_:;
+	output out = services sum=;
+run;
+
+data service_net;
+	set Industryjobs_byyear (where = (naics = "102"))
+		services;
+
+	%macro yearloop;
+	%do yr = &start_yr. %to &end_yr.;
+		lag_N_&yr. = lag1(Annual_Average_Employment_&yr.);
+		Other_&yr. = lag_N_&yr. - Annual_Average_Employment_&yr. ;
+		Annual_Average_Employment_&yr. = Other_&yr.;
+	%end;
+	%mend yearloop;
+	%yearloop;
+
+	if naics = " " then icode = 9;
+	if icode ^= .;
+
+	keep icode Annual_Average_Employment_:;
+
+run;
+
+proc summary data = Industryjobs_byyear (where = (naics in (&goodscodes.)));
+	var Annual_Average_Employment_:;
+	output out = goods sum=;
+run;
+
+data goods_net;
+	set Industryjobs_byyear (where = (naics = "101"))
+		goods;
+
+	%macro yearloop;
+	%do yr = &start_yr. %to &end_yr.;
+		lag_N_&yr. = lag1(Annual_Average_Employment_&yr.);
+		Other_&yr. = lag_N_&yr. - Annual_Average_Employment_&yr. ;
+		Annual_Average_Employment_&yr. = Other_&yr.;
+	%end;
+	%mend yearloop;
+	%yearloop;
+
+	if naics = " " then icode = 2;
+	if icode ^= .;
+
+	keep icode Annual_Average_Employment_:;
+
+run;
+
+data industryjobs_net;
+	set industryjobs service_net goods_net;
+run;
+
+proc summary data = industryjobs_net;
+	class icode;
+	var Annual_Average_Employment_: ;
+	output out = industryjobs2_t sum=;
+run;
+
+data industryjobs2_byyear;
+	set industryjobs2_t;
+	drop _type_ _freq_;
+	if icode = " " then delete;
+run;
+
+proc export data = industryjobs2_byyear
+	outfile = "&_dcdata_default_path.\reghsg\prog\industryjobs2_byyear.csv"
 	dbms=csv
 	replace;
 run;

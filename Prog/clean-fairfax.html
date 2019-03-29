@@ -247,7 +247,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 14, 2019</p>
+<p>Last updated March 03, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -833,7 +833,7 @@ missing &lt;- jur_3%&gt;%
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
                     yearbuilt, long, lat,
-                    area_tax, zone_tax, possibleSF_tax, stories_tax, units_tax, category_tax, land_per_parcel, dwellings_per_parcel, num_livunit), list) %&gt;% 
+                    area_tax, zone_tax, possibleSF_tax, stories_tax, units_tax, category_tax, land_per_parcel, dwellings_per_parcel, num_livunit, assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %&gt;% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., &quot;_list&quot;)) %&gt;% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
@@ -857,7 +857,12 @@ missing &lt;- jur_3%&gt;%
                       map(yearbuilt_list, max, na.rm = TRUE),
                       NA),
          parcel_area = map_dbl(area_tax_list, sum, na.rm = TRUE),
-         sf_area = map_dbl(possibleSF_tax_list, sum, na.rm=T))</code></pre>
+         sf_area = map_dbl(possibleSF_tax_list, sum, na.rm=T),
+         units_area = map_dbl(units_tax_list, sum, na.rm=T),
+         totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
+         assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
+                                            sum, na.rm = TRUE),
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))</code></pre>
 <div id="lot-size" class="section level4">
 <h4>Lot size</h4>
 <p><strong>Note: This entire section may not hold accross jurisdictions. Visually confirm that this applies. Some thresholds may need to be adjusted.</strong></p>
@@ -1247,7 +1252,7 @@ rm(novac, onevac, bothvac, nested_all)</code></pre>
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
          ends_with(&quot;prop&quot;),
-         area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax,               units_tax, parcel_id, num_livunit, dwellings_per_parcel, land_per_parcel)
+         area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, parcel_id, num_livunit, dwellings_per_parcel, land_per_parcel, assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
 
 missing_f &lt;- missing %&gt;% 
   select(county_fips, county_name,

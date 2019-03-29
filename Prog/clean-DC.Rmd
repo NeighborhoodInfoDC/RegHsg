@@ -58,6 +58,9 @@ source("../Macros/filter-bk.R")
 source("../Macros/select-vars.R")
 source("../Macros/sample-properties.R")
 source("../Macros/classify-addresses.R")
+source("../Macros/max_narm.R")
+source("../Macros/mode_narm.R")
+
 ```
 #### Create directory for data exports on local computer
 ```{r dir}
@@ -763,50 +766,59 @@ rm(v)
 
 Again, because propaddress is better than parcelbase dataset address, I will keep the propaddress variable.
 
-``` {r nest}
+```{r nest}
 
-rm(length)   
-
-  nested <- multiples %>% 
+nested <- multiples %>% 
   group_by(propaddress) %>%
   summarize_at(vars(zoning,lotsize_sf,
                     buildingarea, parcelbase_usecode, 
                     residential, category, category_detail, building_type,
-                    yearbuilt, parcelgeo_x, parcelgeo_y), list) %>% 
+                    yearbuilt, 
+                    parcelgeo_x, parcelgeo_y, 
+                    lat, long,
+                    assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %>% 
   rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
-         zoning = map(zoning_list, Mode),
+         zoning = map(zoning_list, mode_narm),
          lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
          buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
-         usecode = map(parcelbase_usecode_list, Mode),
-         residential = map(residential_list, max, na.rm = FALSE),
-         category = map(category_list, Mode),
-         category_detail = map(category_detail_list, Mode),
+         usecode = map(parcelbase_usecode_list, mode_narm),
+         residential = map(residential_list, max_narm),
+         category = map(category_list, mode_narm),
+         category_detail = map(category_detail_list, mode_narm),
          building_type = ifelse(category == "mf",
-                                map(building_type_list, Mode),
+                                map(building_type_list, mode_narm),
                                 NA),
-         Xcoord = map(parcelgeo_x_list, median),
-         Ycoord = map(parcelgeo_y_list, median),
+         Xcoord = map(parcelgeo_x_list, median, na.rm = TRUE),
+         Ycoord = map(parcelgeo_y_list, median, na.rm = TRUE),
+         lat = map(lat_list, median, na.rm = TRUE),
+         long = map(long_list, median, na.rm = TRUE),
          # year built handled differently due to missing values
          yearbuilt_list = ifelse(as.integer(map(yearbuilt_list, function(x) sum(!is.na(x)))) == 0,
                                  NA,
                                  yearbuilt_list),
          yearbuilt = ifelse(!is.na(yearbuilt_list),
-                      map(yearbuilt_list, max, na.rm = TRUE),
-                      NA))
+                      map(yearbuilt_list, max_narm),
+                      NA),
+         totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
+         assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
+                                            sum, na.rm = TRUE),
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))
 
-#nestedtest should have 0 observation
-nestedtest<- nested %>%
-  filter(nprops==1)
-         
-#sum(is.na(nested$long_list))
+# nestedtest should have 0 observation
+  
+stopifnot(
+  nested %>% filter(nprops == 1) %>% nrow() == 0
+)
+
+
 ```
 
 #### Lot size
 
 Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show some of the unique cases for DC.
 
-``` {r lot-ex, echo=FALSE}
+```{r lot-ex, echo=FALSE}
 
 weird <- tibble(propaddress = c( "1 SCOTT CIR NW", "100 FLORIDA AVE NE","1007 OTIS PL NW", "816 8TH ST NE"),instance = 1:4)
 
@@ -835,7 +847,7 @@ There are a few variables needed:
 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode and mode is larger than 8000).
 3. The max, this is for dealing with the fourth instance in the table above
 
-``` {r lot-vars}
+```{r lot-vars}
 nested <- nested %>% 
   mutate(nprops = as.integer(nprops),
          lotsize_sf_sum = as.integer(lotsize_sf_sum),
@@ -843,7 +855,7 @@ nested <- nested %>%
          lsfirst = map(lotsize_sf_list, function(x) x[1]),
          lsmode = ifelse(lotsize_sf_sum == 0,
                          NA,
-                         map(lotsize_sf_list, Mode, na.rm = TRUE))
+                         map(lotsize_sf_list, mode_narm))
          ) %>% 
   ungroup()
 
@@ -851,7 +863,7 @@ nested <- nested %>%
 
 Based on these variables, we can identify when`sum()` is definitely the right function (when the number of unique values in `lotsize_sf_list` is the same as `nprops`), and when we want to take the first argument is definitely the right function (there is only one unique value in `lotsize_sf_list`). In addition, we want a threshold for when we are using the "first" because sometimes even if all properties have the same lot size we still want to sum them. Here threshold is 8000. 
 
-``` {r fx-choice}
+```{r fx-choice}
 nested <- nested %>% 
   mutate(fxn = case_when(
     lotsize_sf_sum < 1 ~ "missing",   
@@ -876,7 +888,7 @@ There are a total of 2032 cases that are not taken care of by the above function
 
 Other than the two issues, following sarah's instruction, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
 
-``` {r fx-choice2}
+```{r fx-choice2}
 nested_other <- nested %>% 
   filter(fxn == "other") %>% 
   mutate(lsmode_num = ifelse(map(lsmode, length) > 1, NA,lsmode), 
@@ -935,7 +947,7 @@ rm(nested, nested_done, nested_other)
 ##### Zoning
 There are 208 instances where there is a tie in the zoning code- examples below.
 
-``` {r ties}
+```{r ties}
 
 tiescount <- nested_all %>% 
   mutate(ties_z = ifelse(map(zoning, length) > 1, "tie", "not tie")) 
@@ -965,7 +977,7 @@ ties %>%
 
 Since there is no definitive way to break these ties, we replace the `zoning` variable with `NA`. Here Sarah replaced the countyland description to NA when zoning is NA, but I don't think we need to do the same for usecode because usecode is pretty reliable in this case?
 
-``` {r write-ties}
+```{r write-ties}
 
 nested_all <- nested_all %>% 
   mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
@@ -1128,13 +1140,102 @@ singles <- singles %>%
                                   category_detail))
 ```
 
+## Merge on number of units to single addressess
+
+Supplement number of units for rental buildings.
+
+See how many are missing or 0
+```{r missing-units}
+
+singles %>% 
+  filter(category_detail == "Rental apartment building",
+         is.na(numberofunits) | numberofunits == 0) %>% 
+  nrow()
+
+```
+
+```{r read-units}
+
+units <- read_csv("L:/Libraries/RegHsg/Data/dc_apt_with_units.csv")
+
+singles1 <- singles %>% 
+  left_join(units, by = c("parcelbase_SSL" = "SSL")) %>% 
+  rename(numberofunits_mar = numberofunits.y,
+         numberofunits = numberofunits.x)
+
+# how many did not join
+nrow(units) -
+     (nrow(singles1) - nrow(anti_join(singles, units, by = c("parcelbase_SSL" = "SSL"))))
+
+# the bulk of the properties that did not join have no rental units
+singles %>% 
+  anti_join(units, by = c("parcelbase_SSL" = "SSL")) %>% 
+  count(category_detail)
+
+```
+
+Compare the two variables.
+```{r units-compare}
+
+# how many are different?
+singles1 %>% 
+  filter(!is.na(numberofunits),
+         numberofunits != 0,
+         !is.na(numberofunits_mar)) %>% 
+  mutate(units_flag = ifelse(numberofunits == numberofunits_mar,
+                             0,
+                             1)) %>% 
+  count(units_flag)
+
+# how different are they?
+singles1 %>% 
+  filter(!is.na(numberofunits),
+         numberofunits != 0,
+         !is.na(numberofunits_mar)) %>% 
+  mutate(difference = abs(numberofunits_mar - numberofunits)) %>%
+  filter(difference != 0) %>% 
+  summarize(avg_difference = mean(difference),
+            median_difference = median(difference),
+            difference_2 = sum(difference <= 2),
+            difference_100 = sum(difference >= 100),
+            max_difference = max(difference))
+
+# plot the difference
+singles1 %>% 
+  filter(!is.na(numberofunits),
+         numberofunits != 0,
+         !is.na(numberofunits_mar)) %>% 
+  mutate(difference = numberofunits_mar - numberofunits) %>%
+  filter(difference != 0) %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(difference),
+                 bins = 70)
+
+```
+Since there are significant differences- give preference to the variable from the master address repository. Replace `numberofunits` with `numberofunits_mar` unless `numberofunits_mar` is missing or 0.
+
+```{r replace-units}
+
+singles2 <- singles1 %>% 
+  mutate(numberofunits = ifelse((!is.na(numberofunits_mar) | numberofunits_mar != 0),
+                                numberofunits_mar,
+                                numberofunits))
+
+# check how many are missing now
+singles2 %>% 
+  filter(category_detail == "Rental apartment building",
+         is.na(numberofunits) | numberofunits == 0) %>% 
+  nrow()
+  
+```
+
 ## Recombine and save data
 
 The final outputted dataset should not contain nested lists, but should capture all other relevant information from single and multiple address properties.
 First, select approptiate variables from the singles file. Then, re-introduce rename and transform variables from multiple addressess and bind dataframes.
 
 ```{r final}
-singles_f <- singles %>% 
+singles_f <- singles2 %>% 
   select(county_fips, county_name,
          parcelbase_SSL, 
          propaddress, propcity, propstate, propzip,
@@ -1144,7 +1245,8 @@ singles_f <- singles %>%
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
-         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y)
+         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
 
 missing_f <- missing %>% 
   select(county_fips, county_name,
@@ -1156,14 +1258,17 @@ missing_f <- missing %>%
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
-         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y)
+         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
 
 multiples_f <- nested_final %>% 
   select(-ends_with("_list"), -lsmode, -lsfirst, 
          -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %>% 
   mutate_at(vars(category, category_detail, building_type, yearbuilt, zoning, parcelbase_usecode),
             as.character) %>% 
-  mutate_at(vars(buildingarea, residential), as.double) %>% 
+  mutate_at(vars(buildingarea, residential, lat, long), as.double) %>% 
+  mutate(parcelgeo_x = as.numeric(Xcoord),
+         parcelgeo_y = as.numeric(Ycoord)) %>% 
   rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops) %>% 
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = "multiple")
@@ -1172,8 +1277,6 @@ finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>%
   fill(county_fips) %>% 
   fill(county_name) %>% 
   select(-Xcoord, -Ycoord, -usecode) 
-
-
 
 finaljur[finaljur == "NULL"] = NA
 finaljur[finaljur == "character(0)"] = NA
