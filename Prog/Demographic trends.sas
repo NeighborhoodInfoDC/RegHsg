@@ -86,8 +86,9 @@ proc format;
     1 = "Person living alone"
     2 = "Couple living alone"
     3 = "Family with children"
-    4 = "2+ unrelated adults only"
-    5 = "Other households";
+    4 = "Family without children"
+    5 = "2+ unrelated adults only"
+    6 = "Other households";
 
   value Jurisdiction
 	0= "Total"
@@ -138,6 +139,10 @@ proc format;
     5 = '5'
     6-high = '6+';
   	  
+  value notzero
+    0 = '0'
+    0<-high = '1+';
+
 run;
 
 /**************************************************************************
@@ -1041,8 +1046,9 @@ unmarriedpartner = 0;
 children = 0;
 
 /** Count numbers of related and not related persons in HH **/
-if 1100 <= related <= 1260 then notrelatedper=1;
-else if 201 <= related <= 1061 then relatedper=1;
+/** Include unmarried partners as related persons **/
+if 1100 <= related <= 1260 and related ~= 1114 then notrelatedper=1;
+if 201 <= related <= 1061 or related = 1114 then relatedper=1;
 
 /** Spouse present **/
 if related = 201 then spouse = 1;
@@ -1114,11 +1120,14 @@ by serial;
 
 	if numprec=1 then HHcat=1 ; /*singleton*/
   else if numprec=2 and ( spouse=1 or unmarriedpartner=1 ) then HHcat=2; /*(married/unmarried)couple alone*/
-  else if relatedper > 0 and children > 0 then HHcat=3; /* family with children */
-	else if relatedper=0 and children=0 then HHcat=4; /* non related adult households*/ 
-  else HHcat=5; /*other households*/
+  else if relatedper > 0 and notrelatedper = 0 and children > 0 then HHcat=3; /* family with children */
+  else if relatedper > 0 and notrelatedper = 0 and children = 0 then HHcat = 4; /* family w/o children */
+	else if relatedper=0 and children=0 then HHcat=5; /* non related adult households*/ 
+  else HHcat=6; /*other households*/
 
 HHnumber_&year.=1;
+
+format hhcat hhcat. numprec;
 
 run; 
 
@@ -1127,8 +1136,17 @@ title2 "Check HH types &year";
 proc freq data=hhtype_&year;
   weight hhwt;
   tables hhcat;
-  tables hhcat * numprec / list missing nocum;
   format hhcat hhcat. numprec numprec3p.;
+run;
+
+proc sort data=hhtype_&year. out=hhtype_&year._s;
+  by hhcat;
+run;
+
+proc freq data=hhtype_&year._s;
+  by hhcat;
+  tables numprec * relatedper * notrelatedper * spouse * unmarriedpartner * children / list missing nocum;
+  format hhcat hhcat. numprec numprec3p. relatedper notrelatedper spouse unmarriedpartner children notzero.;
 run;
 
 title2; 
