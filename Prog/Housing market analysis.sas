@@ -99,6 +99,19 @@ proc format;
 		4 = "3 bedrooms"
 		5 = "4+ bedrooms"
 		;
+
+  value acost_rec
+	  0 -< 800 = "$0 to $799"
+	  800 -< 1300 = "$800 to $1,299"
+	  1300 -< 1800 = "$1,300 to $1,799"
+	  1800 -< 2500 = "$1,800 to $2,499"
+	  2500 -< 3500 = "$2,500 to $3,499"
+	  3500 - high = "$3,500 or more"
+  ;
+	
+  value year_f 
+    0 = '2000';
+
 run;
 
 
@@ -112,59 +125,12 @@ title2 "-- &year --";
 
 %local cost_year;
 
-/* Calculate vacant untis for each year of Ipums */
-data COGSvacant_&year.(where=(vacancy in (1,2)));
+  %if &year = 2000 %then %let cost_year = %eval( &year - 1 );
+	%else %let cost_year = &year;
 
-	%if &year. = 2017 %then %do;
-	set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
-		%newpuma_jurisdiction; 
-		if upuma in (&pumanew.);
-	%end;
-	%else %if &year. = 2010 %then %do;
-	set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
-		%oldpuma_jurisdiction; 
-		if upuma in (&pumaold.);
-	%end; 
-	%else %if &year. = 2000 %then %do;
-	set Ipums.Ipums_2000_vacant_dc Ipums.Ipums_2000_vacant_md Ipums.Ipums_2000_vacant_va ;
-		%oldpuma_jurisdiction; 
-		if upuma in (&pumaold.);
-	%end; 
-
-	if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
-	else if UNITSSTR =05 then structuretype=3; /*duplex now coded as small multifamily*/
-	else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
-	else if UNITSSTR in (08, 09, 10)then structuretype=4; /*large multifamily*/
-
-	if vacancy=1 then Tenure = 1; /*renter*/
-	if vacancy=2 then Tenure = 2; /*owner*/
-
-	if bedrooms >= 5 then bedrooms = 5; /* Top-code bedroom sizes at 4+ */
-	
-	** Housing costs **;
-	
-	
-
-	vacantunit_&year.=1;
-
-	format bedrooms bedroom_topcode. jurisdiction jurisdiction.;
-
-run;
-
-proc summary data= COGSvacant_&year.;
-	class Jurisdiction structuretype bedrooms Tenure;
-	var vacantunit_&year.;
-	weight hhwt;
-	output out= COGSvacantunits_&year. (where = (_type_ in (0,1,2,4,8,9,5))) sum=;
-run;
-
-proc sort data= COGSvacantunits_&year.;
-	by Tenure Jurisdiction structuretype bedrooms _type_;
-run;
-
-/* Calculate total number of units for each year of Ipums */
+/* Calculate data for occupied units for each year of Ipums */
 data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
-	%if &year. = 2017 %then %do;
+	%if &year. >= 2012 %then %do;
 	set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va; 
 		%newpuma_jurisdiction; 
 		if upuma in (&pumanew.);
@@ -195,9 +161,6 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 	
 	 *adjust housing costs for inflation; 
 	 
-	 %if &year = 2000 %then %let cost_year = %eval( &year - 1 );
-	 %else %let cost_year = &year;
-
 	  %dollar_convert( rentgrs, rentgrs_a, &cost_year., 2016, series=CUUR0000SA0L2 )
 	  %dollar_convert( owncost, owncost_a, &cost_year., 2016, series=CUUR0000SA0L2 )
 	  %dollar_convert( valueh, valueh_a, &cost_year., 2016, series=CUUR0000SA0L2 )
@@ -229,11 +192,18 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 
 	format bedrooms bedroom_topcode. jurisdiction jurisdiction.;
 
+  keep
+    year serial hhwt pernum gq ownershpd 
+    rent rentgrs rentgrs_a owncost owncost_a valueh valueh_a total_month housing_cost_a
+    Jurisdiction structuretype bedrooms Tenure occupiedunits_&year.;
+
 	run;
 
+  title3 "Occupied units";
   proc means data=COGSarea_&year.;
     var rentgrs rentgrs_a owncost owncost_a valueh valueh_a total_month housing_cost_a;
   run;
+  title3;
 
 
 proc summary data= COGSarea_&year.;
@@ -247,11 +217,134 @@ proc sort data= COGSareaunits_&year.;
 	by Tenure Jurisdiction structuretype bedrooms _type_;
 run;
 
+ %**create ratio for rent to rentgrs to adjust rents on vacant units**;
+	 data Ratio;
+
+		  set COGSarea_&year.
+		    (keep= rent rentgrs pernum gq ownershpd Jurisdiction
+		     where=(pernum=1 and gq in (1,2) and ownershpd in ( 22 )));
+		     
+		  Ratio_rentgrs_rent_&year. = rentgrs / rent;
+		 
+		run;
+
+		proc means data=Ratio;
+		  var  Ratio_rentgrs_rent_&year. rentgrs rent;
+      output out=Ratio_rentgrs_rent_&year. (drop=_type_ _freq_) mean(Ratio_rentgrs_rent_&year.)=;
+		run;
+
+/* Calculate data for vacant units for each year of Ipums */
+data COGSvacant_&year.(where=(Tenure in (1,2)));
+
+	%if &year. >= 2012 %then %do;
+	set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
+		%newpuma_jurisdiction; 
+		if upuma in (&pumanew.);
+	%end;
+	%else %if &year. = 2010 %then %do;
+	set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
+		%oldpuma_jurisdiction; 
+		if upuma in (&pumaold.);
+	%end; 
+	%else %if &year. = 2000 %then %do;
+	set Ipums.Ipums_2000_vacant_dc Ipums.Ipums_2000_vacant_md Ipums.Ipums_2000_vacant_va ;
+		%oldpuma_jurisdiction; 
+		if upuma in (&pumaold.);
+	%end; 
+
+  if _n_ = 1 then set Ratio_rentgrs_rent_&year.;
+
+	if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
+	else if UNITSSTR =05 then structuretype=3; /*duplex now coded as small multifamily*/
+	else if UNITSSTR in (06, 07) then structuretype=3; /*small multifamily*/
+	else if UNITSSTR in (08, 09, 10)then structuretype=4; /*large multifamily*/
+
+    *reassign vacant but rented or sold based on whether rent or value is available; 	
+	if vacancy=1 then Tenure = 1; /*renter*/
+	else if vacancy=2 then Tenure = 2; /*owner*/
+  else if vacancy=3 and not( missing( rent ) ) then Tenure = 1; 
+  else if vacancy=3 and not( missing( valueh ) ) then Tenure = 2; 
+
+	if bedrooms >= 5 then bedrooms = 5; /* Top-code bedroom sizes at 4+ */
+	
+	** Housing costs **;
+	
+  *reassign vacant but rented or sold based on whether rent or value is available; 	
+  vacancy_r=vacancy; 
+  if vacancy=3 and not( missing( rent ) ) then vacancy_r=1; 
+  if vacancy=3 and not( missing( valueh ) ) then vacancy_r=2; 
+    
+    ****** Rental units ******;
+	 if Tenure = 1 then do;
+	    
+	    	** Impute gross rent for vacant units **;
+	  		rentgrs = rent * Ratio_rentgrs_rent_&year.;
+
+	  %dollar_convert( rentgrs, rentgrs_a, &cost_year., 2016, series=CUUR0000SA0L2 )
+
+    end;
+			
+	  else if Tenure = 2 then do;
+
+	    ****** Owner units ******;
+	    
+	    **** 
+	    Calculate  monthly payment for first-time homebuyers. 
+	    Using 3.69% as the effective mortgage rate for DC in 2016, 
+	    calculate monthly P & I payment using monthly mortgage rate and compounded interest calculation
+	    ******; 
+	  %dollar_convert( valueh, valueh_a, &cost_year., 2016, series=CUUR0000SA0L2 )
+	    loan = .9 * valueh_a;
+	    month_mortgage= (3.69 / 12) / 100; 
+	    monthly_PI = loan * month_mortgage * ((1+month_mortgage)**360)/(((1+month_mortgage)**360)-1);
+
+	    ****
+	    Calculate PMI and taxes/insurance to add to Monthly_PI to find total monthly payment
+	    ******;
+	    
+	    PMI = (.007 * loan ) / 12; **typical annual PMI is .007 of loan amount;
+	    tax_ins = .25 * monthly_PI; **taxes assumed to be 25% of monthly PI; 
+	    total_month = monthly_PI + PMI + tax_ins; **Sum of monthly payment components;
+		
+	  end;
+
+	  if Tenure = 1 then housing_cost_a = rentgrs_a;
+	  else if Tenure = 2 then housing_cost_a = total_month;
+
+  vacantunit_&year.=1;
+
+	format bedrooms bedroom_topcode. jurisdiction jurisdiction.;
+
+  keep 
+    year serial hhwt 
+    rent rentgrs rentgrs_a valueh valueh_a total_month housing_cost_a
+    Jurisdiction structuretype bedrooms Tenure vacantunit_&year.;
+
+run;
+
+  title3 "Vacant units";
+  proc means data=COGSvacant_&year.;
+    var rent rentgrs rentgrs_a valueh valueh_a total_month housing_cost_a;
+  run;
+  title3;
+
+proc summary data= COGSvacant_&year.;
+	class Jurisdiction structuretype bedrooms Tenure;
+	var vacantunit_&year.;
+	weight hhwt;
+	output out= COGSvacantunits_&year. (where = (_type_ in (0,1,2,4,8,9,5))) sum=;
+run;
+
+proc sort data= COGSvacantunits_&year.;
+	by Tenure Jurisdiction structuretype bedrooms _type_;
+run;
+
 title2;
 
 %mend COGunits; 
 
 %COGunits(2017);
+%COGunits(2015);
 %COGunits(2010);
 %COGunits(2000);
 
@@ -274,6 +367,39 @@ proc export data = COGSunits
    dbms=csv
    replace;
 run;
+
+** Export housing cost distribution **;
+
+data Housing_costs;
+
+  retain Total 1;
+
+  set 
+    COGSarea_2000 COGSvacant_2000
+    COGSarea_2010 COGSvacant_2010
+    COGSarea_2015 COGSvacant_2015
+    COGSarea_2017 COGSvacant_2017;
+
+run;
+
+ods csvall body="&_dcdata_default_path\RegHsg\Prog\Housing units by cost.csv";
+
+proc tabulate data=Housing_costs format=comma10.0 noseps missing;
+  class Year Tenure Housing_cost_a;
+  var Total;
+  weight hhwt;
+  table 
+    /** Pages **/
+    All='Total' Tenure=' ',
+    /** Rows **/
+    all='Total' Housing_cost_a=' ',
+    /** Columns **/
+    Total=' ' * sum=' ' * year=' '
+    / condense;
+  format year year_f. tenure tenure. housing_cost_a acost_rec.;
+run;
+
+ods csvall close;
 
 
 /**************************************************************************
