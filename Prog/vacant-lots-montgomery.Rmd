@@ -204,11 +204,18 @@ length(unique(zoningcode$zoning_code))
 zoning_montgomery <- zoningcode %>% 
   filter(juristdiction == "Montgomery")
 
+
 zoning_rockville <- zoningcode %>% 
   filter(juristdiction == "Rockville")
 
+write_csv(zoning_rockville, paste0("L:/Libraries/RegHsg/Doc/zoning-codes",
+                   "rockville-zoning-code-clean.csv"))
+
 zoning_gaithersburg <- zoningcode %>% 
   filter(juristdiction == "Gaithersburg")
+
+write_csv(zoning_gaithersburg, paste0("L:/Libraries/RegHsg/Doc/zoning-codes",
+                   "gaithersburg-zoning-code-clean.csv"))
 
 
 ```
@@ -278,95 +285,13 @@ zoning_montgomery1 <- zoning_montgomery %>%
 
 ```
 
-*For Gaithersburg*
-```{r list codesG}
-zoning_gaithersburg %>% 
-  count(dwelling_type) %>% 
-  knitr::kable()
-
-```
-
-
-Since the variables are not always comparable, the following order, from most to least dense, applies:
-
-1. multiple family condominium dwellings
-2. multiple family dwelling 
-3. townhouse
-4. two family dwellings
-5. single-family attached 
-6. single-family semidetached 
-7. single-family detached 
-8. all (dwelling type is NA)
-
-### Create factor variable
-To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
-We will also create a designation for dwelling types that are restricted to a certain amount of units (one unit for "One Family Dwelling" and one for two units for "Duplex"). 
-
-**NOTE** This will be VERY jurisdiction specific.
-
-**NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
-
-```{r dwelling-factorG}
-
-zoning_gaithersburg1 <- zoning_gaithersburg %>% 
-  mutate(dwelling_type = factor(dwelling_type,
-                                levels = c("multiple family condominium dwellings",
-                                           "multiple family dwelling",
-                                           "townhouse",
-                                           "two family dwellings",
-                                           "single-family attached",
-                                           "single-family semidetached",
-                                           "single-family detached",
-                                           "all"
-                                           )),
-         one_unit_flag = ifelse(dwelling_type == "single-family attached" | 
-                                dwelling_type == "single-family semidetached" | 
-                                dwelling_type == "single-family detached",
-                                1,
-                                0),
-         two_unit_flag = ifelse(dwelling_type == "two family dwellings",
-                                1,
-                                0))
-
-
-```
-
-*For Rockville*
-```{r list codesR}
-zoning_rockville %>% 
-  count(dwelling_type) %>% 
-  knitr::kable()
-
-```
-
-
-There are no dwelling types, so the factor is for all.
-
-### Create factor variable
-All rockville zoning codes are unique, so we do not need a factor. We will automatically select "all", or treat it as dwelling type is NA
-
-**NOTE** This will be VERY jurisdiction specific.
-
-**NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
-
-```{r dwelling-factorR}
-
-zoning_rockville1 <- zoning_rockville %>% 
-  mutate(dwelling_type = factor(dwelling_type,
-                                levels = c(
-                                           "all"
-                                           )))
-
-
-```
-
 
 
 *Cleaning and Calculation*
 
 ##Clean data for the whole juristdiction
 
-Filter out really large lots that should not be part of the calculation
+Filter out really large lots that should not be part of the calculation. These properties create a huge number of properties, and upon looking at them on google Maps, do not appear buildable. Chris also did this filter in fairfax.
 Fliter out rockville and gaithersburg
 Count how many vacant lots
 ```{r filtering}
@@ -410,7 +335,7 @@ Now that we have selected the correct records from the zoning code file, we can 
 montfinal <- mont %>% 
   mutate(zoning_code = case_when(
     zoning %in% c("CR1.0","CR0.5", "CR2.0", "CR5.0", "cR3", "CR5", "CR3.0", "CR4.0") ~ "CR",
-    zoning %in% c("RT","RT6", "RT6.0") ~ "RT-6.0",
+    zoning %in% c("RT","RT6", "RT6.0") ~ "RT-6.0",#if there is no number after RT we go with the most restrictive code
     zoning %in% c("RT8", "RT8.0") ~ "RT-8.0",
     zoning %in% c("RT10", "RT10.0") ~ "RT-10.0",
     zoning %in% c("RT125", "RT12", "RT12.5") ~ "RT-12.5",
@@ -447,7 +372,7 @@ count(zoningdata, lot_area_min)
 
 ```
 
-There are `r ` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
+
 
 ```{r antijoin}
 
@@ -456,7 +381,7 @@ anti_join(montfinal, zoning_montgomery1, by = c("zoning_code")) %>%
   knitr::kable()
 
 ```
-
+All of these codes that didn't join are either non-residential, or they correspond to codes in Rockville and Gaithersburg, which are being calculated separately
 
 
 ## Fill in missing codes
@@ -464,12 +389,12 @@ anti_join(montfinal, zoning_montgomery1, by = c("zoning_code")) %>%
 1. filter out non residential properties
 2. fill in lot area minimums from site minimums
 3. fill in lot coverage maximums from site coverage maximums
-4. fill in per unit....*patrick do this 3/20*
+4. fill in per unit lot size when there is not general minimum lot size restriction
 5. We also need to fill in missing lot coverage
 
 6. and make two assumptions for townhouses that do not have lot coverage restrictions in the montgomery zoning code.
   1. The highest lot coverage for townhouses elsewhere in the codes is 40, so I assume a lot max of 40.
-  2. The highest density allowed for townhouses elsewhere in the codes is 15.02, so I assume this density.
+  2. The highest density allowed for townhouses elsewhere in the codes is 15.02 units/acre, so I assume this density.
   
 7. finally, we need to fill in the lotsize_acre variable for those lot sizes that we filled in from the parcel file.
 
@@ -525,7 +450,7 @@ There are several variables we will use to calculate how many units we can put o
 
 1. Buildable area: this is `lotsize_sf` x the coverage ratio (`lot_coverage_max`)
 2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
-3. Units per floor: this is the living area divided by the average unit size. We use 900 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
+3. Units per floor: this is the living area divided by the average unit size. We use 940 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
 4. Units allowed based on height limits: This is the units per floor x the number of stories.
 5. Units allowed based on lot size: this is the lot area divided by `lotarea_per_unit`
 6. massing - the number of units allowed in one row of townhouses
@@ -571,7 +496,7 @@ get_unit_variables <- function(dataset,
            units_density = floor(density * lotsize_acres),
            units_lotsize = floor(lotsize_sf / lotarea_per_unit),
            units_per_floor = floor(living_area/average_unit_size),
-           units_FAR = units_per_floor * FAR_stories) %>% 
+           units_FAR = ifelse(is.na(far_max), NA, units_per_floor * FAR_stories)) %>% 
     mutate(subset=floor(lotsize_sf/lot_area_min), na.rm = TRUE) %>% 
     mutate(units_min=ifelse(is.na(units_min), 0, units_min)) %>% 
     mutate_at(vars(units_height, units_lotsize, units_density, units_FAR),
@@ -606,7 +531,7 @@ get_unit_summary <- function(dataset,
   x <- dataset %>% 
     get_unit_variables(construction_efficiency,
                        average_unit_size) %>%
-    filter(units_total > 0) %>% 
+    filter(units_total > 0) %>% #i've added an additional filter to my function - there are several units where the lotsize passes the first filter, but the buildable area is not large enough to build on - so it creates 0 units. 
     group_by(parameters) %>% 
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
@@ -758,19 +683,11 @@ vacant_mont2 <- vacant_mont2 %>%
 
 ```
 
-
-I created a dataset with results for troubleshooting purposes. Then I checked to make sure there aren't more townhouses than are allowed to be built on any one property.
+Assign results to a dataset 
 ```{r sumVassign}
 resultsvacant <- get_unit_variables(dataset = vacant_mont2,
                             construction_efficiency = .7,
                             average_unit_size = 940)
-
-
-resultsvacant %>% 
-  filter(dwelling_type == "apartment", units_total == 0 ) %>% 
-  count(zoning_code, units_total)
-  
-#i've added an additional filter to my function - there are several units where the lotsize passes the first filter, but the buildable area is not large enough to build on - so it creates 0 units. It applies to these units.
 
 ```
  
@@ -794,27 +711,7 @@ brsum <- get_unit_summary(dataset = vacant_mont2,
 ```
 
 
-Here I did trouble shooting for the units that produced no units. ignore
-```{r troubleshoot}
-th <- get_unit_variables(dataset = vacant_mont2,
-                         construction_efficiency = .7,
-                         average_unit_size = 940) %>% 
-  filter(dwelling_type == "townhouse") %>% 
-  filter(units_total == 0, buildable_area >940) %>% 
-  select(parameters, propaddress, buildable_area, living_area, zoning_code, lotsize_sf , units_per_floor, floors,FAR_stories,stories, units_FAR, units_height, units_density, units_lotsize, units_min, units_total)
 
-th %>% 
-  count(units_total)
-
-
-thl <- get_unit_variables(dataset = vacant_mont2,
-                          construction_efficiency = .7,
-                          average_unit_size = 940) %>% 
-  filter(units_total > 0, dwelling_type == "apartment", lotsize_sf > 10000, is.na(buildable_area)) %>% 
-  select(parameters, propaddress, buildable_area, living_area, zoning_code, lotsize_sf , lotarea_per_unit, units_per_floor, floors,FAR_stories,stories, units_FAR, units_height, units_density, units_lotsize, units_min, units_total)
-
-
-```
 
 Look at the distribution of units for lots with more than 1 unit, to check for extreme outliers.
 
