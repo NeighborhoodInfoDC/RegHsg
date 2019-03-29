@@ -67,33 +67,33 @@ run;
 proc freq data = RegEmp_&year.; tables empstatd ; run;
 
 
-/* Caclulate average salary for full-time year-round workers */
+/* Caclulate median salary for full-time year-round workers */
 proc means data = RegEmp_&year. (where = (fulltime=1 and yearround=1)) noprint;
 	var incwage;
 	weight perwt;
-	output out = avewage_&year. median=;
+	output out = medianwage_&year. median=;
 run;
 
 
-/* Put average salary into macro variable */
+/* Put median salary into macro variable */
 proc sql;
 	select incwage
-	into :avesalary separated by " "
-	from avewage_&year.;
+	into :mediansalary separated by " "
+	from medianwage_&year.;
 quit;
 
 
-/* Add average salary to data */
+/* Add median salary to data */
 data RegWage_&year.;
 	set RegEmp_&year.;
 
 	if fulltime = 1 and yearround = 1 then do;
 		ftworker = 1;
-    avewage = &avesalary.;
+    medianwage = &mediansalary.;
 
 	end;
 
-	keep year serial pernum incwage avewage fulltime yearround ftworker empstatd perwt hhwt;
+	keep year serial pernum incwage medianwage fulltime yearround ftworker empstatd perwt hhwt;
 
 run;
 
@@ -110,38 +110,48 @@ data allyears;
 	set RegWage_2017 RegWage_2010 RegWage_2000;
 
   if ftworker then do;
-    if incwage >= ((4/3) * avewage) then wagecat = 3;
-		else if incwage <= ((2/3) * avewage) then wagecat = 1;
-		else wagecat = 2;
+    if incwage >= ((4/3) * medianwage) then wagecat = 3;  /** High wage **/
+		else if incwage <= ((2/3) * medianwage) then wagecat = 1;  /** Low wage **/
+		else wagecat = 2;  /** Middle wage **/
   end;
 
 	if year = 0 then do;
 		empstatd_2000 = empstatd;
 		ftworker_2000 = ftworker;
 		worker_2000 = 1;
+    %dollar_convert( incwage, incwage_d2018, 1999, 2018 ) 
+    wagecat_2000 = wagecat;
 	end;
-
 
 	else if year = 2010 then do;
 		empstatd_2010 = empstatd;
 		ftworker_2010 = ftworker;
 		worker_2010 = 1;
+    %dollar_convert( incwage, incwage_d2018, 2010, 2018 )
+    wagecat_2010 = wagecat;
 	end;
 
 	else if year = 2017 then do;
 		empstatd_2017 = empstatd;
 		ftworker_2017 = ftworker;
 		worker_2017 = 1;
+    %dollar_convert( incwage, incwage_d2018, 2017, 2018 )
+    wagecat_2017 = wagecat;
 	end;
 
 	format wagecat wagecat.;
 
 run;
 
+proc format;
+  value year_f 
+    0 = '2000';
+run;
+
 proc tabulate data=allyears format=comma10.0 noseps missing;
   where ftworker;
   class year wagecat;
-  var ftworker incwage;
+  var ftworker incwage incwage_d2018;
   weight perwt;
   table 
     /** Pages **/
@@ -150,8 +160,10 @@ proc tabulate data=allyears format=comma10.0 noseps missing;
     all='Total' wagecat=' ',
     /** Columns **/
     ftworker='Workers' * sum=' '
-    incwage='Annual earnings' * ( mean min max )
+    incwage='Annual earnings (nominal)' * ( mean min max )
+    incwage_d2018='Annual earnings ($ 2018)' * ( mean min max )
     / condense;
+  format year year_f.;
 run;
 
 
@@ -160,13 +172,8 @@ run;
 proc summary data = allyears;
 	class empstatd;
 	var worker_: wagecat_:;
-	output out = workers_t sum=;
+	output out = workers_byyear (drop=_type_ _freq_) sum=;
 	weight perwt; 
-run;
-
-data workers_byyear;
-	set workers_t;
-	drop _type_ _freq_;
 run;
 
 proc export data = workers_byyear
@@ -180,13 +187,8 @@ run;
 proc summary data = allyears;
 	class wagecat;
 	var ftworker_:;
-	output out = wage_t sum=;
+	output out = wage_byyear (drop=_type_ _freq_) sum=;
 	weight perwt; 
-run;
-
-data wage_byyear;
-	set wage_t;
-	drop _type_ _freq_;
 run;
 
 proc export data = wage_byyear
