@@ -1107,13 +1107,14 @@ jurj %>%
 jur6 <- jurj %>% 
   # strip geometry
   st_set_geometry(NULL) %>% 
-  mutate(lotsize_sf = ifelse(lotsize_sf == 0 & !is.na(OBJECTID),
+  mutate(lotsize_sf = ifelse((lotsize_sf == 0 | is.na(lotsize_sf)) & !is.na(OBJECTID),
                              area,
                              lotsize_sf)) %>% 
   select(-OBJECTID, -EVENT_ID, -RPCMSTR) %>% 
   bind_rows(filter(jur5, is.na(lat)))
 
 sum(is.na(jur6$lotsize_sf))
+sum(jur6$lotsize_sf == 0, na.rm = TRUE)
 
 ```
 

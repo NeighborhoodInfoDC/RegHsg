@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated March 28, 2019</p>
+<p>Last updated March 29, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -1444,14 +1444,16 @@ jurj %&gt;%
 <pre class="r"><code>jur6 &lt;- jurj %&gt;% 
   # strip geometry
   st_set_geometry(NULL) %&gt;% 
-  mutate(lotsize_sf = ifelse(lotsize_sf == 0 &amp; !is.na(OBJECTID),
+  mutate(lotsize_sf = ifelse((lotsize_sf == 0 | is.na(lotsize_sf)) &amp; !is.na(OBJECTID),
                              area,
                              lotsize_sf)) %&gt;% 
   select(-OBJECTID, -EVENT_ID, -RPCMSTR) %&gt;% 
   bind_rows(filter(jur5, is.na(lat)))
 
 sum(is.na(jur6$lotsize_sf))</code></pre>
-<pre><code>## [1] 6859</code></pre>
+<pre><code>## [1] 146</code></pre>
+<pre class="r"><code>sum(jur6$lotsize_sf == 0, na.rm = TRUE)</code></pre>
+<pre><code>## [1] 0</code></pre>
 </div>
 <div id="replace-missing-variables-when-possible" class="section level2">
 <h2>Replace missing variables when possible</h2>
@@ -1480,7 +1482,7 @@ sum(is.na(jur6$lotsize_sf))</code></pre>
 
 
 sum(is.na(jur7$lotsize_sf))</code></pre>
-<pre><code>## [1] 121</code></pre>
+<pre><code>## [1] 60</code></pre>
 <pre class="r"><code>sum(jur6$numberofunits == 0)</code></pre>
 <pre><code>## [1] 38897</code></pre>
 <pre class="r"><code>jur7 %&gt;% 
