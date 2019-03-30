@@ -267,12 +267,7 @@ data COGSvacant_&year.(where=(Tenure in (1,2)));
 	if bedrooms >= 5 then bedrooms = 5; /* Top-code bedroom sizes at 4+ */
 	
 	** Housing costs **;
-	
-  *reassign vacant but rented or sold based on whether rent or value is available; 	
-  vacancy_r=vacancy; 
-  if vacancy=3 and not( missing( rent ) ) then vacancy_r=1; 
-  if vacancy=3 and not( missing( valueh ) ) then vacancy_r=2; 
-    
+	    
     ****** Rental units ******;
 	 if Tenure = 1 then do;
 	    
