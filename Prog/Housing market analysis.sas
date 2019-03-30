@@ -162,7 +162,6 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 	 *adjust housing costs for inflation; 
 	 
 	  %dollar_convert( rentgrs, rentgrs_a, &cost_year., 2016, series=CUUR0000SA0L2 )
-	  %dollar_convert( owncost, owncost_a, &cost_year., 2016, series=CUUR0000SA0L2 )
 	  %dollar_convert( valueh, valueh_a, &cost_year., 2016, series=CUUR0000SA0L2 )
 
     * For owner costs, use first-time homebuyer mortgage payment and other monthly costs *;
@@ -194,14 +193,14 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 
   keep
     year serial hhwt pernum gq ownershpd 
-    rent rentgrs rentgrs_a owncost owncost_a valueh valueh_a total_month housing_cost_a
+    rent rentgrs rentgrs_a valueh valueh_a total_month housing_cost_a
     Jurisdiction structuretype bedrooms Tenure occupiedunits_&year.;
 
 	run;
 
   title3 "Occupied units";
   proc means data=COGSarea_&year.;
-    var rentgrs rentgrs_a owncost owncost_a valueh valueh_a total_month housing_cost_a;
+    var rentgrs rentgrs_a valueh valueh_a total_month housing_cost_a;
   run;
   title3;
 
@@ -344,7 +343,6 @@ title2;
 %mend COGunits; 
 
 %COGunits(2017);
-%COGunits(2015);
 %COGunits(2010);
 %COGunits(2000);
 
@@ -377,7 +375,8 @@ data Housing_costs;
   set 
     COGSarea_2000 COGSvacant_2000
     COGSarea_2010 COGSvacant_2010
-    COGSarea_2015 COGSvacant_2015
+
+
     COGSarea_2017 COGSvacant_2017;
 
 run;
