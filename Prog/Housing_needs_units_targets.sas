@@ -37,6 +37,7 @@
  Modifications: 02-12-19 LH Adjust weights using Calibration from Steven's projections 
 						 	so that occupied units match COG 2015 HH estimation.
                 02-17-19 LH Readjust weights after changes to calibration to move 2 HH w/ GQ=5 out of head of HH
+				03-30-19 LH Remove hard coding and merge in contract rent to gross rent ratio for vacant units. 
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -45,7 +46,7 @@
 %DCData_lib( RegHsg )
 %DCData_lib( Ipums )
 
-%let date=02172019; 
+%let date=03302019; 
 
 proc format;
 
@@ -137,7 +138,7 @@ run;
 
 
  %**create ratio for rent to rentgrs to adjust rents on vacant units**;
-	 data Ratio;
+	 data Ratio_&year.;
 
 		  set COGSarea_&year.
 		    (keep= rent rentgrs pernum gq ownershpd Jurisdiction
@@ -147,17 +148,10 @@ run;
 		 
 		run;
 
-		proc means data=Ratio;
+		proc means data=Ratio_&year.;
 		  var  Ratio_rentgrs_rent_&year. rentgrs rent;
+		  output out=Ratio_&year (keep=Ratio_rentgrs_rent_&year.) mean=;
 		run;
-			%** Value copied from Proc Means output **;
-		%if &year=2013 %then %let Ratio_rentgrs_rent_&year.= 1.1429187;
-		%if &year=2014 %then %let Ratio_rentgrs_rent_&year.= 1.1600331;
-		%if &year=2015 %then %let Ratio_rentgrs_rent_&year.= 1.1556884;
-		%if &year=2016 %then %let Ratio_rentgrs_rent_&year.= 1.1425105;
-		%if &year=2017 %then %let Ratio_rentgrs_rent_&year.= 1.1193682;
-
-		%put Ratio_rentgrs_rent_&year.=&&Ratio_rentgrs_rent_&year.;
 
 data Housing_needs_baseline_&year.;
 
@@ -373,7 +367,9 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 
   set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction );
 
-  retain Total 1;
+  	if _n_ = 1 then set Ratio_&year.;
+
+ 	retain Total 1;
 
   *reassign vacant but rented or sold based on whether rent or value is available; 	
   vacancy_r=vacancy; 
@@ -385,7 +381,7 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 	    Tenure = 1;
 	    
 	    	** Impute gross rent for vacant units **;
-	  		rentgrs = rent*&&Ratio_rentgrs_rent_&year.;
+	  		rentgrs = rent*Ratio_rentgrs_rent_&year.;
 
 			  %dollar_convert( rentgrs, rentgrs_a, &year., 2016, series=CUUR0000SA0L2 )
 			
