@@ -32,7 +32,7 @@ proc format;
 	value wagecat
 		1 = "Low wage"
 		2 = "Middle wage"
-		3 = "High wage";
+		3 = "High wage"
 		. = "Total";
 	value empstat_new
 		1 = "Civilian employed (at work or have a job)"
@@ -126,9 +126,9 @@ data RegWage_&year.;
 	end;
 
 
-	keep year serial pernum incwage medianwage wagecat jurisdiction fulltime yearround ftworker empstatd empstat_new trantime perwt hhwt;
+	keep year serial pernum incwage medianwage jurisdiction fulltime yearround ftworker empstatd empstat_new trantime perwt hhwt;
 
-	format wagecat wagecat. empstat_new empstat_new. jurisdiction jurisdiction.;
+	format empstat_new empstat_new. jurisdiction jurisdiction.;
 
 run;
 
