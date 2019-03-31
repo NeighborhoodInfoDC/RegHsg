@@ -248,7 +248,7 @@ Map to make sure correct nodes were selected.
 
 ##### Uniform
 
-```{r check-nodes}
+```{r check-nodes1}
 
 ggplot() +
   geom_sf(data = bound, mapping = aes(),
@@ -263,7 +263,7 @@ ggplot() +
 
 ##### Varied
 
-```{r check-nodes}
+```{r check-nodes2}
 
 ggplot() +
   geom_sf(data = bound, mapping = aes(),
@@ -371,7 +371,7 @@ Pick one activity center in Arlington to test and visualize the calculation. Use
 
 ```{r clar}
 
-clarendon <- filter(nodes, name == "Clarendon", type == "Activity")
+clarendon <- filter(nodes_varies, name == "Clarendon", type == "Activity")
 
 ```
 
@@ -541,14 +541,13 @@ rescaled_data <- individual_varies %>%
                                                to = c(1, 100))) %>% 
   select(density_residential)
 
-clusters <- kmeans(rescaled_data, centers = 3, nstart = 3) %>% 
-  augment(individual_varies)
+clusters <- kmeans(rescaled_data, centers = 3, nstart = 3)
+
+tidy_clusters <- augment(clusters, individual_varies)
 
 means <- tidy(clusters)
 names(means) <- c(names(rescaled_data), "size", "withinss", "cluster")
-
-clusters %>% 
-  anti_join(nodes_varies, by = c("name", "type"))
+knitr::kable(means)
 
 ```
 
@@ -563,14 +562,15 @@ clusters_three_ways <- function(cluster_data) {
     ggplot() +
     geom_sf(bound, mapping = aes(),
             fill = "grey") +
-    geom_sf(mapping = aes(fill = .cluster),
+    geom_sf(mapping = aes(fill = factor(.cluster)),
             alpha = .5) +
     coord_sf(datum = NA)
     
   dist <- cluster_data %>% 
-    ggplot(mapping = aes(density_residential, fill = .cluster)) +
+    ggplot(mapping = aes(density_residential, fill = factor(.cluster))) +
     geom_histogram(alpha = .7) +
-    scale_y_continuous(expand = expand_scale(mult = c(0, .05)))
+    scale_y_continuous(expand = expand_scale(mult = c(0, .05))) +
+    labs(y = NULL, x = "Residential density")
   
   means <- cluster_data %>% 
     group_by(.cluster) %>% 
@@ -583,13 +583,14 @@ clusters_three_ways <- function(cluster_data) {
     geom_text(mapping = aes(label = scales::number_format(accuracy = .1)(metric)),
               position = position_dodge(width = .7),
               vjust = -1) +
-    scale_y_continuous(expand = expand_scale(mult = c(0, .15)))
+    scale_y_continuous(expand = expand_scale(mult = c(0, .15))) +
+    labs(y = "Residential density", x = "Cluster")
   
  gridExtra::grid.arrange(map, dist, means,
                          layout_matrix = rbind(c(1, 2),
                                                c(1, 3)))
- 
 }
+
 ```
 
 
@@ -606,11 +607,41 @@ clusters_three_ways(tidy_clusters)
 
 ```{r dist-calc}
 
-
+distance <- individual_varies %>% 
+  # pick baseline nodes
+  mutate(group1.dr = density_residential[name == "Bethesda" & type == "Activity"],
+         group2.dr = density_residential[name == "Clarendon" & type == "Activity"],
+         group3.dr = density_residential[name == "Dupont" & type == "Activity"]) %>% 
+  # calculate distance from each
+  mutate(group1.dist.dr = (density_residential - group1.dr)^2,
+         group2.dist.dr = (density_residential - group2.dr)^2,
+         group3.dist.dr = (density_residential - group3.dr)^2) %>% 
+  # get minimum density
+  mutate(min.dist = pmin(group1.dist.dr,
+                         group2.dist.dr,
+                         group3.dist.dr)) %>% 
+  # pick group based on minimum density
+  mutate(.cluster = case_when(
+    min.dist == group1.dist.dr ~ 1,
+    min.dist == group2.dist.dr ~ 2,
+    min.dist == group3.dist.dr ~ 3
+  )) %>% 
+  # convert cluster to factor
+  mutate(.cluster = factor(.cluster))
+  
+distance %>% 
+  group_by(.cluster) %>% 
+  summarize(n(),
+            mean(density_residential)) %>% 
+  knitr::kable()
 
 ```
 
+```{r dist-plot}
 
+clusters_three_ways(distance)
+
+```
 
 
 ## Combined nodes
@@ -729,7 +760,7 @@ Distribution of density of activity centers and transit stops.
 
 ```{r dist1}
 
-individual %>% 
+individual_varies %>% 
   ggplot() +
   geom_histogram(mapping = aes(x = density),
                  bins = 40) +
@@ -742,7 +773,7 @@ individual %>%
 
 ```{r dist2}
 
-individual %>% 
+individual_varies %>% 
   ggplot() +
   geom_histogram(mapping = aes(x = density_area),
                  bins = 40) +
@@ -755,7 +786,7 @@ individual %>%
 
 ```{r dist3}
 
-individual %>% 
+individual_varies %>% 
   ggplot() +
   geom_histogram(mapping = aes(x = density_residential),
                  bins = 40) +
