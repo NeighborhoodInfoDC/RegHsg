@@ -3,14 +3,15 @@
 #'
 #'
 #'
-#' @param rmd indicates whether or not function is being called from an 
-#' Rmd document or not. Default is set to TRUE.
 #'
 #' @return dataframe of black knight data for Washington D.C., with all variables that were created in the clean and preclean phase.
 #' @export
 #'
 #' @examples jur <- read_jurisdiction("fairfax", rmd = TRUE)
-read_dc<- function(rmd = TRUE) {
+read_dc<- function() {
+  
+  
+  filepath <- "DC"
   
   filename <- paste0("L:/Libraries/RegHsg/Data/", filepath,
                      "/", filepath, "-cleaned-data.csv")

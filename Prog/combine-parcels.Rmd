@@ -36,7 +36,7 @@ knitr::opts_chunk$set(message = FALSE)
 ```
 ## Description
 
-The goal of this analysis is to combine parcels for Sarah.
+The goal of this analysis is to combine parcels for the upzoning analysis.
 
 ## Set-up
 
@@ -54,14 +54,8 @@ source("../Macros/read-DC.R")
 
 ## Read each jurisdiction
 
-Set filepath name
-```{r fips-fair}
 
-filepath <- "fairfax"
-
-```
-
-Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
+Load in cleaned Black Knight data for all jurisdictions.
 
 ```{r readfair}
 if (!exists("fairfax")) {
@@ -72,14 +66,6 @@ if (!exists("fairfax")) {
 
 ```
 
-Set filepath name
-```{r fips-dc}
-
-filepath <- "DC"
-
-```
-
-Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
 
 ```{r read-dc}
 if (!exists("dc_full")) {
@@ -90,14 +76,6 @@ if (!exists("dc_full")) {
 
 ```
 
-Set filepath name
-```{r fips-mon}
-
-filepath <- "montgomery"
-
-```
-
-Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
 
 ```{r read-mon}
 if (!exists("montgomery")) {
@@ -108,14 +86,6 @@ if (!exists("montgomery")) {
 
 ```
 
-Set filepath name
-```{r fips-arl}
-
-filepath <- "arlington"
-
-```
-
-Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
 
 ```{r read-arl}
 if (!exists("arlington")) {
@@ -347,7 +317,7 @@ montgomery1 %>%
 
 #### Number of units
 
-Units were already filled for rental properties in `clean-DC.Rmd`. Fill in single family homes.
+Units were already filled for rental properties in `clean-DC.Rmd`. Fill in single family homes. Change `0` to `na` for apartments.
 
 ```{r dc-tab}
 
@@ -360,7 +330,10 @@ dc1 <- dc_full %>%
   # align categories with other jurisdictions
   mutate(category = ifelse(category == "all other category",
                            "other",
-                           category))
+                           category)) %>% 
+  mutate(numberofunits = ifelse(category == "mf" & numberofunits == 0,
+                                NA,
+                                numberofunits))
 
 dc1 %>% 
   sum_missing_units() %>% 
@@ -471,6 +444,7 @@ all_jurs <- arl %>%
   bind_rows(fai) %>%
   bind_rows(mon) %>%
   bind_rows(dc) %>% 
+  # make sure there are no 0s, only NAs
   mutate_at(vars(lotsize_sf, numberofunits),
             ~ ifelse(. == 0, NA, .)) %>% 
   mutate(lotsize_acres = lotsize_sf / 43560)
