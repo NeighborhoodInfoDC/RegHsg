@@ -79,6 +79,7 @@ Prog/Temp/
 *.bak
 # Other
 *.bat
+*.ini
 Thumbs.db
 .Rproj.user
 .Rhistory
