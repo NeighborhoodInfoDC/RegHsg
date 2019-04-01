@@ -547,7 +547,7 @@ rescaled_data <- individual_varies %>%
                                                to = c(1, 100))) %>% 
   select(density_residential)
 
-clusters <- kmeans(rescaled_data, centers = 3, nstart = 3)
+clusters <- kmeans(rescaled_data, centers = 5, nstart = 5)
 
 tidy_clusters <- augment(clusters, individual_varies)
 
@@ -559,7 +559,7 @@ knitr::kable(means)
 
 Make a function to plot the outcomes.
 
-```{r plot-fnx}
+```{r plot-fxn}
 
 clusters_three_ways <- function(cluster_data) {
   
@@ -648,6 +648,40 @@ distance %>%
 clusters_three_ways(distance)
 
 ```
+
+
+### Units Added
+
+Upzone the low density group to the midpoint of the medium density group, and medium to high.
+
+```{r add-units}
+
+values <- tidy_clusters %>% 
+  group_by(.cluster) %>% 
+  summarize(midpoint = min(density_residential) + 
+                ((max(density_residential) - min(density_residential)) / 2 )) %>% 
+  pull(midpoint)
+
+upzone <- tidy_clusters %>% 
+  mutate(midpoint2 = values[2],
+         midpoint3 = values[3]) %>% 
+  mutate(new_units = case_when(
+    .cluster == 1 ~ midpoint2 * residential_acres,
+    .cluster == 2 ~ midpoint3 * residential_acres,
+    TRUE ~ 0
+  )) %>% 
+  mutate(units_added = ifelse(.cluster == 3,
+                              0,
+                              new_units - number_of_units))
+
+
+upzone_summary <- upzone %>% 
+  group_by(.cluster) %>% 
+  summarize(units_added = sum(units_added))
+
+```
+
+
 
 
 ## Combined nodes
