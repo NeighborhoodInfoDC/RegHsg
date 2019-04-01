@@ -155,7 +155,7 @@ joint <- get_node_geography(node_type = "joint",
 
 Read in COG boundaries, select the ones we will be using, and clip nodes layers to the correct jurisdictions.
 Some nodes are repeated (Union Station is listed as a transit node three times, one for MARC, Amtrak, and Metro). Identify them by grouping by name and node type, and select the first one (which line it is does not matter for the purposes of the calculation).
-We also drop three nodes with specialty uses- the Pentagon metro stop and activity center, and the Arlington Cemetery metro stop.
+We also drop four nodes with specialty uses- the Pentagon metro stop and activity center, the Arlington Cemetery metro stop, and the DCA metro stop.
 
 ```{r cog-clip}
 
@@ -190,7 +190,9 @@ nodes_uniform <- st_join(nodes_uniform_all, bu, join = st_covered_by,
   filter(# drop Pentagon activity center and metro stop
          !(name == "Pentagon"),
          # drop Alrington Cemetery metro stop
-         !(name == "Arlington Cemetery"))
+         !(name == "Arlington Cemetery"),
+         # drop DCA
+         !(name == "Ronald Reagan Washington National Airport"))
 
 ```
 
@@ -236,7 +238,9 @@ nodes_varies <- nodes_other %>%
   filter(# drop Pentagon activity center and metro stop
          !(name == "Pentagon"),
          # drop Alrington Cemetery metro stop
-         !(name == "Arlington Cemetery"))
+         !(name == "Arlington Cemetery"),
+         # drop DCA
+         !(name == "Ronald Reagan Washington National Airport"))
 
 ```
 
@@ -456,7 +460,9 @@ get_individual_density <- function(dataset, node_geometry, node_name, node_type)
                   pvacstruc = sum(ifelse(category == "vacant with structures", lotsize_acres, 0),
                                   na.rm = TRUE),
                   pother = sum(ifelse(category == "other", lotsize_acres, 0),
-                              na.rm = TRUE) / total_acres) %>% 
+                              na.rm = TRUE) / total_acres,
+                  pmfres = sum(ifelse(category == "mf", lotsize_acres, 0),
+                            na.rm = TRUE) / residential_acres) %>% 
         mutate(name = node_name, type = node_type) %>% 
         select(name, type, everything())
     })
