@@ -1,15 +1,9 @@
 ---
-title: "postclean-montgomery"
-author: "Patrick Spauster"
-date: "February 13, 2019"
-output: html_document
----
-
----
 title: "Regional Housing Framework"
 subtitle: "Post Clean Montgomery BK data and join it with county data"
 description: "takes the collapsed parcel file and spatially joins it with a county parcel file to fill in missing lot size and zoning variables. Merges with rockville and gaithersburg shape files to create analysis flags for use in the vacant lots analysis"
 author: "Patrick Spauster"
+date: "February 13, 2019"
 output:
   html_document:
     number_sections: FALSE

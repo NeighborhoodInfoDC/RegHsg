@@ -487,6 +487,9 @@ get_unit_variables <- function(dataset,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height_ft / 10),
            FAR_stories = ifelse(is.na(lot_coverage_max), floor(far_max), floor(far_max/lot_coverage_max)),
+           FAR_stories =ifelse(zoning_code %in% c("CR", "CRT", "CRN"),
+                          FAR_stories-1,#subtract one floor if it's mixed use
+                          FAR_stories),
            stories = ifelse(FAR_stories >= floors, floors, FAR_stories) %>% as.double(),
            stories = case_when(is.na(floors)~FAR_stories,
                                is.na(FAR_stories)~floors,
@@ -577,7 +580,17 @@ resultsall <- get_unit_variables(dataset = zoningdata2,
                             average_unit_size = 940)
 
 ```
- 
+
+
+```{r testing 123}
+
+testing123 <- resultsall %>% 
+  filter(zoning_code %in% c("CR", "CRT", "CRN")) %>% 
+  select(dwelling_type, propaddress, zoning_code, lotsize_sf, buildable_area, living_area, units_per_floor, floors, stories, FAR_stories, far_max, lot_coverage_max,units_total, units_lotsize, units_min, units_height, units_density, units_FAR)
+
+```
+
+
 
 Get summary statistics for several different parameters
 
@@ -590,6 +603,8 @@ get_unit_summary(dataset = zoningdata2,
   knitr::kable()
 
 ```
+
+
 ## Write out results
 
 Write out the results to a csv. Include jurisdiction name in the title.
