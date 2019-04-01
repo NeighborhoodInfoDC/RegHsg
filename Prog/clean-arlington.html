@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated March 31, 2019</p>
+<p>Last updated April 01, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -1402,7 +1402,10 @@ address &lt;- read_csv(adfile)
 
 address1 &lt;- address %&gt;% 
   mutate(address_cap = toupper(FULL_ADDRESS)) %&gt;% 
-  select(address_cap, units_address = UNITCOUNT)
+  select(address_cap, units_address = UNITCOUNT) %&gt;% 
+  group_by(address_cap) %&gt;% 
+  summarize(units_address = sum(units_address))
+
 
 jur5 &lt;- jur4 %&gt;% 
   mutate(address_cap = toupper(propaddress)) %&gt;% 
@@ -1440,7 +1443,7 @@ jurj %&gt;%
 <pre><code>## # A tibble: 2 x 2
 ##   `is.na(OBJECTID)`     n
 ##   &lt;lgl&gt;             &lt;int&gt;
-## 1 FALSE             41609
+## 1 FALSE             41465
 ## 2 TRUE                269</code></pre>
 <pre class="r"><code>jur6 &lt;- jurj %&gt;% 
   # strip geometry
@@ -1485,7 +1488,7 @@ sum(is.na(jur6$lotsize_sf))</code></pre>
 sum(is.na(jur7$lotsize_sf))</code></pre>
 <pre><code>## [1] 60</code></pre>
 <pre class="r"><code>sum(jur6$numberofunits == 0)</code></pre>
-<pre><code>## [1] 38897</code></pre>
+<pre><code>## [1] 38784</code></pre>
 <pre class="r"><code>jur7 %&gt;% 
   filter(residential == 1, category != &quot;vacant&quot;) %&gt;% 
   summarize(sum(is.na(numberofunits)),

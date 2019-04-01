@@ -1068,7 +1068,10 @@ address <- read_csv(adfile)
 
 address1 <- address %>% 
   mutate(address_cap = toupper(FULL_ADDRESS)) %>% 
-  select(address_cap, units_address = UNITCOUNT)
+  select(address_cap, units_address = UNITCOUNT) %>% 
+  group_by(address_cap) %>% 
+  summarize(units_address = sum(units_address))
+
 
 jur5 <- jur4 %>% 
   mutate(address_cap = toupper(propaddress)) %>% 
