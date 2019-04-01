@@ -547,7 +547,7 @@ rescaled_data <- individual_varies %>%
                                                to = c(1, 100))) %>% 
   select(density_residential)
 
-clusters <- kmeans(rescaled_data, centers = 5, nstart = 5)
+clusters <- kmeans(rescaled_data, centers = 3, nstart = 3)
 
 tidy_clusters <- augment(clusters, individual_varies)
 
@@ -677,7 +677,7 @@ upzone <- tidy_clusters %>%
 
 upzone_summary <- upzone %>% 
   group_by(.cluster) %>% 
-  summarize(units_added = sum(units_added))
+  summarize(units_added = mean(units_added))
 
 ```
 
