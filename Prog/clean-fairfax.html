@@ -242,12 +242,12 @@ div.tocify {
 </div>
 
 
-<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv14%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
+<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv15%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated March 20, 2019</p>
+<p>Last updated April 02, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <p>Note: The following jurisdictions are not inside Fairfax County:</p>
 <p>City of Fairfax</p>
@@ -397,23 +397,22 @@ sf &lt;- c(&quot;SINGLE FAMILY, DETACHED&quot;,
         &quot;TWO-FAMILY NEC&quot;,
         &quot;MOBILE HOMES IN PARK OR COURT&quot;,
         &quot;RURAL RESIDENCE (AGRICULTURAL)&quot;,
-        &quot;MOBILE/MANUFACTURED HOME&quot;)
+        &quot;MOBILE/MANUFACTURED HOME&quot;,
+        &quot;NEC - OTHER RESIDENTIAL&quot;)
         
 vacant &lt;- c(&quot;VACANT LAND&quot;,
             &quot;VACANT LAND (GENERAL)&quot;)
-
-other &lt;- &quot;NEC - OTHER RESIDENTIAL&quot; 
 
 jur_1 &lt;- jur %&gt;% 
   mutate(category = case_when(
            countylandusedescription %in% mf ~ &quot;mf&quot;,
            countylandusedescription %in% sf ~ &quot;sf&quot;,
            countylandusedescription %in% vacant ~ &quot;vacant&quot;,
-           countylandusedescription==other ~ &quot;other&quot;    
+           T~&quot;other&quot;
                               )
            )                      
 
-rm( mf, sf, vacant, other)</code></pre>
+rm( mf, sf, vacant)</code></pre>
 </div>
 <div id="category_detail" class="section level5">
 <h5><code>category_detail</code></h5>
@@ -421,7 +420,8 @@ rm( mf, sf, vacant, other)</code></pre>
                &quot;MEDIUM RISE APTS, RENTAL (5 TO 8 STORIES)&quot;,
                &quot;HIGH RISE APTS, RENTAL, WITH COM/PROFL&quot;,
                &quot;HIGH RISE APTS, RENTAL, W/O COM/PROFL&quot;,
-               &quot;APARTMENTS, NEC, INCLUDING COOPERATIVES&quot;)
+               &quot;APARTMENTS, NEC, INCLUDING COOPERATIVES&quot;,
+               &quot;COMBINATION OF MULT-FAMILY STRUCTURE TYPES&quot;)
 
 
 condo &lt;- c(&quot;CONDO-MULTIPLEX&quot;,
@@ -451,8 +451,7 @@ townhouse &lt;-  c(&quot;TOWNHOUSE, IN OWNERSHIP DEVELOPMENT&quot;,
 vacant &lt;- c(&quot;VACANT LAND&quot;,
             &quot;VACANT LAND (GENERAL)&quot;)
 
-other &lt;- c(&quot;COMBINATION OF MULT-FAMILY STRUCTURE TYPES&quot;,
-           &quot;CONVERTED RESIDENTIAL OFFICE&quot;,
+other &lt;- c(&quot;CONVERTED RESIDENTIAL OFFICE&quot;,
            &quot;MOBILE HOMES IN PARK OR COURT&quot;,
            &quot;MOBILE/MANUFACTURED HOME&quot;,
            &quot;NEC - OTHER RESIDENTIAL&quot;,
@@ -467,7 +466,8 @@ jur_2 &lt;- jur_1 %&gt;%
            countylandusedescription %in% sfdetached ~ &quot;sf detached&quot;,
            countylandusedescription %in% townhouse ~ &quot;townhouse&quot;,
            countylandusedescription %in% vacant ~ &quot;vacant&quot;,
-           countylandusedescription %in% other ~ &quot;other&quot;
+           countylandusedescription %in% other ~ &quot;other&quot;,
+           T~&quot;other&quot;
                                     )
          )
 
@@ -532,25 +532,23 @@ rm(garden, highrise, mediumrise, other)          </code></pre>
 <h5><code>category</code></h5>
 <p>Here we expect there to be category values only for those buildings that we deem residential.</p>
 <pre class="r"><code>count(jur_3, category)</code></pre>
-<pre><code>## # A tibble: 5 x 2
+<pre><code>## # A tibble: 4 x 2
 ##   category      n
 ##   &lt;chr&gt;     &lt;int&gt;
 ## 1 mf        52235
-## 2 other        11
-## 3 sf       279179
-## 4 vacant    10026
-## 5 &lt;NA&gt;      20518</code></pre>
+## 2 other     20518
+## 3 sf       279190
+## 4 vacant    10026</code></pre>
 <pre class="r"><code>count(jur_3, is.na(category))</code></pre>
-<pre><code>## # A tibble: 2 x 2
+<pre><code>## # A tibble: 1 x 2
 ##   `is.na(category)`      n
 ##   &lt;lgl&gt;              &lt;int&gt;
-## 1 FALSE             341451
-## 2 TRUE               20518</code></pre>
+## 1 FALSE             361969</code></pre>
 <pre class="r"><code>cat_na&lt;- sum(is.na(jur_3$category))
-res_false &lt;- sum(!jur_3$residential)
 
 
-if (!(cat_na)==(res_false)) {
+
+if (!(cat_na)==(0)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
 </div>
@@ -558,27 +556,25 @@ if (!(cat_na)==(res_false)) {
 <h5><code>category_detail</code></h5>
 <p>Here we expect there to be category-detail values only for those buildings that we deem residential</p>
 <pre class="r"><code>count(jur_3, category_detail)</code></pre>
-<pre><code>## # A tibble: 8 x 2
+<pre><code>## # A tibble: 7 x 2
 ##   category_detail      n
 ##   &lt;chr&gt;            &lt;int&gt;
-## 1 apartment          951
+## 1 apartment          976
 ## 2 condo            51149
 ## 3 duplex            2615
-## 4 other              170
+## 4 other            20663
 ## 5 sf detached     191422
 ## 6 townhouse        85118
-## 7 vacant           10026
-## 8 &lt;NA&gt;             20518</code></pre>
+## 7 vacant           10026</code></pre>
 <pre class="r"><code>count(jur_3, is.na(category_detail))</code></pre>
-<pre><code>## # A tibble: 2 x 2
+<pre><code>## # A tibble: 1 x 2
 ##   `is.na(category_detail)`      n
 ##   &lt;lgl&gt;                     &lt;int&gt;
-## 1 FALSE                    341451
-## 2 TRUE                      20518</code></pre>
+## 1 FALSE                    361969</code></pre>
 <pre class="r"><code>cat_detail_na &lt;- sum(is.na(jur_3$category_detail))
 
 
-if (!(cat_detail_na)==(res_false)) {
+if (!(cat_detail_na)==(0)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
 </div>
@@ -622,6 +618,11 @@ rm(jur_1, jur_2, jur_3)</code></pre>
          is.na(lotsize_sf) ~ jur$area_legal%&gt;%as.double,
          T ~ lotsize_sf
   )) %&gt;% 
+    mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %&gt;%
+  mutate(lotsize_sf = case_when(
+            (is.na(lotsize_sf)|lotsize_sf==0)~jur$area_tax %&gt;% as.double,
+            T ~ lotsize_sf
+  ))  %&gt;% mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %&gt;%
   mutate(lotsize_sf = case_when(
         is.na(lotsize_sf) ~
          jur$parcel_area %&gt;% as.double(),
@@ -849,7 +850,7 @@ missing &lt;- jur_3%&gt;%
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
                     yearbuilt, long, lat,
-                    area_tax, zone_tax, possibleSF_tax, stories_tax, units_tax, category_tax, land_per_parcel, dwellings_per_parcel, num_livunit, assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %&gt;% 
+                    area_tax, zone_tax, possibleSF_tax, stories_tax, units_tax, category_tax, land_per_parcel, dwellings_per_parcel, num_livunit, assessedlandvalue, assessedimprovementvalue, totalassessedvalue, dwellings_per_parcel, units_tax), list) %&gt;% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., &quot;_list&quot;)) %&gt;% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, Mode),
@@ -878,7 +879,10 @@ missing &lt;- jur_3%&gt;%
          totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
          assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
                                             sum, na.rm = TRUE),
-         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))</code></pre>
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE),
+         dwellings_per_parcel = map_dbl(dwellings_per_parcel_list, sum, na.rm=T),
+         units_tax = map_dbl(units_tax_list, sum, na.rm=T)
+       )</code></pre>
 <div id="lot-size" class="section level4">
 <h4>Lot size</h4>
 <p><strong>Note: This entire section may not hold accross jurisdictions. Visually confirm that this applies. Some thresholds may need to be adjusted.</strong></p>
@@ -914,13 +918,12 @@ missing &lt;- jur_3%&gt;%
   ))
 
 nested_2 %&gt;% count(fxn)</code></pre>
-<pre><code>## # A tibble: 4 x 2
-##   fxn         n
-##   &lt;chr&gt;   &lt;int&gt;
-## 1 first    4223
-## 2 missing   204
-## 3 other     189
-## 4 sum      1190</code></pre>
+<pre><code>## # A tibble: 3 x 2
+##   fxn       n
+##   &lt;chr&gt; &lt;int&gt;
+## 1 first  4467
+## 2 other   151
+## 3 sum    1188</code></pre>
 <pre class="r"><code>nested_done &lt;- nested_2 %&gt;% 
   filter(fxn != &quot;other&quot;)</code></pre>
 <p><strong>NOTE:</strong> The following assumptions are specific to Fairfax County. Develop new logic for other jurisdictions!</p>
@@ -940,9 +943,9 @@ count(nested_other, fxn)</code></pre>
 <pre><code>## # A tibble: 3 x 2
 ##   fxn         n
 ##   &lt;chr&gt;   &lt;int&gt;
-## 1 max        12
+## 1 max        11
 ## 2 missing     2
-## 3 sum       175</code></pre>
+## 3 sum       138</code></pre>
 <p>Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot size.</p>
 <pre class="r"><code>nested_all &lt;- bind_rows(nested_done, nested_other) %&gt;% 
   mutate_at(vars(lotsize_sf_sum, lsfirst, lsmode_num), as.double) %&gt;% 
@@ -957,106 +960,24 @@ count(nested_other, fxn)</code></pre>
 <pre><code>## # A tibble: 2 x 2
 ##   `fxn == &quot;missing&quot;`     n
 ##   &lt;lgl&gt;              &lt;int&gt;
-## 1 FALSE               5600
-## 2 TRUE                 206</code></pre>
+## 1 FALSE               5804
+## 2 TRUE                   2</code></pre>
 <pre class="r"><code>count(nested_all, is.na(lotsize_sf_final))</code></pre>
 <pre><code>## # A tibble: 2 x 2
 ##   `is.na(lotsize_sf_final)`     n
 ##   &lt;lgl&gt;                     &lt;int&gt;
-## 1 FALSE                      5600
-## 2 TRUE                        206</code></pre>
+## 1 FALSE                      5804
+## 2 TRUE                          2</code></pre>
 <p>Lastly, the number of rows should be the same as before we split and re-combined.</p>
 <pre class="r"><code>stopifnot(nrow(nested_all) == nrow(nested))
 
 rm(nested, nested_done, nested_other, nested_1, nested_2)</code></pre>
 </div>
-<div id="lot-size-var-2" class="section level4">
-<h4>Lot size Var 2</h4>
-<p><strong>Note: This entire section may not hold accross jurisdictions. Visually confirm that this applies. Some thresholds may need to be adjusted.</strong></p>
-<p>As the lot size variable from the BlackKnight data is missing 345 observations, we would like to do the same methodology with some joined data from Fairfax county to compare whether their size variable contains more information. Fairfax’s lotsize variable has 2471 missing observations.</p>
-<p>First, filter out all the observations where the function is known. Then, re-examine the remaining observations. There are a few variables needed: 1. The number of unique observations in the <code>area_tax_list</code> nested list 2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode) 3. Whether there is an element that has greater than 1,000,000 sq ft in <code>area_tax_list</code></p>
-<pre class="r"><code>nested_tax &lt;- nested_all %&gt;% 
-  mutate(nprops_tax = as.integer(nprops),
-         area_tax_sum = as.integer(area_tax_sum),
-         unique_lots_tax = map(area_tax_list, function(x) length(unique(x))),
-         lsfirst_tax = map(area_tax_list, function(x) x[1]),
-         lsmode_tax = ifelse(area_tax_sum == 0,
-                         NA,
-                         map(area_tax_list, Mode, na.rm = TRUE)),
-         containsLarge_tax = map_lgl(area_tax_list, function(x) any(x&gt;1000000, na.rm=T)),
-         maxsize_tax = map_dbl(area_tax_list, function(x) max(x, na.rm=T))
-         ) %&gt;%
-  ungroup()</code></pre>
-<p>Based on these variables, we can identify when<code>sum()</code> is definitely the right function (when the number of unique values in <code>area_tax_list</code> is the same as <code>nprops_tax</code>), and when we want to take the first argument is definitely the right function (there is only one unique value in <code>lotsize_sf_list</code>).</p>
-<pre class="r"><code>nested_tax_1 &lt;- nested_tax %&gt;% 
-  mutate(fxn_tax = case_when(
-    area_tax_sum &lt; 1 ~ &quot;missing&quot;,
-    nprops_tax == unique_lots_tax ~ &quot;sum&quot;,
-    unique_lots_tax == 1 ~ &quot;first&quot;,
-    TRUE ~ &quot;other&quot;
-  ))
-
-nested_tax_1 %&gt;% count(fxn_tax)</code></pre>
-<pre><code>## # A tibble: 4 x 2
-##   fxn_tax     n
-##   &lt;chr&gt;   &lt;int&gt;
-## 1 first      69
-## 2 missing  4841
-## 3 other      50
-## 4 sum       846</code></pre>
-<pre class="r"><code>nested_done &lt;- nested_tax_1 %&gt;% 
-  filter(fxn_tax != &quot;other&quot;)</code></pre>
-<p><strong>NOTE:</strong> The following assumptions are specific to Fairfax County. Develop new logic for other jurisdictions!</p>
-<p>Based on examining the 54 addressess with different criteria, we develop these assumptions: 1. Properties with SF greater than 1,000,000 should be marked missing. 2. Properties with SF greater than 100,000 should have the max-size be the total size. 2. For all others, we use the sum.</p>
-<p>First, we coerce the <code>lsmode</code> variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.</p>
-<pre class="r"><code>nested_other &lt;- nested_tax_1 %&gt;% 
-  filter(fxn_tax == &quot;other&quot;) %&gt;% 
-  mutate(lsmode_num_tax = ifelse(map(lsmode_tax, length) &gt; 1, NA, lsmode_tax),
-         lsmode_num_tax = as.integer(lsmode_num_tax),
-         list_no_na_tax = map(area_tax_list, function(x) subset(x, !is.na(x))),
-         fxn_tax = case_when(
-           containsLarge_tax ~ &quot;missing&quot;,
-           maxsize_tax &gt; 100000 ~&quot;max&quot;,
-           TRUE ~ &quot;sum&quot;))
-
-count(nested_other, fxn_tax)</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   fxn_tax     n
-##   &lt;chr&gt;   &lt;int&gt;
-## 1 max        15
-## 2 sum        35</code></pre>
-<p>Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot size.</p>
-<pre class="r"><code>nested_all &lt;- bind_rows(nested_done, nested_other) %&gt;% 
-  mutate_at(vars(area_tax_sum, lsfirst_tax, lsmode_num_tax), as.double) %&gt;% 
-  mutate(area_tax_final = 
-           case_when(fxn_tax == &quot;first&quot; ~ lsfirst_tax,
-                     fxn_tax == &quot;sum&quot; ~ area_tax_sum,
-                     fxn_tax == &quot;mode&quot; ~ lsmode_num_tax,
-                     fxn_tax == &quot;missing&quot; ~NA %&gt;% as.numeric(),
-                     fxn_tax == &quot;max&quot; ~ maxsize_tax))</code></pre>
-<p>The number of NAs should be the same as the number of those with the designation “missing”</p>
-<pre class="r"><code>count(nested_all, fxn_tax == &quot;missing&quot;)</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   `fxn_tax == &quot;missing&quot;`     n
-##   &lt;lgl&gt;                  &lt;int&gt;
-## 1 FALSE                    965
-## 2 TRUE                    4841</code></pre>
-<pre class="r"><code>count(nested_all, is.na(area_tax_final))</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   `is.na(area_tax_final)`     n
-##   &lt;lgl&gt;                   &lt;int&gt;
-## 1 FALSE                     965
-## 2 TRUE                     4841</code></pre>
-<p>Lastly, the number of rows should be the same as before we split and re-combined.</p>
-<pre class="r"><code>stopifnot(nrow(nested_all) == nrow(nested_tax_1))
-
-rm(nested_tax, nested_done, nested_other, nested_tax_1)</code></pre>
-</div>
 <div id="ties" class="section level4">
 <h4>Ties</h4>
 <div id="zoning" class="section level5">
 <h5>Zoning</h5>
-<p>There are 96 instances where there is a tie in the zoning code- examples below.</p>
+<p>There are 92 instances where there is a tie in the zoning code- examples below.</p>
 <pre class="r"><code>ties &lt;- nested_all %&gt;% 
   mutate(ties_z = ifelse(map(zoning, length) &gt; 1, 1, 0)) %&gt;% 
   filter(ties_z == 1) %&gt;% 
@@ -1108,15 +1029,19 @@ cdties %&gt;%
   group_by(category_detail_chr) %&gt;% 
   count() %&gt;% 
   arrange(desc(n))</code></pre>
-<pre><code>## # A tibble: 5 x 2
-## # Groups:   category_detail_chr [5]
-##   category_detail_chr                  n
-##   &lt;chr&gt;                            &lt;int&gt;
-## 1 &quot;c(\&quot;sf detached\&quot;, \&quot;vacant\&quot;)&quot;   294
-## 2 &quot;c(\&quot;apartment\&quot;, \&quot;vacant\&quot;)&quot;       1
-## 3 &quot;c(\&quot;condo\&quot;, \&quot;sf detached\&quot;)&quot;      1
-## 4 &quot;c(\&quot;condo\&quot;, \&quot;vacant\&quot;)&quot;           1
-## 5 &quot;c(\&quot;other\&quot;, \&quot;vacant\&quot;)&quot;           1</code></pre>
+<pre><code>## # A tibble: 9 x 2
+## # Groups:   category_detail_chr [9]
+##   category_detail_chr                             n
+##   &lt;chr&gt;                                       &lt;int&gt;
+## 1 &quot;c(\&quot;sf detached\&quot;, \&quot;vacant\&quot;)&quot;              292
+## 2 &quot;c(\&quot;other\&quot;, \&quot;vacant\&quot;)&quot;                     71
+## 3 &quot;c(\&quot;other\&quot;, \&quot;sf detached\&quot;)&quot;                41
+## 4 &quot;c(\&quot;apartment\&quot;, \&quot;other\&quot;)&quot;                  13
+## 5 &quot;c(\&quot;condo\&quot;, \&quot;other\&quot;)&quot;                       7
+## 6 &quot;c(\&quot;other\&quot;, \&quot;sf detached\&quot;, \&quot;vacant\&quot;)&quot;     2
+## 7 &quot;c(\&quot;apartment\&quot;, \&quot;other\&quot;, \&quot;vacant\&quot;)&quot;       1
+## 8 &quot;c(\&quot;condo\&quot;, \&quot;sf detached\&quot;)&quot;                 1
+## 9 &quot;c(\&quot;condo\&quot;, \&quot;vacant\&quot;)&quot;                      1</code></pre>
 <p>Here, we create a variable to indicate how many of the values in <code>category_detail</code> are one of the vacant designations.</p>
 <p><strong>Note:</strong> this logic will likely apply to other jurisdictions- but visually check some of the ties first to make sure this makes sense.</p>
 <pre class="r"><code>cdties_1 &lt;- cdties %&gt;% 
@@ -1144,12 +1069,12 @@ rbind(temp) %&gt;%
 <tbody>
 <tr class="odd">
 <td align="right">0</td>
-<td align="right">1</td>
+<td align="right">62</td>
 <td align="left">Take the residential code</td>
 </tr>
 <tr class="even">
 <td align="right">1</td>
-<td align="right">297</td>
+<td align="right">367</td>
 <td align="left">Take the non-vacant categoty</td>
 </tr>
 <tr class="odd">
@@ -1210,7 +1135,7 @@ rbind(temp) %&gt;%
 
 # this value will be used later to check the number of rows
 nunits &lt;- cdties_1 %&gt;% filter(test_vacant == 1) %&gt;% summarize(sum(nprops)) %&gt;% pull()</code></pre>
-<p><strong>If both values are vacant:</strong> There are few examples of this, but in each case we want to default to the more general case.</p>
+<p><strong>If both values are vacant:</strong> There are no examples of this, but in each case we want to default to the more general case.</p>
 <pre class="r"><code>bothvac &lt;- cdties_1 %&gt;% 
   filter(test_vacant == 2) %&gt;% 
   mutate(countylandusedescription = map(countylandusedescription, 1),
@@ -1221,13 +1146,13 @@ nunits &lt;- cdties_1 %&gt;% filter(test_vacant == 1) %&gt;% summarize(sum(nprop
 )
 
 nested_final &lt;- bind_rows(
-  filter(nested_all, map(category_detail, length) &lt;= 1),
+  filter(nested_all_1, map(category_detail, length) &lt;= 1),
   novac, bothvac, onevac) %&gt;% 
   select(-test_vacant)
 
-stopifnot(nrow(nested_all) == nrow(nested_final))
+stopifnot(nrow(nested_all_1) == nrow(nested_final))
 
-rm(novac, onevac, bothvac, nested_all)</code></pre>
+rm(novac, onevac, bothvac, nested_all, nested_all_1)</code></pre>
 </div>
 </div>
 </div>
@@ -1235,17 +1160,16 @@ rm(novac, onevac, bothvac, nested_all)</code></pre>
 <h3>Single addresses</h3>
 <p>For single addresses, we have to reclassify condos that have a unique observation as single-family structures, since condos are listed seperately for each unit</p>
 <pre class="r"><code>count(singles, category_detail)</code></pre>
-<pre><code>## # A tibble: 8 x 2
+<pre><code>## # A tibble: 7 x 2
 ##   category_detail      n
 ##   &lt;chr&gt;            &lt;int&gt;
-## 1 apartment          359
+## 1 apartment          372
 ## 2 condo             7910
 ## 3 duplex            2615
-## 4 other              149
+## 4 other             6897
 ## 5 sf detached     190637
 ## 6 townhouse        85118
-## 7 vacant            4632
-## 8 &lt;NA&gt;              6761</code></pre>
+## 7 vacant            4632</code></pre>
 <pre class="r"><code>singles_1 &lt;- singles %&gt;% 
   mutate(category = ifelse(category_detail == &quot;condo&quot;,
                            &quot;sf&quot;,
@@ -1269,7 +1193,7 @@ rm(novac, onevac, bothvac, nested_all)</code></pre>
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
          ends_with(&quot;prop&quot;),
-         area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, parcel_id, num_livunit, dwellings_per_parcel, land_per_parcel, assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
+         area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, parcel_id, num_livunit, dwellings_per_parcel, land_per_parcel, assessedlandvalue, assessedimprovementvalue, totalassessedvalue, numberofunits_tax = units_tax)
 
 missing_f &lt;- missing %&gt;% 
   select(county_fips, county_name,
@@ -1280,27 +1204,30 @@ missing_f &lt;- missing %&gt;%
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type, area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, units_tax, parcel_id, num_livunit, dwellings_per_parcel, land_per_parcel)
+         category, category_detail, residential, building_type, area_tax, zone_tax, possibleSF_tax, stories_tax, category_tax, units_tax, parcel_id, num_livunit, dwellings_per_parcel, land_per_parcel, numberofunits_tax=units_tax, assessedimprovementvalue, totalassessedvalue, assessedlandvalue)
 
 multiples_f &lt;- nested_final %&gt;% 
   select(-ends_with(&quot;_list&quot;), -lsmode, -lsfirst, 
-         -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum, -lsmode_tax, -lsfirst_tax, -lsmode_num_tax, -fxn_tax, -unique_lots_tax, -area_tax_sum) %&gt;% 
+         -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %&gt;% 
   mutate_at(vars(countylandusedescription, zoning,
                  category, category_detail, building_type, yearbuilt),
             as.character) %&gt;%  
   mutate_at(vars(buildingarea, lat, long, residential), as.double) %&gt;% 
-  rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops, area_tax = area_tax_final, numberofunits_tax = nprops_tax) %&gt;% 
+  rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops, numberofunits_tax = units_tax) %&gt;% 
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = &quot;multiple&quot;)
 
 finaljur &lt;- bind_rows(singles_f, multiples_f, missing_f) %&gt;% 
   fill(county_fips) %&gt;% 
   fill(county_name) %&gt;%
-  select(-list_no_na, -list_no_na_tax)
+  select(-list_no_na)
 
 finaljur[finaljur == &quot;NULL&quot;] = NA
 finaljur[finaljur == &quot;character(0)&quot;] = NA</code></pre>
-<p>Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were 297 multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, 597, minus 297.</p>
+<div id="quick-fix-to-category" class="section level5">
+<h5>Quick fix to category</h5>
+<pre class="r"><code>finaljur &lt;- finaljur %&gt;% mutate(category = case_when(category==&quot;c(\&quot;other\&quot;, \&quot;sf\&quot;)&quot;~&quot;other&quot;, T~category))</code></pre>
+<p>Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were 367 multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, 741, minus 367.</p>
 <pre class="r"><code>mult &lt;- finaljur %&gt;% 
   filter(address_type == &quot;multiple&quot;) %&gt;% 
   summarize(num = sum(numberofunits)) %&gt;% 
@@ -1316,6 +1243,7 @@ rm(mult, other, nunits, cdties)</code></pre>
 <p>Write out clean data. This time, we will save as a <code>.csv</code> so that it can be read into another program if necessary.</p>
 <pre class="r"><code>write_csv(finaljur, 
           paste0(jdir, filepath, &quot;-cleaned-data.csv&quot;))</code></pre>
+</div>
 </div>
 
 

@@ -54,7 +54,6 @@ read_fairfax <- function(rmd = TRUE) {
                          possibleSF_tax = col_double(),
                          stories_tax = col_character(),
                          category_tax = col_character(),
-                         units_tax = col_double(),
                          parcel_id = col_character(),
                          num_livunit = col_integer(),
                          dwellings_per_parcel = col_integer(),
@@ -65,8 +64,6 @@ read_fairfax <- function(rmd = TRUE) {
                          containsLarge = col_character(),
                          maxsize = col_character(),
                          numberofunits_tax = col_character(),
-                         containsLarge_tax = col_character(),
-                         maxsize_tax = col_character(),
                          vacant_flag = col_character()
              ))
     } 

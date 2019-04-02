@@ -242,12 +242,12 @@ div.tocify {
 </div>
 
 
-<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv14%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
+<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv15%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapted from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated March 20, 2019</p>
+<p>Last updated April 02, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -345,7 +345,10 @@ dwelling &lt;- read_csv(dwellingfile)
 
 legal &lt;- read_csv(legalfile)
 
-rm(pafile, landfile, dwellingfile, legalfile)</code></pre>
+rm(pafile, landfile, dwellingfile, legalfile)
+
+
+rental_units &lt;- read_csv(&quot;L:/Libraries/RegHsg/Raw/fairfax/rental_buildings.csv&quot;)</code></pre>
 </div>
 <div id="clean-and-merge" class="section level2">
 <h2>Clean and merge</h2>
@@ -379,6 +382,12 @@ There are 848 units in the parcels data that are not in the BlackKnight data.</p
           condo_type = PARCEL_TYP) %&gt;% 
   mutate(parcel_id = str_replace_all(raw_parcelid_par, &quot; &quot;, &quot;&quot;)) %&gt;%
   filter(!is.na(raw_parcelid_par))</code></pre>
+<pre class="r"><code>rental_units %&lt;&gt;% 
+                  mutate(Number = case_when(
+                        is.na(Number)~&quot;&quot;,
+                        T~Number)) %&gt;% 
+                  mutate(parcel_id=paste0(Map, Reference, Number)) %&gt;%
+                  select(parcel_id, units_rental = `Total Units`)</code></pre>
 <p>From the dwelling file, we will keep a variable designating the number of stories and the sf of living area of the dwelling.</p>
 <p>We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.</p>
 <pre class="r"><code>dwelling_temp &lt;- dwelling %&gt;% 
@@ -434,10 +443,11 @@ There are 0 units in the land file that are not in the parcel/dwelling data.</p>
 There are 119 units in the legal file that are not in the tax final file.</p>
 <p>Merge parcels/dwellings/land file and legal file</p>
 <pre class="r"><code>other_temp&lt;- full_join(legal_temp, tax_final, by=&quot;parcel_id&quot;)</code></pre>
-<pre class="r"><code>other_final&lt;-full_join(other_temp, parcelshp_temp, by=&quot;parcel_id&quot;)</code></pre>
+<pre class="r"><code>other_temp_1&lt;-full_join(other_temp, rental_units, by=&quot;parcel_id&quot;)</code></pre>
+<pre class="r"><code>other_final&lt;-full_join(other_temp_1, parcelshp_temp, by=&quot;parcel_id&quot;)</code></pre>
 <p>Merge onto Blacknight file</p>
-<p>There are 1010 units in the combined tax data that are not in the BlackKnight data.<br />
-There are 523 units in the BlackKnight data that are not in the tax data.</p>
+<p>There are 1013 units in the combined tax data that are not in the BlackKnight data.<br />
+There are 522 units in the BlackKnight data that are not in the tax data.</p>
 <pre class="r"><code>jur_final &lt;- left_join(jur_temp, other_final, by=&quot;parcel_id&quot;)</code></pre>
 </div>
 <div id="save" class="section level2">
