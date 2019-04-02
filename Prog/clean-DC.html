@@ -305,12 +305,12 @@ div.tocify {
 </div>
 
 
-<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv14%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
+<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv15%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
 <p>Author: Yipeng Su adapted from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated March 18, 2019</p>
+<p>Last updated April 02, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -411,8 +411,8 @@ rm(res_codes)</code></pre>
 <pre class="r"><code>## some Flase vacant are actually not vacant
 jur %&gt;% 
  filter(countylandusedescription == &quot;FALSE VACANT&quot;) %&gt;% 
-  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuilt) %&gt;% 
-    arrange(desc(parcelbase_phasebuilt)) %&gt;% 
+  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuild) %&gt;% 
+    arrange(desc(parcelbase_phasebuild)) %&gt;% 
   head(20)</code></pre>
 <pre><code>## # A tibble: 20 x 4
 ##    assessorsparcelnu~ parcelbase_address owneroccupiedres~ parcelbase_phas~
@@ -717,9 +717,9 @@ rm(newcat, mf)</code></pre>
 <pre><code>## # A tibble: 3 x 2
 ##   lotsizeareaunit      n
 ##   &lt;chr&gt;            &lt;int&gt;
-## 1 &lt;NA&gt;             20908
-## 2 AC                2395
-## 3 SF              183127</code></pre>
+## 1 AC                2395
+## 2 SF              183127
+## 3 &lt;NA&gt;             20908</code></pre>
 <pre class="r"><code>jur &lt;- jur %&gt;% 
   mutate(lotsize_acres = case_when(lotsizeareaunit == &quot;AC&quot; ~ lotsizeorarea ,
                                    lotsizeareaunit == &quot;SF&quot; ~ lotsizeorarea / 43560),
@@ -1070,7 +1070,8 @@ missing &lt;- jur5 %&gt;%
                     yearbuilt, 
                     parcelgeo_x, parcelgeo_y, 
                     lat, long,
-                    assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %&gt;% 
+                    assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
+                    parcelbase_phasebuild, parcelbase_phaseland), list) %&gt;% 
   rename_at(vars(-propaddress), ~ paste0(., &quot;_list&quot;)) %&gt;% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, mode_narm),
@@ -1097,8 +1098,14 @@ missing &lt;- jur5 %&gt;%
          totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
          assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
                                             sum, na.rm = TRUE),
-         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))
-
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE),
+         parcelbase_phasebuild=map_dbl(parcelbase_phasebuild_list,sum, na.rm = TRUE),
+         parcelbase_phaseland=map_dbl(parcelbase_phaseland_list,sum, na.rm = TRUE)) %&gt;% 
+  mutate(ties_cat = ifelse(map(category, length) &gt; 1, 1, 0)) %&gt;% 
+  mutate(category = ifelse(ties_cat == 1,
+                           map(category_list, 1),
+                           category)) 
+  
 # nestedtest should have 0 observation
   
 stopifnot(
@@ -1414,6 +1421,8 @@ count(cdties, test_vacant) %&gt;%
          vacant_flag = 1) %&gt;% 
   select(-vac1)
 
+#YS comment: here I get a list of category
+
 # this value will be used later to check the number of rows
 nunits &lt;- cdties %&gt;% filter(test_vacant == 1) %&gt;% summarize(sum(nprops)) %&gt;% pull()</code></pre>
 <p><strong>If both values are vacant:</strong> There are few examples of this, but in each case we want to default to the more general case.</p>
@@ -1430,6 +1439,7 @@ nested_final &lt;- bind_rows(
   filter(nested_all, map(category_detail, length) &lt;= 1),
   novac, bothvac, onevac) %&gt;% 
   select(-test_vacant)
+
 
 stopifnot(nrow(nested_all) == nrow(nested_final))
 
@@ -1588,7 +1598,9 @@ singles2 %&gt;%
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
          parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
-         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
+         parcelbase_phasebuild, parcelbase_phaseland)
+
 
 missing_f &lt;- missing %&gt;% 
   select(county_fips, county_name,
@@ -1601,7 +1613,9 @@ missing_f &lt;- missing %&gt;%
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
          parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
-         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
+         parcelbase_phasebuild, parcelbase_phaseland)
+
 
 multiples_f &lt;- nested_final %&gt;% 
   select(-ends_with(&quot;_list&quot;), -lsmode, -lsfirst, 
@@ -1615,12 +1629,44 @@ multiples_f &lt;- nested_final %&gt;%
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = &quot;multiple&quot;)
 
+
+
 finaljur &lt;- bind_rows(singles_f, multiples_f, missing_f) %&gt;% 
   fill(county_fips) %&gt;% 
   fill(county_name) %&gt;% 
   select(-Xcoord, -Ycoord, -usecode) 
 
-finaljur[finaljur == &quot;NULL&quot;] = NA
+finaljur %&gt;% 
+  group_by(category) %&gt;% 
+  count() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">all other category</td>
+<td align="right">8956</td>
+</tr>
+<tr class="even">
+<td align="left">mf</td>
+<td align="right">20554</td>
+</tr>
+<tr class="odd">
+<td align="left">sf</td>
+<td align="right">96131</td>
+</tr>
+<tr class="even">
+<td align="left">vacant</td>
+<td align="right">9049</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>finaljur[finaljur == &quot;NULL&quot;] = NA
 finaljur[finaljur == &quot;character(0)&quot;] = NA</code></pre>
 <p>Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were 1774 multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, 3585, minus 1774.</p>
 <pre class="r"><code>mult &lt;- finaljur %&gt;% 
