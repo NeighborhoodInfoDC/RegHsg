@@ -722,23 +722,27 @@ get_unit_variables <- function(dataset,
     mutate(parameters = paste0("CE: ", construction_efficiency * 100,
                                "% , Unit size: ", average_unit_size,
                                " sf"),
+           lot_coverage_max = ifelse(is.na(lot_coverage_max), 1, lot_coverage_max),
            buildable_area = lotsize_sf * lot_coverage_max,
            living_area = buildable_area * construction_efficiency,
            units_per_floor = floor(living_area / average_unit_size), # it will set to 0 when less than 1. 
-           FAR_stories = floor_area_ratio_max/lot_coverage_max,
+           lot_coverage_FAR= ifelse(floor_area_ratio_max <= lot_coverage_max, 
+                                         floor_area_ratio_max, 
+                                         lot_coverage_max),
+           buildable_area_FAR= lotsize_sf*lot_coverage_FAR,
+           living_area_FAR= buildable_area_FAR * construction_efficiency,
+           units_per_floor_FAR = floor(living_area_FAR/ average_unit_size),
+           percent_per_floor_FAR = (units_per_floor_FAR*average_unit_size*1/construction_efficiency)/lotsize_sf,
+           FAR_stories = ifelse(percent_per_floor_FAR!=0&!is.na(percent_per_floor_far),
+                                floor(floor_area_ratio_max/percent_per_floor_FAR),
+                                0),
            floors = floor(height_ft /10),
-          stories = ifelse(FAR_stories>=floors, floors, FAR_stories),
-          stories = as.numeric(case_when(is.na(floors) ~ FAR_stories,
-                               is.na(FAR_stories) ~ floors,
-                               TRUE ~ stories)),
-           stories=ifelse(newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"|newdwelling_type=="Special purpose-B", stories-1, stories),
-           units_min= units_per_floor * stories,
-           units_FAR= units_per_floor * FAR_stories,
+           units_FAR= units_per_floor_FAR * FAR_stories,
            units_FAR= ifelse(is.na(floor_area_ratio_max)==1, NA, units_FAR),
-           units_height= units_per_floor * floors
+           units_height= units_per_floor * floors,
+           units_min= pmin(units_FAR, units_height, na.rm= TRUE)
            ) %>%
     mutate(subset=floor(lotsize_sf/lot_area_min), na.rm = TRUE) %>% 
-    mutate(units_min=ifelse(is.na(units_min)==1, 0, units_min)) %>% 
     mutate( units_total = case_when(
       one_unit_flag == 1 & subset<1 & units_min>=1 ~ 0,
       two_unit_flag == 1 & subset<1 & units_min>=2 ~ 0,
