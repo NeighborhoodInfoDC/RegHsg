@@ -37,6 +37,11 @@ COGcounty_sf <- county_sf %>%
 
 plot(COGregion_sf)
 
+watershp = "L:/Libraries/RegHsg/Maps/COG_water.shp"
+water_sf <- read_sf(dsn= watershp, layer= basename(strsplit(watershp, "\\.")[[1]])[1])
+
+plot(water_sf)
+
 # load in typology dataset output from SAS program
 
 Typology <- read.csv(paste0(jdir,"Neighborhood typology for mapping.csv")) 
@@ -57,6 +62,16 @@ Typologymap$neighborhoodtypeFAM[Typologymap$neighborhoodtypeFAM==""] <- "NA"
 Typologymap$neighborhoodtypeHH[Typologymap$neighborhoodtypeHHcode==""] <- "NA"
 Typologymap$neighborhoodtypeFAM[Typologymap$neighborhoodtypeFAMcode==""] <- "NA"
 
+#assign tracts to two large categories: at risk and already gentrified
+Typologymap2 <- Typologymap %>% 
+  mutate(twocat= case_when(neighborhoodtypeHHcode== 6| neighborhoodtypeHHcode== 7 ~ 1,
+                           neighborhoodtypeHHcode== 2|neighborhoodtypeHHcode== 3|neighborhoodtypeHHcode== 4|neighborhoodtypeHHcode== 5 ~ 2,
+                           TRUE ~ 3))  %>% 
+  mutate(threecat= case_when(neighborhoodtypeHHcode== 6| neighborhoodtypeHHcode== 7 ~ 1,
+                           neighborhoodtypeHHcode== 2|neighborhoodtypeHHcode== 3|neighborhoodtypeHHcode== 4|neighborhoodtypeHHcode== 5 ~ 2,
+                           neighborhoodtypeHHcode== 1 ~ 3,
+                           TRUE ~ 4))  
+
 #You need to install these if the library after these don't exist'
 #install.packages("colorspace")
 #install.packages("devtools")
@@ -72,7 +87,7 @@ boundary <- ggplot()+
   coord_sf(crs = 4269, datum = NA)
 
 
-#Typology by HH income 
+#Detailed Typology by HH income 
 ggplot() +
   geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#98cf90", size=0.05)+
   geom_sf(Typologymap,  mapping = aes(),
@@ -86,10 +101,10 @@ ggplot() +
   theme(legend.position ="bottom", legend.direction = "vertical", legend.text = element_text(size=8)) +
   coord_sf(crs = 4269, datum = NA)+
   geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.3, alpha=0.5)+
-  coord_sf(crs = 4269, datum = NA)
+  coord_sf(crs = 4269, datum = NA)   
 
 
-#Typology by FAM income
+#Detailed Typology by FAM income
 ggplot() +
   geom_sf(COGcounty_sf,  mapping = aes(),
           fill = NA, color = "#9d9d9d", size = .05) +
@@ -102,4 +117,43 @@ ggplot() +
   theme(legend.position ="bottom", legend.box = "vertical", legend.text = element_text(size=8)) +
   coord_sf(crs = 4269, datum = NA)+
   geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.3, alpha=0.5)+
+  coord_sf(crs = 4269, datum = NA)+
+  ggsave("L:/Libraries/RegHsg/Maps/Detailed Typology by FAM_0402.pdf", device = cairo_pdf)
+
+
+#Two category Typology by HH income 
+ggplot() +
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#9d9d9d", size=0.05)+
+  geom_sf(Typologymap2,  mapping = aes(),
+          fill = NA, color = "white", size = .05) +
+  geom_sf(Typologymap2, mapping=aes(fill=factor(twocat)), color= "#dcdbdb", size = .05)+
+  scale_fill_manual(values = c ("#fdbf11", "#1696d2", "white"),
+                    labels= c("At risk of dispalcement","Already gentrifying/gentrified", "Not at risk" )) +
+  geom_sf(water_sf, mapping=aes(), fill="#dcdbdb", color="#dcdbdb", size=0.05)+
+  theme_urbn_map() +
+  labs(fill = "Tract Gentrification and Displacement Risk", color = NULL) +
+  labs(title = "Neighborhood Gentrification Typology by HH") + 
+  theme(legend.position ="bottom", legend.direction = "vertical", legend.text = element_text(size=8)) +
+  coord_sf(crs = 4269, datum = NA)+
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.3, alpha=0.5)+
   coord_sf(crs = 4269, datum = NA)
+
+
+#Three category typology  by HH income
+ggplot() +
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#9d9d9d", size=0.05)+
+  geom_sf(Typologymap2,  mapping = aes(),
+          fill = NA, color = "white", size = .05) +
+  geom_sf(Typologymap2, mapping=aes(fill=factor(threecat)), color= "#dcdbdb", size = .05)+
+  scale_fill_manual(values = c ("#a2d4ec", "#1696d2", "#0a4c6a", "white"),
+                    labels= c("At risk of dispalcement","Already gentrifying/gentrified", "Vulnerable", "Not at risk" )) +
+  geom_sf(water_sf, mapping=aes(), fill="#dcdbdb", color="#dcdbdb", size=0.05)+
+  theme_urbn_map() +
+  labs(fill = "Tract Gentrification and Displacement Risk", color = NULL) +
+  labs(title = "Neighborhood Gentrification Typology by HH") + 
+  theme(legend.position ="bottom", legend.direction = "vertical", legend.text = element_text(size=8)) +
+  coord_sf(crs = 4269, datum = NA)+
+  geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.3, alpha=0.5)+
+  coord_sf(crs = 4269, datum = NA)
+          
+
