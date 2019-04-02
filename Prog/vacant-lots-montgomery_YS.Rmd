@@ -70,9 +70,8 @@ if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
 Set FIPS code and filepath name
 ```{r fips}
 
-currentfips <- "24031"
-filepath <- "montgomery"
-
+rockvillefilepath <- "rockville"
+gaithersburgfilepath <- "gaithersburg"
 
 ```
 
@@ -297,58 +296,58 @@ if (!exists("jur")) {
 
 ## Clean zoning code information
 
-### Move file 
-
-First- **manually** move file from Box to the `zoning-codes` directory in the `Doc` folder on the L drive. Name file accordingly:
-"jursidiction-zoning-code.csv"
-
 ### Read file
 
-Read in zoning code, rename variables so that they are machine readable. Again, rockville and Gaithersburg zoing information is in the same document with Montgomery, we are reading in the whole file and filtering out zoning by jurisdiction. 
+Read in zoning code, rename variables so that they are machine readable. read in rockville and Gaithersburg zoing information in separate files created by Patrick's Montgomery vacant lots program.
 
 ```{r file-check}
 
 if (!file.exists(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
-                              filepath,
-                              "-zoning-code.csv"))) {
+                              "rockville-zoning-code-clean.csv"))) {
   
-  stop("Move zoning file for jurisdiction to L:/Libraries/RegHsg/Doc/zoning-codes directory")
+  stop("Check rockville zoning file is in L:/Libraries/RegHsg/Doc/zoning-codes directory")
+}
+
+
+if (!file.exists(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              "gaithersburg-zoning-code-clean.csv"))) {
+  
+  stop("Move gaithersburg zoning file is in L:/Libraries/RegHsg/Doc/zoning-codes directory")
 }
 
 ```
 
 ```{r read-zoning-csv}
 z <- cols(
-  Jur = col_character(),
-  Code = col_character(),
-  `Zone` = col_character(),
-  `Type of Dwelling` = col_character(),
-  `Site Area` = col_number(),
-  `Site area per dwelling unit (sq. ft.) (minimum)` = col_number(),
-  `Lot area` = col_number(),
-  `Lot area per dwelling unit (sq. ft.) (minimum)` = col_number(),
-  `Lot Width (average minimum, ft)` = col_character(),
-  `Lot Width building line (average minimum, ft)` = col_character(),
-  `Height (ft)` = col_double(),
-  `Site coverage maximum` = col_number(),
-  `Lot coverage maximum` = col_number(),
-  `Floor area minimum` = col_double(),
-  `Maximum Density of Floor-Area-Ratio (FAR)` = col_character(),
-  `Setbacks (front)` = col_character(),
-  `Side (ft)` = col_character(),
-  `Rear (ft)` = col_character(),
-  `Density (units/acre)` = col_number(),
-  `Massing Units/Row` = col_number(),
-  `Open Space minimum percentage` = col_number(),
-  Comments = col_character()
+  juristdiction = col_character(),
+  zoning_code = col_character(),
+  zone = col_character(),
+  dwelling_type = col_character(),
+  site_area_min = col_number(),
+  sitearea_per_unit = col_number(),
+  lot_area_min = col_number(),
+  lotarea_per_unit = col_number(),
+  lot_width = col_character(),
+  lot_width_building = col_character(),
+  height_ft = col_double(),
+  site_coverage_max = col_number(),
+  lot_coverage_max = col_number(),
+  floor_area_min = col_double(),
+  far_max = col_character(),
+  setbacks_front = col_character(),
+  setbacks_side = col_character(),
+  setbacks_rear = col_character(),
+  density = col_number(),
+  massing = col_number(),
+  open_space = col_number(),
+  comments = col_character()
 )
 
-zoningcode <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
-                              filepath,
-                              "-zoning-code.csv"),
+zoning_rockville <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              "rockville-zoning-code-clean.csv"),
                        col_types = z)
 
-names(zoningcode) <- 
+names(zoning_rockville) <- 
   c("juristdiction", "zoning_code", "zone", "dwelling_type",
     "site_area_min", "sitearea_per_unit", "lot_area_min", "lotarea_per_unit",
     "lot_width","lot_width_building", "height_ft",
@@ -357,25 +356,30 @@ names(zoningcode) <-
     "setbacks_rear", "density", "massing", "open_space", "comments")
 
 # fix variables read in as whole numbers (should be percent)
-zoningcode <- zoningcode %>% 
+zoning_rockville <- zoning_rockville %>% 
+  mutate_at(vars(lot_coverage_max, site_coverage_max, open_space),
+            ~ . / 100)
+
+zoning_gaithersburg <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              "gaithersburg-zoning-code-clean.csv"),
+                       col_types = z)
+
+names(zoning_gaithersburg) <- 
+  c("juristdiction", "zoning_code", "zone", "dwelling_type",
+    "site_area_min", "sitearea_per_unit", "lot_area_min", "lotarea_per_unit",
+    "lot_width","lot_width_building", "height_ft",
+    "site_coverage_max", "lot_coverage_max", "floor_area_min", "far_max",
+    "setbacks_front", "setbacks_side",
+    "setbacks_rear", "density", "massing", "open_space", "comments")
+
+# fix variables read in as whole numbers (should be percent)
+zoning_gaithersburg <- zoning_gaithersburg %>% 
   mutate_at(vars(lot_coverage_max, site_coverage_max, open_space),
             ~ . / 100)
 rm(z)
 
 ```
 
-```{r zoning by juristdiction}
-
-zoning_montgomery <- zoningcode %>% 
-  filter(juristdiction == "Montgomery")
-
-zoning_rockville <- zoningcode %>% 
-  filter(juristdiction == "Rockville")
-
-zoning_gaithersburg <- zoningcode %>% 
-  filter(juristdiction == "Gaithersburg")
-
-```
 
 ### Creating dwelling_type hierarchy
 
