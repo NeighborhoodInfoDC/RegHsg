@@ -149,8 +149,8 @@ I used this code to check some of the confusing ones in the parcel base data to 
 ## some Flase vacant are actually not vacant
 jur %>% 
  filter(countylandusedescription == "FALSE VACANT") %>% 
-  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuilt) %>% 
-    arrange(desc(parcelbase_phasebuilt)) %>% 
+  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuild) %>% 
+    arrange(desc(parcelbase_phasebuild)) %>% 
   head(20)
 
 ```
@@ -775,7 +775,8 @@ nested <- multiples %>%
                     yearbuilt, 
                     parcelgeo_x, parcelgeo_y, 
                     lat, long,
-                    assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %>% 
+                    assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
+                    parcelbase_phasebuild, parcelbase_phaseland), list) %>% 
   rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, mode_narm),
@@ -802,7 +803,9 @@ nested <- multiples %>%
          totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
          assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
                                             sum, na.rm = TRUE),
-         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE)) %>% 
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE),
+         parcelbase_phasebuild=map_dbl(parcelbase_phasebuild_list,sum, na.rm = TRUE),
+         parcelbase_phaseland=map_dbl(parcelbase_phaseland_list,sum, na.rm = TRUE)) %>% 
   mutate(ties_cat = ifelse(map(category, length) > 1, 1, 0)) %>% 
   mutate(category = ifelse(ties_cat == 1,
                            map(category_list, 1),
