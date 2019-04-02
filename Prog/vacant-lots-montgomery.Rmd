@@ -208,14 +208,12 @@ zoning_montgomery <- zoningcode %>%
 zoning_rockville <- zoningcode %>% 
   filter(juristdiction == "Rockville")
 
-write_csv(zoning_rockville, paste0("L:/Libraries/RegHsg/Doc/zoning-codes",
-                   "rockville-zoning-code-clean.csv"))
+write_csv(zoning_rockville, paste0("L:/Libraries/RegHsg/Doc/zoning-codes/rockville-zoning-code-clean.csv"))
 
 zoning_gaithersburg <- zoningcode %>% 
   filter(juristdiction == "Gaithersburg")
 
-write_csv(zoning_gaithersburg, paste0("L:/Libraries/RegHsg/Doc/zoning-codes",
-                   "gaithersburg-zoning-code-clean.csv"))
+write_csv(zoning_gaithersburg, paste0("L:/Libraries/RegHsg/Doc/zoning-codes/gaithersburg-zoning-code-clean.csv"))
 
 
 ```
@@ -480,39 +478,45 @@ get_unit_variables <- function(dataset,
     mutate(parameters = paste0("CE: ", construction_efficiency * 100,
                                "% , Unit size: ", average_unit_size,
                                " sf"),
-           buildable_area = lotsize_sf * lot_coverage_max,
-           living_area = ifelse(is.na(buildable_area),
-                                lotsize_sf * construction_efficiency,
-                                buildable_area * construction_efficiency),
-           units_per_floor = floor(living_area / average_unit_size),
-           floors = floor(height_ft / 10),
-           FAR_stories = ifelse(is.na(lot_coverage_max), floor(far_max), floor(far_max/lot_coverage_max)),
-           FAR_stories =ifelse(zoning_code %in% c("CR", "CRT", "CRN"),
-                          FAR_stories-1,#subtract one floor if it's mixed use
-                          FAR_stories),
-           stories = ifelse(FAR_stories >= floors, floors, FAR_stories) %>% as.double(),
-           stories = case_when(is.na(floors)~FAR_stories,
-                               is.na(FAR_stories)~floors,
-                               TRUE ~stories),
-           units_min = units_per_floor*stories,
-           units_height = units_per_floor * floors,
+           lot_coverage_max = ifelse(is.na(lot_coverage_max), 1, lot_coverage_max),
+           buildable_area_height = lotsize_sf * lot_coverage_max,
+           living_area_height = ifelse(is.na(buildable_area_height),
+                                       lotsize_sf*construction_efficiency,
+                                       buildable_area_height*construction_efficiency),
+           units_per_floor_height = floor(living_area_height/average_unit_size),
+           floors_height = floor(height_ft/10),
+           units_height = units_per_floor_height * floors_height,
+           units_lotsize = floor(lotsize_sf / lotarea_per_unit),
+           perc_build_per_floor = ifelse(far_max <= lot_coverage_max, 
+                                         far_max, 
+                                         lot_coverage_max),
+           buildable_area_far = perc_build_per_floor * lotsize_sf,
+           living_area_far = buildable_area_far * construction_efficiency,
+           units_per_floor_far = floor(living_area_far / average_unit_size),
+           percent_per_floor_far = (units_per_floor_far*average_unit_size*1/construction_efficiency)/lotsize_sf,
+           stories_far = ifelse(percent_per_floor_far!=0&!is.na(percent_per_floor_far),
+                                floor(far_max/percent_per_floor_far),
+                                0),
+           #stories_FAR = ifelse(zoning_code %in% c("CR", "CRT", "CRN"),
+                          #stories_far-1,#subtract one floor if it's mixed use
+                          #stories_far),
+           subset = ifelse(is.na(lot_area_min), 0, floor(lotsize_sf/lot_area_min)),
+           units_height = units_per_floor_height * floors_height,
            units_density = floor(density * lotsize_acres),
            units_lotsize = floor(lotsize_sf / lotarea_per_unit),
-           units_per_floor = floor(living_area/average_unit_size),
-           units_FAR = ifelse(is.na(far_max), NA, units_per_floor * FAR_stories)) %>% 
-    mutate(subset=floor(lotsize_sf/lot_area_min), na.rm = TRUE) %>% 
-    mutate(units_min=ifelse(is.na(units_min), 0, units_min)) %>% 
-    mutate_at(vars(units_height, units_lotsize, units_density, units_FAR),
+           units_far = (stories_far*units_per_floor_far) %>% as.numeric,
+           units_far = ifelse(!is.na(far_max) & is.na(units_far), 0 , units_far)
+          ) %>% mutate_at(vars(units_height, units_lotsize, units_far),
               funs(case_when(
                 one_unit_flag == 1 ~ 1,
                 two_unit_flag == 1 ~ 2,
                 TRUE ~ .))) %>% 
     mutate(units_total = case_when(
-      one_unit_flag == 1 ~ 1,
-      two_unit_flag == 1 ~ 2,
-      one_unit_flag == 1 & subset>=1 & units_min/subset>=1 ~ 1*subset,
-      two_unit_flag == 1 & subset>=1 & units_min/subset>=2 ~ 2*subset,
-      TRUE ~ pmin(units_lotsize, units_min, units_height, units_density, units_FAR, na.rm = TRUE)))
+       one_unit_flag == 1 ~ 1,
+       two_unit_flag == 1 ~ 2,
+       one_unit_flag == 1 & subset>=1 & units_height/subset>=1 ~ 1*subset,
+       two_unit_flag == 1 & subset>=1 & units_height/subset>=2 ~ 2*subset,
+       TRUE ~ pmin(units_lotsize, units_height, units_density, units_far, na.rm = TRUE)))
   
 }
 
@@ -539,7 +543,7 @@ get_unit_summary <- function(dataset,
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
-              units_FAR = sum(units_FAR, na.rm = TRUE),
+              units_far = sum(units_far, na.rm = TRUE),
               units_density = sum(units_density, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots, na.rm = TRUE)))
@@ -552,7 +556,7 @@ get_unit_summary <- function(dataset,
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
-              units_FAR = sum(units_FAR, na.rm = TRUE),
+              units_far = sum(units_far, na.rm = TRUE),
               units_density = sum(units_density, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots, na.rm = TRUE))) %>% 
@@ -584,9 +588,11 @@ resultsall <- get_unit_variables(dataset = zoningdata2,
 
 ```{r testing 123}
 
+
 testing123 <- resultsall %>% 
-  filter(zoning_code %in% c("CR", "CRT", "CRN")) %>% 
-  select(dwelling_type, propaddress, zoning_code, lotsize_sf, buildable_area, living_area, units_per_floor, floors, stories, FAR_stories, far_max, lot_coverage_max,units_total, units_lotsize, units_min, units_height, units_density, units_FAR)
+  filter(dwelling_type == "apartment"| dwelling_type == "townhouse", units_far == 0) %>% 
+  select(units_total, dwelling_type, zoning_code, living_area_far, lot_coverage_max, far_max, stories_far , units_per_floor_far, units_far)
+  #filter(zoning_code %in% c("CR", "CRT", "CRN"))
 
 ```
 

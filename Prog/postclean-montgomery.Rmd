@@ -71,7 +71,7 @@ if (!dir.exists(paste0("L:/Libraries/RegHsg/Data/", filepath))) {
 }
 ```
 
-
+#Join with a parcel shape file
 ##Read in the parcel file (parcel_sf) and the zoning file (zoning_sf) to match to the collapsed BK data
 ```{r readin}
 pfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels'), end = -5) %>% unique()
@@ -81,7 +81,7 @@ zoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel
                      layer = pfile[2])
 
 ```
-###Find the invalid geometries - these are incomplete shapes that will preclude me from successfully spatially joining. Parcels in the invalid geometries will remain, but they may not have parcel or zoning data filled in from the new dataset.
+####Find the invalid geometries - these are incomplete shapes that will preclude me from successfully spatially joining. Parcels in the invalid geometries will remain, but they may not have parcel or zoning data filled in from the new dataset.
 ```{r find bad geometries}
 
 parcel_sf1 <- parcel_sf %>% 
@@ -99,7 +99,7 @@ parcel_sf1 <- parcel_sf1 %>%
 ```
 
 
-###clean the dataset and filter out the bad geometries to faciltate a join
+####clean the dataset and filter out the bad geometries to faciltate a join
 ```{r set geo}
 st_geometry(parcel_sf1)
 
@@ -109,7 +109,7 @@ parcel_sf1 <- st_transform(parcel_sf1, crs = 4326)
 
 
 
-## Load in Cleaned and collapsed Black Knight data and clean the dataset and set the geometries
+### Load in Cleaned and collapsed Black Knight data and clean the dataset and set the geometries
 ```{r readR}
 jur <- readRDS(paste0(jdir, 
                "cleaned-",
@@ -186,7 +186,7 @@ if (sum(is.na(pjoin_df$ACCT)) / nrow(pjoin_df) > .05) {
 
 
 
-## Clean lots data
+# Clean lots data
 
 See how many lots have missing key variables
 
@@ -203,7 +203,7 @@ pjoin_df %>%
 
 ```
 
-### Missing lot size
+## Missing lot size
 We will fill in the missing lot size, when we can, with the area of the lot, obtained from the parcel shapefile in the precleaning step. If that is also missing, we use the lot size variables from the property file. All variables are in square feet.
 
 ```{r fill-lots size}
@@ -250,7 +250,8 @@ pjoin_sf %>% as.data.frame() %>%
 ```
 
 
-Zoning Clean
+#Zoning Join
+Merge the recently merged BK + parcel file with a zoning layer
 
 ####Find the invalid geometries
 ```{r find bad geometries zoning}
@@ -268,7 +269,7 @@ zoning_sf1 %>% as.data.frame() %>%
 ```
 
 
-#set geometry
+####set geometry
 ```{r clean and set geo zoning}
 st_geometry(zoning_sf1)
 
@@ -321,12 +322,12 @@ zoning_sf1 %>%
 ```
 
 
-####Add flag for gaithersburg and rockville
+#Add flag for gaithersburg and rockville
 Our Data on the property city is not reliable, so we need to create a flag ourselves using the Rockville and Gaithersburg zoning layers to.
 
 I read in a rockville zoning file, and add a flag for any property that falls within the rockville shape file. This will help us filter and use the right zoning code in the vacant lots analysis
 
-#rockville
+###rockville
 ```{r test join with RV}
 
 rockpfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts'), end = -5) %>% unique()
@@ -362,7 +363,7 @@ paste0(sum(!is.na(pzjoin1$ZONE)), " observations did join- ",
 ```
 16162 observations joined, so we estimate there are that many parcels in Rockville.
 
-#Make Rockville flag
+##Make Rockville flag
 
 ```{r filter to make flag}
 
@@ -392,7 +393,7 @@ pzjoin2 %>%  as.data.frame() %>%
 
 
 ```
-#### Gaithersburg Flag
+## Gaithersburg Flag
 
 I repeat this process with Gaithersburg. The gaithersburg file is not a zoning file, though, so we don't get any more detailed zoning information. This flag just tellsus if the property falls in Gaithersburg city limits
 ```{r fill in gaithersburg}
@@ -468,7 +469,7 @@ There are 17329 observations that we think are not in montgomery codes, rockvill
 
 
 
-### Missing zoning variables
+## Missing zoning variables
 
 To determine zoning codes for addresses that have a missing zoning designation or multiple zoning designations, we will use a spatial join to the county's zoning layer.
 
@@ -532,7 +533,7 @@ count(pzjoin_df1, is.na(lotsize_sf), category_detail)
 
 ```
 
-
+#Save and write out
 
 ```{r save}
 
@@ -547,7 +548,7 @@ saveRDS(pzjoin_df1,
 ```
 
 
-Write out clean data.
+##Write out clean data.
 
 ```{r write}
 write_csv(pzjoin_df1, 
