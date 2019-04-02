@@ -353,13 +353,13 @@ jur %>%
 The difference between the land value, improvement value, and total value can help us determine if lots are really vacant.
 
 ```{r check-assess}
-#this part wont knit not sure why, I'm pasting the table in the comment
+
 jur %>% 
   filter(category=="vacant") %>% 
   group_by(category_detail) %>% 
   summarize(nprops = n(),
-            imp_zero = sum(assessedimprovementvalue == 0, na.rm = TRUE),
-            imp_na = sum(is.na(assessedimprovementvalue))) %>% 
+            imp_zero = sum(parcelbase_phasebuild == 0, na.rm = TRUE),
+            imp_na = sum(is.na(parcelbase_phasebuild))) %>% 
   mutate(imp_none = imp_zero + imp_na,
          percent_none = imp_none / nprops) %>% 
   knitr::kable()
@@ -367,11 +367,32 @@ jur %>%
   
 ```
 
-All of the vacant lots in DC have either a 0 or a missing value for the improvement value, which is what we would expect. 
+809 of the vacant lots in DC do not have either a 0 or a missing value for the improvement value, so we will reclassify as vacant with structures. The rest have zero or NA, which we would expect. 
 
 ```{r not-so-vacant}
 
-vacantstructure <- jur %>% 
+jur1a <- jur %>% 
+  mutate(category = ifelse(parcelbase_phasebuild > 0 & 
+                           !is.na(parcelbase_phasebuild) &
+                             category== "vacant",
+                           "vacant with structure",
+                           category))
+
+jur1a %>% 
+  filter(category=="vacant") %>% 
+  group_by(category_detail) %>% 
+  summarize(nprops = n(),
+            imp_zero = sum(parcelbase_phasebuild == 0, na.rm = TRUE),
+            imp_na = sum(is.na(parcelbase_phasebuild))) %>% 
+  mutate(imp_none = imp_zero + imp_na,
+         percent_none = imp_none / nprops) %>% 
+  knitr::kable()
+
+count(jur1a, category)
+
+
+
+vacantstructure <- jur1a %>% 
   filter(category=="vacant") %>% 
   filter(category_detail=="Vacant with structures") %>% 
   group_by(countylandusedescription) %>% 
@@ -384,7 +405,7 @@ We will not include vacant with structures (216 cases) in the calculation. We ca
 ```{r not-vacant-recat}
 
 
-jur1 <- jur %>% 
+jur1 <- jur1a %>% 
   mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
                                 1,
                                 0),
@@ -453,24 +474,25 @@ vacantparcel <- jursfparcel %>%
   filter(category=="vacant")
 
 #I'm plotting only the vacant lots because the plotting is taking forever
-ggplot()+
-  geom_sf(data = vacantparcel, mapping = aes(),
-          color = "black", size=0.1)
+#ggplot()+
+#geom_sf(data = vacantparcel, mapping = aes(),
+         # color = "black", size=0.1)
 
 
 ```
 
 Plot to make sure they are overlapping
 ```{r make-map, echo=FALSE}
-ggplot() +
-  geom_sf(data = zon, mapping = aes(fill = ZONE_DISTR)) +
-  scale_fill_manual(values = c("#1696d2", "#fdbf11", 
-                               "#d2d2d2", "#ec008b", 
-                               "#55b748", "red", "green", "yellow", "blue")) +
-  geom_sf(data = jursfparcel, mapping = aes(),
-          color = "black", size=0.1) +
-  geom_sf(data = jursfbk, mapping = aes(),
-          color = "black", size=0.1) 
+#plots are overlapping, commenting out to improve time spent running program. 
+#ggplot() +
+  #geom_sf(data = zon, mapping = aes(fill = ZONE_DISTR)) +
+  #scale_fill_manual(values = c("#1696d2", "#fdbf11", 
+                              # "#d2d2d2", "#ec008b", 
+                               #"#55b748", "red", "green", "yellow", "blue")) +
+ #geom_sf(data = jursfparcel, mapping = aes(),
+          #color = "black", size=0.1) +
+  #geom_sf(data = jursfbk, mapping = aes(),
+          #color = "black", size=0.1) 
 
 
 
