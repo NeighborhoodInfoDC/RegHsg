@@ -1256,7 +1256,8 @@ singles_f <- singles2 %>%
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
          parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
-         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
+         parcelbase_phasebuild, parcelbase_phaseland)
 
 
 missing_f <- missing %>% 
@@ -1270,7 +1271,8 @@ missing_f <- missing %>%
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
          parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
-         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
+         parcelbase_phasebuild, parcelbase_phaseland)
 
 
 multiples_f <- nested_final %>% 
@@ -1285,15 +1287,17 @@ multiples_f <- nested_final %>%
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = "multiple")
 
-finaljur %>% 
-  group_by(category) %>% 
-  count() %>% 
-  knitr::kable()
+
 
 finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>% 
   fill(county_fips) %>% 
   fill(county_name) %>% 
   select(-Xcoord, -Ycoord, -usecode) 
+
+finaljur %>% 
+  group_by(category) %>% 
+  count() %>% 
+  knitr::kable()
 
 finaljur[finaljur == "NULL"] = NA
 finaljur[finaljur == "character(0)"] = NA
