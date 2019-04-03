@@ -70,3 +70,61 @@
 
 %mend Ipums_wt_adjust;
 
+
+/*********** Code for calculations *************
+
+%include "L:\SAS\Inc\StdLocal.sas";
+
+** Define libraries **;
+%DCData_lib( RegHsg )
+%DCData_lib( NCDB )
+%DCData_lib( Ipums )
+ 
+
+title2 '-- 2000 --';
+
+proc means data=Ncdb.Ncdb_lf_2000_was15 n sum;
+  where ucounty = '51107';
+  var trctpop0 tothsun0 occhu0 vachu0;
+run;
+
+data ipums2000;
+
+  set 
+    Ipums.Ipums_2000_va (keep=year upuma pernum gq vacancy perwt hhwt) 
+    Ipums.Ipums_2000_vacant_va (keep=year upuma gq vacancy hhwt); 
+  where upuma = '5100600';
+  
+  if pernum not in ( ., 1 ) or gq not in ( 0, 1, 2 ) then hhwt = .;
+  
+run;
+
+proc means data=ipums2000 n sum;
+  var perwt hhwt;
+run;
+
+title2 '-- 2010 --';
+
+proc means data=Ncdb.Ncdb_2010_was15 n sum;
+  where ucounty = '51107';
+  var trctpop1 tothsun1 occhu1 vachu1;
+run;
+
+data ipums2010;
+
+  set 
+    Ipums.Acs_2010_va (keep=year upuma pernum gq vacancy perwt hhwt) 
+    Ipums.Acs_2010_vacant_va (keep=year upuma gq vacancy hhwt); 
+  where upuma = '5100600';
+  
+  if pernum not in ( ., 1 ) or gq not in ( 0, 1, 2 ) then hhwt = .;
+  
+run;
+
+proc means data=ipums2010 n sum;
+  var perwt hhwt;
+run;
+
+title2;
+
+*************************************/
