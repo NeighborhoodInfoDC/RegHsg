@@ -350,6 +350,7 @@ jursf <- jur_3 %>%
 
 Filter out Herndon and Vienna as these jurisdictions do not fall under Fairfax County zoning.
 ```{r}
+options(tigris_use_cache=T)
 places<-places("Virginia") %>% st_as_sf() %>% st_transform(st_crs(zon)) %>% filter(NAME=="Herndon"|NAME=="Vienna") %>% select()
 
 
@@ -752,13 +753,16 @@ zoningdata1 <- zoningdata %>%
   group_by(propaddress) %>% 
   slice(which.min(smallsize_flag)) %>% 
   ungroup() %>%
-  mutate(lotsize_sf = as.numeric(lotsize_sf))
+  mutate(lotsize_sf = as.numeric(lotsize_sf),
+         lot_area_min = gsub(lot_area, pattern=",", replacement = "") %>% as.numeric) %>%
+  filter(lotsize_sf>=lot_area_min|is.na(lot_area_min))
 
 # check observations
 nrow(zoningdata1) + nrow(filter(zoningdata, is.na(zoning_code)))
 
 # this is the number of all parcels, including those with 
 zoningdata %>% group_by(propaddress) %>% count() %>% nrow()
+
 
 
 
@@ -805,7 +809,8 @@ get_unit_variables <- function(dataset,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height / 10),
            units_height = units_per_floor * floors,
-           units_lotsize = floor(lotsize_sf / density)) %>%    #,
+           units_lotsize = floor(lotsize_sf / density),
+           subset = ifelse(is.na(lot_area_min), NA, (lotsize_sf/lot_area_min))) %>%    #,
           # temp_acre = living_area/43560,
            #units_acre = temp_acre*max_dens,
           # units_area = ifelse(units_acre<units_height, units_acre, units_height)) %>% 
@@ -817,6 +822,8 @@ get_unit_variables <- function(dataset,
     mutate(units_total = case_when(
       one_unit_flag == 1 ~ 1,
       two_unit_flag == 1 ~ 2,
+      one_unit_flag == 1 & subset>=1 & units_lotsize/subset>=1 ~ 1*subset,
+      two_unit_flag == 1 & subset>=1 & units_lotsize/subset>=2 ~ 2*subset,
       units_height < units_lotsize ~ units_height,
       TRUE ~ units_lotsize))
   

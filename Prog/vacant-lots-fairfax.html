@@ -247,7 +247,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated April 01, 2019</p>
+<p>Last updated April 03, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -699,283 +699,11 @@ st_geometry(zon)</code></pre>
   st_as_sf(coords = c(&quot;long&quot;, &quot;lat&quot;)) %&gt;% 
   st_set_crs(st_crs(zon))</code></pre>
 <p>Filter out Herndon and Vienna as these jurisdictions do not fall under Fairfax County zoning.</p>
-<pre class="r"><code>places&lt;-places(&quot;Virginia&quot;) %&gt;% st_as_sf() %&gt;% st_transform(st_crs(zon)) %&gt;% filter(NAME==&quot;Herndon&quot;|NAME==&quot;Vienna&quot;) %&gt;% select()</code></pre>
-<pre><code>## 
-  |                                                                       
-  |                                                                 |   0%
-  |                                                                       
-  |                                                                 |   1%
-  |                                                                       
-  |=                                                                |   1%
-  |                                                                       
-  |=                                                                |   2%
-  |                                                                       
-  |==                                                               |   2%
-  |                                                                       
-  |==                                                               |   3%
-  |                                                                       
-  |==                                                               |   4%
-  |                                                                       
-  |===                                                              |   4%
-  |                                                                       
-  |===                                                              |   5%
-  |                                                                       
-  |====                                                             |   5%
-  |                                                                       
-  |====                                                             |   6%
-  |                                                                       
-  |====                                                             |   7%
-  |                                                                       
-  |=====                                                            |   7%
-  |                                                                       
-  |=====                                                            |   8%
-  |                                                                       
-  |======                                                           |   8%
-  |                                                                       
-  |======                                                           |   9%
-  |                                                                       
-  |=======                                                          |  10%
-  |                                                                       
-  |=======                                                          |  11%
-  |                                                                       
-  |=======                                                          |  12%
-  |                                                                       
-  |========                                                         |  12%
-  |                                                                       
-  |========                                                         |  13%
-  |                                                                       
-  |=========                                                        |  14%
-  |                                                                       
-  |==========                                                       |  15%
-  |                                                                       
-  |==========                                                       |  16%
-  |                                                                       
-  |===========                                                      |  16%
-  |                                                                       
-  |===========                                                      |  17%
-  |                                                                       
-  |============                                                     |  18%
-  |                                                                       
-  |============                                                     |  19%
-  |                                                                       
-  |=============                                                    |  19%
-  |                                                                       
-  |=============                                                    |  20%
-  |                                                                       
-  |==============                                                   |  21%
-  |                                                                       
-  |==============                                                   |  22%
-  |                                                                       
-  |===============                                                  |  23%
-  |                                                                       
-  |===============                                                  |  24%
-  |                                                                       
-  |================                                                 |  24%
-  |                                                                       
-  |================                                                 |  25%
-  |                                                                       
-  |=================                                                |  26%
-  |                                                                       
-  |=================                                                |  27%
-  |                                                                       
-  |==================                                               |  27%
-  |                                                                       
-  |==================                                               |  28%
-  |                                                                       
-  |===================                                              |  29%
-  |                                                                       
-  |===================                                              |  30%
-  |                                                                       
-  |====================                                             |  30%
-  |                                                                       
-  |====================                                             |  31%
-  |                                                                       
-  |=====================                                            |  32%
-  |                                                                       
-  |=====================                                            |  33%
-  |                                                                       
-  |======================                                           |  33%
-  |                                                                       
-  |======================                                           |  34%
-  |                                                                       
-  |======================                                           |  35%
-  |                                                                       
-  |=======================                                          |  35%
-  |                                                                       
-  |=======================                                          |  36%
-  |                                                                       
-  |========================                                         |  37%
-  |                                                                       
-  |========================                                         |  38%
-  |                                                                       
-  |=========================                                        |  38%
-  |                                                                       
-  |=========================                                        |  39%
-  |                                                                       
-  |==========================                                       |  40%
-  |                                                                       
-  |==========================                                       |  41%
-  |                                                                       
-  |===========================                                      |  41%
-  |                                                                       
-  |===========================                                      |  42%
-  |                                                                       
-  |============================                                     |  42%
-  |                                                                       
-  |============================                                     |  43%
-  |                                                                       
-  |=============================                                    |  44%
-  |                                                                       
-  |=============================                                    |  45%
-  |                                                                       
-  |==============================                                   |  45%
-  |                                                                       
-  |==============================                                   |  46%
-  |                                                                       
-  |==============================                                   |  47%
-  |                                                                       
-  |===============================                                  |  47%
-  |                                                                       
-  |===============================                                  |  48%
-  |                                                                       
-  |================================                                 |  49%
-  |                                                                       
-  |================================                                 |  50%
-  |                                                                       
-  |=================================                                |  50%
-  |                                                                       
-  |=================================                                |  51%
-  |                                                                       
-  |==================================                               |  52%
-  |                                                                       
-  |==================================                               |  53%
-  |                                                                       
-  |===================================                              |  53%
-  |                                                                       
-  |===================================                              |  54%
-  |                                                                       
-  |====================================                             |  55%
-  |                                                                       
-  |====================================                             |  56%
-  |                                                                       
-  |=====================================                            |  56%
-  |                                                                       
-  |=====================================                            |  57%
-  |                                                                       
-  |======================================                           |  58%
-  |                                                                       
-  |======================================                           |  59%
-  |                                                                       
-  |=======================================                          |  59%
-  |                                                                       
-  |=======================================                          |  60%
-  |                                                                       
-  |========================================                         |  61%
-  |                                                                       
-  |========================================                         |  62%
-  |                                                                       
-  |=========================================                        |  62%
-  |                                                                       
-  |=========================================                        |  63%
-  |                                                                       
-  |=========================================                        |  64%
-  |                                                                       
-  |==========================================                       |  64%
-  |                                                                       
-  |==========================================                       |  65%
-  |                                                                       
-  |===========================================                      |  66%
-  |                                                                       
-  |===========================================                      |  67%
-  |                                                                       
-  |============================================                     |  67%
-  |                                                                       
-  |============================================                     |  68%
-  |                                                                       
-  |=============================================                    |  69%
-  |                                                                       
-  |=============================================                    |  70%
-  |                                                                       
-  |==============================================                   |  70%
-  |                                                                       
-  |==============================================                   |  71%
-  |                                                                       
-  |===============================================                  |  72%
-  |                                                                       
-  |===============================================                  |  73%
-  |                                                                       
-  |================================================                 |  74%
-  |                                                                       
-  |================================================                 |  75%
-  |                                                                       
-  |=================================================                |  75%
-  |                                                                       
-  |=================================================                |  76%
-  |                                                                       
-  |==================================================               |  77%
-  |                                                                       
-  |==================================================               |  78%
-  |                                                                       
-  |===================================================              |  78%
-  |                                                                       
-  |===================================================              |  79%
-  |                                                                       
-  |====================================================             |  80%
-  |                                                                       
-  |====================================================             |  81%
-  |                                                                       
-  |=====================================================            |  81%
-  |                                                                       
-  |=====================================================            |  82%
-  |                                                                       
-  |======================================================           |  82%
-  |                                                                       
-  |======================================================           |  83%
-  |                                                                       
-  |=======================================================          |  84%
-  |                                                                       
-  |=======================================================          |  85%
-  |                                                                       
-  |========================================================         |  85%
-  |                                                                       
-  |========================================================         |  86%
-  |                                                                       
-  |========================================================         |  87%
-  |                                                                       
-  |=========================================================        |  87%
-  |                                                                       
-  |=========================================================        |  88%
-  |                                                                       
-  |==========================================================       |  89%
-  |                                                                       
-  |==========================================================       |  90%
-  |                                                                       
-  |===========================================================      |  90%
-  |                                                                       
-  |===========================================================      |  91%
-  |                                                                       
-  |============================================================     |  92%
-  |                                                                       
-  |============================================================     |  93%
-  |                                                                       
-  |=============================================================    |  93%
-  |                                                                       
-  |=============================================================    |  94%
-  |                                                                       
-  |==============================================================   |  95%
-  |                                                                       
-  |==============================================================   |  96%
-  |                                                                       
-  |===============================================================  |  96%
-  |                                                                       
-  |===============================================================  |  97%
-  |                                                                       
-  |================================================================ |  98%
-  |                                                                       
-  |================================================================ |  99%
-  |                                                                       
-  |=================================================================| 100%</code></pre>
-<pre class="r"><code>jursf_temp&lt;-jursf %&gt;% mutate(notIsPlace= sapply(st_intersects(jursf, places),function(x){length(x)==0})) %&gt;% 
+<pre class="r"><code>options(tigris_use_cache=T)
+places&lt;-places(&quot;Virginia&quot;) %&gt;% st_as_sf() %&gt;% st_transform(st_crs(zon)) %&gt;% filter(NAME==&quot;Herndon&quot;|NAME==&quot;Vienna&quot;) %&gt;% select()
+
+
+jursf_temp&lt;-jursf %&gt;% mutate(notIsPlace= sapply(st_intersects(jursf, places),function(x){length(x)==0})) %&gt;% 
                filter(notIsPlace)
 
 removed &lt;-  nrow(jursf) - nrow(jursf_temp) 
@@ -1017,8 +745,7 @@ jur_5&lt;- tempjur %&gt;% filter(!newId%in%tempjur3$newId) %&gt;% select(-id, -n
 <p>Note: For fairfax, “/” exists in many codes that do not contain duplicates. The only duplicates that are identified are for zones that have multiple “&quot;”’s.</p>
 <pre class="r"><code>jur_5 %&gt;% 
   filter(!is.na(newZoning), 
-         !is.na(ZONECODE),
-         str_detect(zoning, &quot;c\\(&quot;) == FALSE) %&gt;% 
+         !is.na(ZONECODE)) %&gt;% 
   mutate(different_flag = ifelse(newZoning != ZONECODE,
                                  1,
                                  0)) %&gt;% 
@@ -1513,17 +1240,75 @@ stopifnot((nrow(jurfinal)+removed) == nrow(jur_3))</code></pre>
 </tbody>
 </table>
 <p>Categorize those lots that are not joining</p>
-<pre class="r"><code>planned&lt;-anti_join(jurfinal, zoningcode, by = c(&quot;zoning_code&quot;=&quot;code&quot;)) %&gt;% 
-  count(zoning_code) %&gt;% arrange(desc(n)) %&gt;%
-slice(c(1:11, 15, 20, 23, 31, 32,33)) %&gt;% pull(zoning_code)
+<pre class="r"><code>planned&lt;-c(&quot;PRC&quot;,
+           &quot;PDH-3&quot;,
+           &quot;PDH-4&quot;,
+           &quot;PDH-8&quot;,
+           &quot;PDH-2&quot;,
+           &quot;PDH-12&quot;,
+           &quot;PDC&quot;,
+           &quot;PDH-16&quot;,
+           &quot;PDH-5&quot;,
+           &quot;PDH-20&quot;,
+           &quot;PRM&quot;,
+           &quot;PDH-30&quot;,
+           &quot;PDH-1&quot;,
+           &quot;PDH-40&quot;,
+           &quot;PDH&quot;,
+           &quot;PLANNED RES MIXED USE&quot;,
+           &quot;PRM&quot;,
+           &quot;PTC&quot;)
 
-notResidential &lt;- anti_join(jurfinal, zoningcode, by = c(&quot;zoning_code&quot;=&quot;code&quot;)) %&gt;% 
-  count(zoning_code) %&gt;% arrange(desc(n)) %&gt;%
-slice(c(12, 13, 14, 16, 17, 18, 19, 21, 22, 24, 27, 28, 30, 34, 35, 38, 39, 40, 41, 42, 46, 47, 48, 49, 50, 51, 52, 54, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 73)) %&gt;% pull(zoning_code)
+notResidential &lt;- c(&quot;I-5&quot;,
+                    &quot;C-2&quot;,
+                    &quot;C-8&quot;,
+                    &quot;C-6&quot;,
+                    &quot;C-3&quot;,
+                    &quot;I-4&quot;,
+                    &quot;C-5&quot;,
+                    &quot;I-3&quot;,
+                    &quot;COMM &quot;,
+                    &quot;I-6&quot;,
+                    &quot;INDUSTRIAL &quot;,
+                    &quot;C-7&quot;,
+                    &quot;INDUSTR &quot;,
+                    &quot;PUBLIC SERVICE CORPORATIO&quot;,
+                    &quot;C-1&quot;,
+                    &quot;C-4&quot;,
+                    &quot;CD&quot;,
+                    &quot;I-I&quot;,
+                    &quot;I-2&quot;,
+                    &quot;CO&quot;,
+                    &quot;CS&quot;,
+                    &quot;COM &quot;,
+                    &quot;ID&quot;,
+                    &quot;CM&quot;,
+                    &quot;CMP&quot;,
+                    &quot;C-1A&quot;,
+                    &quot;CCD&quot;,
+                    &quot;I-1&quot;,
+                    &quot;INDUST W/OTHER INDUST ZON&quot;
+)
+  
+residential_weird &lt;- c(&quot;RES &quot;,
+                       &quot;RD&quot;,
+                       &quot;MULTI-FAM W/MIX COM/INDUS&quot;,
+                       &quot;R-10&quot;,
+                       &quot;RTC-10&quot;,
+                       &quot;MIX AG AND CONSRV W/RES/A&quot;,
+                       &quot;RP&quot;,
+                       &quot;RS-16&quot;,
+                       &quot;R-15&quot;,
+                       &quot;RS-10&quot;,
+                       &quot;MULTI-FAM W/MIX OTHER RES&quot;,
+                       &quot;RM-1&quot;,
+                       &quot;RS-12.5&quot;,
+                       &quot;MULTI FAM W/MIX MULTI FAM&quot;,
+                       &quot;R10&quot;,
+                       &quot;RES W OTHER RES ZONING&quot;,
+                       &quot;RM-2&quot;
+)
 
-residential_weird &lt;- anti_join(jurfinal, zoningcode, by = c(&quot;zoning_code&quot;=&quot;code&quot;)) %&gt;% 
-  count(zoning_code) %&gt;% arrange(desc(n)) %&gt;%
-slice(c(25, 29, 36, 37, 43, 44, 45, 53, 55, 56, 60, 71, 72, 73)) %&gt;% pull(zoning_code)
 
 tempTable&lt;-anti_join(jurfinal, zoningcode, by = c(&quot;zoning_code&quot;=&quot;code&quot;)) %&gt;% 
   count(zoning_code) %&gt;% arrange(desc(n)) %&gt;% mutate(type = case_when(
@@ -1544,11 +1329,11 @@ tempTable %&gt;% group_by(type) %&gt;% summarise(totalLots = sum(n, na.rm=T))%&g
 <tbody>
 <tr class="odd">
 <td align="left">not residential</td>
-<td align="right">5592</td>
+<td align="right">5527</td>
 </tr>
 <tr class="even">
 <td align="left">other</td>
-<td align="right">153</td>
+<td align="right">178</td>
 </tr>
 <tr class="odd">
 <td align="left">planned</td>
@@ -1556,11 +1341,11 @@ tempTable %&gt;% group_by(type) %&gt;% summarise(totalLots = sum(n, na.rm=T))%&g
 </tr>
 <tr class="even">
 <td align="left">residential weird</td>
-<td align="right">384</td>
+<td align="right">424</td>
 </tr>
 </tbody>
 </table>
-<p>Of those that do not match, 93% (84,879) are in planning development districts, some of which have residential uses. However, developers must pass the development plan process before building in these districts.</p>
+<p>Of those that do not match, 92% (107,951) are in planning development districts, some of which have residential uses. However, developers must pass the development plan process before building in these districts.</p>
 <pre class="r"><code>planned_vacants&lt;- jurfinal %&gt;% filter(zoning_code%in%planned, 
                     category==&quot;vacant&quot;) %&gt;%
                    nrow()</code></pre>
@@ -1568,7 +1353,7 @@ tempTable %&gt;% group_by(type) %&gt;% summarise(totalLots = sum(n, na.rm=T))%&g
 <p>Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.</p>
 <pre class="r"><code>zoningdata1 &lt;- zoningdata %&gt;% 
   filter(!is.na(newZoning),
-         # lotsize_sf &gt;= density,
+          #lotsize_sf &gt;= density,
          # is.na(lot_area)|lotsize_sf &gt;=lot_area,
          !grepl(&quot;KATELYN ZINN PL&quot;, propaddress)) %&gt;% 
   mutate(smallsize_flag = ifelse(lotsize_sf &gt;= density, 0, 1)) %&gt;% 
@@ -1579,17 +1364,16 @@ tempTable %&gt;% group_by(type) %&gt;% summarise(totalLots = sum(n, na.rm=T))%&g
   group_by(propaddress) %&gt;% 
   slice(which.min(smallsize_flag)) %&gt;% 
   ungroup() %&gt;%
-  mutate(lotsize_sf = as.numeric(lotsize_sf))
+  mutate(lotsize_sf = as.numeric(lotsize_sf),
+         lot_area_min = gsub(lot_area, pattern=&quot;,&quot;, replacement = &quot;&quot;) %&gt;% as.numeric) %&gt;%
+  filter(lotsize_sf&gt;=lot_area_min|is.na(lot_area_min))
 
 # check observations
 nrow(zoningdata1) + nrow(filter(zoningdata, is.na(zoning_code)))</code></pre>
-<pre><code>## [1] 206432</code></pre>
+<pre><code>## [1] 200680</code></pre>
 <pre class="r"><code># this is the number of all parcels, including those with 
 zoningdata %&gt;% group_by(propaddress) %&gt;% count() %&gt;% nrow()</code></pre>
 <pre><code>## [1] 292056</code></pre>
-<pre class="r"><code># check observations
-nrow(zoningdata1) + nrow(filter(zoningdata, is.na(zoning_code)))</code></pre>
-<pre><code>## [1] 206432</code></pre>
 </div>
 <div id="calculate-missing-units" class="section level2">
 <h2>Calculate missing units</h2>
@@ -1626,7 +1410,8 @@ get_unit_variables &lt;- function(dataset,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height / 10),
            units_height = units_per_floor * floors,
-           units_lotsize = floor(lotsize_sf / density)) %&gt;%    #,
+           units_lotsize = floor(lotsize_sf / density),
+           subset = ifelse(is.na(lot_area_min), NA, (lotsize_sf/lot_area_min))) %&gt;%    #,
           # temp_acre = living_area/43560,
            #units_acre = temp_acre*max_dens,
           # units_area = ifelse(units_acre&lt;units_height, units_acre, units_height)) %&gt;% 
@@ -1638,6 +1423,8 @@ get_unit_variables &lt;- function(dataset,
     mutate(units_total = case_when(
       one_unit_flag == 1 ~ 1,
       two_unit_flag == 1 ~ 2,
+      one_unit_flag == 1 &amp; subset&gt;=1 &amp; units_lotsize/subset&gt;=1 ~ 1*subset,
+      two_unit_flag == 1 &amp; subset&gt;=1 &amp; units_lotsize/subset&gt;=2 ~ 2*subset,
       units_height &lt; units_lotsize ~ units_height,
       TRUE ~ units_lotsize))
   
