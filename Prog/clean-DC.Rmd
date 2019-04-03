@@ -840,12 +840,6 @@ nested <- allmultiple2 %>%
                            map(category_list, 1),
                            category)) 
   
-# nestedtest should have 0 observation
-  
-stopifnot(
-  nested %>% filter(nprops == 1) %>% nrow() == 0
-)
-
 
 ```
 
@@ -1045,16 +1039,10 @@ Here, we create a variable to indicate how many of the values in `category_detai
 
 ```{r cd-resolve}
 cdties <- cdties %>% 
-  mutate(test_vacant = as.integer(map(category_detail, 
+ mutate(test_vacant = as.integer(map(category_detail, 
                                       ~ sum(str_detect(., "Vacant")))))
 
-count(cdties, test_vacant) %>% 
-  rename(`Number of vacant categories` = test_vacant,
-         `Number of instances` = n) %>% 
-  mutate(`What to do?` = c("Take the residential code",
-                           "Take the non-vacant categoty",
-                           "Pick the more general vacant category")) %>% 
-  knitr::kable()
+
 ```
 
 We will separate and then recombine to perform different operations and look at the individual cases for each instance.
@@ -1065,6 +1053,10 @@ For all instances- we will determine position using the entire listed variable (
 - If the tie is between commercial or office -> first value
 
 We use the residential indicator to determine which argument of the vector contains the residential category, and then select the same values by arguement position for each other variable that conflicts.
+
+
+**LH note 4/3/19**
+No longer have any vacant properties in multiple - these were forced to single in earlier revisions to the code as we were incorrectly collapsing vacant properties where the BK address was incorrect - represented the mailing address. 
 
 ```{r no-vac}
 
