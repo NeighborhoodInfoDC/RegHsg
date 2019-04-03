@@ -35,12 +35,9 @@ COGcounty_sf <- county_sf %>%
       filter(GEOID %in% c(11001, 24017, 24021, 24031, 24033, 51013, 
                           51059, 51107, 51153, 51510, 51600, 51610, 51683,51685))
 
-plot(COGregion_sf)
-
 watershp = "L:/Libraries/RegHsg/Maps/COG_water.shp"
 water_sf <- read_sf(dsn= watershp, layer= basename(strsplit(watershp, "\\.")[[1]])[1])
 
-plot(water_sf)
 
 # load in typology dataset output from SAS program
 
@@ -49,9 +46,6 @@ Typology <- read.csv(paste0(jdir,"Neighborhood typology for mapping.csv"))
 Typology_df <- Typology  %>% 
          mutate(GEOID=as.character(geoid))
 
-
-                #missing= ifelse(vulnerable=="", 1,0)) %>% 
-         #filter(missing==0)
   
 
 #spatial join
