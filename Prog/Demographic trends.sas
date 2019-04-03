@@ -659,6 +659,8 @@ keep upuma raced hispand age pernum gq Jurisdiction hhwt perwt year serial numpr
   %else %do;
     %oldpuma_jurisdiction
   %end;
+  
+  %Ipums_wt_adjust()
 
 if hispand=0 then do;
 
@@ -721,6 +723,8 @@ keep upuma raced hispand age pernum gq Jurisdiction hhwt perwt year serial numpr
 
 %oldpuma_jurisdiction
 
+%Ipums_wt_adjust()
+
 if hispand=0 then do;
 
  if raced=100 then race1=1;
@@ -778,6 +782,8 @@ keep upuma raced hispand age pernum gq Jurisdiction hhwt perwt year serial numpr
 
 %oldpuma_jurisdiction
 
+%ipums_wt_adjust()
+
 if hispand=0 then do;
 
  if raced=100 then race1=1;
@@ -832,12 +838,9 @@ proc sort data=agegroup_race_immigration_00;
 by _type_ Jurisdiction age race1 foreignborn;
 run;
 
-/*from NCDB pop10: 312311, pop00: 169599 for Loudon. From Ipums: pop00: 268888, pop10: 432211 use the ratio to adjust ipums*/
 data popbreakdown;
 merge agegroup_race_immigration_00 agegroup_race_immigration_2010 agegroup_race_immigration_2017;
 by _type_ Jurisdiction age race1 foreignborn _TYPE_;
-if Jurisdiction=8 then totpop_00=totpop_00*(169599/268888); 
-if Jurisdiction=8 then totpop_2010=totpop_2010*(312311/432211);
 run;
 
 proc export data = popbreakdown (drop=_type_)
@@ -869,6 +872,7 @@ data units_2017 (where=(upuma in ("1100101", "1100102", "1100103", "1100104", "1
 set Ipums.Acs_2017_dc Ipums.Acs_2017_md Ipums.Acs_2017_va;
 keep upuma Jurisdiction hhwt totalunits pernum gq;
 	%newpuma_jurisdiction; 
+  %Ipums_wt_adjust()
 totalunits=1;
 	run;
 
@@ -887,6 +891,8 @@ data vacant_2017 (where=(jurisdiction in (1:10)));
 set Ipums.Acs_2017_vacant_dc Ipums.Acs_2017_vacant_md Ipums.Acs_2017_vacant_va;
 
 	%newpuma_jurisdiction; 
+  %Ipums_wt_adjust()
+
 if vacancy in (1,2,3) then vacunit = 1;
 run;
 
@@ -1039,6 +1045,8 @@ keep upuma jurisdiction pernum gq hhwt perwt year serial age numprec related not
     %oldpuma_jurisdiction
   %end;
 
+  %Ipums_wt_adjust()
+
 notrelatedper = 0;
 relatedper = 0;
 spouse = 0;
@@ -1071,6 +1079,7 @@ run;
 
 %mend hhnonrelate;
 
+
 %macro hhtype_1(year);
 
 %local filepre;
@@ -1089,6 +1098,8 @@ keep pernum gq upuma Jurisdiction hhwt perwt year serial numprec HHINCOME income
   %else %do;
     %oldpuma_jurisdiction
   %end;
+
+  %Ipums_wt_adjust()
 
 	  if hhincome ~=.n or hhincome ~=9999999 then do; 
 		 %dollar_convert( hhincome, hhincome_a, &year., 2016, series=CUUR0000SA0 )
@@ -1187,16 +1198,9 @@ run;
 %summarizehh(2010);
 %summarizehh(2017);
 
-/*have to adjust the Loudon number for 2000 and 2010 because it took a portion of a PUMA, according to NCDB Loudon hh in 2000 is 59921, hh in 2010 is 104583, the PUMA containing LOUdon has 97263 in 2000, 145906 in 2010*/
-data Loudon (where=(ucounty= "51107"));
-set NCDBpopulation;
-run;
-
 data hhbytypeallyears;
 merge HH_size_inc_type_2000 HH_size_inc_type_2010 HH_size_inc_type_2017;
 by _type_ Jurisdiction numprec incomecat HHcat;
-if Jurisdiction= 8 then HHnumber_2000=HHnumber_2000*(59921/97263);
-if Jurisdiction= 8 then HHnumber_2010=HHnumber_2010*(104583/145906);
 run;
 
 proc export data = hhbytypeallyears (drop=_type_)

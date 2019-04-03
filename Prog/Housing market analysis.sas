@@ -133,19 +133,20 @@ data COGSarea_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,2
 	%if &year. >= 2012 %then %do;
 	set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va; 
 		%newpuma_jurisdiction; 
-		if upuma in (&pumanew.);
 	%end;
 	%else %if &year. = 2010 %then %do;
 	set Ipums.Acs_&year._dc Ipums.Acs_&year._md Ipums.Acs_&year._va;
 		%oldpuma_jurisdiction; 
-		if upuma in (&pumaold.);
 	%end; 
 	%else %if &year. = 2000 %then %do;
 	set Ipums.Ipums_2000_dc Ipums.Ipums_2000_md Ipums.Ipums_2000_va;
 		%oldpuma_jurisdiction; 
 		ownershpd = ownershd;
-		if upuma in (&pumaold.);
 	%end; 
+	
+	if jurisdiction in ( 1:10 );
+	
+	%Ipums_wt_adjust()
 
 	if UNITSSTR in (03, 04) then structuretype=1; /*single family*/
 	else if UNITSSTR in (05,06, 07) then structuretype=3; /*small multifamily*/
@@ -238,18 +239,19 @@ data COGSvacant_&year.(where=(Tenure in (1,2)));
 	%if &year. >= 2012 %then %do;
 	set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
 		%newpuma_jurisdiction; 
-		if upuma in (&pumanew.);
 	%end;
 	%else %if &year. = 2010 %then %do;
 	set Ipums.Acs_&year._vacant_dc Ipums.Acs_&year._vacant_md Ipums.Acs_&year._vacant_va ;
 		%oldpuma_jurisdiction; 
-		if upuma in (&pumaold.);
 	%end; 
 	%else %if &year. = 2000 %then %do;
 	set Ipums.Ipums_2000_vacant_dc Ipums.Ipums_2000_vacant_md Ipums.Ipums_2000_vacant_va ;
 		%oldpuma_jurisdiction; 
-		if upuma in (&pumaold.);
 	%end; 
+	
+	if jurisdiction in ( 1:10 );
+	
+	%Ipums_wt_adjust()
 
   if _n_ = 1 then set Ratio_rentgrs_rent_&year.;
 
@@ -426,6 +428,8 @@ data rentercostburden_&year. (where=(pernum=1 and gq in (1,2) and ownershpd in (
 
 	if gq in (1,2);
 	if pernum = 1;
+	
+	%Ipums_wt_adjust()
 
     if ownershpd in (21, 22) then do; /*renter*/
 		if rentgrs*12>= HHINCOME*0.3 then rentburdened_&year.=1;

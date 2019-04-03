@@ -79,6 +79,8 @@ data RegEmp_&year.;
 	%oldpuma_jurisdiction;
 	%end; 
 
+      %Ipums_wt_adjust()
+
 	/* Flag 35+ hours worked as full time */
 	if uhrswork >= 35 then fulltime=1;
 
