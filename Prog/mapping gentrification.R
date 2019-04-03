@@ -64,11 +64,11 @@ Typologymap$neighborhoodtypeFAM[Typologymap$neighborhoodtypeFAMcode==""] <- "NA"
 
 #assign tracts to two large categories: at risk and already gentrified
 Typologymap2 <- Typologymap %>% 
-  mutate(twocat= case_when(neighborhoodtypeHHcode== 6| neighborhoodtypeHHcode== 7 ~ 1,
-                           neighborhoodtypeHHcode== 2|neighborhoodtypeHHcode== 3|neighborhoodtypeHHcode== 4|neighborhoodtypeHHcode== 5 ~ 2,
+  mutate(twocat= case_when(neighborhoodtypeHHcode== 6| neighborhoodtypeHHcode== 7 ~ 2,
+                           neighborhoodtypeHHcode== 2|neighborhoodtypeHHcode== 3|neighborhoodtypeHHcode== 4|neighborhoodtypeHHcode== 5 ~ 1,
                            TRUE ~ 3))  %>% 
-  mutate(threecat= case_when(neighborhoodtypeHHcode== 6| neighborhoodtypeHHcode== 7 ~ 2,
-                           neighborhoodtypeHHcode== 2|neighborhoodtypeHHcode== 3|neighborhoodtypeHHcode== 4|neighborhoodtypeHHcode== 5 ~ 3,
+  mutate(threecat= case_when(neighborhoodtypeHHcode== 6| neighborhoodtypeHHcode== 7 ~ 3,
+                           neighborhoodtypeHHcode== 2|neighborhoodtypeHHcode== 3|neighborhoodtypeHHcode== 4|neighborhoodtypeHHcode== 5 ~ 2,
                            neighborhoodtypeHHcode== 1 ~ 1,
                            TRUE ~ 4))  
 
@@ -128,7 +128,7 @@ ggplot() +
           fill = NA, color = "white", size = .05) +
   geom_sf(Typologymap2, mapping=aes(fill=factor(twocat)), color= "#dcdbdb", size = .05)+
   scale_fill_manual(values = c ("#fdbf11", "#1696d2", "white"),
-                    labels= c("At risk of dispalcement","Already gentrifying/gentrified", "Not at risk" )) +
+                    labels= c("At risk of displacement","Already gentrifying/gentrified","Not at risk" )) +
   geom_sf(water_sf, mapping=aes(), fill="#dcdbdb", color="#dcdbdb", size=0.05)+
   theme_urbn_map() +
    labs(fill = "Tract Gentrification and Displacement Risk", color = NULL) +
@@ -146,7 +146,7 @@ ggplot() +
           fill = NA, color = "white", size = .05) +
   geom_sf(Typologymap2, mapping=aes(fill=factor(threecat)), color= "#dcdbdb", size = .05)+
   scale_fill_manual(values = c ("#a2d4ec","#1696d2", "#0a4c6a", "white"),
-                    labels= c("At risk of dispalcement","Already gentrifying/gentrified", "Vulnerable", "Not at risk" )) +
+                    labels= c("Vulnerable","At risk of displacement","Already gentrifying/gentrified", "Not at risk" )) +
   geom_sf(water_sf, mapping=aes(), fill="#dcdbdb", color="#dcdbdb", size=0.05)+
   theme_urbn_map() +
   labs(fill = "Tract Gentrification and Displacement Risk", color = NULL) +
