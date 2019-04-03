@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Patrick Spauster</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated April 02, 2019</p>
+<p>Last updated April 03, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -1407,9 +1407,7 @@ get_unit_variables &lt;- function(dataset,
                                &quot; sf&quot;),
            lot_coverage_max = ifelse(is.na(lot_coverage_max), 1, lot_coverage_max),
            buildable_area_height = lotsize_sf * lot_coverage_max,
-           living_area_height = ifelse(is.na(buildable_area_height),
-                                       lotsize_sf*construction_efficiency,
-                                       buildable_area_height*construction_efficiency),
+           living_area_height = buildable_area_height*construction_efficiency,
            units_per_floor_height = floor(living_area_height/average_unit_size),
            floors_height = floor(height_ft/10),
            units_height = units_per_floor_height * floors_height,
@@ -1424,10 +1422,7 @@ get_unit_variables &lt;- function(dataset,
            stories_far = ifelse(percent_per_floor_far!=0&amp;!is.na(percent_per_floor_far),
                                 floor(far_max/percent_per_floor_far),
                                 0),
-           #stories_FAR = ifelse(zoning_code %in% c(&quot;CR&quot;, &quot;CRT&quot;, &quot;CRN&quot;),
-                          #stories_far-1,#subtract one floor if it's mixed use
-                          #stories_far),
-           subset = ifelse(is.na(lot_area_min), 0, floor(lotsize_sf/lot_area_min)),
+           subset = ifelse(is.na(lot_area_min), NA, (lotsize_sf/lot_area_min)),
            units_height = units_per_floor_height * floors_height,
            units_density = floor(density * lotsize_acres),
            units_lotsize = floor(lotsize_sf / lotarea_per_unit),
@@ -1439,10 +1434,12 @@ get_unit_variables &lt;- function(dataset,
                 two_unit_flag == 1 ~ 2,
                 TRUE ~ .))) %&gt;% 
     mutate(units_total = case_when(
+       subset &lt; 1 ~ 0,
+       lotsize_sf &lt; lot_area_min ~ 0,
        one_unit_flag == 1 ~ 1,
        two_unit_flag == 1 ~ 2,
-       one_unit_flag == 1 &amp; subset&gt;=1 &amp; units_height/subset&gt;=1 ~ 1*subset,
-       two_unit_flag == 1 &amp; subset&gt;=1 &amp; units_height/subset&gt;=2 ~ 2*subset,
+       one_unit_flag == 1 &amp; subset&gt;=1 &amp; units_lotsize/subset&gt;=1 ~ 1*subset,
+       two_unit_flag == 1 &amp; subset&gt;=1 &amp; units_lotsize/subset&gt;=2 ~ 2*subset,
        TRUE ~ pmin(units_lotsize, units_height, units_density, units_far, na.rm = TRUE)))
   
 }
@@ -1505,7 +1502,11 @@ get_unit_summary &lt;- function(dataset,
 <pre class="r"><code>testing123 &lt;- resultsall %&gt;% 
   filter(dwelling_type == &quot;apartment&quot;| dwelling_type == &quot;townhouse&quot;, units_far == 0) %&gt;% 
   select(units_total, dwelling_type, zoning_code, living_area_far, lot_coverage_max, far_max, stories_far , units_per_floor_far, units_far)
-  #filter(zoning_code %in% c(&quot;CR&quot;, &quot;CRT&quot;, &quot;CRN&quot;))</code></pre>
+  #filter(zoning_code %in% c(&quot;CR&quot;, &quot;CRT&quot;, &quot;CRN&quot;))
+
+testing1234 &lt;- resultsall %&gt;% 
+    filter(dwelling_type == &quot;townshouse&quot;, zoning_code %in% c(&quot;CR&quot;, &quot;CRT&quot;), units_total == 0) %&gt;% 
+  select(units_total, dwelling_type, zoning_code, living_area_far, lot_coverage_max, far_max, stories_far , units_per_floor_far, units_far, units_lotsize, units_height, units_density, subset, lot_area_min )</code></pre>
 <p>Get summary statistics for several different parameters</p>
 <pre class="r"><code>get_unit_summary(dataset = zoningdata2,
                  construction_efficiency = .7,
@@ -1541,23 +1542,23 @@ get_unit_summary &lt;- function(dataset,
 <tr class="even">
 <td align="left">CE: 70% , Unit size: 940 sf</td>
 <td align="left">townhouse</td>
-<td align="right">966</td>
-<td align="right">19897</td>
+<td align="right">526</td>
+<td align="right">17812</td>
 <td align="right">3995</td>
 <td align="right">0</td>
-<td align="right">3954</td>
-<td align="right">3247</td>
-<td align="right">3</td>
+<td align="right">3274</td>
+<td align="right">2567</td>
+<td align="right">4</td>
 </tr>
 <tr class="odd">
 <td align="left">CE: 70% , Unit size: 940 sf</td>
 <td align="left">duplex-over</td>
-<td align="right">538</td>
-<td align="right">1076</td>
-<td align="right">1076</td>
-<td align="right">1076</td>
-<td align="right">111</td>
-<td align="right">1076</td>
+<td align="right">41</td>
+<td align="right">82</td>
+<td align="right">82</td>
+<td align="right">82</td>
+<td align="right">108</td>
+<td align="right">82</td>
 <td align="right">2</td>
 </tr>
 <tr class="even">
@@ -1574,23 +1575,23 @@ get_unit_summary &lt;- function(dataset,
 <tr class="odd">
 <td align="left">CE: 70% , Unit size: 940 sf</td>
 <td align="left">detached house</td>
-<td align="right">172514</td>
-<td align="right">172514</td>
-<td align="right">172514</td>
-<td align="right">172514</td>
-<td align="right">124498</td>
-<td align="right">172514</td>
+<td align="right">100267</td>
+<td align="right">100267</td>
+<td align="right">100267</td>
+<td align="right">100267</td>
+<td align="right">124479</td>
+<td align="right">100267</td>
 <td align="right">1</td>
 </tr>
 <tr class="even">
 <td align="left">CE: 70% , Unit size: 940 sf</td>
 <td align="left">All</td>
-<td align="right">175127</td>
-<td align="right">305783</td>
-<td align="right">214353</td>
-<td align="right">175813</td>
-<td align="right">164784</td>
-<td align="right">213467</td>
+<td align="right">101943</td>
+<td align="right">230457</td>
+<td align="right">141112</td>
+<td align="right">102572</td>
+<td align="right">164082</td>
+<td align="right">139546</td>
 <td align="right">1</td>
 </tr>
 </tbody>
