@@ -564,11 +564,11 @@ run;
 data inflatadjustzillow;
 	set zillow;
 
-	%dollar_convert( Mediansaleprice, Mediansaleprice_a, year, 2018, series=CUUR0000SA0 )
-	%dollar_convert( MedianSFRent, MedianSFRent_a, year, 2018, series=CUUR0000SA0 )
-	%dollar_convert( MedianMFRent, MedianMFRent_a, year, 2018, series=CUUR0000SA0 )
-	%dollar_convert( MedianCondoRent, MedianCondoRent_a, year, 2018, series=CUUR0000SA0 )
-	%dollar_convert( MedianDuplexRent, MedianDuplexRent_a, year, 2018, series=CUUR0000SA0 )
+	%dollar_convert( Mediansaleprice, Mediansaleprice_a, year, 2018, series=CUUR0000SA0L2 )
+	%dollar_convert( MedianSFRent, MedianSFRent_a, year, 2018, series=CUUR0000SA0L2 )
+	%dollar_convert( MedianMFRent, MedianMFRent_a, year, 2018, series=CUUR0000SA0L2 )
+	%dollar_convert( MedianCondoRent, MedianCondoRent_a, year, 2018, series=CUUR0000SA0L2 )
+	%dollar_convert( MedianDuplexRent, MedianDuplexRent_a, year, 2018, series=CUUR0000SA0L2 )
 run;
 
 proc transpose data=inflatadjustzillow out=inflatadjustzillow_trans ;
