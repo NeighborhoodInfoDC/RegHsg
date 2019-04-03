@@ -659,16 +659,11 @@ jurzoningdata1 <- jurzoningdata %>%
 
 nrow(jurzoningdata1)
 
- # ggplot(jurzoningdata1, aes(lotsize_sf) )+
- #   geom_histogram(binwidth = 5000)
-# 
-# 
-# ggplot(jurzoningdata1, aes(lot_area_min) )+
-#   geom_histogram(binwidth = 500)
-# 
-# 
-# ggplot(jurzoningdata1, aes(gap ))+
-#   geom_histogram(binwidth = 500)
+#there are some extremley large vacant lots 1600 FAIRLAWN AVE SE (35683219.9), 3502 JOHN MCCORMACK RD (4152008.6), 800 FLORIDA AVE NE (4054172.7)
+test <- jurzoningdata1 %>% 
+  select(lotsize_sf, propaddress, zoning_code)
+
+
 
 ```
 
@@ -733,7 +728,7 @@ get_unit_variables <- function(dataset,
            living_area_FAR= buildable_area_FAR * construction_efficiency,
            units_per_floor_FAR = floor(living_area_FAR/ average_unit_size),
            percent_per_floor_FAR = (units_per_floor_FAR*average_unit_size*1/construction_efficiency)/lotsize_sf,
-           FAR_stories = ifelse(percent_per_floor_FAR!=0&!is.na(percent_per_floor_far),
+           FAR_stories = ifelse(percent_per_floor_FAR!=0&!is.na(percent_per_floor_FAR),
                                 floor(floor_area_ratio_max/percent_per_floor_FAR),
                                 0),
            floors = floor(height_ft /10),
@@ -829,7 +824,7 @@ vacantlotunits <- jurzoningdata3 %>%
 nrow(vacantlotunits)
 
 
-#for SF vacant lots, some lots are extremely large and are driving up the unit per lot var: 3001 R ST NW (172), 3842 ALABAMA AVE SE (116), 1801 FOXHALL RD NW (67), 3900 RESERVOIR RD NW (47), 4530 MACARTHUR BLVD NW (43)
+#for SF vacant lots, some lots are extremely large and are driving up the unit per lot var: 3842 ALABAMA AVE SE (116), 1801 FOXHALL RD NW (67), 3900 RESERVOIR RD NW (47), 4530 MACARTHUR BLVD NW (43)
 
 testvacant <- get_unit_variables(dataset = vacantlotunits,
                  construction_efficiency = .7,
@@ -845,11 +840,6 @@ get_unit_variables(dataset = vacantlotunits,
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-vacant-lots-analysis-basedata.csv"))
-
-jurzoningdata3 %>% 
-  group_by(category) %>% 
-  count() %>% 
-  knitr::kable()
 
 
 #write out whole dataset for Sarah
