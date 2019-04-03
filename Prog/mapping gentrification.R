@@ -67,9 +67,9 @@ Typologymap2 <- Typologymap %>%
   mutate(twocat= case_when(neighborhoodtypeHHcode== 6| neighborhoodtypeHHcode== 7 ~ 1,
                            neighborhoodtypeHHcode== 2|neighborhoodtypeHHcode== 3|neighborhoodtypeHHcode== 4|neighborhoodtypeHHcode== 5 ~ 2,
                            TRUE ~ 3))  %>% 
-  mutate(threecat= case_when(neighborhoodtypeHHcode== 6| neighborhoodtypeHHcode== 7 ~ 1,
-                           neighborhoodtypeHHcode== 2|neighborhoodtypeHHcode== 3|neighborhoodtypeHHcode== 4|neighborhoodtypeHHcode== 5 ~ 2,
-                           neighborhoodtypeHHcode== 1 ~ 3,
+  mutate(threecat= case_when(neighborhoodtypeHHcode== 6| neighborhoodtypeHHcode== 7 ~ 2,
+                           neighborhoodtypeHHcode== 2|neighborhoodtypeHHcode== 3|neighborhoodtypeHHcode== 4|neighborhoodtypeHHcode== 5 ~ 3,
+                           neighborhoodtypeHHcode== 1 ~ 1,
                            TRUE ~ 4))  
 
 #You need to install these if the library after these don't exist'
@@ -131,8 +131,8 @@ ggplot() +
                     labels= c("At risk of dispalcement","Already gentrifying/gentrified", "Not at risk" )) +
   geom_sf(water_sf, mapping=aes(), fill="#dcdbdb", color="#dcdbdb", size=0.05)+
   theme_urbn_map() +
-  labs(fill = "Tract Gentrification and Displacement Risk", color = NULL) +
-  labs(title = "Neighborhood Gentrification Typology by HH") + 
+   labs(fill = "Tract Gentrification and Displacement Risk", color = NULL) +
+   labs(title = "Neighborhood Gentrification Typology by HH") + 
   theme(legend.position ="bottom", legend.direction = "vertical", legend.text = element_text(size=8)) +
   coord_sf(crs = 4269, datum = NA)+
   geom_sf(COGcounty_sf, mapping=aes(), fill=NA, color="#12719e", size=0.3, alpha=0.5)+
@@ -145,7 +145,7 @@ ggplot() +
   geom_sf(Typologymap2,  mapping = aes(),
           fill = NA, color = "white", size = .05) +
   geom_sf(Typologymap2, mapping=aes(fill=factor(threecat)), color= "#dcdbdb", size = .05)+
-  scale_fill_manual(values = c ("#a2d4ec", "#1696d2", "#0a4c6a", "white"),
+  scale_fill_manual(values = c ("#a2d4ec","#1696d2", "#0a4c6a", "white"),
                     labels= c("At risk of dispalcement","Already gentrifying/gentrified", "Vulnerable", "Not at risk" )) +
   geom_sf(water_sf, mapping=aes(), fill="#dcdbdb", color="#dcdbdb", size=0.05)+
   theme_urbn_map() +
