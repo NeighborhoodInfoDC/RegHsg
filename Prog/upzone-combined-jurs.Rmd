@@ -112,6 +112,20 @@ parcel %>%
   group_by(county_name, category) %>% 
   count()
 
+landuse_summary <- parcel %>% 
+  ungroup() %>% 
+  group_by(county_name, category) %>% 
+  summarize(lot_acres = sum(lotsize_acres, na.rm = TRUE)) %>% 
+  spread(key = category, value = lot_acres) %>% 
+  mutate(`vacant with structures` = ifelse(is.na(`vacant with structures`),
+                                           0,
+                                           `vacant with structures`)) %>% 
+  mutate(total_land = sf + mf + other + vacant + `vacant with structures`,
+         total_nonvacant = sf + mf + other,
+         sf_land = sf / total_land,
+         sf_land_nonvacant = sf / total_nonvacant,
+         sf_res = sf / (sf + mf))
+
 ```
 
 ## Get nodes
@@ -538,28 +552,33 @@ Test out two methods of grouping the nodes:
 
 #### K means
 
+Set the seeds and make functions to simplify clustering.
+
 ```{r kmeans}
 
 set.seed(20190331)
 
-rescaled_data <- individual_varies %>% 
+get_clusters <- function(dataset) {
+  
+  rescaled_data <- dataset %>% 
   mutate(density_residential = scales::rescale(density_residential, 
                                                to = c(1, 100))) %>% 
   select(density_residential)
 
-clusters <- kmeans(rescaled_data, centers = 3, nstart = 3)
+  clusters <- kmeans(rescaled_data, centers = 6, nstart = 6)
+  
+  augment(clusters, dataset)
+  
+}
 
-tidy_clusters <- augment(clusters, individual_varies)
-
-means <- tidy(clusters)
-names(means) <- c(names(rescaled_data), "size", "withinss", "cluster")
-knitr::kable(means)
-
-```
-
-Make a function to plot the outcomes.
-
-```{r plot-fxn}
+summarize_clusters <- function(dataset) {
+  
+  dataset %>% 
+  group_by(.cluster) %>% 
+  summarize(n(),
+            mean(density_residential))
+  
+}
 
 clusters_three_ways <- function(cluster_data) {
   
@@ -597,25 +616,184 @@ clusters_three_ways <- function(cluster_data) {
                                                c(1, 3)))
 }
 
+
+```
+
+Cluster transit nodes.
+
+```{r cluster-t}
+t_clusters <- get_clusters(individual_transit)
+
+summarize_clusters(t_clusters) %>% 
+  knitr::kable()
+
+
+t_clusters <- t_clusters %>% 
+  mutate(cluster_og = .cluster,
+         .cluster = case_when(
+           cluster_og == 1 ~ 2,
+           cluster_og == 2 ~ 4,
+           cluster_og == 3 ~ 1,
+           cluster_og == 4 ~ 6,
+           cluster_og == 5 ~ 5,
+           cluster_og == 6 ~ 3,
+           TRUE ~ as.double(cluster_og)
+         ))
+
+clusters_three_ways(t_clusters)
+
+```
+
+
+Cluster activity centers.
+
+```{r cluster-t}
+
+a_clusters <- get_clusters(individual_activity_varied)
+
+summarize_clusters(a_clusters) %>% 
+  knitr::kable()
+
+
+a_clusters <- a_clusters %>% 
+  mutate(cluster_og = .cluster,
+         .cluster = case_when(
+           cluster_og == 1 ~ 4,
+           cluster_og == 2 ~ 5,
+           cluster_og == 3 ~ 1,
+           cluster_og == 4 ~ 3,
+           cluster_og == 5 ~ 2,
+           cluster_og == 6 ~ 6,
+           TRUE ~ as.double(cluster_og)
+         ))
+
+clusters_three_ways(a_clusters)
+
 ```
 
 
 
-Plot kmeans outcome.
-```{r kmeans-plot}
 
-clusters_three_ways(tidy_clusters)
+```{r dist-plot}
+
+clusters_three_ways(distance)
 
 ```
 
 
-#### Distance calculation
+
+### Units Added
+
+Upzone the low density group to the midpoint of the medium density group, and medium to high.
+
+```{r add-units}
+
+get_additional_units <- function(dataset) {
+  
+  values <- dataset %>% 
+  group_by(.cluster) %>% 
+  summarize(midpoint = min(density_residential) + 
+                ((max(density_residential) - min(density_residential)) / 2 ),
+            min = min(density_residential))
+
+  
+  v_midpoint <- pull(values, midpoint)
+  v_min <- pull(values, min)
+
+    dataset %>% 
+      mutate(midpoint2 = v_midpoint[2],
+             midpoint3 = v_midpoint[3],
+             midpoint4 = v_midpoint[4],
+             midpoint5 = v_midpoint[5],
+             midpoint6 = v_midpoint[6],
+             min2 = v_min[2],
+             min3 = v_min[3],
+             min4 = v_min[4],
+             min5 = v_min[5],
+             min6 = v_min[6]) %>% 
+      mutate(density_midpoint = case_when(
+        .cluster == 1 ~ midpoint2,
+        .cluster == 2 ~ midpoint3,
+        .cluster == 3 ~ midpoint4,
+        .cluster == 4 ~ midpoint5,
+        .cluster == 5 ~ midpoint6,
+        TRUE ~ 0
+      )) %>% 
+      mutate(density_min = case_when(
+        .cluster == 1 ~ min2,
+        .cluster == 2 ~ min3,
+        .cluster == 3 ~ min4,
+        .cluster == 4 ~ min5,
+        .cluster == 5 ~ min6,
+        TRUE ~ 0
+      )) %>% 
+      mutate(units_midpoint = density_midpoint * residential_acres,
+             new_units_midpoint = ifelse(.cluster == 6,
+                                  0,
+                                  units_midpoint - number_of_units),
+             units_min = density_min * residential_acres,
+             new_units_min = ifelse(.cluster == 6,
+                                  0,
+                                  units_min - number_of_units)) %>% 
+      mutate(density_plus10p = density_residential * 1.1,
+             units_plus10p = density_plus10p * residential_acres,
+             units_added_plus10p = units_plus10p - number_of_units)
+  
+}
+
+t_units <- get_additional_units(t_clusters)
+
+t <- t_units %>% 
+  group_by(type, .cluster) %>% 
+  summarize_at(vars(density_residential, number_of_units,
+                    density_midpoint, new_units_midpoint),
+               mean)
+
+a_units <- get_additional_units(a_clusters)
+
+a <- a_units %>% 
+  group_by(type, .cluster) %>% 
+  summarize_at(vars(density_residential, number_of_units,
+                    density_midpoint, new_units_midpoint),
+               mean)
+
+
+upzone_summary <- bind_rows(t, a)
+
+write_csv(upzone_summary, "tables/upzoning-summary.csv")
+
+```
+
+
+
+Clean up groups.
+
+```{r clean}
+
+t_clusters %>% bind_rows(a_clusters) %>% 
+  arrange(type, .cluster, density_residential) %>% 
+  select(type, group = .cluster, name, 
+         residential_parcels, total_acres,
+         number_of_units, residential_acres,
+         density_residential) %>% 
+  write_csv("tables/all-nodes-grouped.csv")
+
+```
+
+
+
+
+
+
+#### ARCHIVED: other groupings
+
+##### distance
 
 ```{r dist-calc}
 
 distance <- individual_varies %>% 
   # pick baseline nodes
-  mutate(group1.dr = density_residential[name == "Bethesda" & type == "Activity"],
+  mutate(group1.dr = density_residential[name == "Clarksburg" & type == "Activity"],
          group2.dr = density_residential[name == "Clarendon" & type == "Activity"],
          group3.dr = density_residential[name == "Dupont" & type == "Activity"]) %>% 
   # calculate distance from each
@@ -643,46 +821,43 @@ distance %>%
 
 ```
 
-```{r dist-plot}
-
-clusters_three_ways(distance)
-
-```
 
 
-### Units Added
+##### Manual
 
-Upzone the low density group to the midpoint of the medium density group, and medium to high.
+```{r manual-grouping}
 
-```{r add-units}
-
-values <- tidy_clusters %>% 
-  group_by(.cluster) %>% 
-  summarize(midpoint = min(density_residential) + 
-                ((max(density_residential) - min(density_residential)) / 2 )) %>% 
-  pull(midpoint)
-
-upzone <- tidy_clusters %>% 
-  mutate(midpoint2 = values[2],
-         midpoint3 = values[3]) %>% 
-  mutate(new_units = case_when(
-    .cluster == 1 ~ midpoint2 * residential_acres,
-    .cluster == 2 ~ midpoint3 * residential_acres,
-    TRUE ~ 0
+man <- individual_varies %>% 
+  mutate(.cluster = case_when(
+    density_residential < 2 ~ "Outerlying suburb",
+    density_residential >= 2 & density_residential < 5 ~ "Low density suburb",
+    density_residential >= 5 & density_residential < 10 ~ "Mid density suburb",
+    density_residential >= 10 & density_residential < 20 ~ "High density suburb",
+    density_residential >= 20 & density_residential < 35 ~ "Low density urban area",
+    density_residential >= 35 & density_residential < 60 ~ "Mid-density urban area",
+    density_residential >= 60 & density_residential < 100 ~ "Dense urban area",
+    density_residential >= 100 ~ "Urban core",
+    TRUE ~ "error"
   )) %>% 
-  mutate(units_added = ifelse(.cluster == 3,
-                              0,
-                              new_units - number_of_units))
+  mutate(.cluster = factor(.cluster, levels = c("Outerlying suburb",
+                                                "Low density suburb",
+                                                "Mid density suburb",
+                                                "High density suburb",
+                                                "Low density urban area",
+                                                "Mid-density urban area",
+                                                "Dense urban area",
+                                                "Urban core")))
 
-
-upzone_summary <- upzone %>% 
+man %>% 
   group_by(.cluster) %>% 
-  summarize(units_added = mean(units_added))
+  summarize(n(),
+            mean(density_residential)) %>% 
+  knitr::kable()
+
+clusters_three_ways(man)
+
 
 ```
-
-
-
 
 ## Combined nodes
 
@@ -754,6 +929,7 @@ get_joint_density <- function(dataset, area) {
 
 
 ```
+
 Apply function to transit, activity, and joint buffer. Create a variable for each, and then combine.
 
 ```{r joint-map}
