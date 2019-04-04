@@ -328,24 +328,24 @@ jur %>%
             .funs = list(percent = ~scales::percent(. / num))) %>% 
   knitr::kable(caption = "Number and percent of missing values")
 
-# |category_detail        | propaddress| lotsize_sf| zoning|  num|propaddress_percent |lotsize_sf_percent |zoning_percent |
-# |:----------------------|-----------:|----------:|------:|----:|:-------------------|:------------------|:--------------|
-# |Vacant unimproved      |        6299|        152|    990| 8833|71.3%               |1.721%             |11.21%         |
-# |Vacant with structures |         197|          2|     22|  216|91.2%               |0.926%             |10.19%              |
+# |category_detail        | propaddress| lotsize_sf| zoning|   num|propaddress_percent |lotsize_sf_percent |zoning_percent |
+# |:----------------------|-----------:|----------:|------:|-----:|:-------------------|:------------------|:--------------|
+# |Vacant unimproved      |        6299|        269|   1471| 11565|54.5%               |2.33%              |12.72%         |
+# |Vacant with structures |         197|          2|     27|   242|81.4%               |0.83%              |11.16%         |
 
 ```
 
 ### Missing lot size
 We filled in the missing lot size, when we can, with the cleaned parcelbase lot area data in the clean DC step. So skip this step.
 
-We have 154 lotsize missing after the cleaning. 
+We have 271 lotsize missing after the cleaning. 
 
 ```{r count-lots}
 jur %>% 
   filter(category=="vacant") %>% 
   count(is.na(lotsize_sf))
 
-#this is what you should be getting: [1] 154
+#this is what you should be getting: [1] 271
 ```
 
 ### Assessment values
@@ -389,8 +389,6 @@ jur1a %>%
   knitr::kable()
 
 count(jur1a, category)
-
-
 
 vacantstructure <- jur1a %>% 
   filter(category=="vacant") %>% 
@@ -437,7 +435,7 @@ jur1 %>%
 ### Missing zoning variables
 Blackknight zoning data for DC is outdated, making it complicated to crosswalk it to the new zoning code and our zoning statistics. Instead, we will use a spatial join to the county's zoning layer to get zoning information for all parcels. 
 
-Read in zoning layer, set CRS
+Read in zoning layer, set CRS. Also read in parks shapefile for identifying vacant lots that are parks. 
 ```{r read-zoning}
 zdir <- paste0("L:/Libraries/RegHsg/Maps/",
                filepath,
@@ -450,6 +448,36 @@ zon <- read_sf(dsn = zdir,
 
 st_geometry(zon)
 zon <- st_transform(zon, crs = 4326)
+
+#read in park shapefile
+parkdir <- paste0("L:/Libraries/RegHsg/Maps/",
+               filepath,
+               "-parks")
+
+zparkfile <- str_sub(list.files(parkdir), end = -5) %>% unique()
+
+
+DCparks <- read_sf(dsn = parkdir,
+               layer = zparkfile) %>% 
+        filter(ACTIVE!= "N") 
+
+
+st_geometry(DCparks)
+DCparks <- st_transform(DCparks, crs = 4326)
+
+#national parks
+nationalparkdir <- paste0("L:/Libraries/RegHsg/Maps/",
+               "National_parks")
+
+znationalparkfile <- str_sub(list.files(nationalparkdir), end = -5) %>% unique()
+
+
+nationalpark <- read_sf(dsn = nationalparkdir,
+               layer = znationalparkfile)
+
+st_geometry(nationalpark)
+nationalpark <- st_transform(nationalpark, crs = 4326)
+
 
 ```
 
@@ -659,11 +687,6 @@ jurzoningdata1 <- jurzoningdata %>%
 
 nrow(jurzoningdata1)
 
-#there are some extremley large vacant lots 1600 FAIRLAWN AVE SE (35683219.9), 3502 JOHN MCCORMACK RD (4152008.6), 800 FLORIDA AVE NE (4054172.7)
-test <- jurzoningdata1 %>% 
-  filter(parcelbase_usecode %in% c("095","195"))
-  select(lotsize_sf, propaddress, zoning_code, parcelbase_usecode, category)
-
 
 
 ```
@@ -686,6 +709,91 @@ jurzoningdata3 <- jurzoningdata2 %>%
 
 
 ```
+
+
+## Filtering vacant lots that are educational, Cemeteries and parks
+
+Some vacant lots in DC are cemetery, lots on campuses or parks that can't be built upon. We are identifying those cases by two sources: using the tax type information to filter our cemeteries and educational. For parks, we will be joining the parcels with parks shapefile and filter out or at least flag the one that are within a park. 
+
+### Educational and cemetery
+```{r filter-tax type}
+
+jurzoningdata4 <- jurzoningdata3 %>% 
+  filter(parcelbase_mix1txtype!= "E2"|parcelbase_mix1txtype!= "E7")
+
+```
+
+### DC Parks and Rec
+
+```{r join with parks}
+
+#convert dataset back to sf
+jurzoningdata4_parcel <- jurzoningdata4 %>% 
+    filter(missing_parcelgeoXY == 0) %>% 
+  st_as_sf(coords = c("parcelgeo_x", "parcelgeo_y")) %>% 
+  st_set_crs(2804) %>% 
+  st_transform(4326)
+
+jurjoin3_parks <- st_join(jurzoningdata3_parcel, DCparks, join = st_intersects)
+
+#convert back to data frame, only keeping the ones that fall into a park (PROPID is from park shapefile, if it is NA then parcel is not joined)
+jur3_parks <- st_set_geometry(jurjoin3_parks, NULL) %>% 
+           filter(is.na(PROPID)==0) 
+
+#create a flag=1 
+jur3_parks$parkflag <- 1
+
+parkflag <- jur3_parks %>% 
+  select (parcelbase_SSL, parkflag)
+
+
+
+```
+
+### National Parks
+```{r join with national parks}
+
+
+#Do the same thing for national parks
+
+jurjoin3_nationalparks <- st_join(jurzoningdata3_parcel, nationalpark, join = st_intersects)
+
+jur3_nationalparks <- st_set_geometry(jurjoin3_nationalparks, NULL) %>% 
+           filter(is.na(ALPHA_CODE)==0) 
+
+#create a flag=1 
+jur3_nationalparks$nationalparkflag <- 1
+
+nationalparkflag <- jur3_nationalparks %>% 
+  select(parcelbase_SSL, nationalparkflag)
+
+```
+
+```{r filter our parks}
+
+jurzoningdata5 <- left_join (jurzoningdata4, parkflag, by = "parcelbase_SSL")
+
+jurzoningdata6 <- left_join (jurzoningdata5, nationalparkflag, by = "parcelbase_SSL")
+
+#14 vacant lots are now flagged as DC parks
+testpark <- jurzoningdata6 %>% 
+  filter(parkflag==1) %>% 
+  filter(category=="vacant") %>% 
+  select(propaddress, zoning_code,nationalparkflag, parkflag)
+
+#44 lots are flagged as national park. one lot is both national and DC park. 
+testnationalpark <- jurzoningdata6 %>% 
+  filter(nationalparkflag==1) %>% 
+  filter(category=="vacant") %>% 
+  select(propaddress, zoning_code, nationalparkflag, parkflag)
+
+jurzoningdata7 <- jurzoningdata6 %>% 
+  filter(is.na(parkflag)) %>% 
+  filter(is.na(nationalparkflag))
+
+```
+
+
 ## Calculate missing units
 
 There are several variables we will use to calculate how many units we can put on each vacant lot.
@@ -804,7 +912,7 @@ Get summary statistics for several different parameters
 ```{r sum}
 
 #this is taking forever to run on the whole dataset, we have this later for vacant lots before exporting, comment out 
-# get_unit_summary(dataset = jurzoningdata3,
+# get_unit_summary(dataset = jurzoningdata6,
 #                  construction_efficiency = .7,
 #                  average_unit_size = 940,
 #                  dwelling_type_breakdown = TRUE) %>%
@@ -822,7 +930,7 @@ Get summary statistics for several different parameters
 #add 'not in' function
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
-vacantlotunits <- jurzoningdata3 %>% 
+vacantlotunits <- jurzoningdata7 %>% 
   filter(parcelbase_usecode %!in% c("093","193","094","194","095","195")) %>% 
   filter(category=="vacant" & smallsize_flag==0)
 
@@ -848,7 +956,7 @@ get_unit_variables(dataset = vacantlotunits,
 
 
 #write out whole dataset for Sarah
-get_unit_variables(dataset = jurzoningdata3,
+get_unit_variables(dataset = jurzoningdata7,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
   mutate(units_bk= as.numeric(case_when(category== "vacant" ~ 0,
@@ -859,7 +967,7 @@ get_unit_variables(dataset = jurzoningdata3,
                    "-units.csv"))
 
 #write out a Rdata version
-DCmaxunit <- get_unit_variables(dataset = jurzoningdata3,
+DCmaxunit <- get_unit_variables(dataset = jurzoningdata7,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
   mutate(units_bk= as.numeric(case_when(category== "vacant" ~ 0,
@@ -869,7 +977,7 @@ DCmaxunit <- get_unit_variables(dataset = jurzoningdata3,
 
  saveRDS(DCmaxunit, "L:/Libraries/RegHsg/Data/DC/DC-max-units.Rdata")
 
-jurzoningdata3 %>% 
+jurzoningdata7 %>% 
     group_by(category) %>% 
     summarize(lots = n()) %>% 
     write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",

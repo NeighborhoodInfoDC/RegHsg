@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Yipeng Su adapted from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated April 03, 2019</p>
+<p>Last updated April 04, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -717,9 +717,9 @@ rm(newcat, mf)</code></pre>
 <pre><code>## # A tibble: 3 x 2
 ##   lotsizeareaunit      n
 ##   &lt;chr&gt;            &lt;int&gt;
-## 1 AC                2395
-## 2 SF              183127
-## 3 &lt;NA&gt;             20908</code></pre>
+## 1 &lt;NA&gt;             20908
+## 2 AC                2395
+## 3 SF              183127</code></pre>
 <pre class="r"><code>jur &lt;- jur %&gt;% 
   mutate(lotsize_acres = case_when(lotsizeareaunit == &quot;AC&quot; ~ lotsizeorarea ,
                                    lotsizeareaunit == &quot;SF&quot; ~ lotsizeorarea / 43560),
@@ -1107,7 +1107,7 @@ allsingle &lt;- bind_rows(singles, singles2) </code></pre>
                     parcelgeo_x, parcelgeo_y, 
                     lat, long,
                     assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
-                    parcelbase_phasebuild, parcelbase_phaseland), list) %&gt;% 
+                    parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype), list) %&gt;% 
   rename_at(vars(-propaddress), ~ paste0(., &quot;_list&quot;)) %&gt;% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, mode_narm),
@@ -1136,7 +1136,8 @@ allsingle &lt;- bind_rows(singles, singles2) </code></pre>
                                             sum, na.rm = TRUE),
          assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE),
          parcelbase_phasebuild=map_dbl(parcelbase_phasebuild_list,sum, na.rm = TRUE),
-         parcelbase_phaseland=map_dbl(parcelbase_phaseland_list,sum, na.rm = TRUE)) %&gt;% 
+         parcelbase_phaseland=map_dbl(parcelbase_phaseland_list,sum, na.rm = TRUE),
+         parcelbase_mix1txtype= map(parcelbase_mix1txtype_list, mode_narm)) %&gt;% 
   mutate(ties_cat = ifelse(map(category, length) &gt; 1, 1, 0)) %&gt;% 
   mutate(category = ifelse(ties_cat == 1,
                            map(category_list, 1),
@@ -1590,7 +1591,7 @@ allsingle2 %&gt;%
          category, category_detail, residential, building_type,
          parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
          assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
-         parcelbase_phasebuild, parcelbase_phaseland)
+         parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype)
 
 #no longer any missing -commenting out code
 #missing_f &lt;- missing %&gt;% 
@@ -1611,8 +1612,7 @@ allsingle2 %&gt;%
 multiples_f &lt;- nested_final %&gt;% 
   select(-ends_with(&quot;_list&quot;), -lsmode, -lsfirst, 
          -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %&gt;% 
-  mutate_at(vars(category, category_detail, building_type, yearbuilt, zoning, parcelbase_usecode),
-            as.character) %&gt;% 
+  mutate_at(vars(category, category_detail, building_type, yearbuilt, zoning, parcelbase_usecode, parcelbase_mix1txtype), as.character) %&gt;% 
   mutate_at(vars(buildingarea, residential, lat, long), as.double) %&gt;% 
   mutate(parcelgeo_x = as.numeric(Xcoord),
          parcelgeo_y = as.numeric(Ycoord)) %&gt;% 
