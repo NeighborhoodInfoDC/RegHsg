@@ -390,6 +390,9 @@ Pick one activity center in Arlington to test and visualize the calculation. Use
 ```{r clar}
 
 clarendon <- filter(nodes_varies, name == "Clarendon", type == "Activity")
+ss <- filter(nodes_varies, name == "Silver Spring", node == "Transit")
+cc <- filter(nodes_varies, name == "Crystal City", node == "Transit")
+
 
 ```
 
@@ -398,6 +401,14 @@ Clip the Black Knight data to the extent of the activity center.
 ```{r clip-zon}
 
 bk_clar <- st_intersection(parcel2, clarendon)
+
+bk_ss <- st_intersection(parcel2, ss)
+bk_cc <- st_intersection(parcel2, cc)
+
+x <- readRDS("L:/Libraries/RegHsg/Data/arlington/precleaned-arlington-data.Rdata")
+
+x1 <- x %>% 
+  filter(str_detect(propaddress, "S HAYES ST") == TRUE)
 
 ```
 
@@ -494,6 +505,13 @@ get_individual_density(dataset = parcel2,
                        node_name = "Clarendon", 
                        node_type = "Activity") %>% 
   knitr::kable()
+
+get_individual_density(dataset = parcel2,
+                       node_geometry = nodes_uniform,
+                       node_name = "Silver Spring", 
+                       node_type = "Transit") %>% 
+  knitr::kable()
+
 
 ```
 Map function through all activity centers and transit zones.
