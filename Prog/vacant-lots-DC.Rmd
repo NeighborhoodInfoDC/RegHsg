@@ -661,7 +661,8 @@ nrow(jurzoningdata1)
 
 #there are some extremley large vacant lots 1600 FAIRLAWN AVE SE (35683219.9), 3502 JOHN MCCORMACK RD (4152008.6), 800 FLORIDA AVE NE (4054172.7)
 test <- jurzoningdata1 %>% 
-  select(lotsize_sf, propaddress, zoning_code)
+  filter(parcelbase_usecode %in% c("095","195"))
+  select(lotsize_sf, propaddress, zoning_code, parcelbase_usecode, category)
 
 
 
@@ -816,9 +817,13 @@ Get summary statistics for several different parameters
 #   knitr::kable()
 
 
-#filter out usecode 093 and 193, vacant lots and lotsize that are big enough for vacant lot anlaysis
+#filter out usecode 093 and 193 (vacant with zoning limits) 194 & 094 (vacant false - has structure but imprv value assigned to adj lot), 095 & 195 (vacant with relatively permanent commerical structures - like railroad) and lotsize that are big enough for vacant lot anlaysis
+
+#add 'not in' function
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
 vacantlotunits <- jurzoningdata3 %>% 
-  filter(parcelbase_usecode!= "093"| parcelbase_usecode!= "193") %>% 
+  filter(parcelbase_usecode %!in% c("093","193","094","194","095","195")) %>% 
   filter(category=="vacant" & smallsize_flag==0)
 
 nrow(vacantlotunits)
@@ -830,13 +835,13 @@ testvacant <- get_unit_variables(dataset = vacantlotunits,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
   filter(housing_type=="Single Family") %>% 
-  select(propaddress, parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,             units_per_floor, units_min, units_FAR, units_height, units_total, zoning_code, one_unit_flag, two_unit_flag, subset ) 
+  select(propaddress, parcelbase_SSL, parcelbase_usecode,lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories, units_per_floor, units_min, units_FAR, units_height, units_total, zoning_code, one_unit_flag, two_unit_flag, subset ) 
  
 
 get_unit_variables(dataset = vacantlotunits,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-  select(parameters, parcelbase_SSL, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,             units_per_floor, units_min, units_FAR, units_height, propaddress, zoning_code, one_unit_flag, two_unit_flag, subset ) %>% 
+  select(parameters, parcelbase_SSL, parcelbase_usecode,lotsize_sf, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,             units_per_floor, units_min, units_FAR, units_height, propaddress, zoning_code, one_unit_flag, two_unit_flag, subset ) %>% 
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-vacant-lots-analysis-basedata.csv"))
