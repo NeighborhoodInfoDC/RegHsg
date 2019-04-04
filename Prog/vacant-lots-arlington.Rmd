@@ -523,7 +523,7 @@ Convert to long so that we can list the zoning variables- then `group_by` the pa
 ```{r long}
 
 long <- dual %>% 
-  gather(key = "position", value = "code", -c(1:68, 73))
+  gather(key = "position", value = "code", -c(1:47, 52))
 
 dual2 <- long %>% 
   group_by(assessorsparcelnumberapnpin) %>% 
