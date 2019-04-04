@@ -523,7 +523,7 @@ Convert to long so that we can list the zoning variables- then `group_by` the pa
 ```{r long}
 
 long <- dual %>% 
-  gather(key = "position", value = "code", -c(1:46, 51))
+  gather(key = "position", value = "code", -c(1:68, 73))
 
 dual2 <- long %>% 
   group_by(assessorsparcelnumberapnpin) %>% 
@@ -725,16 +725,17 @@ get_unit_variables <- function(dataset,
            living_area = buildable_area * construction_efficiency,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height_ft / 10),
+           subset = floor(lotsize_sf / lot_area_min), 
            units_height = units_per_floor * floors,
            units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
     mutate_at(vars(units_height, units_lotsize),
               funs(case_when(
-                one_unit_flag == 1 ~ 1,
-                two_unit_flag == 1 ~ 2,
+                one_unit_flag == 1 & subset > 1 ~ subset,
+                two_unit_flag == 1 & . >= 2 ~ 2 * subset,
                 TRUE ~ .))) %>% 
     mutate(units_total = case_when(
-      one_unit_flag == 1 ~ 1,
-      two_unit_flag == 1 ~ 2,
+      one_unit_flag == 1 & subset > 1 ~ subset,
+      two_unit_flag == 1 & . >= 2 ~ 2 * subset,
       units_height < units_lotsize ~ units_height,
       TRUE ~ units_lotsize))
   

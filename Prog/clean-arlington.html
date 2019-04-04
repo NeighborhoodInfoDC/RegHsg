@@ -1431,7 +1431,8 @@ grouped_condos &lt;- test %&gt;%
   group_by(parcel_address, countylandusedescription) %&gt;% 
   summarize()</code></pre>
 <p>Use a spatial join to the parcel shapefule to fill in lot size.</p>
-<pre class="r"><code>par &lt;- st_read(dsn = &quot;L:/Libraries/RegHsg/Maps/arlington-parcel-map&quot;,
+<pre class="r"><code># read parcel shapefile
+par &lt;- st_read(dsn = &quot;L:/Libraries/RegHsg/Maps/arlington-parcel-map&quot;,
                layer = &quot;Parcel_Polygons&quot;) %&gt;% 
   st_transform(crs = 4326)</code></pre>
 <pre><code>## Reading layer `Parcel_Polygons' from data source `L:\Libraries\RegHsg\Maps\arlington-parcel-map' using driver `ESRI Shapefile'
@@ -1476,7 +1477,10 @@ jur6condo &lt;- jur6 %&gt;%
   filter(n &gt; 1)
 sum(jur6condo$n)</code></pre>
 <pre><code>## [1] 1660</code></pre>
-<pre class="r"><code>correct_area &lt;- jur6 %&gt;% 
+<pre class="r"><code># collapse by parcel ID and county land use. 
+# the area will be the same for all the parcels within a parcel ID- so take the average,
+# and divide this by the number of parcels joining to it.
+correct_area &lt;- jur6 %&gt;% 
   group_by(RPCMSTR, countylandusedescription) %&gt;% 
   filter(n() &gt; 1,
          !is.na(RPCMSTR)) %&gt;% 
@@ -1486,18 +1490,23 @@ sum(jur6condo$n)</code></pre>
                            NA,
                            area_new))
 
+# select only what we want to join
 correct_area_merge &lt;- correct_area %&gt;% 
   select(RPCMSTR, countylandusedescription, area_new)
-  
+
+# merge on corrected area fill in lot size
 jur6a &lt;- jur6 %&gt;%
   left_join(correct_area_merge, by = c(&quot;RPCMSTR&quot;, &quot;countylandusedescription&quot;)) %&gt;% 
+  # substitute when needed
   mutate(area = ifelse(!is.na(area_new),
                        area_new,
                        area)) %&gt;% 
+  # fill in lot size with area
   mutate(lotsize_sf = ifelse((lotsize_sf == 0 | is.na(lotsize_sf)) &amp; !is.na(OBJECTID),
                              area,
                              lotsize_sf)) %&gt;% 
   select(-OBJECTID, -EVENT_ID, -RPCMSTR) %&gt;% 
+  # bind back to obs with missing coords
   bind_rows(filter(jur5, is.na(lat)))
 
 sum(is.na(jur6$lotsize_sf))</code></pre>

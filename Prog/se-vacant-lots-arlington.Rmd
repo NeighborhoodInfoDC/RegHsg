@@ -370,17 +370,26 @@ get_unit_variables <- function(dataset,
            living_area = buildable_area * construction_efficiency,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height_ft / 10),
+           subset = ifelse(one_unit_flag == 1,
+                           floor(lotsize_sf / lot_area_min),
+                           NA), 
            units_height = units_per_floor * floors,
            units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
     mutate_at(vars(units_height, units_lotsize),
               funs(case_when(
-                one_unit_flag == 1 ~ 1,
-                two_unit_flag == 1 ~ 2,
+                one_unit_flag == 1 & subset > 1 & !is.na(subset) ~ subset,
+                one_unit_flag == 1 & subset < 1 ~ 1,
+                two_unit_flag == 1 & . >= 2 & !is.na(subset) ~ 2 * subset,
+                two_unit_flag == 1 & . >= 2 & subset < 1 ~ 2,
                 TRUE ~ .))) %>% 
     mutate(units_total = case_when(
-      one_unit_flag == 1 ~ 1,
-      two_unit_flag == 1 ~ 2,
-      is.na(units_lotsize) ~ units_height,
+       subset < 1 ~ 0,
+       lotsize_sf < lot_area_min ~ 0,
+       living_area < average_unit_size ~ 0,
+       # one_unit_flag == 1 ~ 1,
+       # two_unit_flag == 1 ~ 2,
+       # one_unit_flag == 1 & subset>=1 & units_lotsize/subset>=1 ~ 1*subset,
+       # two_unit_flag == 1 & subset>=1 & units_lotsize/subset>=2 ~ 2*subset,
       units_height < units_lotsize ~ units_height,
       TRUE ~ units_lotsize))
   
@@ -406,20 +415,20 @@ get_unit_summary <- function(dataset,
                        average_unit_size) %>%
     group_by(parameters) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height, na.rm = TRUE),
-              units_lotsize = sum(units_lotsize, na.rm = TRUE),
-              units_total = sum(units_total, na.rm = TRUE),
-              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE)))
+              units_height = sum(units_height),
+              units_lotsize = sum(units_lotsize),
+              units_total = sum(units_total),
+              units_per_lot = floor(sum(units_total / lots)))
   
   y <- dataset %>% 
     get_unit_variables(construction_efficiency,
                        average_unit_size) %>%
     group_by(parameters, dwelling_type) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height, na.rm = TRUE),
+              units_height = sum(units_height),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
-              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE))) %>% 
+              units_per_lot = floor(sum(units_total / lots))) %>% 
     mutate(dwelling_type = as.character(dwelling_type))
   
   
@@ -462,7 +471,7 @@ brsum <- byright %>%
          smallsize_flag == 0) %>% 
   get_unit_summary(construction_efficiency = .75,
                  average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE) 
+                 dwelling_type_breakdown = TRUE)
 brsum %>% 
   knitr::kable(caption = "By right only")
 
