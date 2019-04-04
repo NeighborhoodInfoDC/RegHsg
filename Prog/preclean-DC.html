@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Yipeng adapted from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated April 02, 2019</p>
+<p>Last updated April 04, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -371,7 +371,10 @@ parcelgeo &lt;- haven::read_sas(&quot;L:/Libraries/realprop/data/parcel_geo.sas7
          parcelbase_phasebuild= PHASEBUILD,
          parcelbase_phaseland= PHASELAND,
          parcelbase_suffix= SUFFIX,
-         in_last_ownerpt= in_last_ownerpt
+         in_last_ownerpt= in_last_ownerpt,
+         parcelbase_mixeduse = MIXEDUSE,
+         parcelbase_mix1txtype= MIX1TXTYPE,
+         parcelbase_mix2txtype= MIX2TXTYPE
         ) %&gt;% 
   mutate(parcelbase_parcelID= as.character(parcelbase_parcelID)) %&gt;% 
   filter(!is.na(parcelbase_parcelID))
