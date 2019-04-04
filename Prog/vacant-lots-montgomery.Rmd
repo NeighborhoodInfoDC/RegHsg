@@ -50,8 +50,6 @@ library(tidyverse)
 #library(urbnthemes) #urban themes was causeing bugs, I took it out.
 library(sf)
 library(ggplot2)
-library(naniar)
-
 
 #set_urbn_defaults("print")
 
