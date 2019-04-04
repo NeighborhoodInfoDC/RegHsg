@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated April 01, 2019</p>
+<p>Last updated April 03, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -758,7 +758,7 @@ rm(newcat, mf)</code></pre>
 <p>First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace <code>parcel_address</code> with <code>NA</code>.</p>
 <p><strong>Note:</strong> It is possible that this may not hold for all jurisdiction. Visually confirm with a few multiple addresses.</p>
 <pre class="r"><code>jur &lt;- jur %&gt;% 
-  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6)) 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6))
 
 bad_parcels &lt;- jur %&gt;% 
   group_by(propaddress) %&gt;% 
@@ -767,7 +767,16 @@ bad_parcels &lt;- jur %&gt;%
                                   function(x) length(unique(x))))) %&gt;% 
   filter(unq_parcels &gt; 1)
 
-bad_addresses &lt;- bad_parcels %&gt;% 
+bad_reverse &lt;- jur %&gt;% 
+  group_by(parcel_address) %&gt;% 
+  summarize(address = list(propaddress)) %&gt;% 
+  mutate(unq_address = as.integer(map(address, 
+                                  function(x) length(unique(x))))) %&gt;% 
+  filter(unq_address &gt; 1)
+
+sum(bad_reverse$unq_address)</code></pre>
+<pre><code>## [1] 41859</code></pre>
+<pre class="r"><code>bad_addresses &lt;- bad_parcels %&gt;% 
   pull(propaddress)
 
 jur &lt;- jur %&gt;% 
@@ -1411,6 +1420,16 @@ jur5 &lt;- jur4 %&gt;%
   mutate(address_cap = toupper(propaddress)) %&gt;% 
   left_join(address1, by = &quot;address_cap&quot;) %&gt;% 
   select(-address_cap)</code></pre>
+<p>BEFORE spatial join: collapse condos that were not collapsed by address via the first five digits of their parcel ID.</p>
+<pre class="r"><code>test &lt;- jur5 %&gt;% 
+  filter(category_detail == &quot;condo&quot;,
+         address_type != &quot;missing&quot;,
+         !is.na(parcel_address))
+
+
+grouped_condos &lt;- test %&gt;% 
+  group_by(parcel_address, countylandusedescription) %&gt;% 
+  summarize()</code></pre>
 <p>Use a spatial join to the parcel shapefule to fill in lot size.</p>
 <pre class="r"><code>par &lt;- st_read(dsn = &quot;L:/Libraries/RegHsg/Maps/arlington-parcel-map&quot;,
                layer = &quot;Parcel_Polygons&quot;) %&gt;% 
@@ -1447,7 +1466,34 @@ jurj %&gt;%
 ## 2 TRUE                269</code></pre>
 <pre class="r"><code>jur6 &lt;- jurj %&gt;% 
   # strip geometry
-  st_set_geometry(NULL) %&gt;% 
+  st_set_geometry(NULL)
+
+# identify when multiple condos join to one lot
+jur6condo &lt;- jur6 %&gt;%
+  filter(category_detail == &quot;condo&quot;) %&gt;% 
+  group_by(RPCMSTR) %&gt;% 
+  count() %&gt;% 
+  filter(n &gt; 1)
+sum(jur6condo$n)</code></pre>
+<pre><code>## [1] 1660</code></pre>
+<pre class="r"><code>correct_area &lt;- jur6 %&gt;% 
+  group_by(RPCMSTR, countylandusedescription) %&gt;% 
+  filter(n() &gt; 1,
+         !is.na(RPCMSTR)) %&gt;% 
+  summarize(n(),
+            area_new = mean(area, na.rm = TRUE) / n()) %&gt;% 
+  mutate(area_new = ifelse(area_new == &quot;NaN&quot;,
+                           NA,
+                           area_new))
+
+correct_area_merge &lt;- correct_area %&gt;% 
+  select(RPCMSTR, countylandusedescription, area_new)
+  
+jur6a &lt;- jur6 %&gt;%
+  left_join(correct_area_merge, by = c(&quot;RPCMSTR&quot;, &quot;countylandusedescription&quot;)) %&gt;% 
+  mutate(area = ifelse(!is.na(area_new),
+                       area_new,
+                       area)) %&gt;% 
   mutate(lotsize_sf = ifelse((lotsize_sf == 0 | is.na(lotsize_sf)) &amp; !is.na(OBJECTID),
                              area,
                              lotsize_sf)) %&gt;% 
@@ -1455,13 +1501,13 @@ jurj %&gt;%
   bind_rows(filter(jur5, is.na(lat)))
 
 sum(is.na(jur6$lotsize_sf))</code></pre>
-<pre><code>## [1] 146</code></pre>
+<pre><code>## [1] 6717</code></pre>
 <pre class="r"><code>sum(jur6$lotsize_sf == 0, na.rm = TRUE)</code></pre>
 <pre><code>## [1] 0</code></pre>
 </div>
 <div id="replace-missing-variables-when-possible" class="section level2">
 <h2>Replace missing variables when possible</h2>
-<pre class="r"><code>jur7 &lt;- jur6 %&gt;% 
+<pre class="r"><code>jur7 &lt;- jur6a %&gt;% 
   mutate(lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) &amp; !is.na(parcel_area),
                              parcel_area,
                              lotsize_sf),
@@ -1488,7 +1534,7 @@ sum(is.na(jur6$lotsize_sf))</code></pre>
 sum(is.na(jur7$lotsize_sf))</code></pre>
 <pre><code>## [1] 60</code></pre>
 <pre class="r"><code>sum(jur6$numberofunits == 0)</code></pre>
-<pre><code>## [1] 38784</code></pre>
+<pre><code>## [1] 38472</code></pre>
 <pre class="r"><code>jur7 %&gt;% 
   filter(residential == 1, category != &quot;vacant&quot;) %&gt;% 
   summarize(sum(is.na(numberofunits)),
