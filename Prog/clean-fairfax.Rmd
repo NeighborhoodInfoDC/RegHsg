@@ -396,25 +396,24 @@ jur_1 <- jur %>%
                                    lotsizeareaunit == "SF" ~ lotsizeorarea / 43560),
          lotsize_sf = lotsize_acres * 43560) %>% 
   mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %>%
-   mutate(lotsize_sf = case_when(
-         is.na(lotsize_sf) ~ jur$area_legal%>%as.double,
-         T ~ lotsize_sf
-  )) %>% 
-    mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %>%
-  mutate(lotsize_sf = case_when(
-            (is.na(lotsize_sf)|lotsize_sf==0)~jur$area_tax %>% as.double,
-            T ~ lotsize_sf
-  ))  %>% mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %>%
-  mutate(lotsize_sf = case_when(
-        is.na(lotsize_sf) ~
-         jur$parcel_area %>% as.double(),
-        T ~ lotsize_sf)) %>%
   mutate(num_livunit=case_when(
          num_livunit==0|is.na(num_livunit) ~ units_rental,
          T~num_livunit
-  ))
-
-
+  )) %>%
+  mutate(lotsize_sf = case_when(
+         is.na(lotsize_sf) ~ jur$area_legal%>%as.double,
+         T ~ lotsize_sf
+  )) %>% 
+    mutate_at(vars(lotsize_sf), ~ replace(., .==0, NA)) %>%
+  mutate(lotsize_sf = case_when(
+            (is.na(lotsize_sf)|lotsize_sf==0)~jur$area_tax %>% as.double,
+            T ~ lotsize_sf
+  ))  %>% mutate_at(vars(lotsize_sf), ~ replace(., .==0, NA)) %>%
+    mutate(lotsize_sf = case_when(
+        is.na(lotsize_sf) ~
+         jur$parcel_area %>% as.double(),
+        T ~ lotsize_sf)) 
+                
 
 ```
 
@@ -1022,19 +1021,19 @@ multiples_f <- nested_final %>%
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = "multiple")
 
-finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>% 
+jur_4 <- bind_rows(singles_f, multiples_f, missing_f) %>% 
   fill(county_fips) %>% 
   fill(county_name) %>%
   select(-list_no_na)
 
-finaljur[finaljur == "NULL"] = NA
-finaljur[finaljur == "character(0)"] = NA
+jur_4[jur_4 == "NULL"] = NA
+jur_4[jur_4 == "character(0)"] = NA
 
 ```
 
 #####Quick fix to category 
 ```{r}
-finaljur <- finaljur %>% mutate(category = case_when(category=="c(\"other\", \"sf\")"~"other", T~category))
+jur_4 <- jur_4 %>% mutate(category = case_when(category=="c(\"other\", \"sf\")"~"other", T~category))
 ```
 
 
@@ -1042,12 +1041,12 @@ finaljur <- finaljur %>% mutate(category = case_when(category=="c(\"other\", \"s
 Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were `r nrow(filter(cdties_1, test_vacant == 1))` multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, `r nunits`,  minus `r nrow(filter(cdties_1, test_vacant == 1))`.
 
 ```{r fin-check}
-mult <- finaljur %>% 
+mult <- jur_4 %>% 
   filter(address_type == "multiple") %>% 
   summarize(num = sum(numberofunits)) %>% 
   pull()
 
-other <- finaljur %>% 
+other <- jur_4 %>% 
   filter(address_type != "multiple")
 
 stopifnot(mult + nrow(other) == nrow(jur) - 
@@ -1057,9 +1056,11 @@ rm(mult, other, nunits, cdties)
 
 ```
 
+
+
 Write out clean data. This time, we will save as a `.csv` so that it can be read into another program if necessary.
 
 ```{r write}
-write_csv(finaljur, 
+write_csv(jur_4, 
           paste0(jdir, filepath, "-cleaned-data.csv"))
 ```

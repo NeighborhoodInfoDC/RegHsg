@@ -247,7 +247,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated April 03, 2019</p>
+<p>Last updated April 04, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -1405,7 +1405,8 @@ get_unit_variables &lt;- function(dataset,
     mutate(parameters = paste0(&quot;CE: &quot;, construction_efficiency * 100,
                                &quot;% , Unit size: &quot;, average_unit_size,
                                &quot; sf&quot;),
-           buildable_area = lotsize_sf,
+           lot_coverage = .75,
+           buildable_area = lotsize_sf * lot_coverage,
            living_area = buildable_area * construction_efficiency,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height / 10),
@@ -1523,7 +1524,7 @@ zoningdata1 %&gt;%
 <td align="left">CE: 70% , Unit size: 940 sf</td>
 <td align="left">multiple family dwellings (ADU)</td>
 <td align="right">23</td>
-<td align="right">13914</td>
+<td align="right">10420</td>
 <td align="right">647</td>
 <td align="right">647</td>
 <td align="right">28</td>
@@ -1550,7 +1551,7 @@ zoningdata1 %&gt;%
 <td align="left">CE: 70% , Unit size: 940 sf</td>
 <td align="left">All</td>
 <td align="right">1495</td>
-<td align="right">15967</td>
+<td align="right">12473</td>
 <td align="right">2700</td>
 <td align="right">2700</td>
 <td align="right">1</td>
@@ -1580,7 +1581,7 @@ zoningdata1 %&gt;%
 <tr class="odd">
 <td align="left">CE: 70% , Unit size: 940 sf</td>
 <td align="right">1495</td>
-<td align="right">15967</td>
+<td align="right">12473</td>
 <td align="right">2700</td>
 <td align="right">2700</td>
 <td align="right">1</td>
@@ -1588,7 +1589,7 @@ zoningdata1 %&gt;%
 <tr class="even">
 <td align="left">CE: 85% , Unit size: 940 sf</td>
 <td align="right">1495</td>
-<td align="right">18948</td>
+<td align="right">14697</td>
 <td align="right">2700</td>
 <td align="right">2700</td>
 <td align="right">1</td>

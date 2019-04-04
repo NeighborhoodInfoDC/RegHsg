@@ -247,7 +247,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated April 02, 2019</p>
+<p>Last updated April 04, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <p>Note: The following jurisdictions are not inside Fairfax County:</p>
 <p>City of Fairfax</p>
@@ -614,23 +614,23 @@ rm(jur_1, jur_2, jur_3)</code></pre>
                                    lotsizeareaunit == &quot;SF&quot; ~ lotsizeorarea / 43560),
          lotsize_sf = lotsize_acres * 43560) %&gt;% 
   mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %&gt;%
-   mutate(lotsize_sf = case_when(
-         is.na(lotsize_sf) ~ jur$area_legal%&gt;%as.double,
-         T ~ lotsize_sf
-  )) %&gt;% 
-    mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %&gt;%
-  mutate(lotsize_sf = case_when(
-            (is.na(lotsize_sf)|lotsize_sf==0)~jur$area_tax %&gt;% as.double,
-            T ~ lotsize_sf
-  ))  %&gt;% mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %&gt;%
-  mutate(lotsize_sf = case_when(
-        is.na(lotsize_sf) ~
-         jur$parcel_area %&gt;% as.double(),
-        T ~ lotsize_sf)) %&gt;%
   mutate(num_livunit=case_when(
          num_livunit==0|is.na(num_livunit) ~ units_rental,
          T~num_livunit
-  ))</code></pre>
+  )) %&gt;%
+  mutate(lotsize_sf = case_when(
+         is.na(lotsize_sf) ~ jur$area_legal%&gt;%as.double,
+         T ~ lotsize_sf
+  )) %&gt;% 
+    mutate_at(vars(lotsize_sf), ~ replace(., .==0, NA)) %&gt;%
+  mutate(lotsize_sf = case_when(
+            (is.na(lotsize_sf)|lotsize_sf==0)~jur$area_tax %&gt;% as.double,
+            T ~ lotsize_sf
+  ))  %&gt;% mutate_at(vars(lotsize_sf), ~ replace(., .==0, NA)) %&gt;%
+    mutate(lotsize_sf = case_when(
+        is.na(lotsize_sf) ~
+         jur$parcel_area %&gt;% as.double(),
+        T ~ lotsize_sf)) </code></pre>
 </div>
 </div>
 <div id="collapsing-properties" class="section level2">
@@ -1217,23 +1217,23 @@ multiples_f &lt;- nested_final %&gt;%
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = &quot;multiple&quot;)
 
-finaljur &lt;- bind_rows(singles_f, multiples_f, missing_f) %&gt;% 
+jur_4 &lt;- bind_rows(singles_f, multiples_f, missing_f) %&gt;% 
   fill(county_fips) %&gt;% 
   fill(county_name) %&gt;%
   select(-list_no_na)
 
-finaljur[finaljur == &quot;NULL&quot;] = NA
-finaljur[finaljur == &quot;character(0)&quot;] = NA</code></pre>
+jur_4[jur_4 == &quot;NULL&quot;] = NA
+jur_4[jur_4 == &quot;character(0)&quot;] = NA</code></pre>
 <div id="quick-fix-to-category" class="section level5">
 <h5>Quick fix to category</h5>
-<pre class="r"><code>finaljur &lt;- finaljur %&gt;% mutate(category = case_when(category==&quot;c(\&quot;other\&quot;, \&quot;sf\&quot;)&quot;~&quot;other&quot;, T~category))</code></pre>
+<pre class="r"><code>jur_4 &lt;- jur_4 %&gt;% mutate(category = case_when(category==&quot;c(\&quot;other\&quot;, \&quot;sf\&quot;)&quot;~&quot;other&quot;, T~category))</code></pre>
 <p>Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were 367 multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, 741, minus 367.</p>
-<pre class="r"><code>mult &lt;- finaljur %&gt;% 
+<pre class="r"><code>mult &lt;- jur_4 %&gt;% 
   filter(address_type == &quot;multiple&quot;) %&gt;% 
   summarize(num = sum(numberofunits)) %&gt;% 
   pull()
 
-other &lt;- finaljur %&gt;% 
+other &lt;- jur_4 %&gt;% 
   filter(address_type != &quot;multiple&quot;)
 
 stopifnot(mult + nrow(other) == nrow(jur) - 
@@ -1241,7 +1241,7 @@ stopifnot(mult + nrow(other) == nrow(jur) -
 
 rm(mult, other, nunits, cdties)</code></pre>
 <p>Write out clean data. This time, we will save as a <code>.csv</code> so that it can be read into another program if necessary.</p>
-<pre class="r"><code>write_csv(finaljur, 
+<pre class="r"><code>write_csv(jur_4, 
           paste0(jdir, filepath, &quot;-cleaned-data.csv&quot;))</code></pre>
 </div>
 </div>
