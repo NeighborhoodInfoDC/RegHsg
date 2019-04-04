@@ -42,6 +42,8 @@ source("../Macros/filter-bk.R")
 source("../Macros/select-vars.R")
 source("../Macros/sample-properties.R")
 source("../Macros/classify-addresses.R")
+source("../Macros/max_narm.R")
+source("../Macros/mode_narm.R")
 ```
 
 ```{r rmarkdown-setup, echo = FALSE}
@@ -210,14 +212,65 @@ We will fill in the missing lot size, when we can, with the area of the lot, obt
 
 pjoin_df1 <- pjoin_df %>% 
   mutate(arc_lotsize_sf = lotsize_sf, # archive the original lot size variable
-         lotsize_sf = ifelse(is.na(lotsize_sf),#fill in lot size variable from the parcel file
-                             SHAPE_AREA,
-                             lotsize_sf),#fill in lot size variable from the parcel file
-         lotsize_sf = ifelse(lotsize_sf >= 1000000,
-                             SHAPE_AREA,
-                             lotsize_sf))#fill in lot size for really large properties because these are probably wrong
+         lotwasmissing = ifelse(is.na(lotsize_sf),1,0))
+
+count(pjoin_df1, LU_CATEGOR)
+
+outputdata <- pjoin_df1 %>%
+select(outputdata, OBJECTID, propaddress, propcity, assessorsparcelnumberapnpin, countylandusedescription, LANDUSE_CO ,LU_CATEGOR, category, category_detail, residential, building_type,lotsize_sf, SHAPE_AREA, IMPROV_ASS, NO_DWELLIN, DWELLING_T)
+
+testing <- pjoin_df1 %>%
+  filter(countylandusedescription=="EXEMPT")
+
+count(testing, LU_CATEGOR)
+
+#group by OBJECTID - id from parcel shapefile to figure out which parcels joined to large lots that represent multiple parcels - like joining condo units to a lot for the whole building. need to identify how many parcels join to that lot in order to get the correct lot size to fill in for missing parcels.
+
+Biglots <- pjoin_df1 %>%
+  group_by(OBJECTID)%>%
+  summarize_at(vars(zoning,category_detail, LU_CATEGOR, lotsize_sf,lotwasmissing,SHAPE_AREA), list) %>% 
+  rename_at(vars(-OBJECTID), ~ paste0(., "_list")) %>%
+  mutate(nprops = map(zoning_list, length),
+         lotwasmissing_sum = map_dbl(lotwasmissing_list, sum, na.rm = TRUE),
+        lotsize_max= map(lotsize_sf_list, max, na.rm = TRUE),
+        lotsize_sum= map(lotsize_sf_list, sum, na.rm = TRUE))
+
+Biglots2 <- Biglots %>% 
+  mutate(nprops = as.integer(nprops),
+         lotsize_sum = as.double(lotsize_sum),
+         lotsize_max = as.double(lotsize_max),
+         unique_lots = map(lotsize_sf_list, function(x) length(unique(x))),
+         lsfirst = map(lotsize_sf_list, function(x) x[1]),
+         shapefirst=map(SHAPE_AREA_list,function(x) x[1]),
+         lotmaxissum=ifelse((lotsize_sum-lotsize_max==0),1,0)
+         ) %>% 
+  ungroup()
+
+#eliminate lots that don't have any missing lot size. 
+Biglots3 <- Biglots2 %>%
+  filter(lotwasmissing_sum > 0) %>%
+  mutate(shapefirst =as.double(shapefirst),
+         avglot= shapefirst/nprops)
+
+Onelot <- Biglots3 %>%
+  filter(lotwasmissing_sum==1 & nprops==1)%>%
+  mutate(lotsize_sf=shapefirst,lotsize_sf)
+  
+         
+count(Biglots2, nprops, lotwasmissing)      
+         
+
+#
+#         lotsize_sf = ifelse(is.na(lotsize_sf),#fill in lot size variable from the parcel file
+ #                            SHAPE_AREA,
+  #                           lotsize_sf),#fill in lot size variable from the parcel file
+   #      lotsize_sf = ifelse(lotsize_sf >= 1000000,
+    #                         SHAPE_AREA,
+     #                        lotsize_sf))#fill in lot size for really large properties because these are probably wrong
 
 
+
+         
 count(pjoin_df, is.na(lotsize_sf), category_detail)
 
 count(pjoin_df1, is.na(lotsize_sf), category_detail)#compare before and after filling in
