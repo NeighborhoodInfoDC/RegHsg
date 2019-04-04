@@ -52,6 +52,7 @@ There are three main goals of the jurisdiction level cleaning process:
 library(tidyverse)
 library(DescTools)
 library(purrr)
+library(sf)
 
 source("../Macros/sample-properties.R")
 source("../Macros/classify-addresses.R")
@@ -1012,7 +1013,8 @@ missing_f <- missing %>%
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type)
+         category, category_detail, residential, building_type,
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
 
 multiples_f <- nested_final %>% 
   select(-ends_with("_list"), -lsmode, -lsfirst, 
@@ -1025,24 +1027,24 @@ multiples_f <- nested_final %>%
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = "multiple")
 
-finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>% 
+jur4 <- bind_rows(singles_f, multiples_f, missing_f) %>% 
   fill(county_fips) %>% 
   fill(county_name)
 
-finaljur[finaljur == "NULL"] = NA
-finaljur[finaljur == "character(0)"] = NA
+jur4[jur4 == "NULL"] = NA
+jur4[jur4 == "character(0)"] = NA
 
 ```
 
 Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were `r nrow(filter(cdties, test_vacant == 1))` multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, `r nunits`,  minus `r nrow(filter(cdties, test_vacant == 1))`.
 
 ```{r fin-check}
-mult <- finaljur %>% 
+mult <- jur4 %>% 
   filter(address_type == "multiple") %>% 
   summarize(num = sum(numberofunits)) %>% 
   pull()
 
-other <- finaljur %>% 
+other <- jur4 %>% 
   filter(address_type != "multiple")
 
 stopifnot(mult + nrow(other) == nrow(jur) - 
@@ -1052,9 +1054,125 @@ rm(mult, other, nunits, cdties)
 
 ```
 
+
+## Add additional variables 
+
+Get additional metric for number of units from the Arlington County address file, which was downloaded in the preclean step.
+
+```{r address-file}
+
+# read address file
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
+adfile <- paste0(rdir, filepath, "-address-file.csv")
+address <- read_csv(adfile)
+
+address1 <- address %>% 
+  mutate(address_cap = toupper(FULL_ADDRESS)) %>% 
+  select(address_cap, units_address = UNITCOUNT) %>% 
+  group_by(address_cap) %>% 
+  summarize(units_address = sum(units_address))
+
+
+jur5 <- jur4 %>% 
+  mutate(address_cap = toupper(propaddress)) %>% 
+  left_join(address1, by = "address_cap") %>% 
+  select(-address_cap)
+
+
+```
+
+Use a spatial join to the parcel shapefule to fill in lot size.
+
+```{r spatial}
+
+par <- st_read(dsn = "L:/Libraries/RegHsg/Maps/arlington-parcel-map",
+               layer = "Parcel_Polygons") %>% 
+  st_transform(crs = 4326)
+
+# calculate area in square feet
+par <- par %>% 
+  mutate(area = st_area(par) %>% units::set_units("feet^2") %>% units::set_units(NULL))
+
+# convert arlington to spatial
+jursf <- jur5 %>% 
+  filter(!is.na(lat), !is.na(long)) %>% 
+  mutate(longx = long, laty = lat) %>% 
+  st_as_sf(coords = c("longx", "laty")) %>% 
+  st_set_crs(st_crs(4326))
+
+# join to zoning layer
+jurj <- st_join(jursf, par, st_intersects)
+
+# check match rate
+jurj %>% 
+  as.data.frame() %>% 
+  count(is.na(OBJECTID))
+
+jur6 <- jurj %>% 
+  # strip geometry
+  st_set_geometry(NULL) %>% 
+  mutate(lotsize_sf = ifelse((lotsize_sf == 0 | is.na(lotsize_sf)) & !is.na(OBJECTID),
+                             area,
+                             lotsize_sf)) %>% 
+  select(-OBJECTID, -EVENT_ID, -RPCMSTR) %>% 
+  bind_rows(filter(jur5, is.na(lat)))
+
+sum(is.na(jur6$lotsize_sf))
+sum(jur6$lotsize_sf == 0, na.rm = TRUE)
+
+```
+
+## Replace missing variables when possible
+
+```{r replace}
+
+jur7 <- jur6 %>% 
+  mutate(lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) & !is.na(parcel_area),
+                             parcel_area,
+                             lotsize_sf),
+         lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) & !is.na(lotsize_prop),
+                             lotsize_prop,
+                             lotsize_sf),
+         lotsize_acres = lotsize_sf / 43560) %>% 
+  mutate(numberofunits = ifelse(category_detail == "duplex" & numberofunits == 0,
+                                2,
+                                numberofunits),
+         numberofunits = ifelse(category == "sf" & numberofunits == 0,
+                                1,
+                                numberofunits),
+         numberofunits = ifelse(numberofunits == 0 & units_address != 0 & 
+                                  !is.na(units_address) & units_address != 0,
+                                units_address,
+                                numberofunits),
+         numberofunits = ifelse((is.na(numberofunits) | numberofunits == 0) & 
+                                  !is.na(numberofunits_prop) & numberofunits_prop != 0,
+                                numberofunits_prop,
+                                numberofunits))
+
+
+sum(is.na(jur7$lotsize_sf))
+
+
+sum(jur6$numberofunits == 0)
+
+jur7 %>% 
+  filter(residential == 1, category != "vacant") %>% 
+  summarize(sum(is.na(numberofunits)),
+            sum(numberofunits == 0))
+
+
+jur7 %>% 
+  filter(residential == 1, 
+         category != "vacant",
+         numberofunits == 0) %>% 
+  count(category_detail)
+
+```
+
+
 Write out clean data. This time, we will save as a `.csv` so that it can be read into another program if necessary.
 
 ```{r write}
-write_csv(finaljur, 
+write_csv(jur7, 
           paste0(jdir, filepath, "-cleaned-data.csv"))
 ```
