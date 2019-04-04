@@ -327,9 +327,10 @@ count(specialexception, dwelling_type)
 ```{r }
 
 specialexception1 <- specialexception %>% 
-  mutate(height_se = case_when(
+  mutate(height_ft = case_when(
     zoning == "C-O-1.5" & lotsize_sf < 871200 ~ 80,
     zoning == "C-O-1.5" & lotsize_sf >= 871200 ~ 180,
+    zoning == "C-O-A" ~ 151,
     TRUE ~ height_ft))
 
 ```
@@ -377,10 +378,11 @@ get_unit_variables <- function(dataset,
            units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
     mutate_at(vars(units_height, units_lotsize),
               funs(case_when(
+                living_area < average_unit_size ~ 0,
                 one_unit_flag == 1 & subset > 1 & !is.na(subset) ~ subset,
-                one_unit_flag == 1 & subset < 1 ~ 1,
+                one_unit_flag == 1 & (subset < 1 | is.na(subset)) ~ 1,
                 two_unit_flag == 1 & . >= 2 & !is.na(subset) ~ 2 * subset,
-                two_unit_flag == 1 & . >= 2 & subset < 1 ~ 2,
+                two_unit_flag == 1 & . >= 2 & (subset < 1 | is.na(subset)) ~ 2,
                 TRUE ~ .))) %>% 
     mutate(units_total = case_when(
        subset < 1 ~ 0,
@@ -390,8 +392,7 @@ get_unit_variables <- function(dataset,
        # two_unit_flag == 1 ~ 2,
        # one_unit_flag == 1 & subset>=1 & units_lotsize/subset>=1 ~ 1*subset,
        # two_unit_flag == 1 & subset>=1 & units_lotsize/subset>=2 ~ 2*subset,
-      units_height < units_lotsize ~ units_height,
-      TRUE ~ units_lotsize))
+      TRUE ~ pmin(units_lotsize, units_height, na.rm = TRUE)))
   
 }
 
@@ -415,9 +416,9 @@ get_unit_summary <- function(dataset,
                        average_unit_size) %>%
     group_by(parameters) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height),
-              units_lotsize = sum(units_lotsize),
-              units_total = sum(units_total),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots)))
   
   y <- dataset %>% 
@@ -425,7 +426,7 @@ get_unit_summary <- function(dataset,
                        average_unit_size) %>%
     group_by(parameters, dwelling_type) %>% 
     summarize(lots = n(),
-              units_height = sum(units_height),
+              units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots))) %>% 
@@ -493,7 +494,9 @@ Make scatterplot of special exceptions.
 specialexception1 %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 940) %>% 
-  filter(units_total > 1) %>% 
+  filter(units_total > 1,
+         category == "vacant",
+         lotsize_sf < 500000) %>% 
   ggplot() +
   geom_point(mapping = aes(lotsize_sf, units_total,
                            color = dwelling_type),
