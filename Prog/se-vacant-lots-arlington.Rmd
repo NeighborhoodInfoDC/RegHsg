@@ -379,6 +379,7 @@ get_unit_variables <- function(dataset,
     mutate_at(vars(units_height, units_lotsize),
               funs(case_when(
                 living_area < average_unit_size ~ 0,
+                one_unit_flag == 1 & is.na(.) ~ 1,
                 one_unit_flag == 1 & subset > 1 & !is.na(subset) ~ subset,
                 one_unit_flag == 1 & (subset < 1 | is.na(subset)) ~ 1,
                 two_unit_flag == 1 & . >= 2 & !is.na(subset) ~ 2 * subset,
@@ -457,6 +458,10 @@ brunits <- get_unit_variables(dataset = byright,
                               construction_efficiency = .7,
                               average_unit_size = 940)
 
+sub <- seunits %>% 
+  filter(category == "vacant",
+         subset > 1)
+
 saveRDS(seunits, "L:/Libraries/RegHsg/Data/arlington/arlington-max-units-se.Rdata")
 saveRDS(brunits, "L:/Libraries/RegHsg/Data/arlington/arlington-max-units-br.Rdata")
 
@@ -466,6 +471,12 @@ saveRDS(brunits, "L:/Libraries/RegHsg/Data/arlington/arlington-max-units-br.Rdat
 Compare different between special exception and by right.
 
 ```{r compare-se-br}
+
+vacant_units <- specialexception1 %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
+  get_unit_variables(construction_efficiency = .7,
+                              average_unit_size = 940)
 
 brsum <- byright %>% 
   filter(category == "vacant",
