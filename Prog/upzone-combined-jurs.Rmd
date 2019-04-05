@@ -389,7 +389,7 @@ Pick one activity center in Arlington to test and visualize the calculation. Use
 
 ```{r clar}
 
-clarendon <- filter(nodes_varies, name == "Clarendon", type == "Activity")
+clarendon <- filter(nodes_varies, name == "Rosslyn", node == "Transit")
 ss <- filter(nodes_varies, name == "Silver Spring", node == "Transit")
 cc <- filter(nodes_varies, name == "Crystal City", node == "Transit")
 
@@ -483,7 +483,7 @@ get_individual_density <- function(dataset, node_geometry, node_name, node_type)
                   pvac = sum(ifelse(category == "vacant", lotsize_acres, 0),
                              na.rm = TRUE) / total_acres,
                   pvacstruc = sum(ifelse(category == "vacant with structures", lotsize_acres, 0),
-                                  na.rm = TRUE),
+                                  na.rm = TRUE) / total_acres,
                   pother = sum(ifelse(category == "other", lotsize_acres, 0),
                               na.rm = TRUE) / total_acres,
                   pmfres = sum(ifelse(category == "mf", lotsize_acres, 0),
@@ -543,6 +543,9 @@ individual_activity_varied <- map_df(activity_names_v,
 
 individual_uniform <- bind_rows(individual_transit, individual_activity_uniform)
 individual_varies <- bind_rows(individual_transit, individual_activity_varied)
+
+
+st_area(clarendon) %>% units::set_units("acres") %>% set_units(NULL)
 
 ```
 
