@@ -119,6 +119,13 @@ read_dc <- function(rmd = TRUE) {
                               parcelbase_usecode = col_character(),
                               parcelgeo_x = col_double(),
                               parcelgeo_y = col_double(),
+                              assessedlandvalue = col_double(),
+                              assessedimprovementvalue = col_double(),
+                              totalassessedvalue = col_double(),
+                              parcelbase_phasebuild = col_double(),
+                              parcelbase_phaseland = col_double(),
+                              parcelbase_mix1txtype = col_character(),
+                              ties_cat = col_double(),
                               vacant_flag = col_integer()))
   }
 }
@@ -734,7 +741,7 @@ jurzoningdata4_parcel <- jurzoningdata4 %>%
   st_set_crs(2804) %>% 
   st_transform(4326)
 
-jurjoin3_parks <- st_join(jurzoningdata3_parcel, DCparks, join = st_intersects)
+jurjoin3_parks <- st_join(jurzoningdata4_parcel, DCparks, join = st_intersects)
 
 #convert back to data frame, only keeping the ones that fall into a park (PROPID is from park shapefile, if it is NA then parcel is not joined)
 jur3_parks <- st_set_geometry(jurjoin3_parks, NULL) %>% 
@@ -756,7 +763,7 @@ parkflag <- jur3_parks %>%
 
 #Do the same thing for national parks
 
-jurjoin3_nationalparks <- st_join(jurzoningdata3_parcel, nationalpark, join = st_intersects)
+jurjoin3_nationalparks <- st_join(jurzoningdata4_parcel, nationalpark, join = st_intersects)
 
 jur3_nationalparks <- st_set_geometry(jurjoin3_nationalparks, NULL) %>% 
            filter(is.na(ALPHA_CODE)==0) 
