@@ -726,7 +726,8 @@ Some vacant lots in DC are cemetery, lots on campuses or parks that can't be bui
 ```{r filter-tax type}
 
 jurzoningdata4 <- jurzoningdata3 %>% 
-  filter(parcelbase_mix1txtype!= "E2"|parcelbase_mix1txtype!= "E7")
+  filter(parcelbase_mix1txtype!= "E2"& parcelbase_mix1txtype!= "E7")
+
 
 ```
 
@@ -956,7 +957,7 @@ testvacant <- get_unit_variables(dataset = vacantlotunits,
 get_unit_variables(dataset = vacantlotunits,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-  select(parameters, parcelbase_SSL, parcelbase_usecode,lotsize_sf, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,             units_per_floor, units_min, units_FAR, units_height, propaddress, zoning_code, one_unit_flag, two_unit_flag, subset ) %>% 
+  select(parameters, parcelbase_SSL, parcelbase_usecode,lotsize_sf, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,units_per_floor, units_min, units_FAR, units_height, propaddress, zoning_code, one_unit_flag, two_unit_flag, subset, parcelbase_mix1txtype) %>% 
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-vacant-lots-analysis-basedata.csv"))
