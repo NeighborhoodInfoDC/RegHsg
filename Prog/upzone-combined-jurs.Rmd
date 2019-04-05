@@ -126,6 +126,12 @@ landuse_summary <- parcel %>%
          sf_land_nonvacant = sf / total_nonvacant,
          sf_res = sf / (sf + mf))
 
+
+parcel <- parcel %>% 
+  mutate(lotsize_acres = ifelse(str_detect(propaddress, "E WEST HWY") == TRUE &
+                                  category == "condo",
+                                lotsize_acres / 76,
+                                lotsize_acres))
 ```
 
 ## Get nodes
@@ -389,9 +395,9 @@ Pick one activity center in Arlington to test and visualize the calculation. Use
 
 ```{r clar}
 
-clarendon <- filter(nodes_varies, name == "Rosslyn", node == "Transit")
 ss <- filter(nodes_varies, name == "Silver Spring", node == "Transit")
 cc <- filter(nodes_varies, name == "Crystal City", node == "Transit")
+gr <- filter(nodes_varies, name == "Grosvenor-Strathmore", node == "Transit")
 
 
 ```
@@ -400,15 +406,10 @@ Clip the Black Knight data to the extent of the activity center.
 
 ```{r clip-zon}
 
-bk_clar <- st_intersection(parcel2, clarendon)
-
 bk_ss <- st_intersection(parcel2, ss)
 bk_cc <- st_intersection(parcel2, cc)
+bk_gr <- st_intersection(parcel2, gr)
 
-x <- readRDS("L:/Libraries/RegHsg/Data/arlington/precleaned-arlington-data.Rdata")
-
-x1 <- x %>% 
-  filter(str_detect(propaddress, "S HAYES ST") == TRUE)
 
 ```
 
@@ -502,8 +503,8 @@ Test function, make sure results are the same.
 
 get_individual_density(dataset = parcel2,
                        node_geometry = nodes_uniform,
-                       node_name = "Clarendon", 
-                       node_type = "Activity") %>% 
+                       node_name = "Crystal City", 
+                       node_type = "Transit") %>% 
   knitr::kable()
 
 get_individual_density(dataset = parcel2,
