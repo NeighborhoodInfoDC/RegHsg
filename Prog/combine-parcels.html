@@ -305,60 +305,1137 @@ div.tocify {
 </div>
 
 
-<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv14%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
+<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv15%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated March 18, 2019</p>
+<p>Last updated April 04, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
-<p>The goal of this analysis is to combine parcels for Sarah.</p>
+<p>The goal of this analysis is to combine parcels for the upzoning analysis.</p>
 </div>
 <div id="set-up" class="section level2">
 <h2>Set-up</h2>
 <p>Load libraries and functions</p>
 <pre class="r"><code>library(tidyverse)
+library(sf)
 
 source(&quot;../Macros/read-fairfax.R&quot;)
 source(&quot;../Macros/read-arlington.R&quot;)
 source(&quot;../Macros/read-montgomery.R&quot;)
 source(&quot;../Macros/read-DC.R&quot;)</code></pre>
-<p>Set filepath name</p>
-<pre class="r"><code>filepath &lt;- &quot;fairfax&quot;</code></pre>
-<p>Load in cleaned Black Knight data for Fairfax County.</p>
+</div>
+<div id="read-each-jurisdiction" class="section level2">
+<h2>Read each jurisdiction</h2>
+<p>Load in cleaned Black Knight data for all jurisdictions.</p>
 <pre class="r"><code>if (!exists(&quot;fairfax&quot;)) {
  fairfax &lt;- read_fairfax()
 } else {
   warning(filepath, &quot; data already read in&quot;)
 }</code></pre>
-<p>Set filepath name</p>
-<pre class="r"><code>filepath &lt;- &quot;DC&quot;</code></pre>
-<p>Load in cleaned Black Knight data for Dc County.</p>
 <pre class="r"><code>if (!exists(&quot;dc_full&quot;)) {
  dc_full &lt;- read_dc()
 } else {
   warning(filepath, &quot; data already read in&quot;)
 }</code></pre>
-<p>Set filepath name</p>
-<pre class="r"><code>filepath &lt;- &quot;montgomery&quot;</code></pre>
-<p>Load in cleaned Black Knight data for Montgomery County.</p>
 <pre class="r"><code>if (!exists(&quot;montgomery&quot;)) {
  montgomery &lt;- read_montgomery()
 } else {
   warning(filepath, &quot; data already read in&quot;)
 }</code></pre>
-<p>Set filepath name</p>
-<pre class="r"><code>filepath &lt;- &quot;arlington&quot;</code></pre>
-<p>Load in cleaned Black Knight data for Arlington County.</p>
 <pre class="r"><code>if (!exists(&quot;arlington&quot;)) {
  arlington &lt;- read_arlington()
 } else {
   warning(filepath, &quot; data already read in&quot;)
 }</code></pre>
-<p>Select needed variables</p>
-<pre class="r"><code>arl &lt;- arlington %&gt;%
+</div>
+<div id="fill-in-variables" class="section level2">
+<h2>Fill in variables</h2>
+<p>For each jurisdiction:</p>
+<ul>
+<li>Fill in missing variables</li>
+<li>Replace 0 with NA when appropriate</li>
+<li>Select variables needed for upzoning and soft sites analysis</li>
+</ul>
+<div id="missing-units-functions" class="section level3">
+<h3>Missing units functions</h3>
+<p>Function to sum missing units</p>
+<pre class="r"><code>sum_missing_units &lt;- function(dataset) {
+  
+  dataset %&gt;% 
+    group_by(category_detail) %&gt;% 
+    filter(residential == 1, category != &quot;vacant&quot;) %&gt;% 
+    summarize(count = n(),
+              units.na = sum(is.na(numberofunits)),
+              units.zero = sum(numberofunits == 0, na.rm = TRUE),
+              p.na = units.na / n(),
+              p.zero = units.zero / n())
+}</code></pre>
+<p>Function to sum missing lotsize</p>
+<pre class="r"><code>sum_missing_lotsize &lt;- function(dataset) {
+  
+  dataset %&gt;% 
+    group_by(category_detail) %&gt;% 
+    filter(residential == 1, category != &quot;vacant&quot;) %&gt;% 
+    summarize(count = n(),
+              lotsize.na = sum(is.na(lotsize_sf)),
+              lotsize.zero = sum(lotsize_sf == 0, na.rm = TRUE),
+              p.na = lotsize.na / n(),
+              p.zero = lotsize.zero / n())
+}</code></pre>
+</div>
+<div id="arlington" class="section level3">
+<h3>Arlington</h3>
+<div id="number-of-units" class="section level4">
+<h4>Number of units</h4>
+<p>Replace <code>0</code> with <code>NA</code> for multifamily</p>
+<pre class="r"><code>arlington %&gt;% 
+  sum_missing_units() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">units.na</th>
+<th align="right">units.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">618</td>
+<td align="right">0</td>
+<td align="right">8</td>
+<td align="right">0</td>
+<td align="right">0.0129450</td>
+</tr>
+<tr class="even">
+<td align="left">commercial</td>
+<td align="right">11</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="odd">
+<td align="left">condo</td>
+<td align="right">1730</td>
+<td align="right">0</td>
+<td align="right">6</td>
+<td align="right">0</td>
+<td align="right">0.0034682</td>
+</tr>
+<tr class="even">
+<td align="left">duplex</td>
+<td align="right">271</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">4129</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">27494</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">4292</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>arlington1 &lt;- arlington %&gt;% 
+  mutate(numberofunits = ifelse(category == &quot;mf&quot; &amp; numberofunits == 0,
+                                NA,
+                                numberofunits))</code></pre>
+</div>
+<div id="lot-size" class="section level4">
+<h4>Lot size</h4>
+<p>Replace <code>0</code> with <code>NA</code> for all parcels.</p>
+<pre class="r"><code>arlington1 %&gt;% 
+  sum_missing_lotsize() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">lotsize.na</th>
+<th align="right">lotsize.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">618</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0.0000000</td>
+<td align="right">0.0016181</td>
+</tr>
+<tr class="even">
+<td align="left">commercial</td>
+<td align="right">11</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="odd">
+<td align="left">condo</td>
+<td align="right">1730</td>
+<td align="right">2</td>
+<td align="right">31</td>
+<td align="right">0.0011561</td>
+<td align="right">0.0179191</td>
+</tr>
+<tr class="even">
+<td align="left">duplex</td>
+<td align="right">271</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">4129</td>
+<td align="right">0</td>
+<td align="right">27</td>
+<td align="right">0.0000000</td>
+<td align="right">0.0065391</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">27494</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">4292</td>
+<td align="right">0</td>
+<td align="right">11</td>
+<td align="right">0.0000000</td>
+<td align="right">0.0025629</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>arlington2 &lt;- arlington1 %&gt;% 
+  mutate(lotsize_sf = ifelse(lotsize_sf == 0,
+                             NA,
+                             lotsize_sf))</code></pre>
+</div>
+</div>
+<div id="fairfax" class="section level3">
+<h3>Fairfax</h3>
+<div id="number-of-units-1" class="section level4">
+<h4>Number of units</h4>
+<pre class="r"><code>fairfax %&gt;% 
+  sum_missing_units() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">units.na</th>
+<th align="right">units.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">485</td>
+<td align="right">0</td>
+<td align="right">414</td>
+<td align="right">0</td>
+<td align="right">0.8536082</td>
+</tr>
+<tr class="even">
+<td align="left">condo</td>
+<td align="right">4216</td>
+<td align="right">0</td>
+<td align="right">38</td>
+<td align="right">0</td>
+<td align="right">0.0090133</td>
+</tr>
+<tr class="odd">
+<td align="left">duplex</td>
+<td align="right">2615</td>
+<td align="right">0</td>
+<td align="right">2615</td>
+<td align="right">0</td>
+<td align="right">1.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">other</td>
+<td align="right">232</td>
+<td align="right">0</td>
+<td align="right">142</td>
+<td align="right">0</td>
+<td align="right">0.6120690</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">7910</td>
+<td align="right">0</td>
+<td align="right">7910</td>
+<td align="right">0</td>
+<td align="right">1.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">191219</td>
+<td align="right">0</td>
+<td align="right">190661</td>
+<td align="right">0</td>
+<td align="right">0.9970819</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">85118</td>
+<td align="right">0</td>
+<td align="right">85118</td>
+<td align="right">0</td>
+<td align="right">1.0000000</td>
+</tr>
+</tbody>
+</table>
+<p>Fill in duplex, SF, and townhouse.</p>
+<pre class="r"><code>fairfax1 &lt;- fairfax %&gt;% 
+  mutate(numberofunits = ifelse(category_detail == &quot;duplex&quot; &amp; numberofunits == 0,
+                                2,
+                                numberofunits),
+         numberofunits = ifelse(category_detail == &quot;townhouse&quot; &amp; address_type == &quot;single&quot;,
+                                1,
+                                numberofunits),
+         numberofunits = ifelse(category == &quot;sf&quot; &amp; address_type == &quot;single&quot;,
+                                1,
+                                numberofunits))
+
+fairfax1 %&gt;% 
+  sum_missing_units() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">units.na</th>
+<th align="right">units.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">485</td>
+<td align="right">0</td>
+<td align="right">414</td>
+<td align="right">0</td>
+<td align="right">0.8536082</td>
+</tr>
+<tr class="even">
+<td align="left">condo</td>
+<td align="right">4216</td>
+<td align="right">0</td>
+<td align="right">38</td>
+<td align="right">0</td>
+<td align="right">0.0090133</td>
+</tr>
+<tr class="odd">
+<td align="left">duplex</td>
+<td align="right">2615</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">other</td>
+<td align="right">232</td>
+<td align="right">0</td>
+<td align="right">112</td>
+<td align="right">0</td>
+<td align="right">0.4827586</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">7910</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">191219</td>
+<td align="right">0</td>
+<td align="right">24</td>
+<td align="right">0</td>
+<td align="right">0.0001255</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">85118</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+</tbody>
+</table>
+<p>Look at all the additional units variables.</p>
+<pre class="r"><code>fairfax %&gt;% 
+  filter(residential == 1, category != &quot;vacant&quot;) %&gt;% 
+  group_by(category_detail) %&gt;% 
+  summarize_at(vars(numberofunits, num_livunit, dwellings_per_parcel,
+                    units_area, numberofunits_tax),
+               ~ sum(is.na(.)) / n()) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">numberofunits</th>
+<th align="right">num_livunit</th>
+<th align="right">dwellings_per_parcel</th>
+<th align="right">units_area</th>
+<th align="right">numberofunits_tax</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">0</td>
+<td align="right">0.4000000</td>
+<td align="right">0.8453608</td>
+<td align="right">0.8536082</td>
+<td align="right">0.2659794</td>
+</tr>
+<tr class="even">
+<td align="left">condo</td>
+<td align="right">0</td>
+<td align="right">0.9940702</td>
+<td align="right">0.0030835</td>
+<td align="right">0.0090133</td>
+<td align="right">0.0023719</td>
+</tr>
+<tr class="odd">
+<td align="left">duplex</td>
+<td align="right">0</td>
+<td align="right">0.0065010</td>
+<td align="right">0.0015296</td>
+<td align="right">1.0000000</td>
+<td align="right">0.0152964</td>
+</tr>
+<tr class="even">
+<td align="left">other</td>
+<td align="right">0</td>
+<td align="right">0.9267241</td>
+<td align="right">0.5603448</td>
+<td align="right">0.6120690</td>
+<td align="right">0.5344828</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">0</td>
+<td align="right">0.0121365</td>
+<td align="right">0.0094817</td>
+<td align="right">1.0000000</td>
+<td align="right">0.0012642</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">0</td>
+<td align="right">0.0049001</td>
+<td align="right">0.0008786</td>
+<td align="right">0.9970819</td>
+<td align="right">0.0110031</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">0</td>
+<td align="right">0.0016918</td>
+<td align="right">0.0009281</td>
+<td align="right">1.0000000</td>
+<td align="right">0.0009634</td>
+</tr>
+</tbody>
+</table>
+<p>Fill in with <code>num_livunit</code>, and then <code>numberofunits_tax</code> when possible.</p>
+<pre class="r"><code>fairfax2 &lt;- fairfax1 %&gt;% 
+  mutate(numberofunits = ifelse(numberofunits == 0 &amp; !is.na(num_livunit),
+                                num_livunit,
+                                numberofunits),
+         numberofunits = ifelse(numberofunits == 0 &amp; !is.na(numberofunits_tax),
+                                numberofunits_tax,
+                                numberofunits))
+
+fairfax2 %&gt;% 
+  sum_missing_units() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">units.na</th>
+<th align="right">units.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">485</td>
+<td align="right">0</td>
+<td align="right">117</td>
+<td align="right">0</td>
+<td align="right">0.2412371</td>
+</tr>
+<tr class="even">
+<td align="left">condo</td>
+<td align="right">4216</td>
+<td align="right">0</td>
+<td align="right">10</td>
+<td align="right">0</td>
+<td align="right">0.0023719</td>
+</tr>
+<tr class="odd">
+<td align="left">duplex</td>
+<td align="right">2615</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">other</td>
+<td align="right">232</td>
+<td align="right">0</td>
+<td align="right">105</td>
+<td align="right">0</td>
+<td align="right">0.4525862</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">7910</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">191219</td>
+<td align="right">0</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">0.0000157</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">85118</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="lot-size-1" class="section level4">
+<h4>Lot size</h4>
+<pre class="r"><code>fairfax2 %&gt;% 
+  sum_missing_lotsize() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">lotsize.na</th>
+<th align="right">lotsize.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">485</td>
+<td align="right">8</td>
+<td align="right">0</td>
+<td align="right">0.0164948</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">condo</td>
+<td align="right">4216</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0.0002372</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">duplex</td>
+<td align="right">2615</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">other</td>
+<td align="right">232</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">7910</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">191219</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">85118</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0.0000117</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>fairfax2 %&gt;% 
+  group_by(category_detail) %&gt;% 
+  summarize_at(vars(area_tax, parcel_area, sf_area),
+               ~ sum(is.na(.)) / n()) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">area_tax</th>
+<th align="right">parcel_area</th>
+<th align="right">sf_area</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">0.3876289</td>
+<td align="right">0.8536082</td>
+<td align="right">0.8536082</td>
+</tr>
+<tr class="even">
+<td align="left">condo</td>
+<td align="right">0.9931214</td>
+<td align="right">0.0090133</td>
+<td align="right">0.0090133</td>
+</tr>
+<tr class="odd">
+<td align="left">duplex</td>
+<td align="right">0.0011472</td>
+<td align="right">1.0000000</td>
+<td align="right">1.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">other</td>
+<td align="right">0.0991946</td>
+<td align="right">0.9465237</td>
+<td align="right">0.9465237</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">0.0001264</td>
+<td align="right">1.0000000</td>
+<td align="right">1.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">0.0031168</td>
+<td align="right">0.9970819</td>
+<td align="right">0.9970819</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">0.0007519</td>
+<td align="right">1.0000000</td>
+<td align="right">1.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">vacant</td>
+<td align="right">0.0918464</td>
+<td align="right">0.9899001</td>
+<td align="right">0.9899001</td>
+</tr>
+</tbody>
+</table>
+<p>Fill in where possible.</p>
+<pre class="r"><code>fairfax3 &lt;- fairfax2 %&gt;% 
+  mutate(lotsize_sf = ifelse(is.na(lotsize_sf) &amp; !is.na(parcel_area) &amp; parcel_area != 0,
+                             parcel_area,
+                             lotsize_sf),
+         lotsize_sf = ifelse(is.na(lotsize_sf) &amp; !is.na(area_tax) &amp; area_tax != 0,
+                             area_tax,
+                             lotsize_sf),
+         lotsize_sf = as.numeric(lotsize_sf),
+         lotsize_acres = lotsize_sf / 43560)
+
+fairfax3 %&gt;% 
+  sum_missing_lotsize() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">lotsize.na</th>
+<th align="right">lotsize.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">485</td>
+<td align="right">8</td>
+<td align="right">0</td>
+<td align="right">0.0164948</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">condo</td>
+<td align="right">4216</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0.0002372</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">duplex</td>
+<td align="right">2615</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">other</td>
+<td align="right">232</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">sf attached</td>
+<td align="right">7910</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">191219</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">85118</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0.0000117</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="montgomery" class="section level3">
+<h3>Montgomery</h3>
+<div id="number-of-units-2" class="section level4">
+<h4>Number of units</h4>
+<p>Fill in single family with 1</p>
+<pre class="r"><code>montgomery1 &lt;- montgomery %&gt;% 
+  mutate(numberofunits = ifelse(category_detail == &quot;sf detached&quot; &amp; 
+                                  numberofunits == 0,
+                                1,
+                                numberofunits))
+
+montgomery1 %&gt;% 
+  sum_missing_units() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">units.na</th>
+<th align="right">units.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">914</td>
+<td align="right">0</td>
+<td align="right">9</td>
+<td align="right">0</td>
+<td align="right">0.0098468</td>
+</tr>
+<tr class="even">
+<td align="left">condo</td>
+<td align="right">17634</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="odd">
+<td align="left">mf other</td>
+<td align="right">21</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">mixeduse</td>
+<td align="right">50</td>
+<td align="right">0</td>
+<td align="right">32</td>
+<td align="right">0</td>
+<td align="right">0.6400000</td>
+</tr>
+<tr class="odd">
+<td align="left">NULL</td>
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">other</td>
+<td align="right">239</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="odd">
+<td align="left">sf detached</td>
+<td align="right">180062</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+<tr class="even">
+<td align="left">townhouse</td>
+<td align="right">56316</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="lot-size-2" class="section level4">
+<h4>Lot size</h4>
+<pre class="r"><code>montgomery1 %&gt;% 
+  sum_missing_lotsize() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">lotsize.na</th>
+<th align="right">lotsize.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">914</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">condo</td>
+<td align="right">17634</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">mf other</td>
+<td align="right">21</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">mixeduse</td>
+<td align="right">50</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">NULL</td>
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">other</td>
+<td align="right">239</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">0.0167364</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">sf detached</td>
+<td align="right">180062</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">townhouse</td>
+<td align="right">56316</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="dc" class="section level3">
+<h3>DC</h3>
+<div id="number-of-units-3" class="section level4">
+<h4>Number of units</h4>
+<p>Units were already filled for rental properties in <code>clean-DC.Rmd</code>. Fill in single family homes. Change <code>0</code> to <code>na</code> for apartments.</p>
+<pre class="r"><code>dc1 &lt;- dc_full %&gt;% 
+  mutate(numberofunits = ifelse(is.na(numberofunits) &amp; 
+                                  category_detail == &quot;Single-family home&quot; &amp;
+                                  address_type %in% c(&quot;single&quot;, &quot;missing&quot;),
+                                1,
+                                numberofunits)) %&gt;% 
+  # align categories with other jurisdictions
+  mutate(category = ifelse(category == &quot;all other category&quot;,
+                           &quot;other&quot;,
+                           category)) %&gt;% 
+  mutate(numberofunits = ifelse(category == &quot;mf&quot; &amp; numberofunits == 0,
+                                NA,
+                                numberofunits))
+
+dc1 %&gt;% 
+  sum_missing_units() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">units.na</th>
+<th align="right">units.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Condominium unit</td>
+<td align="right">4120</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Cooperative building</td>
+<td align="right">8</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Office</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Rental apartment building</td>
+<td align="right">16014</td>
+<td align="right">113</td>
+<td align="right">0</td>
+<td align="right">0.0070563</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Retail</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Single-family home</td>
+<td align="right">98291</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="lot-size-3" class="section level4">
+<h4>Lot size</h4>
+<pre class="r"><code>dc1 %&gt;% 
+  sum_missing_lotsize() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">lotsize.na</th>
+<th align="right">lotsize.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Condominium unit</td>
+<td align="right">4120</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0.0002427</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Cooperative building</td>
+<td align="right">8</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0.1250000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Office</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Rental apartment building</td>
+<td align="right">16014</td>
+<td align="right">13</td>
+<td align="right">0</td>
+<td align="right">0.0008118</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Retail</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Single-family home</td>
+<td align="right">98291</td>
+<td align="right">15</td>
+<td align="right">0</td>
+<td align="right">0.0001526</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="select-and-combine" class="section level2">
+<h2>Select and combine</h2>
+<pre class="r"><code>arl &lt;- arlington2 %&gt;%
           select(county_fips,
                  county_name,
                  assessorsparcelnumberapnpin,
@@ -367,14 +1444,19 @@ source(&quot;../Macros/read-DC.R&quot;)</code></pre>
                  address_type,
                  zoning, 
                  lotsize_sf, 
-                 parcel_area,
                  numberofunits,
                  category,
                  category_detail, 
                  countylandusedescription, 
-                 residential, lat, long)
+                 residential, 
+                 totalassessedvalue,
+                 assessedimprovementvalue,
+                 assessedlandvalue,
+                 lat, 
+                 long) %&gt;% 
+  mutate(numberofunits = as.integer(numberofunits))
 
-fai &lt;- fairfax %&gt;%
+fai &lt;- fairfax3 %&gt;%
         select(county_fips,
                county_name,
                assessorsparcelnumberapnpin,
@@ -387,9 +1469,14 @@ fai &lt;- fairfax %&gt;%
                category,
                category_detail, 
                countylandusedescription, 
-               residential, lat, long)
+               residential, 
+               totalassessedvalue,
+               assessedimprovementvalue,
+               assessedlandvalue,
+               lat, 
+               long)
 
-mon &lt;- montgomery %&gt;%
+mon &lt;- montgomery1 %&gt;%
         select(county_fips,
                county_name,
                assessorsparcelnumberapnpin,
@@ -402,12 +1489,17 @@ mon &lt;- montgomery %&gt;%
                category,
                category_detail, 
                countylandusedescription, 
-               residential, lat, long)
+               residential, 
+               totalassessedvalue,
+               assessedimprovementvalue,
+               assessedlandvalue,
+               lat = latarc, 
+               long = longarc)
 
-dc &lt;- dc_full %&gt;%
+dc &lt;- dc1 %&gt;%
     select(county_fips,
            county_name,
-           parcelbase_SSL,
+           assessorsparcelnumberapnpin = parcelbase_SSL,
            propcity,
            address_type,           
            zoning, 
@@ -415,18 +1507,340 @@ dc &lt;- dc_full %&gt;%
            numberofunits, 
            category,
            category_detail, 
-           parcelbase_address, 
+           propaddress = parcelbase_address, 
            countylandusedescription, 
-           residential, 
+           residential,
+           totalassessedvalue,
+           assessedimprovementvalue,
+           assessedlandvalue,
            lat, long,
-           parcelgeo_x, parcelgeo_y)%&gt;%
-    rename(assessorsparcelnumberapnpin=parcelbase_SSL,
-                 propaddress = parcelbase_address)</code></pre>
+           parcelgeo_x, parcelgeo_y)</code></pre>
 <p>Bind rows together</p>
 <pre class="r"><code>all_jurs &lt;- arl %&gt;% 
   bind_rows(fai) %&gt;%
   bind_rows(mon) %&gt;%
-  bind_rows(dc)</code></pre>
+  bind_rows(dc) %&gt;% 
+  # make sure there are no 0s, only NAs
+  mutate_at(vars(lotsize_sf, numberofunits),
+            ~ ifelse(. == 0, NA, .)) %&gt;% 
+  mutate(lotsize_acres = lotsize_sf / 43560)</code></pre>
+<p>Look at combined missing variables.</p>
+<pre class="r"><code>all_jurs %&gt;% 
+  sum_missing_units() %&gt;% 
+  knitr::kable(caption = &quot;Missing units for all jurisdictions&quot;)</code></pre>
+<table>
+<caption>Missing units for all jurisdictions</caption>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">units.na</th>
+<th align="right">units.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">2017</td>
+<td align="right">134</td>
+<td align="right">0</td>
+<td align="right">0.0664353</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">commercial</td>
+<td align="right">11</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">condo</td>
+<td align="right">23580</td>
+<td align="right">16</td>
+<td align="right">0</td>
+<td align="right">0.0006785</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Condominium unit</td>
+<td align="right">4120</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Cooperative building</td>
+<td align="right">8</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">duplex</td>
+<td align="right">2886</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">mf other</td>
+<td align="right">21</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">mixeduse</td>
+<td align="right">50</td>
+<td align="right">32</td>
+<td align="right">0</td>
+<td align="right">0.6400000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">NULL</td>
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Office</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">other</td>
+<td align="right">471</td>
+<td align="right">105</td>
+<td align="right">0</td>
+<td align="right">0.2229299</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Rental apartment building</td>
+<td align="right">16014</td>
+<td align="right">113</td>
+<td align="right">0</td>
+<td align="right">0.0070563</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Retail</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">sf attached</td>
+<td align="right">12039</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">sf detached</td>
+<td align="right">398775</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">0.0000075</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Single-family home</td>
+<td align="right">98291</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">145726</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>all_jurs %&gt;% 
+  sum_missing_lotsize() %&gt;% 
+  knitr::kable(caption = &quot;Missing lot size for all jurisdictions&quot;)</code></pre>
+<table>
+<caption>Missing lot size for all jurisdictions</caption>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">count</th>
+<th align="right">lotsize.na</th>
+<th align="right">lotsize.zero</th>
+<th align="right">p.na</th>
+<th align="right">p.zero</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">2017</td>
+<td align="right">9</td>
+<td align="right">0</td>
+<td align="right">0.0044621</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">commercial</td>
+<td align="right">11</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">condo</td>
+<td align="right">23580</td>
+<td align="right">34</td>
+<td align="right">0</td>
+<td align="right">0.0014419</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Condominium unit</td>
+<td align="right">4120</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0.0002427</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Cooperative building</td>
+<td align="right">8</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">0.1250000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">duplex</td>
+<td align="right">2886</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">mf other</td>
+<td align="right">21</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">mixeduse</td>
+<td align="right">50</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">NULL</td>
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Office</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">other</td>
+<td align="right">471</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">0.0084926</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Rental apartment building</td>
+<td align="right">16014</td>
+<td align="right">13</td>
+<td align="right">0</td>
+<td align="right">0.0008118</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Retail</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">sf attached</td>
+<td align="right">12039</td>
+<td align="right">27</td>
+<td align="right">0</td>
+<td align="right">0.0022427</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">sf detached</td>
+<td align="right">398775</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0.0000000</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Single-family home</td>
+<td align="right">98291</td>
+<td align="right">15</td>
+<td align="right">0</td>
+<td align="right">0.0001526</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">145726</td>
+<td align="right">12</td>
+<td align="right">0</td>
+<td align="right">0.0000823</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>all_jurs %&gt;% 
+  filter(category != &quot;vacant&quot;, residential == 1) %&gt;% 
+  summarize(sum(is.na(numberofunits)) / n(),
+            sum(is.na(lotsize_sf))/ n())</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   `sum(is.na(numberofunits))/n()` `sum(is.na(lotsize_sf))/n()`
+##                             &lt;dbl&gt;                        &lt;dbl&gt;
+## 1                        0.000572                     0.000165</code></pre>
 <p>Write out data</p>
 <pre class="r"><code>write_csv(all_jurs, &quot;L:/Libraries/RegHsg/Data/parcel-all-cleaned-data.csv&quot;)</code></pre>
 </div>
