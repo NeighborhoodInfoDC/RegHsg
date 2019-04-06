@@ -1,0 +1,582 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Vacant lots analysis for Arlington County: special exceptions"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The goal of this analysis is to modify the previous vacant lots analysis to include special exceptions that are written into the zoning code. We will rely on two datasets that were created in `vacant-lots-arlington.Rmd` - the cleaned general zoning code, and the cleaned set of vacant lots.
+
+The site plan process is mostly used for multifamily construction, so we will consider only the special exceptions for multiple family dwellings.
+
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(urbnthemes)
+
+set_urbn_defaults("print")
+
+```
+
+Create directory for data exports
+```{r dir}
+
+if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
+  dir.create("L:/Libraries/RegHsg/Prog/Tables")
+}
+```
+
+Set FIPS code and filepath name
+```{r fips}
+
+currentfips <- "51013"
+filepath <- "arlington"
+
+
+```
+
+Load in cleaned lots and zoning code.
+
+```{r read}
+
+jur <- readRDS("L:/Libraries/RegHsg/Data/arlington/arlington-lots.Rdata")
+zoningcode <- readRDS("L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.Rdata") %>% 
+  # create flag to indicate these do not come from the special exceptions file
+  mutate(special_exception = 0)
+
+```
+
+Pick up where we left off: clean the special exceptions, and then bind that to the by right zoning code.
+
+## Clean special exceptions.
+
+### Move file 
+
+First- **manually** move file from Box to the `zoning-codes` directory in the `Doc` folder on the L drive.
+
+### Read file
+
+```{r read-zoning-csv}
+
+z <- c("text", "text", "text", "numeric",
+       "numeric", "numeric", "text", "text",
+       "numeric", "numeric", "numeric", "text",
+       "text", "numeric", "numeric", "numeric",
+       "numeric", "text", "numeric")
+
+
+se <- readxl::read_excel("L:/Libraries/RegHsg/Doc/zoning-codes/Arlington Multiple Family Special Exceptions 2.19.19.xlsx", 
+                         range = "A1:S49", 
+                         col_types = z)
+
+names(se) <- 
+  c("zoning_code", "district_type", "dwelling_type",
+    "site_area", "lot_area_min", "lotarea_per_unit",
+    "lot_width", "height_ft", "height_stories",
+    "lot_coverage_max", "floor_area_min", "far_max",
+    "setbacks_center", "setbacks_row",
+    "front_side_yard", "side_yard", "frontage", "comments", "density_units_per_acre")
+
+rm(z)
+
+```
+
+### Clean up special exceptions
+
+A few cleaning tasks:
+
+* We need to extract the oddities in the height variable, and archive them in case we need them later. We reset these to NA, and convert the variable type back to numeric.
+* Create `special_exception` flag
+* Filter out `dwelling_type` values that we cannot use
+* Change `dwelling_type` values incorrectly recorded as "Multiple-family dwellings" to "Multiple-family"
+* If `height_ft` is missing, fill in with `height_stories`
+
+```{r height-problems}
+
+height_problems <- se %>% 
+  filter(str_detect(height_ft, "[:alpha:]"))
+
+se1 <- se %>% 
+  mutate(height_ft = ifelse(str_detect(height_ft, "[:alpha:]") == TRUE,
+                            NA,
+                            as.numeric(height_ft))) %>% 
+  mutate(special_exception = 1) %>% 
+  mutate(dwelling_type = ifelse(dwelling_type == "Multiple-family dwellings",
+                                "Multiple-family",
+                                dwelling_type)) %>% 
+  mutate(height_ft = ifelse(is.na(height_ft) & !is.na(height_stories),
+                            height_stories * 10,
+                            height_ft)) %>% 
+  filter(dwelling_type != "Hotel")
+  
+  
+```
+
+Check to make sure there are no codes in the special exceptions that are NOT in the by-right zoning code, due to being entered incorrectly.
+
+```{r check-se-code}
+
+se1 %>% 
+  filter(!zoning_code %in% zoningcode$zoning_code) %>% 
+  nrow()
+
+```
+Filter out multiple-family exceptions.
+
+```{r get-mf}
+
+semf <- se1 %>% 
+  filter(dwelling_type == "Multiple-family")
+
+```
+
+### Fill in missing variables in special exceptions
+
+If the special exceptions inherit the same stipulations as the by-right zoning code, the fields were left blank. Use `fill()` to fill in these gaps.
+
+Replace missing lot coverage maximums with 56%- this is to be used if there is no specific designation, per the Arlington County zoning code.
+
+```{r fil}
+
+mf_fill <- semf %>% 
+  bind_rows(filter(zoningcode,
+                   zoning_code %in% semf$zoning_code,
+                   dwelling_type == "Multiple-family")) %>% 
+  group_by(zoning_code, dwelling_type) %>% 
+  fill(lot_area_min, .direction = "down") %>% 
+  fill(lot_area_min, .direction = "up") %>% 
+  fill(lotarea_per_unit, .direction = "down") %>% 
+  fill(lotarea_per_unit, .direction = "up") %>%
+  fill(height_ft, .direction = "down") %>% 
+  fill(height_ft, .direction = "up") %>% 
+  fill(lot_coverage_max, .direction = "down") %>% 
+  fill(lot_coverage_max, .direction = "up") %>% 
+  mutate(lot_coverage_max = ifelse(is.na(lot_coverage_max),
+                                   .56,
+                                   lot_coverage_max))
+
+```
+
+There are four mixed-use zoning codes that only allow for multiple-family development via special exception. The stipulations for height and FAR vary based on the lot size. Additionally, there is no lot size per unit, we will instead rely on the height or FAR (whichever one is more restrictive) to determine the number of units. This will occur after the lots have been merged with the zoning codes.
+
+Join the multiple-family special exceptions to the by-right zoning code. This is the zoning code we will use for analysis.
+
+```{r zoning-recombine}
+
+zoningcode1 <- mf_fill %>% 
+  ungroup() %>% 
+  filter(special_exception == 1) %>% 
+  bind_rows(zoningcode)
+
+```
+
+
+### Dwelling type hierarchy
+
+We can adjust the hierarchy we used to select the most dense zoning codes in the previous analysis by adding those that now occur, and prioritizing the multiple-family dwelling type from the special exception over the by-right. 
+
+First, remove dwelling types that are not possible to include. These cannot be calculated since they depend on adjacent lots, or which lots share a lot line with the lot in question. Additionally, we take out those with a dwelling type with All or All Other, as long as that zoning code has another dwelling type we can use in the calculation.
+
+```{r hier-dwell}
+count(zoningcode1, dwelling_type)
+
+zoningcode2 <- zoningcode1 %>% 
+  group_by(zoning_code) %>% 
+  filter(!(dwelling_type %in% c("All",
+                                "All Other",
+                                "Duplex; share a lot line with RA, C, or M",
+                                "Semi-detatched; share a lot line with RA, C, or M")
+           & n() > 1)) %>% 
+  ungroup() %>% 
+  mutate(dwelling_type = ifelse(dwelling_type %in% c("Multiple-family") & special_exception == 1,
+                                "Multiple-family special exception",
+                                dwelling_type)) %>% 
+  mutate(dwelling_type = factor(dwelling_type,
+                                levels = c("Multiple-family special exception",
+                                           "Multiple-family",
+                                           "Townhouse",
+                                           "Semi-detached",
+                                           "Duplex",
+                                           "Other Residential",
+                                           "One Family Dwelling")),
+         one_unit_flag = ifelse(dwelling_type == "One Family Dwelling",
+                                1,
+                                0),
+         two_unit_flag = ifelse(dwelling_type == "Duplex",
+                                1,
+                                0))
+
+
+```
+
+## Merge with parcel data
+ 
+Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original `zoning` variable.
+
+
+```{r bk-clean}
+
+jurfinal <- jur %>% 
+  mutate(zoning_code = case_when(
+    zoning == "RC" ~ "R-C",
+    zoning == "C-0 Crystal City" ~ "C-O Crystal City",
+    zoning %in% c("C-O-ROSSLYN", "C-O-ROSS") ~ "C-O Rosslyn",
+    zoning == "RA-H-3.2" ~ "RA-H 3.2",
+    zoning == "C-1-O" ~ "C-1-0",
+    TRUE ~ zoning
+  ))
+           
+```
+
+Merge on zoning code variable. Test that all variables merged.
+
+```{r zoning-merge}
+
+zoningdata <- left_join(jurfinal, zoningcode2, by = "zoning_code")
+
+```
+
+There are `r nrow(anti_join(jurfinal, zoningcode1, by = c("zoning_code")))` observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.
+
+```{r antijoin}
+
+anti_join(jurfinal, zoningcode1, by = c("zoning_code")) %>% 
+  count(zoning) %>% 
+  knitr::kable()
+
+```
+
+Aside from those with missing zoning information, these zoning codes do not allow for residential properties, which explains why they were not found in the zoning code data.
+
+### Break out special exceptions
+
+Two datasets will be created: one that includes special exceptions, and one that doesn't. This way, we do not throw out any observations that have no special exceptions, or any lots that have the appropriate lot size for the by-right dwelling type, but not the special exception.
+
+There are many lots that are too small to build on, but we still need to include them. Create a flag to identify them. We can first group by both the address and the flag, and take the most dense dwelling type. This way, we can won't filter out observations that are too small, but we will can use the lot size to eliminate less-dense dwelling types, if they exist. We can then group by the address again and take the minumum of the `smallsize_flag`, so we take the dwelling type that is appropriate for the lot size, if it exists.
+
+
+```{r filter-small}
+
+byright <- zoningdata %>% 
+  filter(!is.na(dwelling_type),
+         special_exception == 0) %>% 
+  mutate(smallsize_flag = ifelse(lotsize_sf >= lot_area_min, 0, 1)) %>% 
+  mutate(smallsize_flag = ifelse(is.na(smallsize_flag), 0, smallsize_flag)) %>% 
+  group_by(propaddress, smallsize_flag) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  ungroup() %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(smallsize_flag)) %>% 
+  ungroup()
+
+
+specialexception <- zoningdata %>% 
+  filter(!is.na(dwelling_type)) %>% 
+  mutate(smallsize_flag = ifelse(lotsize_sf >= lot_area_min, 0, 1)) %>% 
+  mutate(smallsize_flag = ifelse(is.na(smallsize_flag), 0, smallsize_flag)) %>% 
+  group_by(propaddress, smallsize_flag) %>% 
+  slice(which.min(dwelling_type)) %>% 
+  ungroup() %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(smallsize_flag)) %>% 
+  ungroup()
+
+
+count(byright, dwelling_type)
+count(specialexception, dwelling_type)
+
+```
+
+
+### Fill in stipulations for mixed use zones
+
+```{r }
+
+specialexception1 <- specialexception %>% 
+  mutate(height_se = case_when(
+    zoning == "C-O-1.5" & lotsize_sf < 871200 ~ 80,
+    zoning == "C-O-1.5" & lotsize_sf >= 871200 ~ 180,
+    TRUE ~ height_ft))
+
+```
+
+## Calculate missing units
+
+There are several variables we will use to calculate how many units we can put on each lot.
+
+1. Buildable area: this is `lotsize_sf` x the coverage ratio (`lot_coverage_max`)
+2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
+3. Units per floor: this is the living area divided by the average unit size. We use 940 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
+4. Units allowed based on height limits: This is the units per floor x the number of stories.
+3. Units allowed based on lot size: this is the lot area divided by `lotarea_per_unit`
+
+We can create a function that will allow us to easily adjust these parameters and compare results.
+
+```{r get-est}
+
+#' Get maximum unit variables
+#' @description this function generates the variables necessary to calculate the maximum number of units that can occupy one lot, per the by-right zoning code.
+#'
+#' @param dataset dataset with lot size and zoning variables 
+#' @param construction_efficiency Assumption for construction efficiency
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
+#'
+#' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`, `units_height`, `units_lotsize`, and `units_total`
+#'
+#' @examples
+get_unit_variables <- function(dataset, 
+                               construction_efficiency, 
+                               average_unit_size) {
+  
+  dataset %>% 
+    mutate(parameters = paste0("CE: ", construction_efficiency * 100,
+                               "% , Unit size: ", average_unit_size,
+                               " sf"),
+           buildable_area = lotsize_sf * lot_coverage_max,
+           living_area = buildable_area * construction_efficiency,
+           units_per_floor = floor(living_area / average_unit_size),
+           floors = floor(height_ft / 10),
+           units_height = units_per_floor * floors,
+           units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
+    mutate_at(vars(units_height, units_lotsize),
+              funs(case_when(
+                one_unit_flag == 1 ~ 1,
+                two_unit_flag == 1 ~ 2,
+                TRUE ~ .))) %>% 
+    mutate(units_total = case_when(
+      one_unit_flag == 1 ~ 1,
+      two_unit_flag == 1 ~ 2,
+      is.na(units_lotsize) ~ units_height,
+      units_height < units_lotsize ~ units_height,
+      TRUE ~ units_lotsize))
+  
+}
+
+#' Get maximum unit summary
+#'
+#' @param dataset dataset with lot size and zoning variables 
+#' @param construction_efficiency Assumption for construction efficiency
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
+#' @param dwelling_type_breakdown Options are TRUE or FALSE- indicates whether or not estimates should be broken down by `dwelling_type`
+#'
+#' @return Returns a dataframe with summary statistics on the maximum units that can be build on lots, per the by-right zoning code.
+#'
+#' @examples
+get_unit_summary <- function(dataset, 
+                             construction_efficiency, 
+                             average_unit_size,
+                             dwelling_type_breakdown) {
+
+  x <- dataset %>% 
+    get_unit_variables(construction_efficiency,
+                       average_unit_size) %>%
+    group_by(parameters) %>% 
+    summarize(lots = n(),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
+              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE)))
+  
+  y <- dataset %>% 
+    get_unit_variables(construction_efficiency,
+                       average_unit_size) %>%
+    group_by(parameters, dwelling_type) %>% 
+    summarize(lots = n(),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_total = sum(units_total, na.rm = TRUE),
+              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE))) %>% 
+    mutate(dwelling_type = as.character(dwelling_type))
+  
+  
+  if (dwelling_type_breakdown == TRUE) {
+   
+      bind_rows(y, mutate(x, dwelling_type = "All"))  
+  
+  } else if (dwelling_type_breakdown == FALSE) {
+      x
+    }
+}
+
+
+
+```
+
+Export all lots for soft sites.
+
+```{r export}
+
+seunits <- get_unit_variables(dataset = specialexception1,
+                              construction_efficiency = .7,
+                              average_unit_size = 940)
+brunits <- get_unit_variables(dataset = byright,
+                              construction_efficiency = .7,
+                              average_unit_size = 940)
+
+saveRDS(seunits, "L:/Libraries/RegHsg/Data/arlington/arlington-max-units-se.Rdata")
+saveRDS(brunits, "L:/Libraries/RegHsg/Data/arlington/arlington-max-units-br.Rdata")
+
+```
+
+
+Compare different between special exception and by right.
+
+```{r compare-se-br}
+
+brsum <- byright %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
+  get_unit_summary(construction_efficiency = .75,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE) 
+brsum %>% 
+  knitr::kable(caption = "By right only")
+
+sesum <- specialexception1 %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
+  get_unit_summary(construction_efficiency = .75,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE)
+sesum %>% 
+  knitr::kable(caption = "With special exceptions")
+
+```
+
+Make scatterplot of special exceptions.
+
+```{r scatter-special}
+
+specialexception1 %>% 
+  get_unit_variables(construction_efficiency = .7,
+                     average_unit_size = 940) %>% 
+  filter(units_total > 1) %>% 
+  ggplot() +
+  geom_point(mapping = aes(lotsize_sf, units_total,
+                           color = dwelling_type),
+             alpha = .8) +
+  scale_x_continuous(labels = scales::comma,
+                     expand = expand_scale(mult = c(0, 0.0002)) 
+                    # limits = c(0, 50000),
+                    # breaks = 0:5 * 10000
+                    ) +
+  scale_y_continuous(expand = expand_scale(mult = c(0, 0.0002)) 
+                    # limits = c(0, 60),
+                    # breaks = 0:4 * 15
+                    ) +
+  scatter_grid() +
+  labs(x = "Lot size (square feet)", y = "Total units") +
+  theme(plot.margin = margin(t = 20,
+                             r = 20))
+
+
+
+```
+
+
+Calculate values needed to fill table.
+
+```{r table}
+
+mf.br <- zoningdata %>% 
+  filter(!is.na(dwelling_type),
+         special_exception == 0,
+         dwelling_type == "Multiple-family",
+         category == "vacant") %>% 
+  group_by(propaddress) %>%
+  count() %>% 
+  nrow()
+
+mf.se <- zoningdata %>% 
+  filter(!is.na(dwelling_type),
+         dwelling_type %in% c("Multiple-family", "Multiple-family special exception"),
+         category == "vacant") %>% 
+  group_by(propaddress) %>%
+  slice(which.min(dwelling_type)) %>% 
+  nrow()
+
+br.summary <- 
+  c(nrow(jur), 
+    nrow(filter(jur, category == "vacant")), 
+    mf.br, 
+    brsum %>% filter(dwelling_type == "Multiple-family") %>% pull(lots) %>% sum(),
+    brsum %>% filter(dwelling_type == "Multiple-family") %>% pull(units_total) %>% sum())
+
+
+se.summary <- 
+  c(nrow(jur), 
+    nrow(filter(jur, category == "vacant")), 
+    mf.se, 
+    sesum %>% filter(dwelling_type %in% 
+                       c("Multiple-family", "Multiple-family special exception")) 
+    %>% pull(lots) %>% sum(),
+    sesum %>% filter(dwelling_type %in% 
+                       c("Multiple-family", "Multiple-family special exception")) 
+    %>% pull(units_total) %>% sum())
+
+
+br.breakdown <- brsum %>% 
+  ungroup() %>% 
+  mutate(dwelling_type = ifelse(dwelling_type %in% c("Townhouse", "Semi-detached"),
+                                "sf attached",
+                                dwelling_type)) %>% 
+  group_by(dwelling_type) %>% 
+  summarize_at(vars(lots, units_total),sum) %>% 
+  filter(dwelling_type != "All") %>% 
+  arrange(desc(units_total))
+
+
+se.breakdown <- sesum %>% 
+  ungroup() %>% 
+  mutate(dwelling_type = case_when(
+    dwelling_type %in% c("Townhouse", "Semi-detached") ~ "sf attached",
+    dwelling_type %in% c("Multiple-family", "Multiple-family special exception") ~ "Multiple-family",
+    TRUE ~ dwelling_type)) %>% 
+  group_by(dwelling_type) %>% 
+  summarize_at(vars(lots, units_total),sum) %>% 
+  filter(dwelling_type != "All") %>% 
+  arrange(desc(units_total))
+
+br.summary
+se.summary
+
+br.breakdown %>% knitr::kable()
+se.breakdown %>% knitr::kable()
+
+```
+
+
