@@ -374,7 +374,7 @@ jur %>%
   
 ```
 
-809 of the vacant lots in DC do not have either a 0 or a missing value for the improvement value, so we will reclassify as vacant with structures. The rest have zero or NA, which we would expect. 
+151 of the vacant lots in DC do not have either a 0 or a missing value for the improvement value, so we will reclassify as vacant with structures. The rest have zero or NA, which we would expect. 
 
 ```{r not-so-vacant}
 
@@ -405,7 +405,7 @@ vacantstructure <- jur1a %>%
 
 ```
 
-We will not include vacant with structures (216 cases) in the calculation. We can also make a flag for missing coordinates.
+We will not include vacant with structures (214 cases) in the calculation. We can also make a flag for missing coordinates.
 
 ```{r not-vacant-recat}
 
@@ -726,7 +726,7 @@ Some vacant lots in DC are cemetery, lots on campuses or parks that can't be bui
 ```{r filter-tax type}
 
 jurzoningdata4 <- jurzoningdata3 %>% 
-  filter(parcelbase_mix1txtype!= "E2"& parcelbase_mix1txtype!= "E7")
+  filter(parcelbase_mix1txtype!= "E2" & parcelbase_mix1txtype!= "E7")
 
 
 ```
