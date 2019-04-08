@@ -839,7 +839,7 @@ get_unit_variables <- function(dataset,
     mutate(parameters = paste0("CE: ", construction_efficiency * 100,
                                "% , Unit size: ", average_unit_size,
                                " sf"),
-           lot_coverage_max = ifelse(is.na(lot_coverage_max), .75, lot_coverage_max),
+           lot_coverage_max = ifelse(is.na(lot_coverage_max), .75, lot_coverage_max), #change to .75 for max if NA (4/8/19)
            buildable_area = lotsize_sf * lot_coverage_max,
            living_area = buildable_area * construction_efficiency,
            units_per_floor = floor(living_area / average_unit_size), # it will set to 0 when less than 1. 
@@ -962,7 +962,7 @@ testvacant <- get_unit_variables(dataset = vacantlotunits,
 get_unit_variables(dataset = vacantlotunits,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-  select(parameters, parcelbase_SSL, parcelbase_usecode,lotsize_sf, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,units_per_floor, units_min, units_FAR, units_height, propaddress, zoning_code, one_unit_flag, two_unit_flag, subset, parcelbase_mix1txtype) %>% 
+  select(parameters, parcelbase_SSL, parcelbase_usecode,lotsize_sf, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,units_per_floor, units_min, units_FAR, units_height, units_total, propaddress, zoning_code, one_unit_flag, two_unit_flag, subset, parcelbase_mix1txtype) %>% 
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-vacant-lots-analysis-basedata.csv"))
