@@ -127,11 +127,6 @@ landuse_summary <- parcel %>%
          sf_res = sf / (sf + mf))
 
 
-parcel <- parcel %>% 
-  mutate(lotsize_acres = ifelse(str_detect(propaddress, "E WEST HWY") == TRUE &
-                                  category == "condo",
-                                lotsize_acres / 76,
-                                lotsize_acres))
 ```
 
 ## Get nodes
@@ -507,12 +502,15 @@ get_individual_density(dataset = parcel2,
                        node_type = "Transit") %>% 
   knitr::kable()
 
-get_individual_density(dataset = parcel2,
+ssd <- get_individual_density(dataset = parcel2,
                        node_geometry = nodes_uniform,
                        node_name = "Silver Spring", 
-                       node_type = "Transit") %>% 
-  knitr::kable()
+                       node_type = "Transit")
 
+gsd <- get_individual_density(dataset = parcel2,
+                       node_geometry = nodes_uniform,
+                       node_name = "Grosvenor-Strathmore", 
+                       node_type = "Transit")
 
 ```
 Map function through all activity centers and transit zones.
