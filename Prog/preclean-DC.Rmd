@@ -122,7 +122,8 @@ parcelbaseDCraw <- parcelbase %>%
          in_last_ownerpt= in_last_ownerpt,
          parcelbase_mixeduse = MIXEDUSE,
          parcelbase_mix1txtype= MIX1TXTYPE,
-         parcelbase_mix2txtype= MIX2TXTYPE
+         parcelbase_mix2txtype= MIX2TXTYPE,
+         parcelbase_newland=NEW_LAND
         ) %>% 
   mutate(parcelbase_parcelID= as.character(parcelbase_parcelID)) %>% 
   filter(!is.na(parcelbase_parcelID))
