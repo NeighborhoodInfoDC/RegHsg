@@ -149,7 +149,7 @@ I used this code to check some of the confusing ones in the parcel base data to 
 ## some False vacant are actually not vacant
 jur %>% 
  filter(countylandusedescription == "FALSE VACANT") %>% 
-  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuild) %>% 
+  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuild, parcelbase_newimpr) %>% 
     arrange(desc(parcelbase_phasebuild)) %>% 
   head(20)
 
@@ -805,7 +805,7 @@ nested <- allmultiple2 %>%
                     parcelgeo_x, parcelgeo_y, 
                     lat, long,
                     assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
-                    parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype), list) %>% 
+                    parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype, parcelbase_newimpr), list) %>% 
   rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, mode_narm),
@@ -835,7 +835,8 @@ nested <- allmultiple2 %>%
          assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE),
          parcelbase_phasebuild=map_dbl(parcelbase_phasebuild_list,sum, na.rm = TRUE),
          parcelbase_phaseland=map_dbl(parcelbase_phaseland_list,sum, na.rm = TRUE),
-         parcelbase_mix1txtype= map(parcelbase_mix1txtype_list, mode_narm)) %>% 
+         parcelbase_mix1txtype= map(parcelbase_mix1txtype_list, mode_narm),
+         parcelbase_newimpr =map_dbl(parcelbase_newimpr_list,sum, na.rm = TRUE))%>% 
   mutate(ties_cat = ifelse(map(category, length) > 1, 1, 0)) %>% 
   mutate(category = ifelse(ties_cat == 1,
                            map(category_list, 1),
@@ -1279,7 +1280,7 @@ singles_f <- allsingle2 %>%
          category, category_detail, residential, building_type,
          parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
          assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
-         parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype)
+         parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype, parcelbase_newimpr)
 
 #no longer any missing -commenting out code
 #missing_f <- missing %>% 

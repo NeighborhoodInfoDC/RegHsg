@@ -310,7 +310,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Yipeng Su adapted from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated April 04, 2019</p>
+<p>Last updated April 08, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -411,32 +411,33 @@ rm(res_codes)</code></pre>
 <pre class="r"><code>## some False vacant are actually not vacant
 jur %&gt;% 
  filter(countylandusedescription == &quot;FALSE VACANT&quot;) %&gt;% 
-  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuild) %&gt;% 
+  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuild, parcelbase_newimpr) %&gt;% 
     arrange(desc(parcelbase_phasebuild)) %&gt;% 
   head(20)</code></pre>
-<pre><code>## # A tibble: 20 x 4
-##    assessorsparcelnu~ parcelbase_address owneroccupiedres~ parcelbase_phas~
-##    &lt;chr&gt;              &lt;chr&gt;              &lt;chr&gt;                        &lt;dbl&gt;
-##  1 0701      0870     1277  1ST ST SE    &lt;NA&gt;                       3914620
-##  2 0340      0831     1013-1015  M ST NW &lt;NA&gt;                       1470320
-##  3 0363      0807     1714  9TH ST NW    &lt;NA&gt;                        608040
-##  4 1452      0842     POTOMAC AV NW      &lt;NA&gt;                         52500
-##  5 1856      0814     3815 KANAWHA ST NW &lt;NA&gt;                          9910
-##  6 3056      0004     0534 HARVARD ST NW &lt;NA&gt;                          7930
-##  7 0204      0848     U ST NW            &lt;NA&gt;                          3550
-##  8 0054      7013     2200  PENNSYLVANI~ &lt;NA&gt;                          1000
-##  9 0054      7014     2200  PENNSYLVANI~ &lt;NA&gt;                          1000
-## 10 0054      7015     2200  PENNSYLVANI~ &lt;NA&gt;                          1000
-## 11 2610      0756     NEWTON ST          &lt;NA&gt;                           830
-## 12 3535      0052     2020 SUMMIT ST NE  &lt;NA&gt;                           750
-## 13 2850      0815     IRVING ST NW       &lt;NA&gt;                           320
-## 14 2906      7002     GEORGIA AVE NW     &lt;NA&gt;                           100
-## 15 2906      7005     GEORGIA AVE NW     &lt;NA&gt;                           100
-## 16 2906      7006     GEORGIA AVE NW     &lt;NA&gt;                           100
-## 17 2906      7007     GEORGIA AVE NW     &lt;NA&gt;                           100
-## 18 2906      7009     GEORGIA AVE NW     &lt;NA&gt;                           100
-## 19 2906      7011     GEORGIA AVE NW     &lt;NA&gt;                           100
-## 20 2906      7012     GEORGIA AVE NW     &lt;NA&gt;                           100</code></pre>
+<pre><code>## # A tibble: 20 x 5
+##    assessorsparcel~ parcelbase_addr~ owneroccupiedre~ parcelbase_phas~
+##    &lt;chr&gt;            &lt;chr&gt;            &lt;chr&gt;                       &lt;dbl&gt;
+##  1 0701      0870   1277  1ST ST SE  &lt;NA&gt;                      3914620
+##  2 0340      0831   1013-1015  M ST~ &lt;NA&gt;                      1470320
+##  3 0363      0807   1714  9TH ST NW  &lt;NA&gt;                       608040
+##  4 1452      0842   POTOMAC AV NW    &lt;NA&gt;                        52500
+##  5 1856      0814   3815 KANAWHA ST~ &lt;NA&gt;                         9910
+##  6 3056      0004   0534 HARVARD ST~ &lt;NA&gt;                         7930
+##  7 0204      0848   U ST NW          &lt;NA&gt;                         3550
+##  8 0054      7013   2200  PENNSYLVA~ &lt;NA&gt;                         1000
+##  9 0054      7014   2200  PENNSYLVA~ &lt;NA&gt;                         1000
+## 10 0054      7015   2200  PENNSYLVA~ &lt;NA&gt;                         1000
+## 11 2610      0756   NEWTON ST        &lt;NA&gt;                          830
+## 12 3535      0052   2020 SUMMIT ST ~ &lt;NA&gt;                          750
+## 13 2850      0815   IRVING ST NW     &lt;NA&gt;                          320
+## 14 2906      7002   GEORGIA AVE NW   &lt;NA&gt;                          100
+## 15 2906      7005   GEORGIA AVE NW   &lt;NA&gt;                          100
+## 16 2906      7006   GEORGIA AVE NW   &lt;NA&gt;                          100
+## 17 2906      7007   GEORGIA AVE NW   &lt;NA&gt;                          100
+## 18 2906      7009   GEORGIA AVE NW   &lt;NA&gt;                          100
+## 19 2906      7011   GEORGIA AVE NW   &lt;NA&gt;                          100
+## 20 2906      7012   GEORGIA AVE NW   &lt;NA&gt;                          100
+## # ... with 1 more variable: parcelbase_newimpr &lt;dbl&gt;</code></pre>
 <pre class="r"><code>mf &lt;- c(&quot;002&quot;,
         &quot;003&quot;,
         &quot;016&quot;,
@@ -717,9 +718,9 @@ rm(newcat, mf)</code></pre>
 <pre><code>## # A tibble: 3 x 2
 ##   lotsizeareaunit      n
 ##   &lt;chr&gt;            &lt;int&gt;
-## 1 &lt;NA&gt;             20908
-## 2 AC                2395
-## 3 SF              183127</code></pre>
+## 1 AC                2395
+## 2 SF              183127
+## 3 &lt;NA&gt;             20908</code></pre>
 <pre class="r"><code>jur &lt;- jur %&gt;% 
   mutate(lotsize_acres = case_when(lotsizeareaunit == &quot;AC&quot; ~ lotsizeorarea ,
                                    lotsizeareaunit == &quot;SF&quot; ~ lotsizeorarea / 43560),
@@ -1107,7 +1108,7 @@ allsingle &lt;- bind_rows(singles, singles2) </code></pre>
                     parcelgeo_x, parcelgeo_y, 
                     lat, long,
                     assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
-                    parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype), list) %&gt;% 
+                    parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype, parcelbase_newimpr), list) %&gt;% 
   rename_at(vars(-propaddress), ~ paste0(., &quot;_list&quot;)) %&gt;% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, mode_narm),
@@ -1137,7 +1138,8 @@ allsingle &lt;- bind_rows(singles, singles2) </code></pre>
          assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE),
          parcelbase_phasebuild=map_dbl(parcelbase_phasebuild_list,sum, na.rm = TRUE),
          parcelbase_phaseland=map_dbl(parcelbase_phaseland_list,sum, na.rm = TRUE),
-         parcelbase_mix1txtype= map(parcelbase_mix1txtype_list, mode_narm)) %&gt;% 
+         parcelbase_mix1txtype= map(parcelbase_mix1txtype_list, mode_narm),
+         parcelbase_newimpr =map_dbl(parcelbase_newimpr_list,sum, na.rm = TRUE))%&gt;% 
   mutate(ties_cat = ifelse(map(category, length) &gt; 1, 1, 0)) %&gt;% 
   mutate(category = ifelse(ties_cat == 1,
                            map(category_list, 1),
@@ -1591,7 +1593,7 @@ allsingle2 %&gt;%
          category, category_detail, residential, building_type,
          parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
          assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
-         parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype)
+         parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype, parcelbase_newimpr)
 
 #no longer any missing -commenting out code
 #missing_f &lt;- missing %&gt;% 
