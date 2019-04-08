@@ -375,7 +375,8 @@ parcelgeo &lt;- haven::read_sas(&quot;L:/Libraries/realprop/data/parcel_geo.sas7
          parcelbase_mixeduse = MIXEDUSE,
          parcelbase_mix1txtype= MIX1TXTYPE,
          parcelbase_mix2txtype= MIX2TXTYPE,
-         parcelbase_newland=NEW_LAND
+         parcelbase_newland=NEW_LAND,
+         parcelbase_newimpr=NEW_IMPR
         ) %&gt;% 
   mutate(parcelbase_parcelID= as.character(parcelbase_parcelID)) %&gt;% 
   filter(!is.na(parcelbase_parcelID))
