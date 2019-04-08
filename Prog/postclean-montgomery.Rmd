@@ -105,12 +105,12 @@ parcel_sf1 <- parcel_sf1 %>%
 ```
 
 
-clean the dataset and filter out the bad geometries to faciltate a join
+clean the dataset and filter out the bad geometries to facilitate a join
 
 ```{r set geo}
 st_geometry(parcel_sf1)
 
-parcel_sf1 <- st_transform(parcel_sf1, crs = 4326)
+parcel_sf1 <- st_transform(parcel_sf1, crs = 4326) 
 
 ```
 
@@ -156,6 +156,11 @@ jur_sf1 %>% as.data.frame() %>%
 
 ```
 No invalid points, so continue with join.
+
+Filter out roads
+```{r}
+parcel_sf1<- parcel_sf1 %>% filter(OBJECTID!="115360002")
+```
 
 
 ## Spatial Join!
@@ -297,11 +302,40 @@ length(unique(parcel_sf1$OBJECTID)) == length(parcel_sf1$OBJECTID)
 
 ```
 
+
+Identify instances where parcels, when grouped by OBJECTID, only have 1 value - set these values to NA before coverting all lotsize_sf values that are NA to parcel area values. 
+```{r}
+ biglots <- pjoin3 %>%
+   group_by(OBJECTID)%>%
+   summarize_at(vars(lotsize_sf,lotwasmissing,SHAPE_AREA), list) %>% 
+   rename_at(vars(-OBJECTID), ~ paste0(., "_list")) %>%
+   mutate(nprops = map(lotsize_sf_list, length),
+          lotwasmissing_sum = map_dbl(lotwasmissing_list, sum, na.rm = TRUE),
+          lotsize_sum= map(lotsize_sf_list, sum, na.rm = TRUE)) %>%
+     mutate(nprops = as.integer(nprops),
+       lotsize_sum = as.double(lotsize_sum),
+         unique_lots = map(lotsize_sf_list, function(x) length(unique(x)))
+         ) %>%
+  ungroup() %>% 
+  filter(lotwasmissing_sum > 0) %>%
+  mutate(isMostlyMissing = lotwasmissing_sum +1 == nprops) 
+
+pjoin3a<-left_join(pjoin3,  biglots %>% 
+    select(OBJECTID, isMostlyMissing), by="OBJECTID")
+
+pjoin4 <- pjoin3a %>% mutate(lotsize_sf = ifelse(isMostlyMissing, NA, lotsize_sf)) 
+  
+
+```
+
+
+
+
 How many that we will need to fill in have this problem>
 
 ```{r}
 
-pjoin3 %>% 
+pjoin4 %>% 
   group_by(OBJECTID) %>% 
   filter(is.na(lotsize_sf)) %>% 
   filter(n() > 1) %>% 
@@ -313,7 +347,7 @@ Group within a shape- divide the area by the number of black knight parcels that
 
 ```{r }
 
-correct_area <- pjoin3 %>% 
+correct_area <- pjoin4 %>% 
   group_by(OBJECTID) %>% 
   filter(n() > 1,
          !is.na(OBJECTID)) %>% 
@@ -328,7 +362,7 @@ correct_area_merge <- correct_area %>%
 
 
 # see how many obs join to multiple categories
-pjoin3 %>% 
+pjoin4 %>% 
   group_by(OBJECTID) %>% 
   summarize(cat = list(category)) %>% 
   mutate(len = map_dbl(cat, ~ length(unique(.)))) %>% 
@@ -342,7 +376,7 @@ Replace lot size with new_area for any parcel that joins more than once. For oth
 
 ```{r }
 
-pjoin4 <- pjoin3 %>% 
+pjoin5 <- pjoin4 %>% 
  left_join(correct_area_merge, by = c("OBJECTID")) %>% 
   # substitute when needed
   mutate(lotsize_sf = ifelse(!is.na(area_new) & is.na(lotsize_sf),
@@ -354,8 +388,8 @@ pjoin4 <- pjoin3 %>%
                              SHAPE_AREA,
                              lotsize_sf))
 
-sum(is.na(pjoin4$lotsize_sf))
-sum(pjoin4$lotsize_sf == 0, na.rm = TRUE)
+sum(is.na(pjoin5$lotsize_sf))
+sum(pjoin5$lotsize_sf == 0, na.rm = TRUE)
 
 ```
 
@@ -363,7 +397,7 @@ sum(pjoin4$lotsize_sf == 0, na.rm = TRUE)
 ```{r}
 
 # testing <- pjoin_df1 %>%
-#   filter(countylandusedescription=="EXEMPT")
+ # filter(countylandusedescription=="EXEMPT")
 # 
 # count(testing, LU_CATEGOR)
 # 
@@ -371,34 +405,34 @@ sum(pjoin4$lotsize_sf == 0, na.rm = TRUE)
 
 
 
-#group by OBJECTID - id from parcel shapefile to figure out which parcels joined to large lots that represent multiple parcels - like joining condo units to a lot for the whole building. need to identify how many parcels join to that lot in order to get the correct lot size to fill in for missing parcels.
-
-# Biglots <- pjoin_df1 %>%
-#   group_by(OBJECTID)%>%
-#   summarize_at(vars(zoning,category_detail, LU_CATEGOR, lotsize_sf,lotwasmissing,SHAPE_AREA), list) %>% 
-#   rename_at(vars(-OBJECTID), ~ paste0(., "_list")) %>%
-#   mutate(nprops = map(zoning_list, length),
-#          lotwasmissing_sum = map_dbl(lotwasmissing_list, sum, na.rm = TRUE),
-#          lotsize_max= map(lotsize_sf_list, max, na.rm = TRUE),
-#          lotsize_sum= map(lotsize_sf_list, sum, na.rm = TRUE))
+# #group by OBJECTID - id from parcel shapefile to figure out which parcels joined to large lots that represent multiple parcels - like joining condo units to a lot for the whole building. need to identify how many parcels join to that lot in order to get the correct lot size to fill in for missing parcels.
 # 
-# Biglots2 <- Biglots %>% 
-#   mutate(nprops = as.integer(nprops),
-#          lotsize_sum = as.double(lotsize_sum),
-#          lotsize_max = as.double(lotsize_max),
+#  Biglots <- pjoin_df1 %>%
+#    group_by(OBJECTID)%>%
+#    summarize_at(vars(zoning, lotsize_sf,lotwasmissing,SHAPE_AREA), list) %>% 
+#    rename_at(vars(-OBJECTID), ~ paste0(., "_list")) %>%
+#    mutate(nprops = map(zoning_list, length),
+#           lotwasmissing_sum = map_dbl(lotwasmissing_list, sum, na.rm = TRUE),
+#           lotsize_max= map(lotsize_sf_list, max, na.rm = TRUE),
+#           lotsize_sum= map(lotsize_sf_list, sum, na.rm = TRUE))
+# # 
+#  Biglots2 <- Biglots %>% 
+#      mutate(nprops = as.integer(nprops),
+#        lotsize_sum = as.double(lotsize_sum),
+#        lotsize_max = as.double(lotsize_max),
 #          unique_lots = map(lotsize_sf_list, function(x) length(unique(x))),
 #          lsfirst = map(lotsize_sf_list, function(x) x[1]),
 #          shapefirst=map(SHAPE_AREA_list,function(x) x[1]),
 #          lotmaxissum=ifelse((lotsize_sum-lotsize_max==0),1,0)
-#          ) %>% 
+#          ) %>%
 #   ungroup()
-
-#eliminate lots that don't have any missing lot size. 
-#Biglots3 <- Biglots2 %>%
-#  filter(lotwasmissing_sum > 0) %>%
-#  mutate(shapefirst =as.double(shapefirst),
-#         avglot= shapefirst/nprops)
-#
+# 
+# #eliminate lots that don't have any missing lot size. 
+# Biglots3 <- Biglots2 %>%
+#   filter(lotwasmissing_sum > 0) %>%
+#   mutate(isMostlyMissing = lotwasmissing_sum +1 == nprops) 
+#   
+# #
 #Onelot <- Biglots3 %>%
 #  filter(lotwasmissing_sum==1 & nprops==1)%>%
 #  mutate(lotsize_sf=shapefirst,lotsize_sf)
@@ -428,19 +462,19 @@ sum(pjoin4$lotsize_sf == 0, na.rm = TRUE)
 See how many we're filled in
 
 ```{r count-lots size}
-sum(is.na(pjoin_df$lotsize_sf)) - sum(is.na(pjoin4$lotsize_sf))
+sum(is.na(pjoin_df$lotsize_sf)) - sum(is.na(pjoin5$lotsize_sf))
 ```
 
 Set joined parcel as SF (shape file) to faciltate join with zoning layer
 
 ```{r clean zoning}
 
-pjoin5 <- pjoin4 %>% 
+pjoin6 <- pjoin5 %>% 
   mutate(missing_coord = ifelse(is.na(lat1) | is.na(long1),
                                 1,
                                 0))
 
-pjoin_sf <- pjoin5 %>% 
+pjoin_sf <- pjoin6 %>% 
   filter(missing_coord == 0) %>% 
   st_as_sf(coords = c("long1", "lat1")) %>% 
   st_set_crs(st_crs(parcel_sf1))
@@ -515,16 +549,16 @@ zoning_sf %>%
 
 test <- pjoin_sf
 
-zoning_sf1 %>% 
-  summarize() %>% 
-  ggplot() +
-  geom_sf(mapping = aes(),
-          fill = "blue")
+# zoning_sf1 %>% 
+#   summarize() %>% 
+#   ggplot() +
+#   geom_sf(mapping = aes(),
+#           fill = "blue")
 
 ```
 
 
-#A dd flag for gaithersburg and rockville
+#Add flag for gaithersburg and rockville
 Our Data on the property city is not reliable, so we need to create a flag ourselves using the Rockville and Gaithersburg zoning layers to.
 
 I read in a rockville zoning file, and add a flag for any property that falls within the rockville shape file. This will help us filter and use the right zoning code in the vacant lots analysis
