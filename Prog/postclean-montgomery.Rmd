@@ -587,7 +587,7 @@ count(jur6, is.na(lotsize_sf), category_detail)
 
 ```
 
-#Save and write out
+## Save and write out
 
 ```{r save}
 
@@ -602,7 +602,7 @@ saveRDS(jur6,
 ```
 
 
-##Write out clean data.
+### Write out clean data.
 
 ```{r write}
 write_csv(jur6, 
