@@ -116,9 +116,15 @@ parcelbaseDCraw <- parcelbase %>%
          parcelbase_proparea=LANDAREA,
          parcelbase_usecode= USECODE,
          parcelbase_proptype= PROPTYPE,
-         parcelbase_phasebuilt= PHASEBUILD,
+         parcelbase_phasebuild= PHASEBUILD,
+         parcelbase_phaseland= PHASELAND,
          parcelbase_suffix= SUFFIX,
-         in_last_ownerpt= in_last_ownerpt
+         in_last_ownerpt= in_last_ownerpt,
+         parcelbase_mixeduse = MIXEDUSE,
+         parcelbase_mix1txtype= MIX1TXTYPE,
+         parcelbase_mix2txtype= MIX2TXTYPE,
+         parcelbase_newland=NEW_LAND,
+         parcelbase_newimpr=NEW_IMPR
         ) %>% 
   mutate(parcelbase_parcelID= as.character(parcelbase_parcelID)) %>% 
   filter(!is.na(parcelbase_parcelID))
