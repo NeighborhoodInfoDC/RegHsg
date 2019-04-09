@@ -351,7 +351,7 @@ jursf <- jur_3 %>%
 Filter out Herndon and Vienna as these jurisdictions do not fall under Fairfax County zoning.
 ```{r}
 options(tigris_use_cache=T)
-places<-places("Virginia") %>% st_as_sf() %>% st_transform(st_crs(zon)) %>% filter(NAME=="Herndon"|NAME=="Vienna") %>% select()
+places<-places("Virginia") %>% st_as_sf() %>% st_transform(st_crs(zon)) %>% filter(NAME=="Herndon"|NAME=="Vienna"|NAME=="Clifton") %>% select()
 
 
 jursf_temp<-jursf %>% mutate(notIsPlace= sapply(st_intersects(jursf, places),function(x){length(x)==0})) %>% 
@@ -373,7 +373,7 @@ jurjoin <- st_join(jursf_temp1, zon, join = st_intersects)
 
 ```
 
-
+23 observations are gained through this join - these are added because points are falling in more than one zone.
 
 
 
@@ -444,7 +444,7 @@ jur_5 %>%
 
 ```
 
-Many are different for some jurisdictions because the Black Knight zoning has two zoning codes, separated by a slash. We can test how many of these instances have the spatially joined zoning designation in the Black Knight zoning variable. However, this is not true for Fairfax. The slashes below denote jurisdictions that either have "w/" to mean "with" or have some other use. 
+Many are different for some jurisdictions because the Black Knight zoning has two zoning codes, separated by a slash. We can test how many of these instances have the spatially joined zoning designation in the Black Knight zoning variable. However, this is not true for Fairfax. The slashes denote jurisdictions that either have "w/" to mean "with" or have some other use. 
 
 ```{r}
 sames <- jur_5 %>% filter(newZoning == ZONECODE)
@@ -547,11 +547,44 @@ differents2 <- differents1 %>% filter(newZoning != ZONECODE)
 
 
 
-jur_6 <- differents1 %>% 
+
+
+jur_5a <- differents1 %>% 
          bind_rows(sames) %>%
          bind_rows(sames1) %>%
          bind_rows(others)
+
+
 ```
+
+Fix newZoning that has weird residential values
+```{r}
+residential_weird <- c("RES ",
+                       "RD",
+                       "MULTI-FAM W/MIX COM/INDUS",
+                       "R-10",
+                       "RTC-10",
+                       "MIX AG AND CONSRV W/RES/A",
+                       "RP",
+                       "RS-16",
+                       "R-15",
+                       "RS-10",
+                       "MULTI-FAM W/MIX OTHER RES",
+                       "RM-1",
+                       "RS-12.5",
+                       "MULTI FAM W/MIX MULTI FAM",
+                       "R10",
+                       "RES W OTHER RES ZONING",
+                       "RM-2")
+
+jur_6 <- jur_5a %>% mutate(newZoning = case_when(
+                        newZoning %in% residential_weird ~ ZONECODE,
+                        T ~ newZoning
+))
+
+
+```
+
 
 ```{r slashes2}
 
@@ -599,6 +632,7 @@ jurfinal <- jurfinal %>%
     newZoning == "R-15 SINGLE FAM 15000 2+D" ~ "R-15",
     newZoning == "R-10 SINGLE FAM 10000 3+D" ~ "R-10",
     newZoning == "R12" ~ "R-12",
+    newZoning == "R10" ~ "R-10", 
     TRUE ~ newZoning))
            
 ```
@@ -686,24 +720,6 @@ notResidential <- c("I-5",
                     "INDUST W/OTHER INDUST ZON"
 )
   
-residential_weird <- c("RES ",
-                       "RD",
-                       "MULTI-FAM W/MIX COM/INDUS",
-                       "R-10",
-                       "RTC-10",
-                       "MIX AG AND CONSRV W/RES/A",
-                       "RP",
-                       "RS-16",
-                       "R-15",
-                       "RS-10",
-                       "MULTI-FAM W/MIX OTHER RES",
-                       "RM-1",
-                       "RS-12.5",
-                       "MULTI FAM W/MIX MULTI FAM",
-                       "R10",
-                       "RES W OTHER RES ZONING",
-                       "RM-2"
-)
 
 
 tempTable<-anti_join(jurfinal, zoningcode, by = c("zoning_code"="code")) %>% 
@@ -718,7 +734,7 @@ tempTable %>% group_by(type) %>% summarise(totalLots = sum(n, na.rm=T))%>%
 
 ```
 
-Of those that do not match, 92% (107,951) are in planning development districts, some of which have residential uses. However, developers must pass the development plan process before building in these districts.  
+Of those that do not match, 92% (107,951) are in planning development districts, some of which have residential uses. However, developers must pass the development plan process before building in these districts. 35 of those classified as "residential weird" are vacant.
 ```{r results = F}
 
 
@@ -730,6 +746,11 @@ planned_vacants<- jurfinal %>% filter(zoning_code%in%planned,
 There are `r planned_vacants` vacant lots in the aforementioned planned jurisdictions
 
 
+Alter lotsize for a lot - at "KATELYN ZINN PL" - that has a lotsize that is far too high - size was in acres when it should have been feet.
+```{r}
+zoningdata_sub <- zoningdata %>% mutate(lotsize_sf = ifelse(grepl("KATELYN ZINN PL", propaddress), lotsize_sf/43560, lotsize_sf))
+```
+
 
 
 
@@ -738,11 +759,8 @@ Filter out lots that are too small to build on and lots with missing zoning info
 ```{r filter-small}
 
 
-zoningdata1 <- zoningdata %>% 
-  filter(!is.na(newZoning),
-          #lotsize_sf >= density,
-         # is.na(lot_area)|lotsize_sf >=lot_area,
-         !grepl("KATELYN ZINN PL", propaddress)) %>% 
+zoningdata1 <- zoningdata_sub %>% 
+  filter(!is.na(newZoning)) %>% 
   mutate(smallsize_flag = ifelse(lotsize_sf >= density, 0, 1)) %>% 
   mutate(smallsize_flag = ifelse(is.na(smallsize_flag), 0, smallsize_flag)) %>% 
   group_by(propaddress, smallsize_flag) %>% 
@@ -752,14 +770,13 @@ zoningdata1 <- zoningdata %>%
   slice(which.min(smallsize_flag)) %>% 
   ungroup() %>%
   mutate(lotsize_sf = as.numeric(lotsize_sf),
-         lot_area_min = gsub(lot_area, pattern=",", replacement = "") %>% as.numeric) %>%
-  filter(lotsize_sf>=lot_area_min|is.na(lot_area_min))
+         lot_area_min = gsub(lot_area, pattern=",", replacement = "") %>% str_trim() %>% as.numeric) 
 
 # check observations
-nrow(zoningdata1) + nrow(filter(zoningdata, is.na(zoning_code)))
+nrow(zoningdata1) + nrow(filter(zoningdata_sub, is.na(zoning_code)))
 
 # this is the number of all parcels, including those with 
-zoningdata %>% group_by(propaddress) %>% count() %>% nrow()
+zoningdata_sub %>% group_by(propaddress) %>% count() %>% nrow()
 
 
 
@@ -815,14 +832,13 @@ get_unit_variables <- function(dataset,
           # units_area = ifelse(units_acre<units_height, units_acre, units_height)) %>% 
     mutate_at(vars(units_height, units_lotsize),
               funs(case_when(
+                lot_area_min > lotsize_sf ~ 0,
                 one_unit_flag == 1 ~ 1,
                 two_unit_flag == 1 ~ 2,
+                one_unit_flag == 1 & subset>=1 & units_lotsize/subset>=1 ~ 1*subset,
+                two_unit_flag == 1 & subset>=1 & units_lotsize/subset>=2 ~ 2*subset,
                 TRUE ~ .))) %>% 
     mutate(units_total = case_when(
-      one_unit_flag == 1 ~ 1,
-      two_unit_flag == 1 ~ 2,
-      one_unit_flag == 1 & subset>=1 & units_lotsize/subset>=1 ~ 1*subset,
-      two_unit_flag == 1 & subset>=1 & units_lotsize/subset>=2 ~ 2*subset,
       units_height < units_lotsize ~ units_height,
       TRUE ~ units_lotsize))
   
