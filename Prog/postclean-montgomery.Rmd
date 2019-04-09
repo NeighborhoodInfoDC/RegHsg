@@ -157,8 +157,8 @@ jur_sf1 %>% as.data.frame() %>%
 ```
 No invalid points, so continue with join.
 
-Filter out roads
-```{r}
+####Filter out roads
+```{r roads}
 parcel_sf1<- parcel_sf1 %>% filter(OBJECTID!="115360002")
 ```
 
@@ -228,7 +228,7 @@ We will fill in the missing lot size, when we can, with the area of the lot, obt
 
 pjoin_df1 <- pjoin_df %>% 
   mutate(arc_lotsize_sf = lotsize_sf, # archive the original lot size variable
-         lotwasmissing = ifelse(is.na(lotsize_sf),1,0))
+         lotwasmissing = ifelse(is.na(lotsize_sf),1,0)) #create flag if lot size was originally missing
 
 count(pjoin_df1, LU_CATEGOR)
 
@@ -379,7 +379,8 @@ Replace lot size with new_area for any parcel that joins more than once. For oth
 pjoin5 <- pjoin4 %>% 
  left_join(correct_area_merge, by = c("OBJECTID")) %>% 
   # substitute when needed
-  mutate(lotsize_sf = ifelse(!is.na(area_new) & is.na(lotsize_sf),
+  mutate(lotsize_sf = ifelse(!is.na(area_new) & is.na(lotsize_sf) & match == 1
+                             & incorrect_spatial == 0,
                        area_new,
                        lotsize_sf)) %>% 
   # fill in lot size with area
@@ -687,9 +688,6 @@ pzjoin_df <- st_set_geometry(pzjoin4, NULL)
 I remove a stop that Sarah put in because there will not be clean join because of missing prop data from Gaithersburg and Rockville.
 ```{r count-zoning withflags}
 
-pzjoin_df %>% 
-  filter(rockflag == 1)
-  
 count(pzjoin_df, is.na(assessorsparcelnumberapnpin))
 
 paste0(sum(is.na(pzjoin_df$CODE)), " observations didn't join- ",
