@@ -36,6 +36,8 @@
 
  Modifications: 02-12-19 LH Adjust weights using Calibration from Steven's projections 
 						 	so that occupied units match COG 2015 HH estimation.
+                02-17-19 LH Readjust weights after changes to calibration to move 2 HH w/ GQ=5 out of head of HH
+				03-30-19 LH Remove hard coding and merge in contract rent to gross rent ratio for vacant units. 
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -44,7 +46,7 @@
 %DCData_lib( RegHsg )
 %DCData_lib( Ipums )
 
-%let date=02122019; 
+%let date=03302019; 
 
 proc format;
 
@@ -136,7 +138,7 @@ run;
 
 
  %**create ratio for rent to rentgrs to adjust rents on vacant units**;
-	 data Ratio;
+	 data Ratio_&year.;
 
 		  set COGSarea_&year.
 		    (keep= rent rentgrs pernum gq ownershpd Jurisdiction
@@ -146,17 +148,10 @@ run;
 		 
 		run;
 
-		proc means data=Ratio;
+		proc means data=Ratio_&year.;
 		  var  Ratio_rentgrs_rent_&year. rentgrs rent;
+		  output out=Ratio_&year (keep=Ratio_rentgrs_rent_&year.) mean=;
 		run;
-			%** Value copied from Proc Means output **;
-		%if &year=2013 %then %let Ratio_rentgrs_rent_&year.= 1.1429187;
-		%if &year=2014 %then %let Ratio_rentgrs_rent_&year.= 1.1600331;
-		%if &year=2015 %then %let Ratio_rentgrs_rent_&year.= 1.1556884;
-		%if &year=2016 %then %let Ratio_rentgrs_rent_&year.= 1.1425105;
-		%if &year=2017 %then %let Ratio_rentgrs_rent_&year.= 1.1193682;
-
-		%put Ratio_rentgrs_rent_&year.=&&Ratio_rentgrs_rent_&year.;
 
 data Housing_needs_baseline_&year.;
 
@@ -372,7 +367,9 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 
   set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction );
 
-  retain Total 1;
+  	if _n_ = 1 then set Ratio_&year.;
+
+ 	retain Total 1;
 
   *reassign vacant but rented or sold based on whether rent or value is available; 	
   vacancy_r=vacancy; 
@@ -384,7 +381,7 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 	    Tenure = 1;
 	    
 	    	** Impute gross rent for vacant units **;
-	  		rentgrs = rent*&&Ratio_rentgrs_rent_&year.;
+	  		rentgrs = rent*Ratio_rentgrs_rent_&year.;
 
 			  %dollar_convert( rentgrs, rentgrs_a, &year., 2016, series=CUUR0000SA0L2 )
 			
@@ -475,42 +472,61 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 
 /*merge single year data and reweight
 
-MWCOG HH calibrations	
-dc	1.066041683
-charles	0.976765437
-frederick	0.994703041
-montgomery	1.014415882
-prince george's	1.044818026
-arlington	1.014767582
-fairfax	1.027305766
-loudoun	0.999321716
-prince william	1.029156002
-alexandria	1.037945192
-total	1.028355105*/
+revised to match Steven's files in https://urbanorg.app.box.com/file/402454379812 (after changing 2 HH = GQ=5 in 2013
+ to non head of HH)
+*/
 
 
 data fiveyeartotal;
 	set Housing_needs_baseline_2013 Housing_needs_baseline_2014 Housing_needs_baseline_2015 Housing_needs_baseline_2016 Housing_needs_baseline_2017;
 
 hhwt_5=hhwt*.2; 
+run; 
+proc means data= fiveyeartotal;
+class hud_inc;
+var Costratio incomecat total ;
+weight hhwt_5;
+run;
+proc sort data=fiveyeartotal;
+by jurisdiction;
+proc summary data=fiveyeartotal;
+by jurisdiction;
+var hhwt_5;
+output out=region_sum sum=ACS_13_17;
+run; 
+data calculate_calibration;
+ set region_sum;
+
+/*L:\Libraries\Region\Raw\Final_Round_9.1_Summary_Tables_101018.xlsx*/
+COG_2015=.;
+if jurisdiction=1 then COG_2015=297112; *DC;
+else if jurisdiction=2 then COG_2015=53659; *charles; 
+else if jurisdiction=3 then COG_2015=89462; *frederick; 
+else if jurisdiction=4 then COG_2015=374850; *montgomery;
+else if jurisdiction=5 then COG_2015=321143; *prince georges;
+else if jurisdiction=6 then COG_2015=103761; *arlington; 
+else if jurisdiction=7 then COG_2015=418360; *fairfax, fairfax city, fallschurch; 
+else if jurisdiction=8 then COG_2015=121106; *loudoun; 
+else if jurisdiction=9 then COG_2015=161073; *pw, manassas, manassas park; 
+else if jurisdiction=10 then COG_2015=71191; *alexandria;
+
+calibration=(COG_2015/ACS_13_17);
+run;
+
+data fiveyeartotal_c;
+merge fiveyeartotal calculate_calibration;
+by jurisdiction;
 
 hhwt_COG=.; 
-if jurisdiction=1 then hhwt_COG=hhwt_5*1.066041683; *DC;
-else if jurisdiction=2 then hhwt_COG=hhwt_5*0.976765437; *charles; 
-else if jurisdiction=3 then hhwt_COG=hhwt_5*0.994703041; *frederick; 
-else if jurisdiction=4 then hhwt_COG=hhwt_5*1.014415882; *montgomery;
-else if jurisdiction=5 then hhwt_COG=hhwt_5*1.044818026; *prince georges;
-else if jurisdiction=6 then hhwt_COG=hhwt_5*1.014767582; *arlington; 
-else if jurisdiction=7 then hhwt_COG=hhwt_5*1.027305766; *fairfax, fairfax city, fallschurch; 
-else if jurisdiction=8 then hhwt_COG=hhwt_5*0.999321716; *loudoun; 
-else if jurisdiction=9 then hhwt_COG=hhwt_5*1.029156002; *pw, manassas, manassas park; 
-else if jurisdiction=10 then hhwt_COG=hhwt_5*1.037945192; *alexandria;
 
-label hhwt_COG="Household Weight Calibrated to COG Estimates for Households";
+hhwt_COG=hhwt_5*calibration; 
+
+label hhwt_COG="Household Weight Calibrated to COG Estimates for Households"
+	  calibration="Ratio of COG 2015 estimate to ACS 2013-17 for Jurisdiction";
 
 run; 
 
-proc tabulate data=fiveyeartotal format=comma12. noseps missing;
+proc tabulate data=fiveyeartotal_c format=comma12. noseps missing;
   class jurisdiction;
   var hhwt_5 hhwt_cog;
   table
@@ -520,33 +536,28 @@ proc tabulate data=fiveyeartotal format=comma12. noseps missing;
   format jurisdiction jurisdiction.;
 run;
 
-proc means data= fiveyeartotal;
-class hud_inc;
-var Costratio incomecat total ;
-weight hhwt_5;
-run;
 
 data fiveyeartotal_vacant;
 	set Housing_needs_vacant_2013 Housing_needs_vacant_2014 Housing_needs_vacant_2015 Housing_needs_vacant_2016 Housing_needs_vacant_2017;
 
-hhwt_5=hhwt*.2; 
+hhwt_5=hhwt*.2;
+run;
+proc sort data=fiveyeartotal_vacant;
+by jurisdiction;
+data fiveyeartotal_vacant_c;
+merge fiveyeartotal_vacant  calculate_calibration;
+by jurisdiction;
 
 hhwt_COG=.; 
-if jurisdiction=1 then hhwt_COG=hhwt_5*1.066041683; *DC;
-else if jurisdiction=2 then hhwt_COG=hhwt_5*0.976765437; *charles; 
-else if jurisdiction=3 then hhwt_COG=hhwt_5*0.994703041; *frederick; 
-else if jurisdiction=4 then hhwt_COG=hhwt_5*1.014415882; *montgomery;
-else if jurisdiction=5 then hhwt_COG=hhwt_5*1.044818026; *prince georges;
-else if jurisdiction=6 then hhwt_COG=hhwt_5*1.014767582; *arlington; 
-else if jurisdiction=7 then hhwt_COG=hhwt_5*1.027305766; *fairfax, fairfax city, fallschurch; 
-else if jurisdiction=8 then hhwt_COG=hhwt_5*0.999321716; *loudoun; 
-else if jurisdiction=9 then hhwt_COG=hhwt_5*1.029156002; *pw, manassas, manassas park; 
-else if jurisdiction=10 then hhwt_COG=hhwt_5*1.037945192; *alexandria;
 
-label hhwt_COG="Household Weight Calibrated to COG Estimates for Households";
+hhwt_COG=hhwt_5*calibration; 
+
+label hhwt_COG="Household Weight Calibrated to COG Estimates for Households"
+	  calibration="Ratio of COG 2015 estimate to ACS 2013-17 for Jurisdiction";
+
 run; 
 
-proc tabulate data=fiveyeartotal_vacant format=comma12. noseps missing;
+proc tabulate data=fiveyeartotal_vacant_c format=comma12. noseps missing;
   class jurisdiction;
   var hhwt_5 hhwt_cog;
   table
@@ -562,23 +573,23 @@ data fiveyeartotal_othervacant;
 
 hhwt_5=hhwt*.2;
 
+run;
+proc sort data=fiveyeartotal_othervacant;
+by jurisdiction;
+data fiveyeartotal_othervacant_c;
+merge fiveyeartotal_othervacant calculate_calibration;
+by jurisdiction;
+
 hhwt_COG=.; 
-if jurisdiction=1 then hhwt_COG=hhwt_5*1.066041683; *DC;
-else if jurisdiction=2 then hhwt_COG=hhwt_5*0.976765437; *charles; 
-else if jurisdiction=3 then hhwt_COG=hhwt_5*0.994703041; *frederick; 
-else if jurisdiction=4 then hhwt_COG=hhwt_5*1.014415882; *montgomery;
-else if jurisdiction=5 then hhwt_COG=hhwt_5*1.044818026; *prince georges;
-else if jurisdiction=6 then hhwt_COG=hhwt_5*1.014767582; *arlington; 
-else if jurisdiction=7 then hhwt_COG=hhwt_5*1.027305766; *fairfax, fairfax city, fallschurch; 
-else if jurisdiction=8 then hhwt_COG=hhwt_5*0.999321716; *loudoun; 
-else if jurisdiction=9 then hhwt_COG=hhwt_5*1.029156002; *pw, manassas, manassas park; 
-else if jurisdiction=10 then hhwt_COG=hhwt_5*1.037945192; *alexandria;
 
+hhwt_COG=hhwt_5*calibration; 
 
-label hhwt_COG="Household Weight Calibrated to COG Estimates for Households";
+label hhwt_COG="Household Weight Calibrated to COG Estimates for Households"
+	  calibration="Ratio of COG 2015 estimate to ACS 2013-17 for Jurisdiction";
+
 run; 
 
-proc tabulate data=fiveyeartotal_othervacant format=comma12. noseps missing;
+proc tabulate data=fiveyeartotal_othervacant_C format=comma12. noseps missing;
   class jurisdiction;
   var hhwt_5 hhwt_cog;
   table
@@ -588,9 +599,9 @@ proc tabulate data=fiveyeartotal_othervacant format=comma12. noseps missing;
   format jurisdiction jurisdiction.;
 run;
 
-proc sort data =fiveyeartotal_othervacant;
+proc sort data =fiveyeartotal_othervacant_C;
 by jurisdiction;
-proc freq data=fiveyeartotal_othervacant;
+proc freq data=fiveyeartotal_othervacant_C;
 by jurisdiction;
 tables vacancy /nopercent norow nocol out=other_vacant;
 weight hhwt_COG;
@@ -604,7 +615,7 @@ proc export data=other_vacant
 
 /*data set for all units that we can determine cost level*/ 
 data all;
-	set fiveyeartotal fiveyeartotal_vacant (in=a);
+	set fiveyeartotal_c fiveyeartotal_vacant_c (in=a);
 	if a then incomecat=8; 
 
 run; 
@@ -653,7 +664,7 @@ run;
 	large mismatch between needs and units and likely is more probable future goal than desired/ideal scenario*/
 /*Create this scenario by randomly select observations to reduce cost burden halfway*/
 data all_costb;
-	set fiveyeartotal;
+	set fiveyeartotal_c;
 	where costburden=1;
 	run;
 
@@ -661,10 +672,10 @@ proc surveyselect data=all_costb  groups=2 seed=5000 out=randomgroups noprint;
 run; 
 proc sort data=randomgroups;
 by year serial;
-proc sort data=fiveyeartotal;
+proc sort data=fiveyeartotal_c;
 by year serial;
 data fiveyearrandom;
-merge fiveyeartotal randomgroups (keep=year serial groupid);
+merge fiveyeartotal_c randomgroups (keep=year serial groupid);
 by year serial;
 
 reduced_costb=.;
@@ -711,7 +722,7 @@ label allcostlevel_halfway ='Housing Cost Categories (tenure combined) based on 
 format allcostlevel_halfway acost.;
 
 run; 
-	proc freq data=fiveyeartotal;
+	proc freq data=fiveyeartotal_c;
 	tables incomecat*costburden /nofreq nopercent nocol;
 	weight hhwt_COG;
 	title2 "initial cost burden rates";
@@ -724,17 +735,17 @@ run;
 
 /*output income distributions by cost for desired cost and cost burden halfway solved*/ 
 
-proc freq data=fiveyeartotal;
+proc freq data=fiveyeartotal_c;
 tables incomecat*mallcostlevel /nofreq nopercent nocol out=region_desire_byinc;
 weight hhwt_COG;
 title2;
 run;
-proc freq data=fiveyeartotal;
+proc freq data=fiveyeartotal_c;
 tables incomecat*mallcostlevel /nofreq nopercent nocol out=region_desire_rent;
 weight hhwt_COG;
 where tenure=1;
 run;
-proc freq data=fiveyeartotal;
+proc freq data=fiveyeartotal_c;
 tables incomecat*mallcostlevel /nofreq nopercent nocol out=region_desire_own;
 weight hhwt_COG;
 where tenure=2;
@@ -856,9 +867,9 @@ data jurisdiction_units (drop=_label_ _name_);
 
 
 /*jurisdiction desire and halfway (by tenure)*/
-proc sort data=fiveyeartotal;
+proc sort data=fiveyeartotal_c;
 by jurisdiction; 
-proc freq data=fiveyeartotal;
+proc freq data=fiveyeartotal_c;
 by jurisdiction;
 tables incomecat*mallcostlevel /nopercent norow nocol out=jurisdiction_desire;
 weight hhwt_COG;
@@ -871,7 +882,7 @@ run;
 	var count;
 	run;
 
-proc freq data=fiveyeartotal;
+proc freq data=fiveyeartotal_c;
 by jurisdiction;
 tables incomecat*mallcostlevel /nopercent norow nocol out=jurisdiction_desire_rent;
 weight hhwt_COG;
@@ -885,7 +896,7 @@ run;
 	var count;
 	run;
 
-proc freq data=fiveyeartotal;
+proc freq data=fiveyeartotal_c;
 by jurisdiction;
 tables incomecat*mallcostlevel /nopercent norow nocol out=jurisdiction_desire_own;
 weight hhwt_COG;

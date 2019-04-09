@@ -101,6 +101,9 @@ img {
 button.code-folding-btn:focus {
   outline: none;
 }
+summary {
+  display: list-item;
+}
 </style>
 
 
@@ -108,9 +111,70 @@ button.code-folding-btn:focus {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
 });
 </script>
 
@@ -123,7 +187,6 @@ $(document).ready(function () {
   window.initializeCodeFolding("show" === "show");
 });
 </script>
-
 
 
 
@@ -242,12 +305,12 @@ div.tocify {
 </div>
 
 
-<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv14%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
+<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv15%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated January 31, 2019</p>
+<p>Last updated March 28, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -287,9 +350,10 @@ jur &lt;- region %&gt;%
 </div>
 <div id="download-files" class="section level2">
 <h2>Download files</h2>
-<p>Arlington has several files of use - Parcel-level file, could provide alternative lot area metric - Property file, can account for missing address/other geographic information</p>
+<p>Arlington has several files of use - Parcel-level file, could provide alternative lot area metric - Property file, can account for missing address/other geographic information - Address file can fill in missing units for apartments. Download this file now- merge will occur in <code>clean-arlington.Rmd</code></p>
 <pre class="r"><code>pafile &lt;- paste0(rdir, filepath, &quot;-parcel-file.csv&quot;)
 prfile &lt;- paste0(rdir, filepath, &quot;-property-file.csv&quot;)
+adfile &lt;- paste0(rdir, filepath, &quot;-address-file.csv&quot;)
 
 # parcel file
 if (!file.exists(pafile)) {
@@ -301,6 +365,12 @@ if (!file.exists(pafile)) {
 if (!file.exists(prfile)) {
   download.file(&quot;https://data.arlingtonva.us/rest/datastreams/255011/data.csv&quot;,
                 destfile = prfile)
+}
+
+# address file
+if (!file.exists(adfile)) {
+  download.file(&quot;https://data.arlingtonva.us/rest/datastreams/254138/data.csv&quot;,
+                destfile = adfile)
 }</code></pre>
 </div>
 <div id="read-files" class="section level2">
@@ -395,30 +465,31 @@ rm(pafile, prfile)</code></pre>
   summarize(parcel_area = mean(parcel_area),
             parcel_length = mean(parcel_area)) %&gt;% 
   ungroup()</code></pre>
-<p>From the property file, we will save the address, the number of units, and the latitude and longitude.</p>
+<p>From the property file, we will save the address and the number of units.</p>
 <pre class="r"><code>property &lt;- property %&gt;% 
   select(raw_parcelid_prop = realEstatePropertyCode,
          lotsize_prop = lotSizeQty,
          propaddress_prop = propertyStreetNbrNameText,
-         numberofunits_prop = numberOfUnitsCnt,
-         lat_prop = latitudeCrd,
-         long_prop = longitudeCrd) %&gt;% 
+         numberofunits_prop = numberOfUnitsCnt) %&gt;% 
   mutate(parcel_id = paste0(substr(raw_parcelid_prop, 1, 2),
                             &quot;-&quot;,
                             substr(raw_parcelid_prop, 3, 5),
                             &quot;-&quot;, 
                             substr(raw_parcelid_prop, 6, 8)))</code></pre>
+<p><strong>The address file and the parcel file spatial join have to happen after the collapse. These merges will occur at the end of <code>clean-arlington.Rmd</code></strong></p>
 <p>Merge</p>
-<pre class="r"><code>jur &lt;- left_join(jur, parcel_clean, 
+<pre class="r"><code># join parcel file
+jur1 &lt;- left_join(jur, parcel_clean, 
                  by = c(&quot;assessorsparcelnumberapnpin&quot; = &quot;parcel_id&quot;))
 
-jur &lt;- left_join(jur, property, 
+# join property file
+jur2 &lt;- left_join(jur1, property, 
                  by = c(&quot;assessorsparcelnumberapnpin&quot; = &quot;parcel_id&quot;))</code></pre>
 </div>
 <div id="save" class="section level2">
 <h2>Save</h2>
 <p>Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.</p>
-<pre class="r"><code>saveRDS(jur,
+<pre class="r"><code>saveRDS(jur2,
         paste0(jdir, 
                &quot;precleaned-&quot;,
                filepath,
