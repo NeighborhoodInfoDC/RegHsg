@@ -29,8 +29,21 @@ Version: R 3.5.1, RStudio 1.1.423
 Last updated `r format(Sys.time(), '%B %d, %Y')`
 
 Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
 ## Set-up
-#### Load libraries and functions
+
+
+Load libraries and functions
+
 ```{r setup}
 library(tidyverse)
 library(DescTools)
@@ -46,13 +59,8 @@ source("../Macros/max_narm.R")
 source("../Macros/mode_narm.R")
 ```
 
-```{r rmarkdown-setup, echo = FALSE}
-knitr::opts_chunk$set(warning = FALSE)
-knitr::opts_chunk$set(message = FALSE)
-# knitr::opts_chunk$set(eval = FALSE)
-```
+Set FIPS code and filepath name
 
-#### Set FIPS code and filepath name
 ```{r fips}
 currentfips <- "24031"
 filepath <- "montgomery"
@@ -60,29 +68,199 @@ jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
 rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
 ```
 
-####Create directory for data exports
-```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
-}
-if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
-  dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))
-}
-if (!dir.exists(paste0("L:/Libraries/RegHsg/Data/", filepath))) {
-  dir.create(paste0("L:/Libraries/RegHsg/Data/", filepath))
-}
+Load in cleaned Black Knight data.
+
+```{r readR}
+jur <- readRDS(paste0(jdir, 
+               "cleaned-",
+               filepath,
+               "-data.Rdata"))
 ```
 
-# Join with a parcel shape file
 
-Read in the parcel file (parcel_sf) and the zoning file (zoning_sf) to match to the collapsed BK data
+
+## Join with county data
+
+Read in the parcel file (parcel_sf) and the zoning file (zoning_sf) to match to the collapsed BK data.
+Read in property file and master address file.
 
 ```{r readin}
-pfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels'), end = -5) %>% unique()
+
 parcel_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
-                     layer = pfile[1])
+                     layer = "MC_parcel_poly")
 zoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
-                     layer = pfile[2])
+                     layer = "MC_zoning")
+
+# read property shapefile
+prop <- "L:/Libraries/RegHsg/Maps/montgomery/property/property.gdb"
+
+# function below lists later in geodatabase
+# rgdal::ogrListLayers(prop)
+
+propsf <- read_sf(prop, layer = "Property_poly_with_data")
+
+# read in master address file
+ma <- read_csv("L:/Libraries/RegHsg/Data/masteraddress_gis.csv",
+               col_types = cols(
+  ADDRID = col_double(),
+  ADDR_STATUS = col_double(),
+  ADDR_TYPE = col_double(),
+  ADDR_DATE = col_character(),
+  ADDR_NUMBER = col_double(),
+  ADDR_NUMBER_SUFFIX = col_character(),
+  PRE_DIR = col_character(),
+  ST_NAME = col_character(),
+  ST_TYPE = col_character(),
+  SUF_DIR = col_character(),
+  UNIT = col_character(),
+  XCOORD = col_double(),
+  YCOORD = col_double(),
+  FULL_ADDRESS = col_character(),
+  CITY = col_character(),
+  ZIPCODE = col_double(),
+  COMMENTS = col_character(),
+  COUNTY_CODE = col_double(),
+  DISTRICT = col_character(),
+  ACCT = col_character(),
+  SUBDIVISION = col_character(),
+  SUBDIV_ID = col_double(),
+  SUBDIV_NAME = col_character(),
+  LOT = col_character(),
+  BLOCK = col_character(),
+  PARCEL_NO = col_character(),
+  LU_CATEGORY = col_character(),
+  CBPTEAM = col_double(),
+  LONGZONE = col_character(),
+  MASTERPLAN_CODE = col_character(),
+  MASTERPLAN = col_character(),
+  POLICY_NUMBER = col_double(),
+  POLICY_AREA = col_character(),
+  PRELIM_APNO = col_character(),
+  SITE_APNO = col_character(),
+  SAR_STATUS = col_character(),
+  CHAMPTREE = col_character(),
+  SFP_ES = col_character(),
+  SFP_MS = col_character(),
+  SFP_HS = col_character(),
+  TPAR_REQ = col_character(),
+  PAMR_REQ = col_character(),
+  CONDITION_APNOS = col_character(),
+  CHANGE_DATE = col_character(),
+  X45 = col_character()
+))
+
+```
+
+Use the property file to supplement lot size for parcels with no "C" in their ACCT. For those who do not match on this- supplement parcels with a "C" with the address file, which crosswalks addresses to parcels with "C"s. Then re-merge to the property file, and divide the area of the "C" parcels by the number of observations per parcel ID.
+
+```{r}
+# get rid of geomerty for processing time
+prop_testing <- propsf %>% 
+  as.data.frame()
+
+# select and create variables from property file to merge with black knight data
+# select only obs with unique parcel ID
+propmerge <- prop_testing %>% 
+  select(DISTRICT, ACCT, 
+         LU_CATEGORY,
+         CONDO_UNIT_NO, 
+         NO_DWELLINGS, DWELLING_TYPE,
+         PLANNING, POLICY, MASTER_PLAN,
+         RES_DWELLU,
+         Shape_Area) %>% 
+  mutate(parcel_id = paste0(DISTRICT, "-", ACCT),
+         cflag = str_detect(ACCT, "C"),
+         propflag = 1) %>% 
+  group_by(parcel_id) %>% 
+  filter(n() == 1) %>% 
+  ungroup()
+
+# join black knight with property file
+jur1 <- jur %>% 
+  mutate(missing_houseno = ifelse(is.na(prophouseno) &
+                                    address_type == "single",
+                                  1,
+                                  0)) %>% 
+  left_join(propmerge, by = c("assessorsparcelnumberapnpin" = "parcel_id"))
+
+# from master address file- select obs that are distict address + parcel ID pairs
+mac <- ma %>% 
+  filter(str_detect(ACCT, "C")) %>% 
+  group_by(FULL_ADDRESS) %>% 
+  summarize(acct_list = list(ACCT)) %>% 
+  mutate(num = map_dbl(acct_list, ~ length(unique(.))),
+         house1 = substr(FULL_ADDRESS, 1, 2)) %>% 
+  filter(num == 1,
+         # get rid of observations with house numbers of 0
+         !house1 == "0 ") %>% 
+  mutate(ACCT_address = map_chr(acct_list, 1))
+
+# use this as parcel-address crosswalk
+macmerge <- mac %>% 
+  select(FULL_ADDRESS, ACCT_address)
+
+# join only obs that did not match in parcel file and do not have missing addresses
+jur1a <- jur1 %>% 
+  filter(is.na(propflag),
+         missing_houseno == 0) %>% 
+  select(-c(38:48)) %>% 
+  left_join(macmerge, by = c("propaddress" = "FULL_ADDRESS"))
+
+# see how many obs in the black knight data did not have a match in the master address file
+jur1 %>% 
+  filter(is.na(propflag),
+         missing_houseno == 0) %>% 
+  anti_join(mac, by = c("propaddress" = "FULL_ADDRESS")) %>% 
+  nrow()
+
+# join by parcel ID back to property file
+jur1b <- jur1a %>% 
+  left_join(propmerge, by = c("ACCT_address" = "ACCT")) %>% 
+  group_by(ACCT_address) %>% 
+  # divide area by the number of parcels
+  mutate(lot_acct = Shape_Area / n(),
+         clotflag = 1)
+
+# test how many and which type of properties did not join
+jur1banti <- jur1a %>% 
+  anti_join(propmerge, by = c("ACCT_address" = "ACCT")) %>% 
+  count(category_detail)
+
+```
+
+Recombine and replace lot size with the appropriate measure.
+
+```{r recombine}
+
+# recombine with obs that joined to property file or have missing house number
+jur2 <- jur1 %>% 
+  filter(propflag == 1 & !is.na(propflag) |
+         missing_houseno == 1) %>% 
+  bind_rows(jur1b) %>% 
+  # create a flag for when the subsetted area should be used
+  mutate(clotflag = ifelse(is.na(clotflag),
+                           0,
+                           clotflag))
+
+
+jur3 <- jur2 %>% 
+  mutate(arc_lotsize = lotsize_sf,
+         lotsize_sf = case_when(
+    # if subsetted area is available, use this
+    clotflag == 1 ~ lot_acct,
+    # if area was not subsetted and original lot size is missing, use the shape area
+    clotflag == 0 & is.na(arc_lotsize) ~ Shape_Area,
+    # if neither of these things are true, keep black knight lot size
+    TRUE ~ lotsize_sf
+  ))
+
+# test how many properties have missing lot size
+jur3 %>% 
+  group_by(category_detail) %>% 
+  summarize(n(),
+            sum(is.na(lotsize_sf)),
+            sum(lotsize_sf == 0, na.rm = TRUE)) %>% 
+  knitr::kable()
 
 ```
 
@@ -120,12 +298,6 @@ parcel_sf1 <- st_transform(parcel_sf1, crs = 4326)
 
 Load in Cleaned and collapsed Black Knight data and clean the dataset and set the geometries
 
-```{r readR}
-jur <- readRDS(paste0(jdir, 
-               "cleaned-",
-               filepath,
-               "-data.Rdata"))
-```
 
 ####clean and set geometries
 ```{r cleanjur}
