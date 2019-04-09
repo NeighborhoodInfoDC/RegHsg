@@ -79,15 +79,15 @@ jur <- readRDS(paste0(jdir,
 
 
 
-## Join with county data
+## Supplement with county data
 
-Read in the parcel file (parcel_sf) and the zoning file (zoning_sf) to match to the collapsed BK data.
+Use county data sources to fill in missing information.
+
+Read in zoning file (zoning_sf) to match to the collapsed BK data.
 Read in property file and master address file.
 
 ```{r readin}
 
-parcel_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
-                     layer = "MC_parcel_poly")
 zoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
                      layer = "MC_zoning")
 
@@ -227,6 +227,7 @@ jur1banti <- jur1a %>%
   count(category_detail)
 
 ```
+## Fill lot size.
 
 Recombine and replace lot size with the appropriate measure.
 
@@ -261,150 +262,27 @@ jur3 %>%
             sum(is.na(lotsize_sf)),
             sum(lotsize_sf == 0, na.rm = TRUE)) %>% 
   knitr::kable()
+```
+
+Look at the difference between shape area and the original black knight lot size- make sure it is not severly skewed one way.
+
+```{r}
+jur3 %>% 
+  mutate(lsdiff = Shape_Area - arc_lotsize) %>% 
+  filter(!is.na(arc_lotsize),
+         !is.na(Shape_Area),
+         clotflag != 1) %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(lsdiff)) +
+  scale_x_continuous(limits = c(-500, 500))
 
 ```
 
-Find the invalid geometries - these are incomplete shapes that will preclude me from successfully spatially joining. Parcels in the invalid geometries will remain, but they may not have parcel or zoning data filled in from the new dataset.
+### Fix land use
 
-```{r find bad geometries}
+```{r fix-landuse}
 
-parcel_sf1 <- parcel_sf %>% 
-  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
-                                1,
-                                0))
-
-parcel_sf1 %>% as.data.frame() %>% 
-  count(validgeo)
-
-
-parcel_sf1 <- parcel_sf1 %>% 
-  filter(validgeo == 1 & !is.na(validgeo))
-
-```
-
-
-clean the dataset and filter out the bad geometries to facilitate a join
-
-```{r set geo}
-st_geometry(parcel_sf1)
-
-parcel_sf1 <- st_transform(parcel_sf1, crs = 4326) 
-
-```
-
-
-
-### Get Black Knight data
-
-Load in Cleaned and collapsed Black Knight data and clean the dataset and set the geometries
-
-
-####clean and set geometries
-```{r cleanjur}
-jur1 <- jur %>% 
-  mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
-                                1,
-                                0))
-jur1 <- jur1 %>% #archive the lat and long so that we can do multiples spatial joins. SF replace lat long with an SF object
-  mutate(latarc = lat) %>% 
-  mutate(longarc = long) %>% 
-  mutate(lat1 = lat) %>% 
-  mutate(long1 = long) %>% 
-  mutate(lat2 = lat) %>% 
-  mutate(long2 = long)
-
-
-jur_sf <- jur1 %>% #set geometry
-  filter(missing_coord == 0) %>% 
-  st_as_sf(coords = c("long", "lat")) %>% 
-  st_set_crs(st_crs(parcel_sf1))
-
-jur_sf1 <- jur_sf %>% #filter out bad geos
-  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
-                                1,
-                                0))
-jur_sf1 %>% as.data.frame() %>% 
-  count(validgeo)
-
-```
-No invalid points, so continue with join.
-
-####Filter out roads
-```{r roads}
-parcel_sf1<- parcel_sf1 %>% filter(OBJECTID!="115360002")
-```
-
-
-## Spatial Join!
-
-This spatial join matches parcels in the collapsed BK to parcels in the county dataset. This will allow us to fill in missing information from the BK dataset. This is specifically helpful for the many missing MF condo lot sizes in BK
-
-```{r joinparcel}
-
-pjoin <- st_join(jur_sf1, parcel_sf1, join = st_intersects)
-
-```
-
-
-After the join, we convert back to a dataframe, for ease of computations.
-```{r back-to-df}
-
-pjoin_df <- st_set_geometry(pjoin, NULL)
-
-count(pjoin_df, is.na(lotsize_sf), category_detail)#count how many missing lotsize from BK file by category
-
-count(pjoin_df, is.na(SHAPE_AREA), category_detail)#count how many lotsize are missing from the county dataset by category
-
-```
-The BK data had 17,000+ missing lotsize for multifamily condos. The county dataset only has 1 missing condo lotsize. This is great because we can fill in a lot of lot size.
-
-##Test Join
-
-Count how many observations did not join. This will throw an error if more than 5% did not match- in this case, check the underlying shapefiles for compatability.
-
-```{r count-parcel}
-
-paste0(sum(is.na(pjoin_df$ACCT)), " observations didn't join- ",
-      round(sum(is.na(pjoin_df$ACCT)) / nrow(pjoin_df) * 100, 2), "%")
-
-if (sum(is.na(pjoin_df$ACCT)) / nrow(pjoin_df) > .05) {
-  stop("More than 5% of observations could not be spatially joined.")
-}
-
-```
-
-
-
-# Clean lots data
-
-See how many lots have missing key variables
-
-```{r missing parcel join}
-
-pjoin_df %>% 
-  mutate(num = NA) %>% 
-  group_by(category_detail) %>% 
-  summarize_at(vars(propaddress, lotsize_sf, zoning, num),
-               ~ sum(is.na(.))) %>% 
-  mutate_at(vars(propaddress, lotsize_sf, zoning),
-            .funs = funs(percent = scales::percent(. / num))) %>% 
-  knitr::kable(caption = "Number and percent of missing values")
-
-```
-
-## Missing lot size
-
-We will fill in the missing lot size, when we can, with the area of the lot, obtained from the parcel shapefile in the precleaning step. If that is also missing, we use the lot size variables from the property file. All variables are in square feet.
-
-```{r fill-lots size}
-
-pjoin_df1 <- pjoin_df %>% 
-  mutate(arc_lotsize_sf = lotsize_sf, # archive the original lot size variable
-         lotwasmissing = ifelse(is.na(lotsize_sf),1,0)) #create flag if lot size was originally missing
-
-count(pjoin_df1, LU_CATEGOR)
-
-landuse <- pull(pjoin_df1, LU_CATEGOR) %>% unique()
+landuse <- pull(prop_testing, LU_CATEGORY) %>% unique()
 
 landuse_recode <- tibble(LU_CATEGOR = landuse,
                          landuse_residential = 
@@ -418,254 +296,48 @@ landuse_recode <- tibble(LU_CATEGOR = landuse,
                                               "other", "other", "mf",
                                               NA))
 
-pjoin2 <- pjoin_df1 %>% 
-  left_join(landuse_recode, by = "LU_CATEGOR") %>% 
-  mutate(par = substr(assessorsparcelnumberapnpin, 4, 11),
-         # create flag for if BK matched with parcel
-         match = ifelse(!is.na(ACCT) | LU_CATEGOR == "Error",
-                        1,
-                        0),
-         # create flag if shapefile joined to wrong parcel
-         incorrect_spatial = ifelse(par != ACCT & str_detect(ACCT, "C") == FALSE &
-                                      !is.na(par) & !is.na(ACCT),
-                                    1,
-                                    0),
-         # create flag for nonstandard parcel IDs
-         contains_c = ifelse(str_detect(ACCT, "C") == TRUE,
-                             1,
-                             0),
-         # create flag if categorization differs between BK and county
-         incorrect_residential = ifelse(residential != landuse_residential &
-                                          !is.na(residential) & !is.na(landuse_residential),
-                                        1,
-                                        0))
-
-
-# Look at a few observations where the parcel IDs don't match
-pjoin2 %>% 
-  mutate(par = substr(assessorsparcelnumberapnpin, 4, 11)) %>% 
-  select(DISTRICT, ACCT,  assessorsparcelnumberapnpin, par) %>% 
-  filter(par != ACCT) %>% 
-  sample_n(10)
-
-```
-
-If the Black Knight data matched to the correct parcel ID and the categories differed- replace our category with the land use category.
-
-```{r }
-
-pjoin3 <- pjoin2 %>% 
-  mutate(category = ifelse(match == 1 & incorrect_spatial == 0 & incorrect_residential == 1,
-                            landuse_category,
-                            category),
-         residential = ifelse(match == 1 & incorrect_spatial == 0 & incorrect_residential == 1,
-                              landuse_residential,
-                              residential))
-         
-```
-
-Identify instances where multiple parcels join to the same shape in parcel shapefile
-
-First, test that object ID is unique on the parcel shapefile
-
-```{r}
-
-length(unique(parcel_sf1$OBJECTID)) == length(parcel_sf1$OBJECTID)
 
 ```
 
 
-Identify instances where parcels, when grouped by OBJECTID, only have 1 value - set these values to NA before coverting all lotsize_sf values that are NA to parcel area values. 
-```{r}
- biglots <- pjoin3 %>%
-   group_by(OBJECTID)%>%
-   summarize_at(vars(lotsize_sf,lotwasmissing,SHAPE_AREA), list) %>% 
-   rename_at(vars(-OBJECTID), ~ paste0(., "_list")) %>%
-   mutate(nprops = map(lotsize_sf_list, length),
-          lotwasmissing_sum = map_dbl(lotwasmissing_list, sum, na.rm = TRUE),
-          lotsize_sum= map(lotsize_sf_list, sum, na.rm = TRUE)) %>%
-     mutate(nprops = as.integer(nprops),
-       lotsize_sum = as.double(lotsize_sum),
-         unique_lots = map(lotsize_sf_list, function(x) length(unique(x)))
-         ) %>%
-  ungroup() %>% 
-  filter(lotwasmissing_sum > 0) %>%
-  mutate(isMostlyMissing = lotwasmissing_sum +1 == nprops) 
+## Spatial joins
 
-pjoin3a<-left_join(pjoin3,  biglots %>% 
-    select(OBJECTID, isMostlyMissing), by="OBJECTID")
+Next, use a spatial join to make flags for Rockville and Gaithersburg.
 
-pjoin4 <- pjoin3a %>% mutate(lotsize_sf = ifelse(isMostlyMissing, NA, lotsize_sf)) 
-  
+Convert Black Knight data to spatial.
 
-```
-
-
-
-
-How many that we will need to fill in have this problem>
-
-```{r}
-
-pjoin4 %>% 
-  group_by(OBJECTID) %>% 
-  filter(is.na(lotsize_sf)) %>% 
-  filter(n() > 1) %>% 
-  nrow()
-
-```
-
-Group within a shape- divide the area by the number of black knight parcels that join to it.
-
-```{r }
-
-correct_area <- pjoin4 %>% 
-  group_by(OBJECTID) %>% 
-  filter(n() > 1,
-         !is.na(OBJECTID)) %>% 
-  summarize(n(),
-            area_new = mean(SHAPE_AREA, na.rm = TRUE) / n()) %>% 
-  mutate(area_new = ifelse(area_new == "NaN",
-                           NA,
-                           area_new))
-
-correct_area_merge <- correct_area %>% 
-  select(OBJECTID, area_new)
-
-
-# see how many obs join to multiple categories
-pjoin4 %>% 
-  group_by(OBJECTID) %>% 
-  summarize(cat = list(category)) %>% 
-  mutate(len = map_dbl(cat, ~ length(unique(.)))) %>% 
-  count(len)
-
-
-```
-
-
-Replace lot size with new_area for any parcel that joins more than once. For other missing parcels, use `SHAPE_AREA`.
-
-```{r }
-
-pjoin5 <- pjoin4 %>% 
- left_join(correct_area_merge, by = c("OBJECTID")) %>% 
-  # substitute when needed
-  mutate(lotsize_sf = ifelse(!is.na(area_new) & is.na(lotsize_sf) & match == 1
-                             & incorrect_spatial == 0,
-                       area_new,
-                       lotsize_sf)) %>% 
-  # fill in lot size with area
-  mutate(lotsize_sf = ifelse((lotsize_sf == 0 | is.na(lotsize_sf)) & match == 1
-                             & incorrect_spatial == 0,
-                             SHAPE_AREA,
-                             lotsize_sf))
-
-sum(is.na(pjoin5$lotsize_sf))
-sum(pjoin5$lotsize_sf == 0, na.rm = TRUE)
-
-```
-
-
-```{r}
-
-# testing <- pjoin_df1 %>%
- # filter(countylandusedescription=="EXEMPT")
-# 
-# count(testing, LU_CATEGOR)
-# 
-# count(pjoin_df1, LU_CATEGOR)
-
-
-
-# #group by OBJECTID - id from parcel shapefile to figure out which parcels joined to large lots that represent multiple parcels - like joining condo units to a lot for the whole building. need to identify how many parcels join to that lot in order to get the correct lot size to fill in for missing parcels.
-# 
-#  Biglots <- pjoin_df1 %>%
-#    group_by(OBJECTID)%>%
-#    summarize_at(vars(zoning, lotsize_sf,lotwasmissing,SHAPE_AREA), list) %>% 
-#    rename_at(vars(-OBJECTID), ~ paste0(., "_list")) %>%
-#    mutate(nprops = map(zoning_list, length),
-#           lotwasmissing_sum = map_dbl(lotwasmissing_list, sum, na.rm = TRUE),
-#           lotsize_max= map(lotsize_sf_list, max, na.rm = TRUE),
-#           lotsize_sum= map(lotsize_sf_list, sum, na.rm = TRUE))
-# # 
-#  Biglots2 <- Biglots %>% 
-#      mutate(nprops = as.integer(nprops),
-#        lotsize_sum = as.double(lotsize_sum),
-#        lotsize_max = as.double(lotsize_max),
-#          unique_lots = map(lotsize_sf_list, function(x) length(unique(x))),
-#          lsfirst = map(lotsize_sf_list, function(x) x[1]),
-#          shapefirst=map(SHAPE_AREA_list,function(x) x[1]),
-#          lotmaxissum=ifelse((lotsize_sum-lotsize_max==0),1,0)
-#          ) %>%
-#   ungroup()
-# 
-# #eliminate lots that don't have any missing lot size. 
-# Biglots3 <- Biglots2 %>%
-#   filter(lotwasmissing_sum > 0) %>%
-#   mutate(isMostlyMissing = lotwasmissing_sum +1 == nprops) 
-#   
-# #
-#Onelot <- Biglots3 %>%
-#  filter(lotwasmissing_sum==1 & nprops==1)%>%
-#  mutate(lotsize_sf=shapefirst,lotsize_sf)
-#  
-#         
-#count(Biglots2, nprops, lotwasmissing)      
-         
-
-#
-#         lotsize_sf = ifelse(is.na(lotsize_sf),#fill in lot size variable from the parcel file
- #                            SHAPE_AREA,
-  #                           lotsize_sf),#fill in lot size variable from the parcel file
-   #      lotsize_sf = ifelse(lotsize_sf >= 1000000,
-    #                         SHAPE_AREA,
-     #                        lotsize_sf))#fill in lot size for really large properties because these are probably wrong
-
-
-
-#          
-# count(pjoin_df, is.na(lotsize_sf), category_detail)
-# 
-# count(pjoin_df1, is.na(lotsize_sf), category_detail)#compare before and after filling in
-
-
-```
-
-See how many we're filled in
-
-```{r count-lots size}
-sum(is.na(pjoin_df$lotsize_sf)) - sum(is.na(pjoin5$lotsize_sf))
-```
-
-Set joined parcel as SF (shape file) to faciltate join with zoning layer
-
-```{r clean zoning}
-
-pjoin6 <- pjoin5 %>% 
-  mutate(missing_coord = ifelse(is.na(lat1) | is.na(long1),
+```{r cleanjur}
+jur4 <- jur3 %>% 
+  mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
                                 1,
                                 0))
 
-pjoin_sf <- pjoin6 %>% 
-  filter(missing_coord == 0) %>% 
-  st_as_sf(coords = c("long1", "lat1")) %>% 
-  st_set_crs(st_crs(parcel_sf1))
+jur4 <- jur4 %>% #archive the lat and long so that we can do multiples spatial joins. SF replace lat long with an SF object
+  mutate(latarc = lat) %>% 
+  mutate(longarc = long) %>% 
+  mutate(lat1 = lat) %>% 
+  mutate(long1 = long) %>% 
+  mutate(lat2 = lat) %>% 
+  mutate(long2 = long)
 
-pjoin_sf %>% as.data.frame() %>% 
-  count( is.na(lotsize_sf), category_detail)
+
+jur_sf <- jur4 %>% #set geometry
+  filter(missing_coord == 0) %>% 
+  st_as_sf(coords = c("long", "lat")) %>% 
+  st_set_crs(st_crs(4326))
 
 ```
 
 
-# Zoning Join
-Merge the recently merged BK + parcel file with a zoning layer
+### Zoning code: fill zoning
 
-####Find the invalid geometries
+Find the invalid geometries in the zoning code
+
 ```{r find bad geometries zoning}
 
 zoning_sf1 <- zoning_sf %>% 
-  filter(PERIMETER == 0) %>% # there is one large shape overlayed over all the other shapes
+  # there is one large shape overlayed over all the other shapes- filter this out
+  filter(PERIMETER == 0) %>%
   mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
                                 1,
                                 0))
@@ -673,71 +345,48 @@ zoning_sf1 <- zoning_sf %>%
 zoning_sf1 %>% as.data.frame() %>% 
   count(validgeo)
 
-
-```
-
-
-####set geometry
-```{r clean and set geo zoning}
-st_geometry(zoning_sf1)
-
+# transform CRS to be consistent with Black Knight data
 zoning_sf1 <- st_transform(zoning_sf1, crs = 4326)
 
 ```
 
 
-## Spatial Join!
-
-In the last step we created a BK + county parcel data file, and filled in the BK variable for lot size. In this join, we take that joined file and add a zoning layer to help fill in the correct zoning code for properties.
+Join the Black Knight data to the zoning code to fill in missing instances.
 
 ```{r join zoning onto parcel}
 
-pzjoin <- st_join(pjoin_sf, zoning_sf1, join = st_intersects)
+zjoin <- st_join(jur_sf, zoning_sf1, join = st_intersects)
 
+# Make sure test variable is never missing
 zoning_sf1 %>% as.data.frame() %>% 
   count(is.na(ZONE_))
-pzjoin %>% as.data.frame() %>% 
-  count(is.na(ZONE_.x), !is.na(ZONE_.x))
 
+zjoin %>% 
+  as.data.frame() %>% 
+  count(is.na(ZONE_))
 
-pzjoin <- pzjoin %>% 
-  mutate(notinmont = if_else(is.na(ZONE_.x), 1, 0))
+zjoin <- zjoin %>% 
+  mutate(notinmont = if_else(is.na(ZONE_), 1, 0))
 
-pzjoin %>%  as.data.frame() %>% 
+zjoin %>%  
+  as.data.frame() %>% 
   count(notinmont)
 
 
 ```
 
-```{r look at shape file}
-ggplot() +
-  geom_sf(zoning_sf1, mapping = aes())
 
-ggplot() +
-  geom_sf(zoning_sf, mapping = aes())
+### Jurisdiction flags
 
-zoning_sf %>% 
-  as.data.frame() %>% 
-  count(PERIMETER)
-
-test <- pjoin_sf
-
-# zoning_sf1 %>% 
-#   summarize() %>% 
-#   ggplot() +
-#   geom_sf(mapping = aes(),
-#           fill = "blue")
-
-```
-
-
-#Add flag for gaithersburg and rockville
 Our Data on the property city is not reliable, so we need to create a flag ourselves using the Rockville and Gaithersburg zoning layers to.
 
-I read in a rockville zoning file, and add a flag for any property that falls within the rockville shape file. This will help us filter and use the right zoning code in the vacant lots analysis
+#### Rockville
 
-### rockville
-```{r test join with RV}
+I read in a rockville zoning file, and add a flag for any property that falls within the Rockville shape file. This will help us filter and use the right zoning code in the vacant lots analysis
+
+Read file, test geomerty and projection.
+
+```{r test-rockville-zoning}
 
 rockpfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts'), end = -5) %>% unique()
 rockzoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts',
@@ -756,57 +405,57 @@ st_geometry(rockzoning_sf1)
 ```
 
 ```{r join rockville}
-rockzoning_sf1 <- st_transform(rockzoning_sf1, crs = 4326)
-pzjoin1 <- st_join(pzjoin, rockzoning_sf1, join = st_intersects)
-# rockjoin2 <- st_join(rockzoning_sf1, pzjoin1, join = st_contains)
 
-pzjoin1 %>%  as.data.frame() %>% 
-  count(notinmont)
+rjoin <- st_join(zjoin, rockzoning_sf1, join = st_intersects)
+
 ```
 
 ```{r test join rockville}
 
-paste0(sum(!is.na(pzjoin1$ZONE)), " observations did join- ",
-      round(sum(!is.na(pzjoin1$ZONE)) / nrow(pzjoin1) * 100, 2), "%")
+paste0(sum(!is.na(rjoin$ZONE)), " observations joined- ",
+      round(sum(!is.na(rjoin$ZONE)) / nrow(rjoin) * 100, 2), "%")
 
 ```
 16162 observations joined, so we estimate there are that many parcels in Rockville.
 
-##Make Rockville flag
+##### Make Rockville flag
 
 ```{r filter to make flag}
 
-pzjoin2 <- pzjoin1 %>% 
-  mutate(rockflag = if_else(!is.na(ZONE), 1, 0))
+rjoin2 <- rjoin %>% 
+  # make Rockville flag
+  mutate(rockflag = if_else(!is.na(ZONE), 1, 0)) %>% 
+  # replace moco zoning with rockville zoning
+  mutate(zoning = if_else(rockflag == 1, ZONE, zoning))
 
-pzjoin2 <- pzjoin2 %>% 
-  mutate(zoning = if_else(rockflag ==1, ZONE, zoning))
-
-pzjoin2 %>% 
+rjoin2 %>% 
+  as.data.frame() %>% 
   filter(rockflag ==1) %>% 
   count(zoning)
 
-test <- pzjoin2 %>% 
+# test to see that these parcels are actually in rockville =
+test <- rjoin2 %>% 
   filter(rockflag ==1) %>% 
   sample_n(1000)
+
 ggplot() +
   geom_sf(rockzoning_sf1, mapping = aes()) +
   geom_sf(test, mapping = aes())
 
-count(pzjoin2, is.na(lotsize_sf), category_detail)
 
-pzjoin2 %>%  as.data.frame() %>% 
+# see how this compares to result of moco zoning join
+rjoin2 %>%  
+  as.data.frame() %>% 
   count(notinmont, rockflag)
 
 
-
-
 ```
-## Gaithersburg Flag
+#### Gaithersburg
 
-I repeat this process with Gaithersburg. The gaithersburg file is not a zoning file, though, so we don't get any more detailed zoning information. This flag just tellsus if the property falls in Gaithersburg city limits
+Repeat this process with Gaithersburg. The Gaithersburg file is not a zoning file, though, so we don't get any more detailed zoning information. This flag just tells us if the property falls in Gaithersburg city limits.
 
-```{r fill in gaithersburg}
+Read the file, check the validity, transform to match BK CRS.
+```{r check-g-geo}
 
 gaitfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/Gaithersburg'), end = -5) %>% unique()
 gait_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/Gaithersburg',
@@ -824,56 +473,52 @@ gait_sf1 <- gait_sf1 %>%
 st_geometry(gait_sf1)
 
 gait_sf1 <- st_transform(gait_sf1, crs = 4326)
-pzjoin3 <- st_join(pzjoin2, gait_sf1, join = st_intersects)
 
-paste0(sum(!is.na(pzjoin3$CLASSFP)), " observations did join- ",
-      round(sum(!is.na(pzjoin3$CLASSFP)) / nrow(pzjoin3) * 100, 2), "%")
+```
 
-pzjoin4 <- pzjoin3 %>% 
+```{r g-join}
+
+gjoin <- st_join(rjoin2, gait_sf1, join = st_intersects)
+
+paste0(sum(!is.na(gjoin$CLASSFP)), " observations did join- ",
+      round(sum(!is.na(gjoin$CLASSFP)) / nrow(gjoin) * 100, 2), "%")
+
+gjoin2 <- gjoin %>% 
   mutate(gaitflag = if_else(!is.na(CLASSFP), 1, 0))
 
-count(pzjoin4, gaitflag)
-count(pzjoin2, is.na(lotsize_sf), category_detail)
-
-
-test <- pzjoin4 %>% 
+# test that observations are in gaithers
+test <- gjoin2 %>% 
   filter(gaitflag ==1) %>% 
   sample_n(1000)
+
 ggplot() +
   geom_sf(gait_sf1, mapping = aes()) +
   geom_sf(test, mapping = aes())
 
 
-pzjoin4 %>%  as.data.frame() %>% 
+gjoin2 %>%  as.data.frame() %>% 
   count(notinmont, rockflag, gaitflag)
 ```
 
 After the join, we convert back to a dataframe, for ease of computations.
 ```{r back-to-df again}
 
-pzjoin_df <- st_set_geometry(pzjoin4, NULL)
-
+jur5 <- st_set_geometry(gjoin2, NULL)
 
 ```
 
 
-I remove a stop that Sarah put in because there will not be clean join because of missing prop data from Gaithersburg and Rockville.
-```{r count-zoning withflags}
-
-count(pzjoin_df, is.na(assessorsparcelnumberapnpin))
-
-paste0(sum(is.na(pzjoin_df$CODE)), " observations didn't join- ",
-      round(sum(is.na(pzjoin_df$CODE)) / nrow(pzjoin_df) * 100, 2), "%")
-
-y <- pzjoin_df %>% 
-  filter(is.na(zoning)) %>% 
-  count(category_detail)
-
-pzjoin_df %>%  as.data.frame() %>% 
-  count(notinmont, rockflag, gaitflag)
-```
 There are 17329 observations that we think are not in montgomery codes, rockville, or gaithersburg.
+^ this is Sarah, I do not know how he got to this number.
 
+```{r}
+jur5 %>% 
+  filter(notinmont == 1 &
+           rockflag == 0 &
+           gaitflag == 0) %>% 
+  nrow()
+
+```
 
 
 ## Missing zoning variables
@@ -885,26 +530,28 @@ To determine zoning codes for addresses that have a missing zoning designation o
 
 ```{r fill-lots zoning}
 
-pzjoin_df1 <- pzjoin_df %>% 
-  mutate(arc_zoning = zoning, # archive the original lot size variable
+jur6 <- jur5 %>% 
+  # archive the original zoning variable
+  mutate(arc_zoning = zoning, 
+         # fill in whatever we can from the montgomery shape file if it's missing
          zoning = ifelse(is.na(zoning),
                              CODE,
-                             zoning),#fill in whatever we can from the montgomery shape file if it's missing
+                             zoning),
+         # fill in whatever we can from the rockville shape file if it's missing
          zoning = ifelse(is.na(zoning),
                              ZONE,
-                              zoning))#fill in whatever we can from the rockville shape file if it's missing
+                              zoning))
         
-
-
 
 ```
 
 See how many were filled in
 
 ```{r count-lotsZ}
-sum(is.na(pzjoin_df1$arc_zoning)) - sum(is.na(pzjoin_df1$zoning))
+sum(is.na(jur6$arc_zoning)) - sum(is.na(jur6$zoning))
 
-y <- pzjoin_df1 %>% 
+# look at remaining missing zoning
+jur6 %>% 
   filter(is.na(zoning)) %>% 
   count(category_detail)
 
@@ -916,7 +563,7 @@ Test how many have different results from the Black Knight zoning variable.
 
 ```{r test-spatialZ}
 
-pzjoin_df1 %>% 
+jur6 %>% 
   group_by(is.na(zoning)) %>% 
   count(zoning == CODE)
 
@@ -926,7 +573,7 @@ pzjoin_df1 %>%
 
 ```{r missingZ}
 
-pzjoin_df1 %>% 
+jur6 %>% 
   mutate(num = NA) %>% 
   group_by(category_detail) %>% 
   summarize_at(vars(propaddress, lotsize_sf, zoning, num),
@@ -936,7 +583,7 @@ pzjoin_df1 %>%
   knitr::kable(caption = "Number and percent of missing values")
 
 
-count(pzjoin_df1, is.na(lotsize_sf), category_detail)
+count(jur6, is.na(lotsize_sf), category_detail)
 
 ```
 
@@ -944,10 +591,10 @@ count(pzjoin_df1, is.na(lotsize_sf), category_detail)
 
 ```{r save}
 
-pzjoin_df1 %>%  as.data.frame() %>% 
+jur6 %>%  as.data.frame() %>% 
   count(notinmont, rockflag, gaitflag)
 
-saveRDS(pzjoin_df1,
+saveRDS(jur6,
         paste0(jdir, 
                "postcleaned-",
                filepath,
