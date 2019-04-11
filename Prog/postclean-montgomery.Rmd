@@ -91,7 +91,7 @@ Read in property file and master address file.
 zoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
                      layer = "MC_zoning")
 
-# read property shapefile
+# property shape stored in geodatabase- assign gdb for extraction
 prop <- "L:/Libraries/RegHsg/Maps/montgomery/property/property.gdb"
 
 # function below lists later in geodatabase
@@ -282,20 +282,44 @@ jur3 %>%
 
 ```{r fix-landuse}
 
-landuse <- pull(prop_testing, LU_CATEGORY) %>% unique()
+landuse <- pull(prop_testing, LU_CATEGORY) %>% unique() %>% sort()
 
-landuse_recode <- tibble(LU_CATEGOR = landuse,
+landuse_recode <- tibble(LU_CATEGORY = landuse,
                          landuse_residential = 
-                           c(0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 
-                             0, 0, 0, 0, NA, 0, 0, 1, 0),
-                         landuse_category = c("other", "sf", "vacant",
-                                              "other", "other", "sf",
-                                              "other", "other", "mf",
+                           c(0, 1, 0, NA, 0, 0, 
+                             1, 0, 0, 0, 0, 0,
+                             0, 1, 1, 0, 0, 0),
+                         landuse_category = c("other", "mf", "other",
+                                              NA, "other", "other",
+                                              "mf", "other", "other",
                                               "other", "other", "other",
-                                              "other", "other", NA,
-                                              "other", "other", "mf",
-                                              NA))
+                                              "other", "sf", "sf",
+                                              "other", "vacant", "other"))
 
+jur3a <- jur3 %>% 
+  left_join(landuse_recode, by = "LU_CATEGORY")
+
+jur3a %>% 
+  count(residential == landuse_residential)
+
+jur3a %>% 
+  count(category == landuse_category)
+
+jur3a <- jur3a %>% 
+  mutate(residential = ifelse(!is.na(landuse_residential) &
+                                residential != landuse_residential,
+                              landuse_residential,
+                              residential),
+         category = ifelse(!is.na(landuse_category) &
+                           category != landuse_category,
+                           landuse_category,
+                           category))
+
+jur3a %>% 
+  count(residential == landuse_residential)
+
+jur3a %>% 
+  count(category == landuse_category)
 
 ```
 
@@ -307,7 +331,7 @@ Next, use a spatial join to make flags for Rockville and Gaithersburg.
 Convert Black Knight data to spatial.
 
 ```{r cleanjur}
-jur4 <- jur3 %>% 
+jur4 <- jur3a %>% 
   mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
                                 1,
                                 0))
