@@ -512,9 +512,6 @@ write_csv(individual_transit,
 write_csv(individual_activity_varied,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-activity.csv")
 
-write_csv(individual_uniform,
-          "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-uniform.csv")
-
 write_csv(individual_varies,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-varied.csv")
 
