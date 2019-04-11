@@ -758,7 +758,7 @@ upzone_summary <- bind_rows(t, a)
 upzone_summary %>% 
   knitr::kable()
 
-write_csv(upzone_summary, "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary.csv")
+write_csv(upzone_summary, "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary_v2.csv")
 
 ```
 
@@ -776,7 +776,7 @@ clean_clusters <- t_clusters %>%
          density_residential)
 
 write_csv(clean_clusters,
-          "L:/Libraries/RegHsg/Prog/Tables/all-nodes-grouped.csv")
+          "L:/Libraries/RegHsg/Prog/Tables/all-nodes-grouped_v2.csv")
 
 ```
 
