@@ -649,7 +649,7 @@ clusters_three_ways(t_clusters)
 
 Cluster activity centers.
 
-```{r cluster-t}
+```{r cluster-a}
 
 a_clusters <- individual_activity_varied %>% 
   filter(pres > .25) %>% 
@@ -750,7 +750,7 @@ write_csv(upzone_summary, "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary.csv"
 
 Clean up groups.
 
-```{r clean}
+```{r clean-groups}
 
 t_clusters %>% bind_rows(a_clusters) %>% 
   arrange(type, .cluster, density_residential) %>% 
@@ -763,7 +763,7 @@ t_clusters %>% bind_rows(a_clusters) %>%
 ```
 
 
-
+## archive
 
 Write into function
 
