@@ -95,16 +95,6 @@ count(jur, rockflag != 1, gaitflag != 1, notinmont == 1)
 
 ```
 
-This uses read_montgomery
-
-```{r readF}
-if (!exists("jur")) {
-  jur <- read_montgomery()
-} else {
-  warning(filepath, " data already read in")
-}
-
-```
 
 ## Clean zoning code information
 
@@ -179,23 +169,10 @@ rm(z)
 
 For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most dense construction for that zone. 
 
-First, we look at all the options, and filter out all the observations marked as "other", since we cannot be sure what property type that refers to. We will also filter out categories that are dependent on adjacent lot lines.
 
-```{r tab-dwellings}
+#### Split jurisdictions
 
-zoningcode %>% 
-  count(dwelling_type, juristdiction) %>% 
-  knitr::kable()
-```
-
-Count the number of unique zoning codes to make sure we won't get rid of any codes entirely.
-
-```{r count-zoning}
-length(unique(zoningcode$zoning_code))
-
-```
-
-## Create zoning for each jur so we can split the analysis
+Create zoning for each jurisdiction so we can split the analysis
 
 ```{r zoning by juristdiction}
 
@@ -206,12 +183,14 @@ zoning_montgomery <- zoningcode %>%
 zoning_rockville <- zoningcode %>% 
   filter(juristdiction == "Rockville")
 
-write_csv(zoning_rockville, paste0("L:/Libraries/RegHsg/Doc/zoning-codes/rockville-zoning-code-clean.csv"))
+write_csv(zoning_rockville, 
+          "L:/Libraries/RegHsg/Doc/zoning-codes/rockville-zoning-code-clean.csv")
 
 zoning_gaithersburg <- zoningcode %>% 
   filter(juristdiction == "Gaithersburg")
 
-write_csv(zoning_gaithersburg, paste0("L:/Libraries/RegHsg/Doc/zoning-codes/gaithersburg-zoning-code-clean.csv"))
+write_csv(zoning_gaithersburg,
+          "L:/Libraries/RegHsg/Doc/zoning-codes/gaithersburg-zoning-code-clean.csv")
 
 
 ```
@@ -220,7 +199,9 @@ write_csv(zoning_gaithersburg, paste0("L:/Libraries/RegHsg/Doc/zoning-codes/gait
 
 
 *For Montgomery*
-```{r list codesM}
+
+```{r list-codesM}
+
 zoning_montgomery %>% 
   count(dwelling_type) %>% 
   knitr::kable()
@@ -236,16 +217,21 @@ Since the variables are not always comparable, the following order, from most to
 4. duplex-side
 5. detached house
 
-multi-use and general have the same zoning specs as apartment. I change all of the multi-use and general zoning codes to apartments for simplicity.
+multi-use and general have the same zoning specs as apartment. Change all of the multi-use and general zoning codes to apartments for simplicity.
 
 ```{r edit mont codes}
 
 zoning_montgomery <- zoning_montgomery %>% 
-  mutate(dwelling_type = ifelse(dwelling_type == "general"| dwelling_type == "multi-use", "apartment", dwelling_type))
+  mutate(dwelling_type = ifelse(dwelling_type == "general"| dwelling_type == "multi-use", 
+                                "apartment", 
+                                dwelling_type))
 
 ```
+
 Check to see if they were replaced
+
 ```{r check codesM}
+
 zoning_montgomery %>% 
   count(dwelling_type) %>% 
   knitr::kable()
@@ -285,11 +271,14 @@ zoning_montgomery1 <- zoning_montgomery %>%
 
 *Cleaning and Calculation*
 
-##Clean data for the whole juristdiction
+## Clean data for the whole juristdiction
 
 Filter out really large lots that should not be part of the calculation. These properties create a huge number of properties, and upon looking at them on google Maps, do not appear buildable. Chris also did this filter in fairfax.
+
 Fliter out rockville and gaithersburg
+
 Count how many vacant lots
+
 ```{r filtering}
 
 jur %>% 
@@ -330,15 +319,19 @@ Now that we have selected the correct records from the zoning code file, we can 
 
 montfinal <- mont %>% 
   mutate(zoning_code = case_when(
-    zoning %in% c("CR1.0","CR0.5", "CR2.0", "CR5.0", "cR3", "CR5", "CR3.0", "CR4.0") ~ "CR",
-    zoning %in% c("RT","RT6", "RT6.0") ~ "RT-6.0",#if there is no number after RT we go with the most restrictive code
+    zoning %in% c("CR1.0","CR0.5", "CR2.0", "CR5.0", 
+                  "cR3", "CR5", "CR3.0", "CR4.0") ~ "CR",
+    # if there is no number after RT we go with the most restrictive code
+    zoning %in% c("RT","RT6", "RT6.0") ~ "RT-6.0",
     zoning %in% c("RT8", "RT8.0") ~ "RT-8.0",
     zoning %in% c("RT10", "RT10.0") ~ "RT-10.0",
     zoning %in% c("RT125", "RT12", "RT12.5") ~ "RT-12.5",
     zoning %in% c("RT15", "RT15.0") ~ "RT-15.0",
     zoning %in% c( "CR2.0", "CR5.0", "CR3") ~ "CR",
     zoning %in% c("CRN0.5","CRN1.5", "CRN025", "CRN075") ~ "CRN",
-    zoning %in% c("CRT0.5","CRT075", "CRT1.5", "CRT1.0", "CRT125", "CRT1", "CRT175", "CRT2.25", "CRT2.5", "CRT 1") ~ "CRT",
+    zoning %in% c("CRT0.5","CRT075", "CRT1.5", "CRT1.0", 
+                  "CRT125", "CRT1", "CRT175", "CRT2.25", 
+                  "CRT2.5", "CRT 1") ~ "CRT",
     zoning %in% c("R3", "R30") ~ "R-30",
     zoning %in% c("R200T", "R200") ~ "R-200",
     zoning %in% c("R20") ~ "R-20",
@@ -363,8 +356,10 @@ Merge on zoning code variable. Test that all variables merged.
 
 zoningdata <- left_join(montfinal, zoning_montgomery1, by = "zoning_code")
 
-count(zoningdata, zoning_code)
-count(zoningdata, lot_area_min)
+
+count(zoningdata, category)
+# count(zoningdata, zoning_code)
+# count(zoningdata, lot_area_min)
 
 ```
 
@@ -382,21 +377,22 @@ All of these codes that didn't join are either non-residential, or they correspo
 
 ## Fill in missing codes
 
-1. filter out non residential properties
-2. fill in lot area minimums from site minimums
-3. fill in lot coverage maximums from site coverage maximums
-4. fill in per unit lot size when there is not general minimum lot size restriction
-5. We also need to fill in missing lot coverage
+1. fill in lot area minimums from site minimums
+2. fill in lot coverage maximums from site coverage maximums
+3. fill in per unit lot size when there is not general minimum lot size restriction
+4. We also need to fill in missing lot coverage
 
-6. and make two assumptions for townhouses that do not have lot coverage restrictions in the montgomery zoning code.
+5. and make two assumptions for townhouses that do not have lot coverage restrictions in the montgomery zoning code.
   1. The highest lot coverage for townhouses elsewhere in the codes is 40, so I assume a lot max of 40.
   2. The highest density allowed for townhouses elsewhere in the codes is 15.02 units/acre, so I assume this density.
   
-7. finally, we need to fill in the lotsize_acre variable for those lot sizes that we filled in from the parcel file.
+6. finally, we need to fill in the lotsize_acre variable for those lot sizes that we filled in from the parcel file.
 
-```{r fillin for caluculation}
+```{r fillin-for-caluculation}
+
 zoningdata1 <- zoningdata %>% 
-  filter(residential == 1) %>% 
+  # DO NOT DO THIS
+  # filter(residential == 1) %>% 
   mutate(lot_area_min = case_when(
     is.na(lot_area_min) ~ site_area_min,
     TRUE ~ lot_area_min)) %>% 
@@ -406,25 +402,42 @@ zoningdata1 <- zoningdata %>%
   mutate(lotarea_per_unit = case_when(
     is.na(lotarea_per_unit) ~ sitearea_per_unit,
     TRUE ~ lotarea_per_unit)) %>% 
-  mutate(lot_coverage_max = if_else(is.na(lot_coverage_max) & dwelling_type == "townhouse" & zoning_code %in% c("CRN", "CRT", "CR"), .4, lot_coverage_max )) %>% 
-  #I fill in lot coverage with site coverage and assume a maximum townhouse density of 40%
-  mutate(density = if_else(is.na(density) & dwelling_type == "townhouse" & zoning_code %in% c("CRN", "CRT", "CR"), 15.02, density)) %>% # here I assume a maximum townhouse density of 15.02
-  mutate(lotsize_acres = lotsize_sf/43560) #i've filled in and modified a bunch of lotsize_sf, I make sure acres reflects that.
+  # Fill in lot coverage with site coverage and assume a maximum townhouse density of 40%
+  mutate(lot_coverage_max = if_else(is.na(lot_coverage_max) & 
+                                      dwelling_type == "townhouse" & 
+                                      zoning_code %in% c("CRN", "CRT", "CR"), 
+                                    .4, 
+                                    lot_coverage_max )) %>% 
+  # Assume a maximum townhouse density of 15.02
+  mutate(density = if_else(is.na(density) &
+                             dwelling_type == "townhouse" & 
+                             zoning_code %in% c("CRN", "CRT", "CR"), 
+                           15.02, 
+                           density)) %>% 
+  #i've filled in and modified a bunch of lotsize_sf, I make sure acres reflects that.
+  mutate(lotsize_acres = lotsize_sf / 43560) 
 
-count(zoningdata1, is.na(lotsize_acres), is.na(lotsize_sf))#check that we got all the acres.
+# check that we got all the acres.
+count(zoningdata1, is.na(lotsize_acres), is.na(lotsize_sf))
+
+count(zoningdata1, category)
 
 ```
 
 
 
 Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
-```{r slice and dice}
+```{r slice-and-dice}
 
 
 zoningdata2 <- zoningdata1 %>% 
   filter(!is.na(zoning_code)) %>% 
-  mutate(smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 0, 1)) %>% 
-  mutate(smallsize_flag= ifelse(is.na(smallsize_flag), 0, smallsize_flag)) %>% 
+  mutate(smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 
+                                0, 
+                                1)) %>% 
+  mutate(smallsize_flag= ifelse(is.na(smallsize_flag), 
+                                0, 
+                                smallsize_flag)) %>% 
   group_by(propaddress, smallsize_flag) %>% 
   slice(which.min(dwelling_type)) %>% 
   ungroup() %>% 
@@ -432,10 +445,12 @@ zoningdata2 <- zoningdata1 %>%
   slice(which.min(smallsize_flag)) %>% 
   ungroup()
 
-count(zoningdata1, is.na(zoning_code))#see how many observations should drop between steps
+# see how many observations should drop between steps
+count(zoningdata1, is.na(zoning_code))
 
 count(zoningdata2, smallsize_flag)
 
+count(zoningdata2, category)
 
 ```
 
@@ -674,8 +689,12 @@ I fill in some missing values using the montgomer county shape file and then fil
 ```{r fill in assessed value data from the zoning file}
 
 vacant_mont1 <- vacant_mont %>% 
-  mutate(assessedlandvalue = if_else(is.na(assessedlandvalue), LAND_ASSMT, assessedlandvalue)) %>% 
-  mutate(assessedimprovementvalue = if_else(is.na(assessedimprovementvalue), IMPROV_ASS, assessedimprovementvalue))
+  mutate(assessedlandvalue = if_else(is.na(assessedlandvalue), 
+                                     LAND_ASSMT, 
+                                     as.integer(assessedlandvalue))) %>% 
+  mutate(assessedimprovementvalue = if_else(is.na(assessedimprovementvalue), 
+                                            IMPROV_ASSMT, 
+                                            as.integer(assessedimprovementvalue)))
 
 sum(is.na(vacant_mont$assessedimprovementvalue)) - sum(is.na(vacant_mont$assessedimprovementvalue))
 
