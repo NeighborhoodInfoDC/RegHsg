@@ -360,7 +360,6 @@ parcel1 %>%
 ## Individual nodes
 
 ### Calculate density
-See L:/Libraries/RegHsg/Prog/Tables/Upzoning.xlsx for table template.
 
 First- make sure that vacant and other parcels have a 0 for number of units.
 
@@ -370,6 +369,7 @@ parcel2 <- parcel1 %>%
   mutate(numberofunits = ifelse(category %in% c("vacant", "other"),
                                 0,
                                 numberofunits)) %>% 
+  # filter out wrong observations
   filter(!(county_fips == "51059" & numberofunits >= 7000 & !is.na(numberofunits)),
          !(propaddress == "16045 BOWERY ST" & !is.na(propaddress)))
 
@@ -480,12 +480,12 @@ individual_transit <- map_df(transit_names,
 
 
 
-activity_names_u <- nodes_uniform %>% filter(node == "Activity") %>% pull(name) %>% as.character()
-individual_activity_uniform <- map_df(activity_names_u, 
-                                     ~ get_individual_density(dataset = parcel2,
-                                                              node_geometry = nodes_uniform,
-                                                              node_name = ., 
-                                                              node_type = "Activity"))
+# activity_names_u <- nodes_uniform %>% filter(node == "Activity") %>% pull(name) %>% as.character()
+# individual_activity_uniform <- map_df(activity_names_u, 
+#                                      ~ get_individual_density(dataset = parcel2,
+#                                                               node_geometry = nodes_uniform,
+#                                                               node_name = ., 
+#                                                               node_type = "Activity"))
 
 activity_names_v <- nodes_varies %>% filter(node == "Activity") %>% pull(name) %>% as.character()
 individual_activity_varied <- map_df(activity_names_v, 
@@ -494,7 +494,7 @@ individual_activity_varied <- map_df(activity_names_v,
                                                               node_name = ., 
                                                               node_type = "Activity"))
 
-individual_uniform <- bind_rows(individual_transit, individual_activity_uniform)
+# individual_uniform <- bind_rows(individual_transit, individual_activity_uniform)
 individual_varies <- bind_rows(individual_transit, individual_activity_varied)
 
 
@@ -506,14 +506,14 @@ Write out results.
 ```{r write-inv}
 
 
-write_csv(individual_uniform,
-          "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-uniform.csv")
-
-
 write_csv(individual_transit,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-transit.csv")
+
 write_csv(individual_activity_varied,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-activity.csv")
+
+write_csv(individual_uniform,
+          "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-uniform.csv")
 
 write_csv(individual_varies,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-varied.csv")
@@ -523,10 +523,7 @@ write_csv(individual_varies,
 
 ### Group nodes based on density
 
-Test out two methods of grouping the nodes:
-
-* K means clustering using `density_residential`
-* A distance calculation 
+We will use K means clustering using `density_residential` as the clustering variable. This takes into account that in many of the nodes, the majority of land may not be residential, and this can deflate density, even when most housing in the node is dense/multifamily.
 
 #### K means
 
@@ -666,7 +663,7 @@ clusters_three_ways(a_clusters)
 
 ### Units Added
 
-Upzone the low density group to the midpoint of the medium density group, and medium to high.
+Upzone each density group to the midpoint of the next group up.
 
 ```{r add-units}
 
@@ -747,23 +744,28 @@ write_csv(upzone_summary, "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary.csv"
 ```
 
 
-
-Clean up groups.
+Clean up groups and export.
 
 ```{r clean-groups}
 
-t_clusters %>% bind_rows(a_clusters) %>% 
+clean_clusters <- t_clusters %>% 
+  bind_rows(a_clusters) %>% 
   arrange(type, .cluster, density_residential) %>% 
   select(type, group = .cluster, name, 
          residential_parcels, total_acres,
          number_of_units, residential_acres,
-         density_residential) %>% 
-  write_csv("L:/Libraries/RegHsg/Prog/Tables/all-nodes-grouped.csv")
+         density_residential)
+
+write_csv(clean_clusters,
+          "L:/Libraries/RegHsg/Prog/Tables/all-nodes-grouped.csv")
 
 ```
 
 
 ## archive
+
+Code for combined density, in case we want that:
+
 
 Write into function
 
