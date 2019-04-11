@@ -79,214 +79,8 @@ Since Rockville and Gaithersburg blacknight data was cleaned together with Mongo
 
 ```{r read}
 if (!exists("jur")) {
-  jur <-  read_csv (paste0("L:/Libraries/RegHsg/Data/", "montgomery",
-                     "/", "postcleaned-", "montgomery", "-data.csv"),
-               col_types = cols(
-               county_fips = col_character(),
-               county_name = col_character(),
-               assessorsparcelnumberapnpin = col_character(),
-               propaddress = col_character(),
-               propcity = col_character(),
-               propstate = col_character(),
-               propzip = col_double(),
-               propunitno = col_character(),
-               prophouseno = col_character(),
-               propstreetname = col_character(),
-               propstreetsuffix = col_character(),
-               tract = col_double(),
-               owneroccupiedresidential = col_character(),
-               countylandusedescription = col_character(),
-               zoning = col_character(),
-               buildingarea = col_double(),
-               noofbuildings = col_double(),
-               noofstories = col_character(),
-               numberofunits = col_double(),
-               yearbuilt = col_double(),
-               lotsize_acres = col_double(),
-               lotsize_sf = col_double(),
-               address_type = col_character(),
-               category = col_character(),
-               category_detail = col_character(),
-               residential = col_double(),
-               building_type = col_character(),
-               totalassessedvalue = col_double(),
-               assessedlandvalue = col_double(),
-               assessedimprovementvalue = col_double(),
-               parcel_address = col_character(),
-               lsmax = col_number(),
-               vac2 = col_logical(),
-               vacant_flag = col_logical(),
-               missing_coord = col_double(),
-               latarc = col_double(),
-               longarc = col_double(),
-               lat2 = col_double(),
-               long2 = col_double(),
-               validgeo.x = col_double(),
-               OBJECTID.x = col_integer(),
-               ACCT = col_character(),
-               STATUS = col_character(),
-               TOWN_CODE = col_double(),
-               DISTRICT = col_character(),
-               SUBDIVISIO = col_character(),
-               SORT_KEY = col_character(),
-               SDAT_AREA = col_double(),
-               ACRE_OR_SQ = col_character(),
-               LIBER = col_character(),
-               FOLIO = col_character(),
-               LOT = col_character(),
-               BLOCK = col_character(),
-               TAX_CLASS = col_double(),
-               ASSMT_DATE = col_double(),
-               LAND_ASSMT = col_double(),
-               PREF_ASSMT = col_double(),
-               IMPROV_ASS = col_double(),
-               EXEMPT_COD = col_character(),
-               GRID = col_character(),
-               PARCEL_NO = col_character(),
-               SUBPARCEL = col_character(),
-               PROPERTY_C = col_character(),
-               LANDUSE_CO = col_character(),
-               LU_CATEGOR = col_character(),
-               AZ_CODE = col_character(),
-               AZCODE_NAM = col_character(),
-               DWELLINGCO = col_character(),
-               DWELLSTORY = col_character(),
-               PUBLICUSE_ = col_character(),
-               TRANSFER_D = col_date(format = ""),
-               SALES_PRIC = col_double(),
-               LEGAL_DESC = col_character(),
-               PREMISE_AD = col_double(),
-               PREMISE__1 = col_character(),
-               PREMISE__2 = col_character(),
-               PREMISE__3 = col_character(),
-               PREMISE__4 = col_character(),
-               PREMISE__5 = col_double(),
-               PREMISE__6 = col_double(),
-               CONDO_UNIT = col_character(),
-               OWNERS_OCC = col_character(),
-               OWNERS_NAM = col_character(),
-               OWNERS_N_1 = col_character(),
-               OWNERS_ADD = col_character(),
-               OWNERS_A_1 = col_character(),
-               OWNERS_A_2 = col_character(),
-               OWNERS_CIT = col_character(),
-               OWNERS_STA = col_character(),
-               OWNERS_ZIP = col_double(),
-               OWNERS_Z_1 = col_double(),
-               ZONE_.x = col_character(),
-               GR_FLR_ARE = col_double(),
-               NO_STORIES = col_double(),
-               NO_DWELLIN = col_double(),
-               DWELLING_T = col_character(),
-               DWELLINGTY = col_character(),
-               YEAR_BUILT = col_double(),
-               LOT_WIDTH = col_double(),
-               LOT_DEPTH = col_double(),
-               DWELLING_G = col_double(),
-               DWELLING_C = col_character(),
-               DWELLING_S = col_character(),
-               DWELLING_1 = col_double(),
-               UTILITIES_ = col_double(),
-               UTILITIES1 = col_double(),
-               LOCATION_W = col_double(),
-               STREET_PAV = col_double(),
-               STREET_UNP = col_double(),
-               COMMER_IND = col_character(),
-               HISTORICAL = col_double(),
-               PUBLIC_USE = col_double(),
-               ACTIVITY_D = col_date(format = ""),
-               CREATION_D = col_double(),
-               DELETION_D = col_character(),
-               RAZED = col_logical(),
-               PARENT_TAX = col_character(),
-               MULTIPAREN = col_character(),
-               RAZED_DATE = col_logical(),
-               OUTLOT = col_logical(),
-               ASSESSCYL = col_double(),
-               CONDOFLR = col_double(),
-               TAX_ZONE = col_logical(),
-               LOAD_DATE = col_date(format = ""),
-               XSTATECO = col_double(),
-               YSTATECO = col_double(),
-               GEOMETHD = col_character(),
-               TAZ_1999 = col_double(),
-               TAZ_2009 = col_double(),
-               CDISTRICT = col_double(),
-               PLANNING = col_double(),
-               POLICY = col_character(),
-               MASTER_PLA = col_character(),
-               BASEMAP = col_character(),
-               TAXMAP = col_character(),
-               TAZ_1970 = col_double(),
-               POLICY_AGP = col_character(),
-               CBPTEAM = col_double(),
-               WATRSHED = col_character(),
-               MUNICIP = col_character(),
-               CLERK_PLAT = col_character(),
-               RECORD_PLA = col_character(),
-               PLAT_LINK = col_character(),
-               BING3D = col_character(),
-               STREETVIEW = col_character(),
-               RES_DWELLU = col_double(),
-               NONRES_DWE = col_double(),
-               PARKING_UN = col_double(),
-               SQFT_RESID = col_double(),
-               SQFT_OFFIC = col_double(),
-               SQFT_RETAI = col_double(),
-               SQFT_INDUS = col_double(),
-               SQFT_OTHER = col_double(),
-               LAND_ASS_1 = col_double(),
-               IMPROV_A_1 = col_double(),
-               LAND_ASS_2 = col_double(),
-               IMPROV_A_2 = col_double(),
-               SQFT_PKG = col_double(),
-               SHAPE_AREA.x = col_double(),
-               SHAPE_LEN.x = col_double(),
-               validgeo.y = col_double(),
-               arc_lotsize_sf = col_double(),
-               OBJECTID.y = col_integer(),
-               GISADMIN_Z = col_double(),
-               ZONE_.y = col_character(),
-               CODE = col_character(),
-               PERIMETER = col_double(),
-               ACRES = col_double(),
-               ZONE1 = col_logical(),
-               ZONING_ID = col_double(),
-               BEGINDATE = col_date(format = ""),
-               BEGINREASO = col_character(),
-               BEGINPLANN = col_character(),
-               ENDDATE = col_logical(),
-               ENDREASON = col_logical(),
-               ENDPLANNER = col_logical(),
-               LONGZONE = col_character(),
-               SHAPE_AREA.y = col_double(),
-               SHAPE_LEN.y = col_double(),
-               validgeo.x1 = col_double(),
-               OBJECTID = col_integer(),
-               ZONE = col_character(),
-               ZONE_DESC = col_character(),
-               ZONE_Conca = col_character(),
-               validgeo.y1 = col_logical(),
-               rockflag = col_double(),
-               STATEFP = col_double(),
-               PLACEFP = col_double(),
-               PLACENS = col_character(),
-               GEOID = col_double(),
-               NAME = col_character(),
-               NAMELSAD = col_character(),
-               LSAD = col_double(),
-               CLASSFP = col_character(),
-               PCICBSA = col_character(),
-               PCINECTA = col_character(),
-               MTFCC = col_character(),
-               FUNCSTAT = col_character(),
-               ALAND = col_double(),
-               AWATER = col_double(),
-               INTPTLAT = col_double(),
-               INTPTLON = col_double(),
-               validgeo = col_double(),
-               gaitflag = col_double(),
-               arc_zoning = col_character()))
+  jur <- readRDS(paste0("L:/Libraries/RegHsg/Data/", "montgomery",
+                     "/", "postcleaned-", "montgomery", "-data.Rdata"))
 } else {
   warning(filepath, " data already read in")
 }
@@ -566,8 +360,12 @@ Most of the vacant properties have either a 0 or a missing value for the improve
 
 jur %>% 
   filter(category=="vacant") %>% 
-  mutate(assessedlandvalue = if_else(is.na(assessedlandvalue), LAND_ASSMT, assessedlandvalue)) %>% 
-  mutate(assessedimprovementvalue = if_else(is.na(assessedimprovementvalue), IMPROV_ASS, assessedimprovementvalue)) %>% 
+  mutate(assessedlandvalue = if_else(is.na(assessedlandvalue), 
+                                     LAND_ASSMT, 
+                                     as.integer(assessedlandvalue))) %>% 
+  mutate(assessedimprovementvalue = if_else(is.na(assessedimprovementvalue), 
+                                            IMPROV_ASSMT, 
+                                            as.integer(assessedimprovementvalue))) %>% 
   filter(assessedimprovementvalue > 0, 
          !is.na(assessedimprovementvalue)) %>% 
   mutate(p_total = assessedimprovementvalue / totalassessedvalue) %>% 
@@ -588,8 +386,12 @@ Look at the distribution of improved value as a percent of total value.
 
 jur %>% 
   filter(category=="vacant") %>% 
-  mutate(assessedlandvalue = if_else(is.na(assessedlandvalue), LAND_ASSMT, assessedlandvalue)) %>% 
-  mutate(assessedimprovementvalue = if_else(is.na(assessedimprovementvalue), IMPROV_ASS, assessedimprovementvalue)) %>% 
+  mutate(assessedlandvalue = if_else(is.na(assessedlandvalue), 
+                                     LAND_ASSMT, 
+                                     as.integer(assessedlandvalue))) %>% 
+  mutate(assessedimprovementvalue = if_else(is.na(assessedimprovementvalue), 
+                                            IMPROV_ASSMT, 
+                                            as.integer(assessedimprovementvalue))) %>% 
   filter(assessedimprovementvalue > 0, 
          !is.na(assessedimprovementvalue)) %>% 
   mutate(p_total = assessedimprovementvalue / totalassessedvalue) %>% 
@@ -651,23 +453,13 @@ Merge on zoning code variable. Test that all variables merged.
 ```{r pre zoning-merge}
 
 total_rockvile <- jur1 %>% 
-  mutate(X= SHAPE_LEN.x,
-         Y=SHAPE_LEN.y) %>% 
   mutate(zoning_bk = zoning) %>% 
   mutate(zoning_code= zoning_bk) %>% 
-  mutate(missing_coord = ifelse(is.na(X) | is.na(Y),
-                                1,
-                                0)) %>% 
   filter(rockflag=="1")
 
 total_gaithersburg <- jur1 %>% 
-    mutate(X= SHAPE_LEN.x,
-         Y=SHAPE_LEN.y) %>% 
   mutate(zoning_bk = zoning) %>% 
   mutate(zoning_code= zoning_bk) %>% 
-  mutate(missing_coord = ifelse(is.na(X) | is.na(Y),
-                                1,
-                                0)) %>% 
   filter(gaitflag=="1") 
   
 
@@ -921,7 +713,7 @@ zoningdata_rockvile1_final %>%
 
 Look more closely at vacant lots < 50,000 SF
 
-```{r scatter-small Rockville, echo = FALSE}
+```{r scatter-small-Rockville, echo = FALSE}
 
 zoningdata_rockvile1_final %>% 
   get_unit_variables_r(construction_efficiency = .7,
@@ -959,7 +751,7 @@ zoningdata_rockvile1_final %>%
 
 Write out the results to a csv. Include jurisdiction name in the title.
 
-```{r write-results Rockville}
+```{r write-results-Rockville}
 
 #document blacknight number of units
 zoningdata_rockvile1_final2 <- get_unit_variables_r(dataset =zoningdata_rockvile1_final,
@@ -994,6 +786,7 @@ get_unit_summary_r(dataset =  Rockvillevacant,
                    "-Rockville-vacant-lots-analysis.csv"))
 
 ```
+
 ## Calculate missing units for Gaithersburg
 
 There are several variables we will use to calculate how many units we can put on each vacant lot.
@@ -1127,7 +920,7 @@ map_df(c(.7, .85), ~ get_unit_summary_g(dataset = zoningdata_gaithersburg1_final
 
 Look at the distribution of units for lots with more than 1 unit, to check for extreme outliers.
 
-```{r scatter Gaithersburg, echo = FALSE}
+```{r scatter-Gaithersburg, echo = FALSE}
 
 zoningdata_gaithersburg1_final %>% 
   get_unit_variables_g(construction_efficiency = .7,
@@ -1152,7 +945,7 @@ zoningdata_gaithersburg1_final %>%
 
 Look more closely at vacant lots < 50,000 SF
 
-```{r scatter-small Gaithersburg, echo = FALSE}
+```{r scatter-small-Gaithersburg, echo = FALSE}
 
 zoningdata_gaithersburg1_final %>% 
   get_unit_variables_g(construction_efficiency = .7,
@@ -1185,10 +978,11 @@ Write out the results to a csv. Include jurisdiction name in the title.
 ```{r write-results Gaithersburg}
 #document blacknight number of units
 
-zoningdata_gaithersburg1_final2 <- get_unit_variables_g(dataset =zoningdata_gaithersburg1_final,
-                                                    construction_efficiency = .7,
-                                                     average_unit_size = 940) %>% 
-                     mutate(unit_bk= ifelse(category=="sf", 1, numberofunits))
+zoningdata_gaithersburg1_final2 <- 
+  get_unit_variables_g(dataset = zoningdata_gaithersburg1_final,
+                       construction_efficiency = .7,
+                       average_unit_size = 940) %>% 
+  mutate(unit_bk= ifelse(category=="sf", 1, numberofunits))
 
 
 gaithersburg1vacant <- zoningdata_gaithersburg1_final2 %>% 
@@ -1196,8 +990,8 @@ gaithersburg1vacant <- zoningdata_gaithersburg1_final2 %>%
 
 
 get_unit_variables_g(dataset =  zoningdata_gaithersburg1_final2,
-                 construction_efficiency = .7,
-                 average_unit_size = 940) %>% 
+                     construction_efficiency = .7,
+                     average_unit_size = 940) %>% 
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    "montgomery",
                    "-Gaithersburg-units.csv"))
