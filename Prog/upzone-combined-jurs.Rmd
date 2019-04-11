@@ -370,7 +370,8 @@ parcel2 <- parcel1 %>%
   mutate(numberofunits = ifelse(category %in% c("vacant", "other"),
                                 0,
                                 numberofunits)) %>% 
-  filter(!(county_fips == "51059" & numberofunits >= 7000 & !is.na(numberofunits)))
+  filter(!(county_fips == "51059" & numberofunits >= 7000 & !is.na(numberofunits)),
+         !(propaddress == "16045 BOWERY ST" & !is.na(propaddress)))
 
 parcel2 %>% 
   as.data.frame() %>% 
@@ -386,14 +387,11 @@ parcel2 %>%
 
 #### Test method on one activity center.
 
-Pick one activity center in Arlington to test and visualize the calculation. Use Clarendon activity center as an example.
+Pick one node to test and visualize the calculation. Use Crystal City as an example.
 
 ```{r clar}
 
-ss <- filter(nodes_varies, name == "Silver Spring", node == "Transit")
 cc <- filter(nodes_varies, name == "Crystal City", node == "Transit")
-gr <- filter(nodes_varies, name == "Grosvenor-Strathmore", node == "Transit")
-
 
 ```
 
@@ -401,40 +399,16 @@ Clip the Black Knight data to the extent of the activity center.
 
 ```{r clip-zon}
 
-bk_ss <- st_intersection(parcel2, ss)
 bk_cc <- st_intersection(parcel2, cc)
-bk_gr <- st_intersection(parcel2, gr)
-
 
 ```
 
 
 Calculate table. Remove obsevations that are missing either lot size of number of units- having one absent from the numerator or denominator will skew the calculation.
 
-```{r calc-clar}
-
-bk_clar %>% 
-  as.data.frame() %>% 
-  filter(!is.na(lotsize_sf), !is.na(numberofunits)) %>% 
-  summarize(residential_parcels = sum(residential, na.rm = TRUE),
-            residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
-                                    na.rm = TRUE),
-            total_acres = sum(lotsize_acres, na.rm = TRUE),
-            number_of_units = sum(numberofunits, na.rm = TRUE),
-            density = number_of_units / total_acres,
-            pmf = sum(ifelse(category == "mf", lotsize_acres, 0)) / total_acres,
-            psf = sum(ifelse(category == "sf", lotsize_acres, 0)) / total_acres,
-            pvac = sum(ifelse(category == "vacant", lotsize_acres, 0)) / total_acres,
-            pvacstruc = sum(ifelse(category == "vacant with structures", lotsize_acres, 0),
-                            na.rm = TRUE),
-            pother = sum(ifelse(category == "other", lotsize_acres, 0)) / total_acres) %>% 
-  knitr::kable()
-
-```
-
 #### Apply calculation to all activity centers and transit stops
 
-Write this calculation into a function.
+This function calculates three different metric and summarizes the land use within each node.
 
 ```{r inv-fxn}
 
@@ -481,10 +455,10 @@ get_individual_density <- function(dataset, node_geometry, node_name, node_type)
                   pvacstruc = sum(ifelse(category == "vacant with structures", lotsize_acres, 0),
                                   na.rm = TRUE) / total_acres,
                   pother = sum(ifelse(category == "other", lotsize_acres, 0),
-                              na.rm = TRUE) / total_acres,
-                  pmfres = sum(ifelse(category == "mf", lotsize_acres, 0),
-                            na.rm = TRUE) / residential_acres) %>% 
-        mutate(name = node_name, type = node_type) %>% 
+                              na.rm = TRUE) / total_acres) %>% 
+        mutate(name = node_name, 
+               type = node_type, 
+               pres = pmf + psf) %>% 
         select(name, type, everything())
     })
   })
@@ -492,27 +466,7 @@ get_individual_density <- function(dataset, node_geometry, node_name, node_type)
 
 ```
 
-Test function, make sure results are the same.
 
-```{r test-inv-fxn}
-
-get_individual_density(dataset = parcel2,
-                       node_geometry = nodes_uniform,
-                       node_name = "Crystal City", 
-                       node_type = "Transit") %>% 
-  knitr::kable()
-
-ssd <- get_individual_density(dataset = parcel2,
-                       node_geometry = nodes_uniform,
-                       node_name = "Silver Spring", 
-                       node_type = "Transit")
-
-gsd <- get_individual_density(dataset = parcel2,
-                       node_geometry = nodes_uniform,
-                       node_name = "Grosvenor-Strathmore", 
-                       node_type = "Transit")
-
-```
 Map function through all activity centers and transit zones.
 
 ```{r map-inv-fxn}
@@ -544,8 +498,6 @@ individual_uniform <- bind_rows(individual_transit, individual_activity_uniform)
 individual_varies <- bind_rows(individual_transit, individual_activity_varied)
 
 
-st_area(clarendon) %>% units::set_units("acres") %>% set_units(NULL)
-
 ```
 
 
@@ -556,6 +508,12 @@ Write out results.
 
 write_csv(individual_uniform,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-uniform.csv")
+
+
+write_csv(individual_transit,
+          "L:/Libraries/RegHsg/Prog/Tables/upzoning-transit.csv")
+write_csv(individual_activity_varied,
+          "L:/Libraries/RegHsg/Prog/Tables/upzoning-activity.csv")
 
 write_csv(individual_varies,
           "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-varied.csv")
@@ -576,21 +534,47 @@ Set the seeds and make functions to simplify clustering.
 
 ```{r kmeans}
 
-set.seed(20190331)
+set.seed(20190410)
 
-get_clusters <- function(dataset) {
+#' Get clusters
+#'
+#' @description This function take a dataset and uses k means clustering to cluster the data, and then augments the clusters back on to the original dataset.
+#'
+#' @param dataset dataframe to cluster 
+#'
+#' @return Returns the same dataframe with the addition of the .cluster variable
+get_clusters <- function(dataset, clusters) {
   
   rescaled_data <- dataset %>% 
   mutate(density_residential = scales::rescale(density_residential, 
                                                to = c(1, 100))) %>% 
   select(density_residential)
 
-  clusters <- kmeans(rescaled_data, centers = 6, nstart = 6)
+  clusters <- kmeans(rescaled_data, centers = clusters, nstart = clusters)
   
-  augment(clusters, dataset)
+  tc <- augment(clusters, dataset)
+  
+  
+  tb <- tc %>% 
+  group_by(.cluster) %>% 
+  summarize(cluster_mean = mean(density_residential)) %>% 
+  arrange(cluster_mean) %>% 
+  mutate(new_cluster = 1:6)
+
+  tc %>% 
+  left_join(tb, by = ".cluster") %>% 
+  select(-.cluster) %>% 
+  rename(.cluster = new_cluster)
   
 }
 
+#' Summarize clusters
+#'
+#' This function created a summary table of the number of observations and the mean of residential_density. It can be used to renumber the clusters in ascending order.
+#'
+#' @param dataset Dataset that has been created by get_clusters function.
+#'
+#' @return Returns a summary table of the number of observations and the mean of residential_density
 summarize_clusters <- function(dataset) {
   
   dataset %>% 
@@ -600,6 +584,13 @@ summarize_clusters <- function(dataset) {
   
 }
 
+#' Clusters three ways
+#'
+#' @description This function creates three plots that summarize the density clusters: a choropleth map, a histogram, and a bar plot that displays the mean and midpoint of each group.
+#'
+#' @param cluster_data dataset with .cluster variable that indicates the group of the cluster
+#'
+#' @return returns a grid of three plots
 clusters_three_ways <- function(cluster_data) {
   
   map <- cluster_data %>% 
@@ -613,8 +604,9 @@ clusters_three_ways <- function(cluster_data) {
     
   dist <- cluster_data %>% 
     ggplot(mapping = aes(density_residential, fill = factor(.cluster))) +
-    geom_histogram(alpha = .7) +
+    geom_histogram(alpha = .7, binwidth = 3) +
     scale_y_continuous(expand = expand_scale(mult = c(0, .05))) +
+    scale_x_continuous(breaks = c(0, 25, 50, 75, 100, 125)) +
     labs(y = NULL, x = "Residential density")
   
   means <- cluster_data %>% 
@@ -625,7 +617,7 @@ clusters_three_ways <- function(cluster_data) {
     gather(key = "operation", value = "metric", -.cluster) %>% 
     ggplot(mapping = aes(.cluster, metric, fill = operation)) +
     geom_bar(stat = "identity", position = "dodge") +
-    geom_text(mapping = aes(label = scales::number_format(accuracy = .1)(metric)),
+    geom_text(mapping = aes(label = scales::number_format(accuracy = 1)(metric)),
               position = position_dodge(width = .7),
               vjust = -1) +
     scale_y_continuous(expand = expand_scale(mult = c(0, .15))) +
@@ -642,23 +634,13 @@ clusters_three_ways <- function(cluster_data) {
 Cluster transit nodes.
 
 ```{r cluster-t}
-t_clusters <- get_clusters(individual_transit)
+
+t_clusters <- individual_transit %>% 
+  filter(pres > .25) %>% 
+  get_clusters(6)
 
 summarize_clusters(t_clusters) %>% 
   knitr::kable()
-
-
-t_clusters <- t_clusters %>% 
-  mutate(cluster_og = .cluster,
-         .cluster = case_when(
-           cluster_og == 1 ~ 2,
-           cluster_og == 2 ~ 4,
-           cluster_og == 3 ~ 1,
-           cluster_og == 4 ~ 6,
-           cluster_og == 5 ~ 5,
-           cluster_og == 6 ~ 3,
-           TRUE ~ as.double(cluster_og)
-         ))
 
 clusters_three_ways(t_clusters)
 
@@ -669,34 +651,14 @@ Cluster activity centers.
 
 ```{r cluster-t}
 
-a_clusters <- get_clusters(individual_activity_varied)
+a_clusters <- individual_activity_varied %>% 
+  filter(pres > .25) %>% 
+  get_clusters(6)
 
 summarize_clusters(a_clusters) %>% 
   knitr::kable()
 
-
-a_clusters <- a_clusters %>% 
-  mutate(cluster_og = .cluster,
-         .cluster = case_when(
-           cluster_og == 1 ~ 4,
-           cluster_og == 2 ~ 5,
-           cluster_og == 3 ~ 1,
-           cluster_og == 4 ~ 3,
-           cluster_og == 5 ~ 2,
-           cluster_og == 6 ~ 6,
-           TRUE ~ as.double(cluster_og)
-         ))
-
 clusters_three_ways(a_clusters)
-
-```
-
-
-
-
-```{r dist-plot}
-
-clusters_three_ways(distance)
 
 ```
 
@@ -780,7 +742,7 @@ a <- a_units %>%
 
 upzone_summary <- bind_rows(t, a)
 
-write_csv(upzone_summary, "tables/upzoning-summary.csv")
+write_csv(upzone_summary, "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary.csv")
 
 ```
 
@@ -796,7 +758,7 @@ t_clusters %>% bind_rows(a_clusters) %>%
          residential_parcels, total_acres,
          number_of_units, residential_acres,
          density_residential) %>% 
-  write_csv("tables/all-nodes-grouped.csv")
+  write_csv("L:/Libraries/RegHsg/Prog/Tables/all-nodes-grouped.csv")
 
 ```
 
@@ -805,7 +767,7 @@ t_clusters %>% bind_rows(a_clusters) %>%
 
 
 
-#### ARCHIVED: other groupings
+## ARCHIVED: other groupings
 
 ##### distance
 
@@ -838,6 +800,14 @@ distance %>%
   summarize(n(),
             mean(density_residential)) %>% 
   knitr::kable()
+
+```
+
+
+
+```{r dist-plot}
+
+clusters_three_ways(distance)
 
 ```
 
