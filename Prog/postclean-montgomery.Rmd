@@ -321,6 +321,9 @@ jur3a %>%
 jur3a %>% 
   count(category == landuse_category)
 
+jur3a %>% 
+  count(category)
+
 ```
 
 
@@ -412,7 +415,9 @@ Read file, test geomerty and projection.
 
 ```{r test-rockville-zoning}
 
-rockpfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts'), end = -5) %>% unique()
+rockpfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts'), 
+                     end = -5) %>% unique()
+
 rockzoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts',
                      layer = rockpfile[1])
 
@@ -440,6 +445,7 @@ paste0(sum(!is.na(rjoin$ZONE)), " observations joined- ",
       round(sum(!is.na(rjoin$ZONE)) / nrow(rjoin) * 100, 2), "%")
 
 ```
+
 16162 observations joined, so we estimate there are that many parcels in Rockville.
 
 ##### Make Rockville flag
@@ -617,6 +623,9 @@ count(jur6, is.na(lotsize_sf), category_detail)
 
 jur6 %>%  as.data.frame() %>% 
   count(notinmont, rockflag, gaitflag)
+
+jur6 %>% 
+  count(category)
 
 saveRDS(jur6,
         paste0(jdir, 
