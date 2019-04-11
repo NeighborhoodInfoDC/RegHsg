@@ -166,8 +166,7 @@ propmerge <- prop_testing %>%
          CONDO_UNIT_NO, 
          NO_DWELLINGS, DWELLING_TYPE,
          PLANNING, POLICY, MASTER_PLAN,
-         RES_DWELLU,
-         Shape_Area) %>% 
+         RES_DWELLU, LAND_ASSMT, IMPROV_ASSMT, Shape_Area) %>% 
   mutate(parcel_id = paste0(DISTRICT, "-", ACCT),
          cflag = str_detect(ACCT, "C"),
          propflag = 1) %>% 
@@ -218,8 +217,9 @@ jur1b <- jur1a %>%
   left_join(propmerge, by = c("ACCT_address" = "ACCT")) %>% 
   group_by(ACCT_address) %>% 
   # divide area by the number of parcels
-  mutate(lot_acct = Shape_Area / n(),
-         clotflag = 1)
+  mutate(lot_acct = Shape_Area.y / n(),
+         clotflag = 1) %>% 
+  ungroup()
 
 # test how many and which type of properties did not join
 jur1banti <- jur1a %>% 
