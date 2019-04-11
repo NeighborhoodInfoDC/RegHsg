@@ -78,7 +78,7 @@ if (!exists("dc_full")) {
 
 ```{r read-mon}
 if (!exists("montgomery")) {
- montgomery <- read_montgomery()
+ montgomery <- readRDS("L:/Libraries/RegHsg/Data/montgomery/postcleaned-montgomery-data.Rdata")
 } else {
   warning(filepath, " data already read in")
 }
