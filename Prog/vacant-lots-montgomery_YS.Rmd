@@ -818,13 +818,13 @@ get_unit_variables_g <- function(dataset,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height_ft / 10),
            units_height= units_per_floor*floors,
-           units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
+           units_lotsize = floor(lotsize_sf / lotarea_per_unit),
+           units_density = floor(density * (lotsize_sf / 43560))) %>% 
     mutate(subset=as.numeric(floor(lotsize_sf/lot_area_min)), na.rm=TRUE) %>% 
-    mutate(units_total= pmin(units_height, units_lotsize, na.rm = TRUE ))  %>%
-    mutate(units_total= case_when(one_unit_flag == 1 & subset<1 & units_total >1 ~ 0,
-                                   one_unit_flag == 1 & subset>=1 & units_total > subset ~ subset,
-                                  TRUE ~ units_total)) %>%
-   mutate( units_total = ifelse(is.na(units_total)==0 |units_total > (density *(lotsize_sf/43560)), floor(density *(lotsize_sf/43560)),units_total))
+    mutate(units_total= pmin(units_height, units_lotsize, units_density, na.rm = TRUE ))  %>%
+    mutate(units_total= case_when(one_unit_flag == 1 & subset < 1 & units_total >1 ~ 0,
+                                  one_unit_flag == 1 & subset >= 1 & units_total > subset ~ subset,
+                                  TRUE ~ units_total))
 
 }
 
@@ -862,6 +862,7 @@ get_unit_summary_g <- function(dataset,
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_density = sum(units_density, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total/lots)),
               raw_units_per_lot = sum(units_total/lots)) %>% 
@@ -895,10 +896,10 @@ get_unit_summary_g(dataset = zoningdata_gaithersburg1_final,
 testg <- get_unit_variables_g(dataset = zoningdata_gaithersburg1_final,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
-   filter(housing_type=="SF") %>% 
-   filter(category=="vacant") %>% 
-  filter(smallsize_flag==0) %>% 
-  select(zoning_code, propaddress, subset, lot_area_min, lot_area_min, lot_coverage_max, lotsize_sf, lotarea_per_unit, height_ft, density,  units_per_floor, living_area, floors, units_height, units_lotsize, units_total, one_unit_flag, two_unit_flag,  smallsize_flag)
+  #  filter(housing_type=="SF") %>% 
+   filter(category=="mf") %>% 
+  # filter(smallsize_flag==0) %>% 
+  select(zoning_code, propaddress, subset, lot_area_min, lot_area_min, lot_coverage_max, lotsize_sf, lotarea_per_unit, height_ft, density,  units_per_floor, living_area, floors, units_height, units_lotsize, units_density, units_total, one_unit_flag, two_unit_flag,  smallsize_flag)
 
 
 
