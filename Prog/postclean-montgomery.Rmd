@@ -411,7 +411,46 @@ Our Data on the property city is not reliable, so we need to create a flag ourse
 
 I read in a rockville zoning file, and add a flag for any property that falls within the Rockville shape file. This will help us filter and use the right zoning code in the vacant lots analysis
 
-Read file, test geomerty and projection.
+Read file, test geometry and projection.
+
+```{r read tiger line 2018 place shapefile}
+
+#read in tiger line place file to create flags for places with their own zoning codes
+
+placepfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/placefile'), 
+                     end = -5) %>% unique()
+Mocoplaces_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/placefile',
+                     layer = placepfile[1])
+
+Mocoplaces_sf1 <- Mocoplaces_sf %>% 
+  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
+                                1,
+                                0))
+Mocoplaces_sf1 %>% as.data.frame() %>% 
+  count(validgeo)
+
+st_geometry(Mocoplaces_sf1)
+
+Mocoplaces_sf2 <- st_transform(Mocoplaces_sf1, crs = 4326)
+
+
+pjoin <- st_join(zjoin, Mocoplaces_sf2, join = st_intersects)
+
+pjoin2 <- pjoin %>% 
+  # make Rockville flag
+  mutate(rockflag = if_else(NAME=="Rockville",1,0),
+         rockflag = if_else(is.na(NAME),0,rockflag),
+         gaitflag = if_else(NAME=="Gaithersburg",1,0),
+         gaitflag = if_else(is.na(NAME),0,gaitflag),
+         othernotmoco = if_else(NAME %in% c("Barnesville","Brookville","Laytonsville","Poolesville"),1,0),
+         othernotmoco = if_else(is.na(NAME),0,othernotmoco)
+        
+  )
+count(pjoin2,rockflag)
+count(pjoin2,gaitflag)
+count(pjoin2,othernotmoco)
+
+```
 
 ```{r test-rockville-zoning}
 
@@ -434,8 +473,9 @@ st_geometry(rockzoning_sf1)
 ```
 
 ```{r join rockville}
+#Sarah - i gain 6 obs here - can you figure out why and/or drop? 
 
-rjoin <- st_join(zjoin, rockzoning_sf1, join = st_intersects)
+rjoin <- st_join(pjoin2, rockzoning_sf1, join = st_intersects)
 
 ```
 
@@ -448,13 +488,11 @@ paste0(sum(!is.na(rjoin$ZONE)), " observations joined- ",
 
 16162 observations joined, so we estimate there are that many parcels in Rockville.
 
-##### Make Rockville flag
+##### Replace BK Zoning with Rockvile Zoning 
 
 ```{r filter to make flag}
 
 rjoin2 <- rjoin %>% 
-  # make Rockville flag
-  mutate(rockflag = if_else(!is.na(ZONE), 1, 0)) %>% 
   # replace moco zoning with rockville zoning
   mutate(zoning = if_else(rockflag == 1, ZONE, zoning))
 
@@ -480,66 +518,17 @@ rjoin2 %>%
 
 
 ```
-#### Gaithersburg
 
-Repeat this process with Gaithersburg. The Gaithersburg file is not a zoning file, though, so we don't get any more detailed zoning information. This flag just tells us if the property falls in Gaithersburg city limits.
-
-Read the file, check the validity, transform to match BK CRS.
-```{r check-g-geo}
-
-gaitfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/Gaithersburg'), end = -5) %>% unique()
-gait_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/Gaithersburg',
-                     layer = gaitfile[1])
-
-gait_sf1 <- gait_sf %>% 
-  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
-                                1,
-                                0))
-gait_sf1 %>% as.data.frame() %>% 
-  count(validgeo)
-gait_sf1 <- gait_sf1 %>% 
-  filter(validgeo == 1 & !is.na(validgeo))
-
-st_geometry(gait_sf1)
-
-gait_sf1 <- st_transform(gait_sf1, crs = 4326)
-
-```
-
-```{r g-join}
-
-gjoin <- st_join(rjoin2, gait_sf1, join = st_intersects)
-
-paste0(sum(!is.na(gjoin$CLASSFP)), " observations did join- ",
-      round(sum(!is.na(gjoin$CLASSFP)) / nrow(gjoin) * 100, 2), "%")
-
-gjoin2 <- gjoin %>% 
-  mutate(gaitflag = if_else(!is.na(CLASSFP), 1, 0))
-
-# test that observations are in gaithers
-test <- gjoin2 %>% 
-  filter(gaitflag ==1) %>% 
-  sample_n(1000)
-
-ggplot() +
-  geom_sf(gait_sf1, mapping = aes()) +
-  geom_sf(test, mapping = aes())
-
-
-gjoin2 %>%  as.data.frame() %>% 
-  count(notinmont, rockflag, gaitflag)
-```
 
 After the join, we convert back to a dataframe, for ease of computations.
 ```{r back-to-df again}
 
-jur5 <- st_set_geometry(gjoin2, NULL)
+jur5 <- st_set_geometry(rjoin2, NULL)
 
 ```
 
 
-There are 17329 observations that we think are not in montgomery codes, rockville, or gaithersburg.
-^ this is Sarah, I do not know how he got to this number.
+There are 4046 observations that we think are not in montgomery codes, rockville, or gaithersburg.
 
 ```{r}
 jur5 %>% 
@@ -566,11 +555,14 @@ jur6 <- jur5 %>%
          # fill in whatever we can from the montgomery shape file if it's missing
          zoning = ifelse(is.na(zoning),
                              CODE,
-                             zoning),
-         # fill in whatever we can from the rockville shape file if it's missing
-         zoning = ifelse(is.na(zoning),
-                             ZONE,
-                              zoning))
+                             zoning)
+         
+         # we already replaced this so we don't want to use it to fill in right?
+         #fill in whatever we can from the rockville shape file if it's missing
+         #zoning = ifelse(is.na(zoning),
+                             #ZONE,
+                            #  zoning)
+         )
         
 
 ```
@@ -582,7 +574,7 @@ sum(is.na(jur6$arc_zoning)) - sum(is.na(jur6$zoning))
 
 # look at remaining missing zoning
 jur6 %>% 
-  filter(is.na(zoning)) %>% 
+  filter(is.na(zoning) & othernotmoco==0) %>% 
   count(category_detail)
 
 ```
@@ -622,7 +614,7 @@ count(jur6, is.na(lotsize_sf), category_detail)
 ```{r save}
 
 jur6 %>%  as.data.frame() %>% 
-  count(notinmont, rockflag, gaitflag)
+  count(notinmont, rockflag, gaitflag, othernotmoco)
 
 jur6 %>% 
   count(category)
