@@ -117,15 +117,15 @@ z <- cols(
   zoning_code = col_character(),
   zone = col_character(),
   dwelling_type = col_character(),
-  site_area_min = col_number(),
+  site_area_min = col_double(),
   sitearea_per_unit = col_number(),
-  lot_area_min = col_number(),
+  lot_area_min = col_double(),
   lotarea_per_unit = col_number(),
-  lot_width = col_character(),
+  lot_width = col_double(),
   lot_width_building = col_character(),
   height_ft = col_double(),
-  site_coverage_max = col_number(),
-  lot_coverage_max = col_number(),
+  site_coverage_max = col_double(),
+  lot_coverage_max = col_double(),
   floor_area_min = col_double(),
   far_max = col_character(),
   setbacks_front = col_character(),
@@ -149,10 +149,6 @@ names(zoning_rockville) <-
     "setbacks_front", "setbacks_side",
     "setbacks_rear", "density", "massing", "open_space", "comments")
 
-# fix variables read in as whole numbers (should be percent)
-zoning_rockville <- zoning_rockville %>% 
-  mutate_at(vars(lot_coverage_max, site_coverage_max, open_space),
-            ~ . / 100)
 
 zoning_gaithersburg <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
                               "gaithersburg-zoning-code-clean.csv"),
@@ -166,10 +162,6 @@ names(zoning_gaithersburg) <-
     "setbacks_front", "setbacks_side",
     "setbacks_rear", "density", "massing", "open_space", "comments")
 
-# fix variables read in as whole numbers (should be percent)
-zoning_gaithersburg <- zoning_gaithersburg %>% 
-  mutate_at(vars(lot_coverage_max, site_coverage_max, open_space),
-            ~ . / 100)
 rm(z)
 
 ```
