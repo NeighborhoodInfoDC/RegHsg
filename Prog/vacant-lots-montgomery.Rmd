@@ -91,7 +91,7 @@ if (!exists("jur")) {
 }
 
 
-count(jur, rockflag != 1, gaitflag != 1, notinmont == 1)
+count(jur, rockflag != 1, gaitflag != 1, othernotmoco !=1)
 
 ```
 
@@ -282,15 +282,15 @@ Count how many vacant lots
 ```{r filtering}
 
 jur %>% 
-  filter(lotsize_sf>1000000) %>% 
+  filter(lotsize_sf>1000000 & category=="vacant") %>% 
 count(lotsize_sf, propaddress)
 
 mont <- jur %>% 
-  filter(rockflag != 1, gaitflag!=1, notinmont != 1) %>% 
+  filter(rockflag != 1, gaitflag!=1, othernotmoco != 1) %>% 
   filter(lotsize_sf < 1000000) #filter out unreasonably large lots that mess up the calculation
 
 
-count(mont, rockflag, gaitflag, notinmont)
+count(mont, rockflag, gaitflag, othernotmoco)
 
 count(mont, category == "vacant")
 
@@ -491,7 +491,7 @@ get_unit_variables <- function(dataset,
     mutate(parameters = paste0("CE: ", construction_efficiency * 100,
                                "% , Unit size: ", average_unit_size,
                                " sf"),
-           lot_coverage_max = ifelse(is.na(lot_coverage_max), 1, lot_coverage_max),
+           lot_coverage_max = ifelse(is.na(lot_coverage_max), .75, lot_coverage_max),
            buildable_area_height = lotsize_sf * lot_coverage_max,
            living_area_height = buildable_area_height*construction_efficiency,
            units_per_floor_height = floor(living_area_height/average_unit_size),
