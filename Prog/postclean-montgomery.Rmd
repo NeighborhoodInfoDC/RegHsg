@@ -491,11 +491,22 @@ mult <- rjoin %>%
   mutate(unq = map(zonelist, ~ length(unique(.)))) %>% 
   filter(unq > 1)
 
+mult1 <- rjoin %>% 
+  as.data.frame() %>% 
+  group_by(assessorsparcelnumberapnpin, propaddress, ZONE_) %>%
+  summarize(count = n()) %>% 
+  mutate(rown = row_number()) %>% 
+  filter(rown > 1)
+
 rjoin1 <- rjoin %>% 
   group_by(propaddress, ZONE_) %>% 
-  filter(row_number() == 1 & !is.na(propaddress)) %>% 
+  filter(row_number() == 1) %>% 
+  rbind(filter(rjoin, is.na(propaddress))) %>% 
   ungroup()
 
+test <- rjoin %>% 
+  group_by(propaddress, ZONE_) %>% 
+  filter(row_number() > 1)
 ```
 
 ```{r test join rockville}
