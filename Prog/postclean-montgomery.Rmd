@@ -475,7 +475,26 @@ st_geometry(rockzoning_sf1)
 ```{r join rockville}
 #Sarah - i gain 6 obs here - can you figure out why and/or drop? 
 
+overlap <- st_intersection(rockzoning_sf1) %>% 
+  filter(n.overlaps > 1)
+
+ggplot() +
+  geom_sf(overlap, mapping = aes()) +
+  coord_sf(datum = NA)
+
 rjoin <- st_join(pjoin2, rockzoning_sf1, join = st_intersects)
+
+mult <- rjoin %>% 
+  as.data.frame() %>% 
+  group_by(propaddress) %>% 
+  summarize(zonelist = list(ZONE_)) %>% 
+  mutate(unq = map(zonelist, ~ length(unique(.)))) %>% 
+  filter(unq > 1)
+
+rjoin1 <- rjoin %>% 
+  group_by(propaddress, ZONE_) %>% 
+  filter(row_number() == 1 & !is.na(propaddress)) %>% 
+  ungroup()
 
 ```
 
@@ -492,7 +511,7 @@ paste0(sum(!is.na(rjoin$ZONE)), " observations joined- ",
 
 ```{r filter to make flag}
 
-rjoin2 <- rjoin %>% 
+rjoin2 <- rjoin1 %>% 
   # replace moco zoning with rockville zoning
   mutate(zoning = if_else(rockflag == 1, ZONE, zoning))
 
