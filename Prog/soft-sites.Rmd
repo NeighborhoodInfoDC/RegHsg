@@ -55,16 +55,174 @@ source("../Macros/read-combined-parcels.R")
 
 ```
 
-Create directory for data exports
-```{r dir}
+## Get maximum unit data for each jurisdiction.
 
-if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
-  dir.create("L:/Libraries/RegHsg/Prog/Tables")
-}
+Read in each maximum unit dataset.
+
+```{r get-max-units}
+mudir <- "L:/Libraries/RegHsg/Data/"
+
+arlbr <- readRDS(paste0(mudir,
+                        "/arlington/arlington-max-units-br.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity, propstate,
+         zoning_code,
+         units_total, units_height, units_lotsize) %>% 
+  mutate(jurisdiction = "Arlington")
+  
+
+
+arlse <- readRDS(paste0(mudir,
+                        "/arlington/arlington-max-units-se.Rdata"))  %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+           assessorsparcelnumberapnpin,
+           propaddress, propcity,
+           zoning_code,
+           units_total, units_height, units_lotsize) %>% 
+  mutate(jurisdiction = "Arlington")
+  
+
+mont <- readRDS(paste0(mudir,
+                       "/montgomery/montgomery-max-units.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity,
+         zoning_code,
+         units_total, units_height, units_lotsize,
+         units_FAR, units_height) %>% 
+  mutate(jurisdiction = "Montgomery")
+
+rock <- readRDS(paste0(mudir,
+                       "/montgomery/Rockville-max-units.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity,
+         zoning_code,
+         units_total, units_height)  %>% 
+  mutate(jurisdiction = "Rockville")
+
+gait <- readRDS(paste0(mudir,
+                       "/montgomery/Gaithersburg-max-units.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity,
+         zoning_code,
+         units_total, units_height, units_lotsize)  %>% 
+  mutate(jurisdiction = "Gaithersburg")
+
+fair <- readRDS(paste0(mudir,
+                       "/fairfax/fairfax-max-units.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity,
+         zoning_code,
+         units_total, units_height, units_lotsize) %>% 
+  mutate(county_fips = as.character(county_fips))  %>% 
+  mutate(jurisdiction = "Fairfax")
+
+dc <- readRDS(paste0(mudir,
+                       "/DC/DC-max-units.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         parcelbase_SSL,
+         propaddress, propcity,
+         zoning_code,
+         units_FAR, units_height, units_total)  %>% 
+  mutate(jurisdiction = "DC")
 
 ```
 
-## Get maximum unit data for each jurisdiction.
+Combine- except for DC, which must be merged and then combined.
+
+```{r combine}
+
+maxunits <- bind_rows(fair, mont, rock, gait, arlbr)
+
+```
+
+Read in parcel data that has filled in units.
+
+```{r parcel}
+
+parcel <- read_combined_parcels()
+
+```
+
+```{r merge}
+
+dcp <- parcel %>% 
+  filter(county_fips == "11001")
+
+dcmax <- dc %>% 
+  left_join(dcp, by = c("county_fips", "county_name",
+                        "parcelbase_SSL" = "assessorsparcelnumberapnpin",
+                        "propaddress", "propcity"))
+
+
+allmax <- maxunits %>% 
+  left_join(filter(parcel, county_fips != "11001"),
+            by = c("county_fips", "county_name",
+                   "assessorsparcelnumberapnpin",
+                   "propaddress", "propcity")) %>% 
+  bind_rows(dcmax)
+
+```
+
+## Identify underutilized parcels
+
+### Multifamily
+
+```{r mf}
+
+mfmax <- allmax %>% 
+  filter(category == "mf",
+         !is.na(numberofunits),
+         !is.na(lotsize_sf),
+         !is.na(units_total)) %>% 
+  mutate(putil = numberofunits / units_total,
+         under = ifelse(numberofunits / units_total < 1,
+                          1,
+                          0),
+         under30 = ifelse(numberofunits / units_total < .3,
+                          1,
+                          0),
+         units_behind = ifelse(units_total > numberofunits,
+                               units_total - numberofunits,
+                               0))
+
+mfsum <- mfmax %>% 
+  group_by(jurisdiction) %>% 
+  summarize(total_mf = n(),
+            total_units = sum(numberofunits),
+            total_under = sum(under),
+            under_utilized = sum(under) / n(),
+            total_under30p = sum(under30),
+            under_30p = sum(under30) / n(),
+            units_behind = sum(units_behind))
+knitr::kable(mfsum)
+write_csv(mfsum, "L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf.csv")
+
+mfmax %>% 
+  filter(putil < 1, putil > 0,
+         jurisdiction != "Gaithersburg") %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(putil)) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_y_continuous(expand = c(0,0)) +
+  facet_wrap(~county_name) +
+  labs(x = "Percent of maximum capacity",
+       title = "Utilization distribution for under-utilized land")
+
+```
+
+
 
 ### Arlington
 
