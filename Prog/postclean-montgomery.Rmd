@@ -622,6 +622,12 @@ jur6 %>%  as.data.frame() %>%
 jur6 %>% 
   count(category)
 
+jur6 <- jur6 %>% 
+  select(-c(n.overlaps, origins, validgeo, validgeo.x, validgeo.y,
+         ALAND, AWATER, FUNCSTAT, NAMELSAD, GEOID,
+         BEGINDATE, BEGINREASO, BEGINPLANN, ENDDATE, ENDREASON,
+         ENDPLANNER))
+
 saveRDS(jur6,
         paste0(jdir, 
                "postcleaned-",
