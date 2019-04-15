@@ -473,40 +473,14 @@ st_geometry(rockzoning_sf1)
 ```
 
 ```{r join rockville}
-#Sarah - i gain 6 obs here - can you figure out why and/or drop? 
 
-overlap <- st_intersection(rockzoning_sf1) %>% 
-  filter(n.overlaps > 1)
+# remove overlap in the zoning shapefile
+rzoning <- st_intersection(rockzoning_sf1) %>% 
+  filter(n.overlaps == 1)
 
-ggplot() +
-  geom_sf(overlap, mapping = aes()) +
-  coord_sf(datum = NA)
 
-rjoin <- st_join(pjoin2, rockzoning_sf1, join = st_intersects)
+rjoin <- st_join(pjoin2, rzoning, join = st_intersects)
 
-mult <- rjoin %>% 
-  as.data.frame() %>% 
-  group_by(propaddress) %>% 
-  summarize(zonelist = list(ZONE_)) %>% 
-  mutate(unq = map(zonelist, ~ length(unique(.)))) %>% 
-  filter(unq > 1)
-
-mult1 <- rjoin %>% 
-  as.data.frame() %>% 
-  group_by(assessorsparcelnumberapnpin, propaddress, ZONE_) %>%
-  summarize(count = n()) %>% 
-  mutate(rown = row_number()) %>% 
-  filter(rown > 1)
-
-rjoin1 <- rjoin %>% 
-  group_by(propaddress, ZONE_) %>% 
-  filter(row_number() == 1) %>% 
-  rbind(filter(rjoin, is.na(propaddress))) %>% 
-  ungroup()
-
-test <- rjoin %>% 
-  group_by(propaddress, ZONE_) %>% 
-  filter(row_number() > 1)
 ```
 
 ```{r test join rockville}
@@ -516,13 +490,13 @@ paste0(sum(!is.na(rjoin$ZONE)), " observations joined- ",
 
 ```
 
-16162 observations joined, so we estimate there are that many parcels in Rockville.
+16150 observations joined, so we estimate there are that many parcels in Rockville.
 
 ##### Replace BK Zoning with Rockvile Zoning 
 
 ```{r filter to make flag}
 
-rjoin2 <- rjoin1 %>% 
+rjoin2 <- rjoin %>% 
   # replace moco zoning with rockville zoning
   mutate(zoning = if_else(rockflag == 1, ZONE, zoning))
 
@@ -545,7 +519,6 @@ ggplot() +
 rjoin2 %>%  
   as.data.frame() %>% 
   count(notinmont, rockflag)
-
 
 ```
 
