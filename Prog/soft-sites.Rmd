@@ -120,7 +120,8 @@ gait <- readRDS(paste0(mudir,
          assessorsparcelnumberapnpin,
          propaddress, propcity,
          zoning_code,
-         units_total, units_height, units_lotsize)  %>% 
+         units_total, units_height, units_density,
+         units_lotsize)  %>% 
   mutate(jurisdiction = "Gaithersburg")
 
 fair <- readRDS(paste0(mudir,
