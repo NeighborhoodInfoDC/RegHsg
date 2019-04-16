@@ -407,12 +407,6 @@ zjoin %>%
 
 Our Data on the property city is not reliable, so we need to create a flag ourselves using the Rockville and Gaithersburg zoning layers to.
 
-#### Rockville
-
-I read in a rockville zoning file, and add a flag for any property that falls within the Rockville shape file. This will help us filter and use the right zoning code in the vacant lots analysis
-
-Read file, test geometry and projection.
-
 ```{r read tiger line 2018 place shapefile}
 
 #read in tiger line place file to create flags for places with their own zoning codes
@@ -452,6 +446,13 @@ count(pjoin2,othernotmoco)
 
 ```
 
+
+
+#### Rockville
+
+Read in Rockville shapefile.
+
+
 ```{r test-rockville-zoning}
 
 rockpfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts'), 
@@ -471,6 +472,7 @@ rockzoning_sf1 <- rockzoning_sf1 %>%
 
 st_geometry(rockzoning_sf1)
 ```
+Remove overlaps so that points do not join more than once.
 
 ```{r join rockville}
 
@@ -524,7 +526,7 @@ rjoin2 %>%
 
 
 After the join, we convert back to a dataframe, for ease of computations.
-```{r back-to-df again}
+```{r back-to-df-again}
 
 jur5 <- st_set_geometry(rjoin2, NULL)
 
@@ -545,7 +547,7 @@ jur5 %>%
 
 ## Missing zoning variables
 
-To determine zoning codes for addresses that have a missing zoning designation or multiple zoning designations, we will use a spatial join to the county's zoning layer.
+Use the montgomery county zoning layer to fill in any remaining missing zoning variables.
 
 
 ### Missing zoning
@@ -558,14 +560,7 @@ jur6 <- jur5 %>%
          # fill in whatever we can from the montgomery shape file if it's missing
          zoning = ifelse(is.na(zoning),
                              CODE,
-                             zoning)
-         
-         # we already replaced this so we don't want to use it to fill in right?
-         #fill in whatever we can from the rockville shape file if it's missing
-         #zoning = ifelse(is.na(zoning),
-                             #ZONE,
-                            #  zoning)
-         )
+                             zoning))
         
 
 ```
