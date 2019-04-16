@@ -745,28 +745,26 @@ Write out the results to a csv. Include jurisdiction name in the title.
 
 ```{r write-results-Rockville}
 
-#document blacknight number of units
-zoningdata_rockvile1_final2 <- get_unit_variables_r(dataset =zoningdata_rockvile1_final,
-                                                    construction_efficiency = .7,
-                                                     average_unit_size = 940) %>% 
-                     mutate(unit_bk= ifelse(category=="sf", 1, numberofunits))
+# #document blacknight number of units
+# zoningdata_rockvile1_final2 <- get_unit_variables_r(dataset =zoningdata_rockvile1_final,
+#                                                     construction_efficiency = .7,
+#                                                      average_unit_size = 940) %>% 
+#                      mutate(unit_bk= ifelse(category=="sf", 1, numberofunits))
 
 
-Rockvillevacant <- zoningdata_rockvile1_final2 %>% 
+Rockvillevacant <- zoningdata_rockvile1_final %>% 
             filter(category=="vacant"& smallsize_flag==0) 
             
 
-get_unit_variables_r(dataset =  zoningdata_rockvile1_final2,
+runits <- get_unit_variables_r(dataset =  zoningdata_rockvile1_final,
                  construction_efficiency = .7,
-                 average_unit_size = 940) %>% 
-  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
-                   "montgomery",
-                   "-Rockville-units.csv"))
+                 average_unit_size = 940)
 
-get_unit_variables_r(dataset =  zoningdata_rockvile1_final2,
-                 construction_efficiency = .7,
-                 average_unit_size = 940) %>% 
-  saveRDS("L:/Libraries/RegHsg/Data/montgomery/Rockville-max-units.Rdata")
+# write_csv(runits,
+#           "L:/Libraries/RegHsg/Prog/Tables/montgomery-Rockville-units.csv")
+
+saveRDS(runits,
+        "L:/Libraries/RegHsg/Data/montgomery/Rockville-max-units.Rdata")
 
 
 get_unit_summary_r(dataset =  Rockvillevacant,
@@ -851,6 +849,7 @@ get_unit_summary_g <- function(dataset,
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_density = sum(units_density, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
               units_per_lot = floor(sum(units_total / lots)),
               raw_units_per_lot = sum(units_total/lots))
@@ -968,38 +967,35 @@ zoningdata_gaithersburg1_final %>%
 
 Write out the results to a csv. Include jurisdiction name in the title.
 
-```{r write-results Gaithersburg}
+```{r write-results-Gaithersburg}
 #document blacknight number of units
 
-zoningdata_gaithersburg1_final2 <- 
-  get_unit_variables_g(dataset = zoningdata_gaithersburg1_final,
-                       construction_efficiency = .7,
-                       average_unit_size = 940) %>% 
-  mutate(unit_bk= ifelse(category=="sf", 1, numberofunits))
+# zoningdata_gaithersburg1_final2 <- 
+#   get_unit_variables_g(dataset = zoningdata_gaithersburg1_final,
+#                        construction_efficiency = .7,
+#                        average_unit_size = 940) %>% 
+#   mutate(unit_bk= ifelse(category=="sf", 1, numberofunits))
 
 
-gaithersburg1vacant <- zoningdata_gaithersburg1_final2 %>% 
-            filter(category=="vacant"& smallsize_flag==0) 
+gaithersburg1vacant <- zoningdata_gaithersburg1_final %>% 
+  filter(category == "vacant" & smallsize_flag == 0) 
 
 
-get_unit_variables_g(dataset =  zoningdata_gaithersburg1_final2,
-                     construction_efficiency = .7,
-                     average_unit_size = 940) %>% 
-  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
-                   "montgomery",
-                   "-Gaithersburg-units.csv"))
+gunits <- get_unit_variables_g(dataset =  zoningdata_gaithersburg1_final,
+                               construction_efficiency = .7,
+                               average_unit_size = 940)
 
 
-get_unit_variables_r(dataset =  zoningdata_gaithersburg1_final2,
-                 construction_efficiency = .7,
-                 average_unit_size = 940) %>% 
-  saveRDS("L:/Libraries/RegHsg/Data/montgomery/Gaithersburg-max-units.Rdata")
+# write_csv(gunits,
+#           "L:/Libraries/RegHsg/Prog/Tables/montgomery-Gaithersburg-units.csv")
+
+saveRDS(gunits,
+        "L:/Libraries/RegHsg/Data/montgomery/Gaithersburg-max-units.Rdata")
 
 get_unit_summary_g(dataset =  gaithersburg1vacant,
-                 construction_efficiency = .7,
-                 average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE) %>% 
-  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
-                   "montgomery",
-                   "-Gaithersburg-vacant-lots-analysis.csv"))
+                   construction_efficiency = .7,
+                   average_unit_size = 940,
+                   dwelling_type_breakdown = TRUE) %>% 
+  write_csv("L:/Libraries/RegHsg/Prog/Tables/montgomery-Gaithersburg-vacant-lots-analysis.csv")
+
 ```
