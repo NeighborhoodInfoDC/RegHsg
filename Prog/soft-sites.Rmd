@@ -219,13 +219,8 @@ mfmax %>%
 
 ```
 
+### Townhouses
 
+How many townhouses are on land zoned for multifamily?
 
-### Arlington
-
-### DC
-
-### Montgomery
-
-### Fairfax
 
