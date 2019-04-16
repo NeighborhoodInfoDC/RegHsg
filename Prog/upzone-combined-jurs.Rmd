@@ -674,7 +674,7 @@ clusters_three_ways(a_clusters)
 
 
 
-### Units Added
+### Units added per node
 
 Upzone each density group to the midpoint of the next group up.
 
@@ -683,53 +683,53 @@ Upzone each density group to the midpoint of the next group up.
 get_additional_units <- function(dataset) {
   
   values <- dataset %>% 
-  group_by(.cluster) %>% 
-  summarize(midpoint = min(density_residential) + 
+    group_by(.cluster) %>% 
+    summarize(midpoint = min(density_residential) + 
                 ((max(density_residential) - min(density_residential)) / 2 ),
-            min = min(density_residential))
-
+              min = min(density_residential))
+  
   
   v_midpoint <- pull(values, midpoint)
   v_min <- pull(values, min)
-
-    dataset %>% 
-      mutate(midpoint2 = v_midpoint[2],
-             midpoint3 = v_midpoint[3],
-             midpoint4 = v_midpoint[4],
-             midpoint5 = v_midpoint[5],
-             midpoint6 = v_midpoint[6],
-             min2 = v_min[2],
-             min3 = v_min[3],
-             min4 = v_min[4],
-             min5 = v_min[5],
-             min6 = v_min[6]) %>% 
-      mutate(density_midpoint = case_when(
-        .cluster == 1 ~ midpoint2,
-        .cluster == 2 ~ midpoint3,
-        .cluster == 3 ~ midpoint4,
-        .cluster == 4 ~ midpoint5,
-        .cluster == 5 ~ midpoint6,
-        TRUE ~ 0
-      )) %>% 
-      mutate(density_min = case_when(
-        .cluster == 1 ~ min2,
-        .cluster == 2 ~ min3,
-        .cluster == 3 ~ min4,
-        .cluster == 4 ~ min5,
-        .cluster == 5 ~ min6,
-        TRUE ~ 0
-      )) %>% 
-      mutate(units_midpoint = density_midpoint * residential_acres,
-             new_units_midpoint = ifelse(.cluster == 6,
-                                  0,
-                                  units_midpoint - number_of_units),
-             units_min = density_min * residential_acres,
-             new_units_min = ifelse(.cluster == 6,
+  
+  dataset %>% 
+    mutate(midpoint2 = v_midpoint[2],
+           midpoint3 = v_midpoint[3],
+           midpoint4 = v_midpoint[4],
+           midpoint5 = v_midpoint[5],
+           midpoint6 = v_midpoint[6],
+           min2 = v_min[2],
+           min3 = v_min[3],
+           min4 = v_min[4],
+           min5 = v_min[5],
+           min6 = v_min[6]) %>% 
+    mutate(density_midpoint = case_when(
+      .cluster == 1 ~ midpoint2,
+      .cluster == 2 ~ midpoint3,
+      .cluster == 3 ~ midpoint4,
+      .cluster == 4 ~ midpoint5,
+      .cluster == 5 ~ midpoint6,
+      TRUE ~ 0
+    )) %>% 
+    mutate(density_min = case_when(
+      .cluster == 1 ~ min2,
+      .cluster == 2 ~ min3,
+      .cluster == 3 ~ min4,
+      .cluster == 4 ~ min5,
+      .cluster == 5 ~ min6,
+      TRUE ~ 0
+    )) %>% 
+    mutate(units_midpoint = density_midpoint * residential_acres,
+           new_units_midpoint = ifelse(.cluster == 6,
+                                       0,
+                                       units_midpoint - number_of_units),
+           units_min = density_min * residential_acres,
+           new_units_min = ifelse(.cluster == 6,
                                   0,
                                   units_min - number_of_units)) %>% 
-      mutate(density_plus10p = density_residential * 1.1,
-             units_plus10p = density_plus10p * residential_acres,
-             units_added_plus10p = units_plus10p - number_of_units)
+    mutate(density_plus10p = density_residential * 1.1,
+           units_plus10p = density_plus10p * residential_acres,
+           units_added_plus10p = units_plus10p - number_of_units)
   
 }
 
@@ -758,7 +758,8 @@ upzone_summary <- bind_rows(t, a)
 upzone_summary %>% 
   knitr::kable()
 
-write_csv(upzone_summary, "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary_v2.csv")
+write_csv(upzone_summary, 
+          "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary_v2.csv")
 
 ```
 
@@ -777,6 +778,53 @@ clean_clusters <- t_clusters %>%
 
 write_csv(clean_clusters,
           "L:/Libraries/RegHsg/Prog/Tables/all-nodes-grouped_v2.csv")
+
+```
+
+
+### Total units
+
+Zoom in on a few regions to characterize the problem.
+
+```{r dc-overlap}
+
+dcb <- bound %>% 
+  filter(county_fips == "11001")
+
+dcn <- t_clusters %>% 
+  left_join(nodes_varies, by = c("name", "type" = "node")) %>% 
+  st_as_sf(crs = 4326) %>% 
+  st_intersection(dcb)
+
+ggplot() +
+  geom_sf(dcb, mapping = aes(),
+          fill = "grey") +
+  geom_sf(dcn, mapping = aes(fill = factor(.cluster)),
+          alpha = .4) +
+  coord_sf(datum = NA)
+
+dcni <- st_intersection(dcn)
+
+ggplot() +
+  geom_sf(dcb, mapping = aes(),
+          fill = "grey") +
+  geom_sf(dcni, mapping = aes(fill = factor(n.overlaps)),
+          alpha = .4) +
+  coord_sf(datum = NA)
+
+dcnd <- dcn %>% 
+  group_by(.cluster) %>% 
+  arrange(desc(.cluster)) %>% 
+  st_difference()
+
+ggplot() +
+  geom_sf(dcb, mapping = aes(),
+          fill = "grey") +
+  geom_sf(dcnd, mapping = aes(fill = factor(.cluster))) +
+  coord_sf(datum = NA)
+
+
+
 
 ```
 
