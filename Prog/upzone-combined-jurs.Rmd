@@ -786,6 +786,8 @@ write_csv(clean_clusters,
 
 Zoom in on a few regions to characterize the problem.
 
+The problem: nodes overlap.
+
 ```{r dc-overlap}
 
 dcb <- bound %>% 
@@ -803,18 +805,15 @@ ggplot() +
           alpha = .4) +
   coord_sf(datum = NA)
 
-dcni <- st_intersection(dcn)
+```
 
-ggplot() +
-  geom_sf(dcb, mapping = aes(),
-          fill = "grey") +
-  geom_sf(dcni, mapping = aes(fill = factor(n.overlaps)),
-          alpha = .4) +
-  coord_sf(datum = NA)
+Solution: give preference to denser node, and use remaining area to calculate a weight.
+
+```{r preference}
 
 dcnd <- dcn %>% 
   group_by(.cluster) %>% 
-  arrange(desc(.cluster)) %>% 
+  arrange(desc(.cluster), density_residential) %>% 
   st_difference()
 
 ggplot() +
@@ -824,9 +823,54 @@ ggplot() +
   coord_sf(datum = NA)
 
 
-
-
 ```
 
 
+Use the percentage of a buffer to calcalate.
 
+```{r calc-weight}
+
+t_weighted0 <- t_units %>% 
+  left_join(nodes_varies, by = c("name", "type" = "node")) %>% 
+  st_as_sf(crs = 4326)
+
+t_weighted0$total_area <-st_area(t_weighted0) %>% units::set_units("acres") %>% set_units(NULL)
+
+
+t_weighted <- t_weighted0 %>% 
+  group_by(.cluster) %>% 
+  arrange(desc(.cluster), density_residential) %>% 
+  st_difference()
+
+t_weighted$wt_area <-st_area(t_weighted) %>% units::set_units("acres") %>% set_units(NULL)
+
+t_weighted <- t_weighted %>% 
+  mutate(wt = wt_area / total_area,
+         wt_units_min = wt * new_units_min,
+         wt_units_mid = wt * new_units_midpoint)
+
+```
+
+Calculate sum of new units.
+
+```{r sum-units}
+
+t_weighted %>% 
+  as.data.frame() %>% 
+  summarize_at(vars(wt_units_min, wt_units_mid),
+               sum)
+
+```
+
+Units created per node
+
+```{r wt-units-per-node}
+
+
+ggplot() +
+  geom_sf(bound, mapping = aes(),
+          fill = "grey") +
+  geom_sf(t_weighted, mapping = aes(fill = wt_units_min)) +
+  coord_sf(datum = NA)
+
+```
