@@ -189,9 +189,24 @@ mfmax <- allmax %>%
          under30 = ifelse(numberofunits / units_total < .3,
                           1,
                           0),
-         units_behind = ifelse(units_total > numberofunits,
+         under50 = ifelse(numberofunits / units_total < .5,
+                          1,
+                          0),
+         under70 = ifelse(numberofunits / units_total < .7,
+                          1,
+                          0),
+         units_behind = ifelse(under == 1,
                                units_total - numberofunits,
-                               0))
+                               0),
+         units_behind_30 = ifelse(under30 == 1,
+                                  units_total - numberofunits,
+                                  0),
+         units_behind_50 = ifelse(under50 == 1,
+                                  units_total - numberofunits,
+                                  0),
+         units_behind_70 = ifelse(under70 == 1,
+                                  units_total - numberofunits,
+                                  0))
 
 mfsum <- mfmax %>% 
   group_by(jurisdiction) %>% 
@@ -201,9 +216,26 @@ mfsum <- mfmax %>%
             punder = sum(under) / n(),
             under30 = sum(under30),
             punder30 = sum(under30) / n(),
-            units_behind = sum(units_behind))
+            units_behind = sum(units_behind),
+            units_behind_30 = sum(units_behind_30))
 knitr::kable(mfsum)
 write_csv(mfsum, "L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf.csv")
+
+
+mflevels <- mfmax %>% 
+  group_by(jurisdiction) %>% 
+  summarize(total_mf = n(),
+            total_units = sum(numberofunits),
+            under = sum(under),
+            units_behind = sum(units_behind),
+            under30 = sum(under30),
+            units_behind_30 = sum(units_behind_30),
+            under50 = sum(under50),
+            units_behind_50 = sum(units_behind_50),
+            under70 = sum(under70),
+            units_behind_70 = sum(units_behind_70))
+knitr::kable(mflevels)
+write_csv(mflevels, "L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf-levels.csv")
 
 mfmax %>% 
   filter(putil < 1, putil > 0,

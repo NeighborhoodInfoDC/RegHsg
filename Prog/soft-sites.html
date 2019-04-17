@@ -316,7 +316,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated April 16, 2019</p>
+<p>Last updated April 17, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -441,9 +441,24 @@ g &lt;- allmax %&gt;%
          under30 = ifelse(numberofunits / units_total &lt; .3,
                           1,
                           0),
-         units_behind = ifelse(units_total &gt; numberofunits,
+         under50 = ifelse(numberofunits / units_total &lt; .5,
+                          1,
+                          0),
+         under70 = ifelse(numberofunits / units_total &lt; .7,
+                          1,
+                          0),
+         units_behind = ifelse(under == 1,
                                units_total - numberofunits,
-                               0))
+                               0),
+         units_behind_30 = ifelse(under30 == 1,
+                                  units_total - numberofunits,
+                                  0),
+         units_behind_50 = ifelse(under50 == 1,
+                                  units_total - numberofunits,
+                                  0),
+         units_behind_70 = ifelse(under70 == 1,
+                                  units_total - numberofunits,
+                                  0))
 
 mfsum &lt;- mfmax %&gt;% 
   group_by(jurisdiction) %&gt;% 
@@ -453,7 +468,8 @@ mfsum &lt;- mfmax %&gt;%
             punder = sum(under) / n(),
             under30 = sum(under30),
             punder30 = sum(under30) / n(),
-            units_behind = sum(units_behind))
+            units_behind = sum(units_behind),
+            units_behind_30 = sum(units_behind_30))
 knitr::kable(mfsum)</code></pre>
 <table>
 <thead>
@@ -466,6 +482,7 @@ knitr::kable(mfsum)</code></pre>
 <th align="right">under30</th>
 <th align="right">punder30</th>
 <th align="right">units_behind</th>
+<th align="right">units_behind_30</th>
 </tr>
 </thead>
 <tbody>
@@ -478,6 +495,7 @@ knitr::kable(mfsum)</code></pre>
 <td align="right">3</td>
 <td align="right">0.0011742</td>
 <td align="right">2199</td>
+<td align="right">189</td>
 </tr>
 <tr class="even">
 <td align="left">Arlington special exception</td>
@@ -488,6 +506,7 @@ knitr::kable(mfsum)</code></pre>
 <td align="right">15</td>
 <td align="right">0.0058708</td>
 <td align="right">14642</td>
+<td align="right">8362</td>
 </tr>
 <tr class="odd">
 <td align="left">DC</td>
@@ -498,6 +517,7 @@ knitr::kable(mfsum)</code></pre>
 <td align="right">73</td>
 <td align="right">0.0058149</td>
 <td align="right">2830</td>
+<td align="right">366</td>
 </tr>
 <tr class="even">
 <td align="left">Fairfax</td>
@@ -508,6 +528,7 @@ knitr::kable(mfsum)</code></pre>
 <td align="right">196</td>
 <td align="right">0.1157025</td>
 <td align="right">24679</td>
+<td align="right">19924</td>
 </tr>
 <tr class="odd">
 <td align="left">Gaithersburg</td>
@@ -518,6 +539,7 @@ knitr::kable(mfsum)</code></pre>
 <td align="right">6</td>
 <td align="right">0.0122699</td>
 <td align="right">1569</td>
+<td align="right">1097</td>
 </tr>
 <tr class="even">
 <td align="left">Montgomery</td>
@@ -528,6 +550,7 @@ knitr::kable(mfsum)</code></pre>
 <td align="right">20</td>
 <td align="right">0.0302115</td>
 <td align="right">2731</td>
+<td align="right">1222</td>
 </tr>
 <tr class="odd">
 <td align="left">Rockville</td>
@@ -538,10 +561,137 @@ knitr::kable(mfsum)</code></pre>
 <td align="right">39</td>
 <td align="right">0.0948905</td>
 <td align="right">3478</td>
+<td align="right">1717</td>
 </tr>
 </tbody>
 </table>
 <pre class="r"><code>write_csv(mfsum, &quot;L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf.csv&quot;)
+
+
+mflevels &lt;- mfmax %&gt;% 
+  group_by(jurisdiction) %&gt;% 
+  summarize(total_mf = n(),
+            total_units = sum(numberofunits),
+            under = sum(under),
+            units_behind = sum(units_behind),
+            under30 = sum(under30),
+            units_behind_30 = sum(units_behind_30),
+            under50 = sum(under50),
+            units_behind_50 = sum(units_behind_50),
+            under70 = sum(under70),
+            units_behind_70 = sum(units_behind_70))
+knitr::kable(mflevels)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">jurisdiction</th>
+<th align="right">total_mf</th>
+<th align="right">total_units</th>
+<th align="right">under</th>
+<th align="right">units_behind</th>
+<th align="right">under30</th>
+<th align="right">units_behind_30</th>
+<th align="right">under50</th>
+<th align="right">units_behind_50</th>
+<th align="right">under70</th>
+<th align="right">units_behind_70</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Arlington by right</td>
+<td align="right">2555</td>
+<td align="right">78340</td>
+<td align="right">172</td>
+<td align="right">2199</td>
+<td align="right">3</td>
+<td align="right">189</td>
+<td align="right">6</td>
+<td align="right">250</td>
+<td align="right">39</td>
+<td align="right">913</td>
+</tr>
+<tr class="even">
+<td align="left">Arlington special exception</td>
+<td align="right">2555</td>
+<td align="right">78340</td>
+<td align="right">206</td>
+<td align="right">14642</td>
+<td align="right">15</td>
+<td align="right">8362</td>
+<td align="right">27</td>
+<td align="right">11393</td>
+<td align="right">68</td>
+<td align="right">13066</td>
+</tr>
+<tr class="odd">
+<td align="left">DC</td>
+<td align="right">12554</td>
+<td align="right">81568</td>
+<td align="right">678</td>
+<td align="right">2830</td>
+<td align="right">73</td>
+<td align="right">366</td>
+<td align="right">225</td>
+<td align="right">1356</td>
+<td align="right">546</td>
+<td align="right">2361</td>
+</tr>
+<tr class="even">
+<td align="left">Fairfax</td>
+<td align="right">1694</td>
+<td align="right">41531</td>
+<td align="right">553</td>
+<td align="right">24679</td>
+<td align="right">196</td>
+<td align="right">19924</td>
+<td align="right">283</td>
+<td align="right">20984</td>
+<td align="right">403</td>
+<td align="right">21999</td>
+</tr>
+<tr class="odd">
+<td align="left">Gaithersburg</td>
+<td align="right">489</td>
+<td align="right">10641</td>
+<td align="right">129</td>
+<td align="right">1569</td>
+<td align="right">6</td>
+<td align="right">1097</td>
+<td align="right">10</td>
+<td align="right">1152</td>
+<td align="right">33</td>
+<td align="right">1353</td>
+</tr>
+<tr class="even">
+<td align="left">Montgomery</td>
+<td align="right">662</td>
+<td align="right">32225</td>
+<td align="right">95</td>
+<td align="right">2731</td>
+<td align="right">20</td>
+<td align="right">1222</td>
+<td align="right">22</td>
+<td align="right">1413</td>
+<td align="right">45</td>
+<td align="right">2015</td>
+</tr>
+<tr class="odd">
+<td align="left">Rockville</td>
+<td align="right">411</td>
+<td align="right">9546</td>
+<td align="right">208</td>
+<td align="right">3478</td>
+<td align="right">39</td>
+<td align="right">1717</td>
+<td align="right">52</td>
+<td align="right">2929</td>
+<td align="right">198</td>
+<td align="right">3445</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>write_csv(mflevels, &quot;L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf-levels.csv&quot;)
 
 mfmax %&gt;% 
   filter(putil &lt; 1, putil &gt; 0,
