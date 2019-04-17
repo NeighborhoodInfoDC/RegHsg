@@ -548,19 +548,24 @@ set.seed(20190410)
 
 #' Get clusters
 #'
-#' @description This function take a dataset and uses k means clustering to cluster the data, and then augments the clusters back on to the original dataset.
+#' @description This function takes a dataset and uses k means clustering to cluster the data, and then augments the clusters back on to the original dataset.
 #'
 #' @param dataset dataframe to cluster 
+#' @param n_clusters number of clusters to create
 #'
 #' @return Returns the same dataframe with the addition of the .cluster variable
-get_clusters <- function(dataset, clusters) {
+get_clusters <- function(dataset, n_clusters) {
   
   rescaled_data <- dataset %>% 
-  mutate(density_residential = scales::rescale(density_residential, 
+  mutate(dr = scales::rescale(density_residential, 
+                                               to = c(1, 100)),
+         dr1 = scales::rescale(density_residential, 
+                                               to = c(1, 100)),
+         number_of_units = scales::rescale(number_of_units, 
                                                to = c(1, 100))) %>% 
-  select(density_residential)
+  select(dr, dr1, number_of_units)
 
-  clusters <- kmeans(rescaled_data, centers = clusters, nstart = clusters)
+  clusters <- kmeans(rescaled_data, centers = n_clusters, nstart = n_clusters)
   
   tc <- augment(clusters, dataset)
   
@@ -569,7 +574,7 @@ get_clusters <- function(dataset, clusters) {
   group_by(.cluster) %>% 
   summarize(cluster_mean = mean(density_residential)) %>% 
   arrange(cluster_mean) %>% 
-  mutate(new_cluster = 1:6)
+  mutate(new_cluster = 1:n_clusters)
 
   tc %>% 
   left_join(tb, by = ".cluster") %>% 
@@ -580,7 +585,7 @@ get_clusters <- function(dataset, clusters) {
 
 #' Summarize clusters
 #'
-#' This function created a summary table of the number of observations and the mean of residential_density. It can be used to renumber the clusters in ascending order.
+#' This function creates a summary table of the number of observations and the mean of residential_density. It can be used to renumber the clusters in ascending order.
 #'
 #' @param dataset Dataset that has been created by get_clusters function.
 #'
@@ -647,12 +652,16 @@ Cluster transit nodes.
 
 t_clusters <- individual_transit %>% 
   filter(pother < .7) %>% 
-  get_clusters(6)
+  get_clusters(7)
 
 summarize_clusters(t_clusters) %>% 
   knitr::kable()
 
 clusters_three_ways(t_clusters)
+
+ggplot(t_clusters) +
+  geom_point(mapping = aes(density_residential, number_of_units,
+                           color = factor(.cluster)))
 
 ```
 
@@ -778,6 +787,15 @@ clean_clusters <- t_clusters %>%
 
 write_csv(clean_clusters,
           "L:/Libraries/RegHsg/Prog/Tables/all-nodes-grouped_v2.csv")
+
+t_clusters %>% 
+  arrange(type, .cluster, density_residential) %>% 
+  select(type, group = .cluster, name, 
+         residential_parcels, total_acres,
+         number_of_units, residential_acres,
+         density_residential) %>% 
+  write_csv("L:/Libraries/RegHsg/Prog/Tables/transit-clusters.csv")
+
 
 ```
 
