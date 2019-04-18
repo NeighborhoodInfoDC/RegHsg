@@ -561,9 +561,11 @@ get_clusters <- function(dataset, n_clusters) {
                                                to = c(1, 100)),
          dr1 = scales::rescale(density_residential, 
                                                to = c(1, 100)),
+         dr2 = scales::rescale(density_residential, 
+                                               to = c(1, 100)),
          number_of_units = scales::rescale(number_of_units, 
                                                to = c(1, 100))) %>% 
-  select(dr, dr1, number_of_units)
+  select(dr, dr1, dr2, number_of_units)
 
   clusters <- kmeans(rescaled_data, centers = n_clusters, nstart = n_clusters)
   
@@ -644,6 +646,7 @@ clusters_three_ways <- function(cluster_data) {
 }
 
 
+
 ```
 
 Cluster transit nodes.
@@ -661,7 +664,17 @@ clusters_three_ways(t_clusters)
 
 ggplot(t_clusters) +
   geom_point(mapping = aes(density_residential, number_of_units,
-                           color = factor(.cluster)))
+                           color = factor(.cluster))) +
+    scale_x_continuous(breaks = 0:13 * 10,
+                       limits = c(0, 130),
+                       expand = expand_scale(mult = c(.002, 0))) +
+    scale_y_continuous(breaks = 0:6 * 3000,
+                       limits = c(0, 18000),
+                       labels = scales::comma,
+                       expand = expand_scale(mult = c(0, .002))) +
+    labs(x = "Residential density",
+         y = "Number of housing units in buffer") +
+    scatter_grid()
 
 ```
 
@@ -672,12 +685,26 @@ Cluster activity centers.
 
 a_clusters <- individual_activity_varied %>% 
   filter(pother < .7) %>% 
-  get_clusters(6)
+  get_clusters(7)
 
 summarize_clusters(a_clusters) %>% 
   knitr::kable()
 
 clusters_three_ways(a_clusters)
+
+ggplot(a_clusters) +
+  geom_point(mapping = aes(density_residential, number_of_units,
+                           color = factor(.cluster))) +
+    scale_x_continuous(breaks = 0:16 * 10,
+                       limits = c(0, 160),
+                       expand = expand_scale(mult = c(.002, 0))) +
+    scale_y_continuous(breaks = 0:8 * 4000,
+                       limits = c(0, 32000),
+                       labels = scales::comma,
+                       expand = expand_scale(mult = c(0, .002))) +
+    labs(x = "Residential density",
+         y = "Number of housing units in buffer") +
+    scatter_grid()
 
 ```
 
