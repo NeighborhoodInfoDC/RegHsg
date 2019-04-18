@@ -178,7 +178,8 @@ g <- allmax %>%
 ```{r mf}
 
 mfmax <- allmax %>% 
-  filter(category == "mf",
+  filter(category == "mf", 
+         numberofunits > 1,
          !is.na(numberofunits),
          !is.na(lotsize_sf),
          !is.na(units_total)) %>% 
@@ -242,12 +243,26 @@ mfmax %>%
          # jurisdiction != "Gaithersburg",
          jurisdiction != "Arlington by right") %>% 
   ggplot() +
-  geom_histogram(mapping = aes(putil)) +
+  geom_histogram(mapping = aes(putil),
+                 bins = 20) +
   scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
   scale_y_continuous(expand = expand_scale(mult = c(0,0.1))) +
   facet_wrap(~county_name) +
   labs(x = "Percent of maximum capacity",
        title = "Utilization distribution for under-utilized land")
+
+```
+
+Check FF 
+
+```{r ff}
+
+ff <- mfmax %>% 
+  filter(jurisdiction == "Fairfax")
+
+
+m <- mfmax %>% 
+  filter(county_name == "Montgomery County")
 
 ```
 
