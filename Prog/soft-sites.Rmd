@@ -251,9 +251,23 @@ mfmax %>%
   labs(x = "Percent of maximum capacity",
        title = "Utilization distribution for under-utilized land")
 
+
+mfmax %>% 
+  filter(putil < 1, putil > 0,
+         county_name == "Arlington County") %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(putil),
+                 bins = 50) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_y_continuous(expand = expand_scale(mult = c(0,0.1))) +
+  facet_wrap(~jurisdiction, nrow = 2) +
+  labs(x = "Percent of maximum capacity",
+       title = "Utilization distribution for under-utilized land")
+
+
 ```
 
-Check FF 
+Check individual jurisdictions.
 
 ```{r ff}
 
@@ -263,6 +277,11 @@ ff <- mfmax %>%
 
 m <- mfmax %>% 
   filter(county_name == "Montgomery County")
+
+
+a <- mfmax %>% 
+  filter(jurisdiction == "Arlington special exception")
+
 
 ```
 
