@@ -543,8 +543,7 @@ We will use K means clustering using `density_residential` as the clustering var
 Set the seeds and make functions to simplify clustering.
 
 ```{r kmeans}
-
-set.seed(20190410)
+  
 
 #' Get clusters
 #'
@@ -552,22 +551,24 @@ set.seed(20190410)
 #'
 #' @param dataset dataframe to cluster 
 #' @param n_clusters number of clusters to create
+#' @param seed set seed
 #'
 #' @return Returns the same dataframe with the addition of the .cluster variable
-get_clusters <- function(dataset, n_clusters) {
+get_clusters <- function(dataset, n_clusters, seed) {
+  
+  set.seed(seed)
   
   rescaled_data <- dataset %>% 
   mutate(dr = scales::rescale(density_residential, 
                                                to = c(1, 100)),
          dr1 = scales::rescale(density_residential, 
                                                to = c(1, 100)),
-         dr2 = scales::rescale(density_residential, 
-                                               to = c(1, 100)),
          number_of_units = scales::rescale(number_of_units, 
                                                to = c(1, 100))) %>% 
-  select(dr, dr1, dr2, number_of_units)
+  select(dr, dr1, number_of_units)
 
-  clusters <- kmeans(rescaled_data, centers = n_clusters, nstart = n_clusters)
+  clusters <- kmeans(rescaled_data, centers = n_clusters, nstart = n_clusters,
+                     iter.max = 100)
   
   tc <- augment(clusters, dataset)
   
@@ -589,12 +590,12 @@ get_clusters <- function(dataset, n_clusters) {
 #'
 #' This function creates a summary table of the number of observations and the mean of residential_density. It can be used to renumber the clusters in ascending order.
 #'
-#' @param dataset Dataset that has been created by get_clusters function.
+#' @param cluster_data dataset that has been created by get_clusters function, with .cluster variable
 #'
 #' @return Returns a summary table of the number of observations and the mean of residential_density
-summarize_clusters <- function(dataset) {
+summarize_clusters <- function(cluster_data) {
   
-  dataset %>% 
+  cluster_data %>% 
   group_by(.cluster) %>% 
   summarize(n(),
             mean(density_residential))
@@ -605,7 +606,7 @@ summarize_clusters <- function(dataset) {
 #'
 #' @description This function creates three plots that summarize the density clusters: a choropleth map, a histogram, and a bar plot that displays the mean and midpoint of each group.
 #'
-#' @param cluster_data dataset with .cluster variable that indicates the group of the cluster
+#' @param cluster_data dataset that has been created by get_clusters function, with .cluster variable
 #'
 #' @return returns a grid of three plots
 clusters_three_ways <- function(cluster_data) {
@@ -653,9 +654,10 @@ Cluster transit nodes.
 
 ```{r cluster-t}
 
+
 t_clusters <- individual_transit %>% 
   filter(pother < .7) %>% 
-  get_clusters(7)
+  get_clusters(n_clusters = 7, seed = 20190410)
 
 summarize_clusters(t_clusters) %>% 
   knitr::kable()
@@ -685,7 +687,7 @@ Cluster activity centers.
 
 a_clusters <- individual_activity_varied %>% 
   filter(pother < .7) %>% 
-  get_clusters(7)
+  get_clusters(n_clusters = 7, seed = 20190410)
 
 summarize_clusters(a_clusters) %>% 
   knitr::kable()
