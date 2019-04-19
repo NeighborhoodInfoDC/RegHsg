@@ -980,7 +980,8 @@ t_units_c %>%
   as.data.frame() %>% 
   group_by(type) %>% 
   summarize_at(vars(new_units_midpoint_wt, new_units_min_wt, new_units_custom_wt),
-               sum)
+               sum) %>%
+  knitr::kable()
 
 ```
 
