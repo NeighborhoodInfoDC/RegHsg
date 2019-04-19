@@ -540,7 +540,21 @@ We will use K means clustering using `density_residential` as the clustering var
 
 #### K means
 
-Set the seeds and make functions to simplify clustering.
+Look for optimal number of clusters.
+
+```{r c-optimal}
+
+t1 <- individual_transit %>%
+  select(dr = density_residential, number_of_units) %>% 
+  # mutate(dr1 = dr) %>% 
+  scale()
+
+
+NbClust::NbClust(t1, method = "kmeans", min.nc = 2, max.nc = 10)
+
+```
+
+Make functions to simplify clustering. Set seed inside function for consistency.
 
 ```{r kmeans}
   
@@ -657,7 +671,7 @@ Cluster transit nodes.
 
 t_clusters <- individual_transit %>% 
   filter(pother < .7) %>% 
-  get_clusters(n_clusters = 7, seed = 20190410)
+  get_clusters(n_clusters = 8, seed = 20190410)
 
 summarize_clusters(t_clusters) %>% 
   knitr::kable()
