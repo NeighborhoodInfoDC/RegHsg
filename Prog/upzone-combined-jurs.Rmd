@@ -517,22 +517,112 @@ individual_varies <- bind_rows(individual_transit, individual_activity_varied)
 ```
 
 
+
 Write out results.
 
 ```{r write-inv}
 
 
-write_csv(individual_transit,
-          "L:/Libraries/RegHsg/Prog/Tables/upzoning-transit.csv")
+# write_csv(individual_transit,
+#           "L:/Libraries/RegHsg/Prog/Tables/upzoning-transit.csv")
+# 
+# write_csv(individual_activity_varied,
+#           "L:/Libraries/RegHsg/Prog/Tables/upzoning-activity.csv")
+# 
+# write_csv(individual_varies,
+#           "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-varied.csv")
+# 
+```
 
-write_csv(individual_activity_varied,
-          "L:/Libraries/RegHsg/Prog/Tables/upzoning-activity.csv")
 
-write_csv(individual_varies,
-          "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-varied.csv")
+#### Develop weights for calculation
+
+In order to get one number to summarize the analysis for the region and each jurisdiction, we will need to develop weights so that we are not over-counting units.
+
+The problem: nodes overlap.
+
+```{r dc-overlap}
+
+dcb <- bound %>% 
+  filter(county_fips == "11001")
+
+dcn <- individual_transit %>% 
+  left_join(nodes_varies, by = c("name", "type" = "node")) %>% 
+  st_as_sf(crs = 4326) %>% 
+  st_intersection(dcb)
+
+ggplot() +
+  geom_sf(dcb, mapping = aes(),
+          fill = "grey") +
+  geom_sf(dcn, mapping = aes(fill = density_residential),
+          alpha = .4) +
+  scale_fill_gradientn() +
+  theme_urbn_map() +
+  theme(legend.key.height = unit(.3, "in")) +
+  coord_sf(datum = NA)
 
 ```
 
+Solution: give preference to denser node, and use remaining area to calculate a weight.
+
+```{r preference}
+
+dcnd <- dcn %>% 
+  arrange(desc(density_residential)) %>% 
+  st_difference()
+
+ggplot() +
+  geom_sf(dcb, mapping = aes(),
+          fill = "grey", color = "black")+
+  geom_sf(dcnd, mapping = aes(fill = density_residential),
+          alpha = .9) +
+  scale_fill_gradientn() +
+  coord_sf(datum = NA) +
+  theme_urbn_map() +
+  theme(legend.key.height = unit(.3, "in")) +
+  guides(fill = guide_colorbar(title = "Residential density"))
+
+```
+
+
+Use the percentage of a buffer to calcalate weights.
+
+```{r calc-weight}
+
+
+get_weights <- function(dataset) {
+  
+  weighted0 <- dataset %>% 
+  left_join(nodes_varies, by = c("name", "type" = "node")) %>% 
+  st_as_sf(crs = 4326)
+
+  weighted0$total_area <-st_area(weighted0) %>% units::set_units("acres") %>% set_units(NULL)
+  
+  weighted <- weighted0 %>% 
+    arrange(desc(density_residential)) %>% 
+    st_difference()
+  
+  weighted$wt_area <-st_area(weighted) %>% units::set_units("acres") %>% set_units(NULL)
+  
+  weighted %>% 
+    mutate(wt = wt_area / total_area)
+
+}
+
+
+```
+
+Weight transit and activity centers.
+
+```{r apply-weights}
+
+t_weighted <- get_weights(individual_transit)
+st_geometry(t_weighted) <- NULL
+
+a_weighted <- get_weights(individual_activity_varied)
+st_geometry(a_weighted) <- NULL
+
+```
 
 ### Group nodes based on density
 
@@ -669,7 +759,7 @@ Cluster transit nodes.
 ```{r cluster-t}
 
 
-t_clusters <- individual_transit %>% 
+t_clusters <- t_weighted %>% 
   filter(pother < .7) %>% 
   get_clusters(n_clusters = 8, seed = 20190410)
 
@@ -699,7 +789,7 @@ Cluster activity centers.
 
 ```{r cluster-a}
 
-a_clusters <- individual_activity_varied %>% 
+a_clusters <- a_weighted %>% 
   filter(pother < .7) %>% 
   get_clusters(n_clusters = 8, seed = 20190410)
 
@@ -727,6 +817,8 @@ ggplot(a_clusters) +
 
 
 ### Units added per node
+
+#### Group to next group
 
 Upzone each density group to the midpoint of the next group up.
 
@@ -782,66 +874,95 @@ get_additional_units <- function(dataset) {
            units_min = density_min * residential_acres,
            new_units_min = ifelse(.cluster %in% c(7, 8),
                                   0,
-                                  units_min - number_of_units)) %>% 
-    mutate(density_plus10p = density_residential * 1.1,
-           units_plus10p = density_plus10p * residential_acres,
-           units_added_plus10p = units_plus10p - number_of_units)
+                                  units_min - number_of_units),
+           new_units_midpoint_wt = new_units_midpoint * wt,
+           new_units_min_wt = new_units_min * wt)
   
 }
 
+summarize_new_units <- function(cluster_data) {
+  
+  cluster_data %>% 
+    group_by(type, .cluster) %>% 
+    summarize_at(vars(density_residential, number_of_units,
+                      density_midpoint, new_units_midpoint,
+                      density_min, new_units_min),
+                 mean)
+}
+
+
 t_units <- get_additional_units(t_clusters)
-
-t <- t_units %>% 
-  group_by(type, .cluster) %>% 
-  summarize_at(vars(density_residential, number_of_units,
-                    density_midpoint, new_units_midpoint,
-                    density_min, new_units_min),
-               mean)
-
-
 a_units <- get_additional_units(a_clusters)
 
-a <- a_units %>% 
-  group_by(type, .cluster) %>% 
-  summarize_at(vars(density_residential, number_of_units,
-                    density_midpoint, new_units_midpoint,
-                    density_min, new_units_min),
-               mean)
 
-
-upzone_summary <- bind_rows(t, a)
-
-upzone_summary %>% 
-  knitr::kable()
-
-write_csv(upzone_summary, 
-          "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary_v2.csv")
+# write_csv(upzone_summary, 
+#           "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary_v2.csv")
 
 ```
 
 
-Clean up groups and export.
+#### Custom
 
-```{r clean-groups}
+Pick rules for groups. This will vary between transit and activity centers.
 
-clean_clusters <- t_clusters %>% 
-  bind_rows(a_clusters) %>% 
-  arrange(type, .cluster, density_residential) %>% 
-  select(type, group = .cluster, name, 
-         residential_parcels, total_acres,
-         number_of_units, residential_acres,
-         density_residential)
+For transit:
 
-write_csv(clean_clusters,
-          "L:/Libraries/RegHsg/Prog/Tables/all-nodes-grouped_v2.csv")
+* **Group 1:** Upzone to 10 units per acre.
+* **Groups 2, 3, 4, 6, and 7:** upzone by 20%.
+* **Groups 5 and 8:** No change.
 
-t_clusters %>% 
-  arrange(type, .cluster, density_residential) %>% 
-  select(type, group = .cluster, name, 
-         residential_parcels, total_acres,
-         number_of_units, residential_acres,
-         density_residential) %>% 
-  write_csv("L:/Libraries/RegHsg/Prog/Tables/transit-clusters.csv")
+
+```{r t-custom}
+
+t_units_c <- t_units %>% 
+  mutate(density_new = 
+           case_when(
+             .cluster == 1 ~ 10,
+             .cluster %in% c(2, 3, 4, 6, 7) ~ density_residential * 1.2,
+             .cluster %in% c(5, 8) ~ density_residential
+           )) %>% 
+  mutate(units = density_new * residential_acres,
+         new_units = ifelse(.cluster %in% c(5, 8),
+                            0,
+                            units - number_of_units),
+         new_units_wt = new_units * wt)
+
+t_units_c %>% 
+    group_by(type, .cluster) %>% 
+    summarize_at(vars(density_residential, number_of_units,
+                      density_new, 
+                      units, new_units),
+                 mean)
+
+
+```
+
+For activity centers:
+
+* **Groups 1, 2, 3, 4, 5, 6:** upzone by 20%.
+* **Groups 7:** No change.
+
+```{r a-custom}
+
+a_units_c <- a_units %>% 
+  mutate(density_new = 
+           case_when(
+             .cluster == 1 ~ density_residential * 1.2,
+             .cluster %in% c(2, 3, 4, 5, 6) ~ density_residential * 1.2,
+             .cluster %in% c(7, 8) ~ density_residential
+           )) %>% 
+  mutate(units = density_new * residential_acres,
+         new_units = ifelse(.cluster %in% c(7, 8),
+                            0,
+                            units - number_of_units)) %>% 
+  mutate(new_units_wt = new_units * wt)
+
+a_units_c %>% 
+    group_by(type, .cluster) %>% 
+    summarize_at(vars(density_residential, number_of_units,
+                      density_new, 
+                      units, new_units),
+                 mean)
 
 
 ```
@@ -849,93 +970,17 @@ t_clusters %>%
 
 ### Total units
 
-Zoom in on a few regions to characterize the problem.
-
-The problem: nodes overlap.
-
-```{r dc-overlap}
-
-dcb <- bound %>% 
-  filter(county_fips == "11001")
-
-dcn <- t_clusters %>% 
-  left_join(nodes_varies, by = c("name", "type" = "node")) %>% 
-  st_as_sf(crs = 4326) %>% 
-  st_intersection(dcb)
-
-ggplot() +
-  geom_sf(dcb, mapping = aes(),
-          fill = "grey") +
-  geom_sf(dcn, mapping = aes(fill = factor(.cluster)),
-          alpha = .4) +
-  coord_sf(datum = NA)
-
-```
-
-Solution: give preference to denser node, and use remaining area to calculate a weight.
-
-```{r preference}
-
-dcnd <- dcn %>% 
-  group_by(.cluster) %>% 
-  arrange(desc(.cluster), desc(density_residential)) %>% 
-  st_difference()
-
-ggplot() +
-  geom_sf(dcb, mapping = aes(),
-          fill = "grey") +
-  geom_sf(dcnd, mapping = aes(fill = factor(.cluster))) +
-  coord_sf(datum = NA)
-
-
-```
-
-
-Use the percentage of a buffer to calcalate.
-
-```{r calc-weight}
-
-t_weighted0 <- t_units %>% 
-  left_join(nodes_varies, by = c("name", "type" = "node")) %>% 
-  st_as_sf(crs = 4326)
-
-t_weighted0$total_area <-st_area(t_weighted0) %>% units::set_units("acres") %>% set_units(NULL)
-
-
-t_weighted <- t_weighted0 %>% 
-  group_by(.cluster) %>% 
-  arrange(desc(.cluster), density_residential) %>% 
-  st_difference()
-
-t_weighted$wt_area <-st_area(t_weighted) %>% units::set_units("acres") %>% set_units(NULL)
-
-t_weighted <- t_weighted %>% 
-  mutate(wt = wt_area / total_area,
-         wt_units_min = wt * new_units_min,
-         wt_units_mid = wt * new_units_midpoint)
-
-```
-
-Calculate sum of new units.
+Calculate sum of new units for each method, using weights.
 
 ```{r sum-units}
 
-t_weighted %>% 
+t_units_c %>% 
+  bind_rows(a_units_c) %>% 
+  rename(new_units_custom_wt = new_units_wt) %>% 
   as.data.frame() %>% 
-  summarize_at(vars(wt_units_min, wt_units_mid),
+  group_by(type) %>% 
+  summarize_at(vars(new_units_midpoint_wt, new_units_min_wt, new_units_custom_wt),
                sum)
 
 ```
 
-Units created per node
-
-```{r wt-units-per-node}
-
-
-ggplot() +
-  geom_sf(bound, mapping = aes(),
-          fill = "grey") +
-  geom_sf(t_weighted, mapping = aes(fill = wt_units_min)) +
-  coord_sf(datum = NA)
-
-```
