@@ -729,12 +729,14 @@ tempTable<-anti_join(jurfinal, zoningcode, by = c("zoning_code"="code")) %>%
                                             zoning_code %in% residential_weird ~ "residential weird",
                                             T ~ "other"))
 
-tempTable %>% group_by(type) %>% summarise(totalLots = sum(n, na.rm=T))%>%
+temperTable <- tempTable %>% group_by(type) %>% summarise(totalLots = sum(n, na.rm=T))
+
+temperTable%>%
   knitr::kable()
 
 ```
 
-Of those that do not match, 92% (107,951) are in planning development districts, some of which have residential uses. However, developers must pass the development plan process before building in these districts. 35 of those classified as "residential weird" are vacant.
+Of those that do not match, `r paste0(round(temperTable %>% filter(type=="planned") %>% pull(totalLots) / temperTable$totalLots %>% sum, 2)*100, "%")` (`r temperTable %>% filter(type=="planned") %>% pull(totalLots)`) are in planning development districts, some of which have residential uses. However, developers must pass the development plan process before building in these districts. `r temperTable %>% filter(type == "residential weird") %>% pull(totalLots)` of those classified as "residential weird" are vacant.
 ```{r results = F}
 
 
@@ -825,23 +827,23 @@ get_unit_variables <- function(dataset,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height / 10),
            units_height = units_per_floor * floors,
-           units_lotsize = floor(lotsize_sf / density),
-           subset = ifelse(is.na(lot_area_min), NA, (lotsize_sf/lot_area_min))) %>%    #,
-          # temp_acre = living_area/43560,
-           #units_acre = temp_acre*max_dens,
-          # units_area = ifelse(units_acre<units_height, units_acre, units_height)) %>% 
-    mutate_at(vars(units_height, units_lotsize),
+           units_density = floor(lotsize_sf / density),
+           subset = ifelse(is.na(lot_area_min), NA, floor(lotsize_sf/lot_area_min))) %>%   
+         
+      mutate_at(vars(units_height, units_density),
               funs(case_when(
-                lot_area_min > lotsize_sf ~ 0,
-                one_unit_flag == 1 ~ 1,
-                two_unit_flag == 1 ~ 2,
-                one_unit_flag == 1 & subset>=1 & units_lotsize/subset>=1 ~ 1*subset,
-                two_unit_flag == 1 & subset>=1 & units_lotsize/subset>=2 ~ 2*subset,
+                living_area < density ~ 0,
+                one_unit_flag == 1 & is.na(.) ~ 1,
+                one_unit_flag == 1 & subset > 1 & !is.na(subset) ~ subset,
+                one_unit_flag == 1 & (subset < 1 | is.na(subset)) ~ 1,
+                two_unit_flag == 1 & . >= 2 & !is.na(subset) ~ 2 * subset,
+                two_unit_flag == 1 & . >= 2 & (subset < 1 | is.na(subset)) ~ 2,
                 TRUE ~ .))) %>% 
-    mutate(units_total = case_when(
-      units_height < units_lotsize ~ units_height,
-      TRUE ~ units_lotsize))
-  
+      mutate(units_total = case_when(
+             lotsize_sf < lot_area_min ~ 0,
+              living_area < density ~ 0,
+              TRUE ~ pmin(units_density, units_height, na.rm = TRUE)))
+    
 }
 
 #' Get maximum unit summary
@@ -865,7 +867,7 @@ get_unit_summary <- function(dataset,
     group_by(parameters) %>% 
     summarize(lots = n(),
               units_height = sum(units_height),
-              units_lotsize = sum(units_lotsize),
+              units_density = sum(units_density),
               units_total = sum(units_total),
               units_per_lot = floor(sum(units_total / lots)))
              # units_area = sum(units_area),
@@ -877,11 +879,11 @@ get_unit_summary <- function(dataset,
     group_by(parameters, dwelling_type) %>% 
     summarize(lots = n(),
               units_height = sum(units_height),
-              units_lotsize = sum(units_lotsize),
+              units_density = sum(units_density),
               units_total = sum(units_total),
               units_per_lot = floor(sum(units_total / lots))) %>%
-              #units_area = sum(units_area),
-             # units_acre = sum(units_acre)) %>% 
+          
+    
     mutate(dwelling_type = as.character(dwelling_type))
   
   
