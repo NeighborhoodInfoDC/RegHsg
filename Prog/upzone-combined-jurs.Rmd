@@ -405,6 +405,7 @@ Pick one node to test and visualize the calculation. Use Crystal City as an exam
 ```{r clar}
 
 cc <- filter(nodes_varies, name == "Crystal City", node == "Transit")
+dc <- filter(nodes_varies, name == "Dupont Circle", node == "Transit")
 
 ```
 
@@ -413,6 +414,40 @@ Clip the Black Knight data to the extent of the activity center.
 ```{r clip-zon}
 
 bk_cc <- st_intersection(parcel2, cc)
+bk_dc <- st_intersection(parcel2, dc)
+
+```
+
+Run additional checks on Dupont Circle.
+
+```{r dupont}
+
+bk_dc <- bk_dc %>% 
+  mutate(units_grouped = case_when(
+    category %in% c("other") ~ "commerical and office",
+    category %in% "vacant" ~ "vacant",
+    numberofunits == 1 ~ "1 unit",
+    numberofunits %in% 2:4 ~ "2-4 units",
+    numberofunits %in% 5:20 ~ "5-20 units",
+    numberofunits %in% 20:100 ~ "20-100 units",
+    numberofunits > 100 ~ "100+ units",
+    TRUE ~ "missing"
+  )) %>% 
+  mutate(units_grouped = factor(units_grouped,
+                                levels = c("1 unit", "2-4 units",
+                                           "5-20 units", "20-100 units",
+                                           "100+ units", 
+                                           "commerical and office", "vacant",
+                                           "missing")))
+
+ggplot() +
+  geom_sf(bk_dc, mapping = aes(color = units_grouped),
+          show.legend = "point") +
+  scale_color_manual(values = c("#A2D4EC","#73BFE2","#1696d2","#12719e","#062635",
+                               "#fdbf11", "#ec008b", "#d2d2d2")) +
+  coord_sf(datum = NA)
+
+count(bk_dc, units_grouped, is.na(propaddress))
 
 ```
 
