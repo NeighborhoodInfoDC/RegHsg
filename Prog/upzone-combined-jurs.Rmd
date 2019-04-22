@@ -368,7 +368,7 @@ parcel1 %>%
 ```
 
 
-## Individual nodes
+## Upzone
 
 ### Calculate density
 
@@ -417,7 +417,7 @@ bk_cc <- st_intersection(parcel2, cc)
 ```
 
 
-Calculate table. Remove obsevations that are missing either lot size of number of units- having one absent from the numerator or denominator will skew the calculation.
+Calculate table. Remove observations that are missing either lot size of number of units- having one absent from the numerator or denominator will skew the calculation.
 
 #### Apply calculation to all activity centers and transit stops
 
@@ -535,7 +535,7 @@ Write out results.
 ```
 
 
-#### Develop weights for calculation
+### Calculate weights
 
 In order to get one number to summarize the analysis for the region and each jurisdiction, we will need to develop weights so that we are not over-counting units.
 
@@ -585,7 +585,7 @@ ggplot() +
 ```
 
 
-Use the percentage of a buffer to calcalate weights.
+Use the percentage of a buffer to calculate weights.
 
 ```{r calc-weight}
 
@@ -640,7 +640,7 @@ t1 <- individual_transit %>%
   scale()
 
 
-NbClust::NbClust(t1, method = "kmeans", min.nc = 2, max.nc = 10)
+NbClust::NbClust(t1, method = "kmeans", min.nc = 5, max.nc = 10)
 
 ```
 
@@ -880,20 +880,19 @@ get_additional_units <- function(dataset) {
   
 }
 
-summarize_new_units <- function(cluster_data) {
-  
-  cluster_data %>% 
-    group_by(type, .cluster) %>% 
-    summarize_at(vars(density_residential, number_of_units,
-                      density_midpoint, new_units_midpoint,
-                      density_min, new_units_min),
-                 mean)
-}
 
 
 t_units <- get_additional_units(t_clusters)
 a_units <- get_additional_units(a_clusters)
 
+
+bind_rows(t_units, a_units) %>% 
+  group_by(type, .cluster) %>% 
+    summarize_at(vars(density_residential, number_of_units,
+                      density_midpoint, new_units_midpoint,
+                      density_min, new_units_min),
+                 mean) %>% 
+  knitr::kable()
 
 # write_csv(upzone_summary, 
 #           "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary_v2.csv")
@@ -932,7 +931,8 @@ t_units_c %>%
     summarize_at(vars(density_residential, number_of_units,
                       density_new, 
                       units, new_units),
-                 mean)
+                 mean) %>% 
+  knitr::kable()
 
 
 ```
@@ -940,7 +940,7 @@ t_units_c %>%
 For activity centers:
 
 * **Groups 1, 2, 3, 4, 5, 6:** upzone by 20%.
-* **Groups 7:** No change.
+* **Groups 7 and 8:** No change.
 
 ```{r a-custom}
 
@@ -962,7 +962,8 @@ a_units_c %>%
     summarize_at(vars(density_residential, number_of_units,
                       density_new, 
                       units, new_units),
-                 mean)
+                 mean) %>% 
+  knitr::kable()
 
 
 ```
