@@ -418,11 +418,19 @@ bk_dc <- st_intersection(parcel2, dc)
 
 ```
 
-Run additional checks on Dupont Circle.
+Create function for maps to check data.
 
-```{r dupont}
+```{r map-check-points}
 
-bk_dc <- bk_dc %>% 
+#' Map points
+#'
+#' @description This function creates a map that allows you to visualize land use and number of units.
+#' @param spatial_data dataset with Black Knight `sf` point data, with number of units and  category variables
+#'
+#' @return Returns a `ggplot2` map
+map_points <- function(spatial_data) {
+  
+  spatial_data1 <- spatial_data %>% 
   mutate(units_grouped = case_when(
     category %in% c("other") ~ "commerical and office",
     category %in% "vacant" ~ "vacant",
@@ -441,20 +449,42 @@ bk_dc <- bk_dc %>%
                                            "missing")))
 
 ggplot() +
-  geom_sf(bk_dc, mapping = aes(color = units_grouped),
+  geom_sf(spatial_data1, mapping = aes(color = units_grouped),
           show.legend = "point") +
   scale_color_manual(values = c("#A2D4EC","#73BFE2","#1696d2","#12719e","#062635",
                                "#fdbf11", "#ec008b", "#d2d2d2")) +
   coord_sf(datum = NA)
+  
+}
 
-count(bk_dc, units_grouped, is.na(propaddress))
+```
+
+#### {.tabset .tabset.fade}
+
+##### all properties
+
+```{r dupont, echo=FALSE}
+bk_dc %>% 
+  map_points()
+```
+
+##### missing address
+
+```{r dup-missing, echo=FALSE}
+bk_dc %>% 
+  filter(is.na(propaddress)) %>% 
+  map_points() +
+  geom_sf(dc, mapping = aes(),
+          fill = NA, color = "black") +
+  coord_sf(datum = NA)
 
 ```
 
 
-Calculate table. Remove observations that are missing either lot size of number of units- having one absent from the numerator or denominator will skew the calculation.
 
 #### Apply calculation to all activity centers and transit stops
+
+Calculate table. Remove observations that are missing either lot size of number of units- having one absent from the numerator or denominator will skew the calculation.
 
 This function calculates three different metric and summarizes the land use within each node.
 
@@ -494,15 +524,25 @@ get_individual_density <- function(dataset, node_geometry, node_name, node_type)
                   density = number_of_units / total_acres,
                   density_area = number_of_units / area,
                   density_residential = number_of_units / residential_acres,
-                  pmf = sum(ifelse(category == "mf", lotsize_acres, 0),
+                  pmf = sum(ifelse(category == "mf", 
+                                   lotsize_acres, 
+                                   0),
                             na.rm = TRUE) / total_acres,
-                  psf = sum(ifelse(category == "sf", lotsize_acres, 0),
+                  psf = sum(ifelse(category == "sf", 
+                                   lotsize_acres, 
+                                   0),
                             na.rm = TRUE) / total_acres,
-                  pvac = sum(ifelse(category == "vacant", lotsize_acres, 0),
+                  pvac = sum(ifelse(category == "vacant", 
+                                    lotsize_acres, 
+                                    0),
                              na.rm = TRUE) / total_acres,
-                  pvacstruc = sum(ifelse(category == "vacant with structures", lotsize_acres, 0),
+                  pvacstruc = sum(ifelse(category == "vacant with structures", 
+                                         lotsize_acres, 
+                                         0),
                                   na.rm = TRUE) / total_acres,
-                  pother = sum(ifelse(category == "other", lotsize_acres, 0),
+                  pother = sum(ifelse(category == "other",
+                                      lotsize_acres, 
+                                      0),
                               na.rm = TRUE) / total_acres) %>% 
         mutate(name = node_name, 
                type = node_type, 
@@ -664,20 +704,6 @@ st_geometry(a_weighted) <- NULL
 We will use K means clustering using `density_residential` as the clustering variable. This takes into account that in many of the nodes, the majority of land may not be residential, and this can deflate density, even when most housing in the node is dense/multifamily.
 
 #### K means
-
-Look for optimal number of clusters.
-
-```{r c-optimal}
-
-t1 <- individual_transit %>%
-  select(dr = density_residential, number_of_units) %>% 
-  # mutate(dr1 = dr) %>% 
-  scale()
-
-
-NbClust::NbClust(t1, method = "kmeans", min.nc = 5, max.nc = 10)
-
-```
 
 Make functions to simplify clustering. Set seed inside function for consistency.
 
@@ -848,7 +874,6 @@ ggplot(a_clusters) +
     scatter_grid()
 
 ```
-
 
 
 ### Units added per node
