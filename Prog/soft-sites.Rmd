@@ -322,6 +322,9 @@ m <- mfmax %>%
 a <- mfmax %>% 
   filter(jurisdiction == "Arlington special exception")
 
+r <- maxunits %>% 
+  filter(jurisdiction == "Rockville")
+
 ```
 
 ### Townhouses
