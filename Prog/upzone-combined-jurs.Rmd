@@ -884,6 +884,13 @@ Upzone each density group to the midpoint of the next group up.
 
 ```{r add-units}
 
+#' Get additional units
+#'
+#' @description This function returns the results from one upzoning strategy- taking each group to the midpoint and minumum of the next density group.
+#'
+#' @param dataset Clustered data
+#'
+#' @return Returns a data frame with new variables that indicate how many units would be added if each node increased in density to the minimum and the midpoint of the next density group.
 get_additional_units <- function(dataset) {
   
   values <- dataset %>% 
@@ -939,8 +946,11 @@ get_additional_units <- function(dataset) {
            new_units_min_wt = new_units_min * wt)
   
 }
+```
 
+Apply function,
 
+```{r apply-density}
 
 t_units <- get_additional_units(t_clusters)
 a_units <- get_additional_units(a_clusters)
