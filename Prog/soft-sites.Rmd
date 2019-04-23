@@ -155,7 +155,7 @@ fair <- readRDS(paste0(mudir,
          propaddress, propcity, propstate, address_type,
          zoning_code, lotsize_sf,
          category, category_detail, numberofunits,
-         units_total, units_height, units_lotsize,
+         units_total, units_height, units_density,
         num_livunit, numberofunits_tax) %>% 
   mutate(county_fips = as.character(county_fips))  %>% 
   mutate(jurisdiction = "Fairfax") %>% 
