@@ -964,9 +964,6 @@ bind_rows(t_units, a_units) %>%
                  mean) %>% 
   knitr::kable()
 
-# write_csv(upzone_summary, 
-#           "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary_v2.csv")
-
 ```
 
 
@@ -1039,20 +1036,46 @@ a_units_c %>%
 ```
 
 
+Clean up and export clusters and new units added.
+
+```{r}
+
+all_units <- bind_rows(t_units_c, a_units_c) %>% 
+  arrange(type, .cluster) %>% 
+  select(type, group = .cluster, name, 
+         residential_parcels, residential_acres, total_acres,
+         number_of_units, density_residential,
+         density_midpoint, new_units_midpoint,
+         density_min, new_units_min,
+         density_custom = density_new, new_units_custom = new_units)
+
+write_csv(all_units,
+          "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-nodes.csv")
+
+```
+
 ### Total units
 
 Calculate sum of new units for each method, using weights.
 
 ```{r sum-units}
 
-t_units_c %>% 
+upsum <- t_units_c %>% 
   bind_rows(a_units_c) %>% 
   rename(new_units_custom_wt = new_units_wt) %>% 
   as.data.frame() %>% 
   group_by(type) %>% 
   summarize_at(vars(new_units_midpoint_wt, new_units_min_wt, new_units_custom_wt),
-               sum) %>%
-  knitr::kable()
+               ~ floor(sum(.)))
+knitr::kable(upsum)
 
 ```
 
+Write out summary table.
+
+```{r write-summary}
+
+write_csv(upsum, 
+          "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary.csv")
+
+```
