@@ -425,7 +425,7 @@ dc <- dc1 %>%
            numberofunits, 
            category,
            category_detail, 
-           propaddress = parcelbase_address, 
+           propaddress, 
            countylandusedescription, 
            residential,
            totalassessedvalue,
