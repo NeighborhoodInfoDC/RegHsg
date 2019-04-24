@@ -111,6 +111,9 @@ parcel <- parcel %>%
   mutate(category = ifelse(category == "vacant" &
                              assessedimprovementvalue > 0 & !is.na(assessedimprovementvalue),
                            "vacant with structures",
+                           category),
+         category = ifelse(county_fips == "11001" & category_detail == "Vacant with structures",
+                           "vacant with structures",
                            category))
 
 parcel %>% 
@@ -468,7 +471,7 @@ bk_dc %>%
   map_points()
 ```
 
-##### missing address
+##### missing BK address
 
 ```{r dup-missing, echo=FALSE}
 bk_dc %>% 
@@ -479,7 +482,17 @@ bk_dc %>%
   coord_sf(datum = NA)
 
 ```
+##### missing parcel base address
 
+```{r dup-missing1, echo=FALSE}
+bk_dc %>% 
+  filter(is.na(parcelbase_address)) %>% 
+  map_points() +
+  geom_sf(dc, mapping = aes(),
+          fill = NA, color = "black") +
+  coord_sf(datum = NA)
+
+```
 
 
 #### Apply calculation to all activity centers and transit stops
