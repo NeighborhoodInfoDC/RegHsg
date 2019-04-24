@@ -316,7 +316,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated April 19, 2019</p>
+<p>Last updated April 24, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -1551,7 +1551,8 @@ dc &lt;- dc1 %&gt;%
            assessedimprovementvalue,
            assessedlandvalue,
            lat, long,
-           parcelgeo_x, parcelgeo_y)</code></pre>
+           parcelgeo_x, parcelgeo_y,
+           parcelbase_address)</code></pre>
 <p>Bind rows together</p>
 <pre class="r"><code>all_jurs &lt;- arl %&gt;% 
   bind_rows(fai) %&gt;%

@@ -432,7 +432,8 @@ dc <- dc1 %>%
            assessedimprovementvalue,
            assessedlandvalue,
            lat, long,
-           parcelgeo_x, parcelgeo_y)
+           parcelgeo_x, parcelgeo_y,
+           parcelbase_address)
 
 ```
 
