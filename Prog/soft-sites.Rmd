@@ -221,7 +221,7 @@ maxunits <- bind_rows(fair, mont, rock, gait, arlbr, arlse, dc)
 
 mfmax <- maxunits %>% 
   filter(category == "mf", 
-         numberofunits > 1,
+         numberofunits >= 3,
          !is.na(numberofunits),
          !is.na(lotsize_sf),
          !is.na(units_total)) %>% 
@@ -322,7 +322,7 @@ m <- mfmax %>%
 a <- mfmax %>% 
   filter(jurisdiction == "Arlington special exception")
 
-r <- maxunits %>% 
+r <- mfmax %>% 
   filter(jurisdiction == "Rockville")
 
 ```
