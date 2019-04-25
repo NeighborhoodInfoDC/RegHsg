@@ -1019,8 +1019,8 @@ t_units_c %>%
 
 For activity centers:
 
-* **Groups 1, 2, 3, 4, 5, 6:** upzone by 20%.
-* **Groups 7 and 8:** No change.
+* **Groups 1, 2, 3, 5, 6:** upzone by 20%.
+* **Groups 4, 7 and 8:** No change.
 
 ```{r a-custom}
 
@@ -1028,8 +1028,8 @@ a_units_c <- a_units %>%
   mutate(density_new = 
            case_when(
              .cluster == 1 ~ density_residential * 1.2,
-             .cluster %in% c(2, 3, 4, 5, 6) ~ density_residential * 1.2,
-             .cluster %in% c(7, 8) ~ density_residential
+             .cluster %in% c(2, 3, 5, 6) ~ density_residential * 1.2,
+             .cluster %in% c(4, 7, 8) ~ density_residential
            )) %>% 
   mutate(units = density_new * residential_acres,
          new_units = ifelse(.cluster %in% c(7, 8),
