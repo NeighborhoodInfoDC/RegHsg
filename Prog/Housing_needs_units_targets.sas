@@ -38,6 +38,7 @@
 						 	so that occupied units match COG 2015 HH estimation.
                 02-17-19 LH Readjust weights after changes to calibration to move 2 HH w/ GQ=5 out of head of HH
 				03-30-19 LH Remove hard coding and merge in contract rent to gross rent ratio for vacant units. 
+				04-26-19 LH Change halfway from 30% of income to max_rent or max_ocost.
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -46,7 +47,7 @@
 %DCData_lib( RegHsg )
 %DCData_lib( Ipums )
 
-%let date=03302019; 
+%let date=04262019; 
 
 proc format;
 
@@ -688,7 +689,7 @@ else reduced_costb=costburden;
 if tenure=1 then do; 
 
 	if reduced_costb=1 then reduced_rent =rentgrs_a;
-	if reduced_costb=0 and costburden=1 then reduced_rent=hhincome_a/12*.3;
+	if reduced_costb=0 and costburden=1 then reduced_rent=max_rent;
 	if reduced_costb=0 and costburden=0 then reduced_rent=rentgrs_a; 
 
 	 allcostlevel_halfway=.; 
@@ -705,7 +706,7 @@ end;
 if tenure=2 then do; 
 
 	if reduced_costb=1 then reduced_totalmonth =total_month;
-	if reduced_costb=0 and costburden=1 then reduced_totalmonth=hhincome_a/12*.3;
+	if reduced_costb=0 and costburden=1 then reduced_totalmonth=max_ocost;
 	if reduced_costb=0 and costburden=0 then reduced_totalmonth=total_month; 
 
 		 allcostlevel_halfway=.; 
