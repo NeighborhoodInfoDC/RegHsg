@@ -46,6 +46,7 @@
                 02-17-19 LH Readjust weights after changes to calibration to move 2 HH w/ GQ=5 out of head of HH
 				03-30-19 LH Remove hard coding and merge in contract rent to gross rent ratio for vacant units. 
 				04-23-19 LH Test using actual costs for current gap (renters and owners). 
+				05-02-19 LH Add couldpaymore flag
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -239,7 +240,14 @@ data Housing_needs_baseline_&year.;
 		else if hud_inc = 5 then max_rent=HHINCOME_a/12*costratio; *allow 120-200% above average to spend more; 
 	  if costratio <=.12 and hud_inc = 6 then max_rent=HHINCOME_a/12*.12; *avg for all HH hud_inc=6; 
 	  	else if hud_inc=6 then max_rent=HHINCOME_a/12*costratio; *allow 200%+ above average to spend more; 
+     
+	 *create flag for household could "afford" to pay more; 
+		couldpaymore=.;
 
+		if max_rent ~= . then do; 
+			if max_rent > rentgrs_a*1.1 then couldpaymore=1; 
+			else if max_rent <= rentgrs_a*1.1 then couldpaymore=0; 
+		end; 
 
     	*rent cost categories that make more sense for rents - no longer used in targets;
 			rentlevel=.;
@@ -317,6 +325,14 @@ data Housing_needs_baseline_&year.;
 			else if hud_inc = 5 then max_ocost=HHINCOME_a/12*costratio; *allow 120-200% above average to pay more; 
 		if costratio <=.12 and hud_inc=6 then max_ocost=HHINCOME_a/12*.12; *avg for all HH HUD_inc=6;
 			else if hud_inc = 6 then max_ocost=HHINCOME_a/12*costratio; *allow 120-200% above average to pay more; 
+		
+		*create flag for household could "afford" to pay more; 
+		couldpaymore=.;
+
+		if max_ocost ~= . then do; 
+			if max_ocost > owncost_a*1.1 then couldpaymore=1; 
+			else if max_ocost <= owncost_a*1.1 then couldpaymore=0; 
+		end; 
 
 	    **** 
 	    Calculate monthly payment for first-time homebuyers. 
@@ -336,7 +352,8 @@ data Housing_needs_baseline_&year.;
 	    tax_ins = .25 * monthly_PI; **taxes assumed to be 25% of monthly PI; 
 	    total_month = monthly_PI + PMI + tax_ins; **Sum of monthly payment components;
 
-
+		
+	
 		*owner cost categories that make more sense for owner costs - no longer used in targets;
 
 		ownlevel=.;
@@ -405,6 +422,7 @@ data Housing_needs_baseline_&year.;
 				  mallcostlevel='Housing Cost Categories (tenure combined) based on Max affordable-desired Rent-Owner Cost'
 				  ownlevel = 'Owner Cost Categories based on First-Time HomeBuyer Costs'
 				  mownlevel = 'Owner Cost Categories based on Max affordable-desired First-Time HomeBuyer Costs'
+				  couldpaymore = "Occupant Could Afford to Pay More - Costs+10% are > Max affordable cost"
 
 				;
 	
@@ -685,6 +703,12 @@ where tenure=2;
 weight hhwt_COG;
 
 run;
+proc freq data=all;
+where couldpaymore=1;
+tables incomecat*allcostlevel /nopercent norow nocol out=region_paymore;
+weight hhwt_COG;
+
+run; 
 
 	proc transpose data=region_owner prefix=level out=ro;
 	by incomecat;
@@ -698,13 +722,20 @@ run;
 	by incomecat;
 	var count;
 	run;
+	*transpose here but output later with jurisdiction level; 
+	proc transpose data=region_paymore prefix=level out=rm; 
+	by incomecat;
+	var count;
+	run; 
+
 	data region (drop=_label_ _name_); 
-		set ru (in=a) ro (in=b) rr (in=c);
+		set ru (in=a) ro (in=b) rr (in=c) ;
 	
 		length name $20.; 
 	if _name_="COUNT" & a then name="Actual All";
 	if _name_="COUNT" & b then name="Actual Owner";
 	if _name_="COUNT" & c then name="Actual Rental";
+
 	run; 
 
 
@@ -1035,3 +1066,33 @@ proc export data=jurisdiction_all
    replace;
    run;
 
+
+*finish could pay more;
+proc freq data=all;
+where couldpaymore=1; 
+by jurisdiction;
+tables incomecat*allcostlevel /nopercent norow nocol out=jurisdiction_paymore;
+weight hhwt_COG;
+format jurisdiction Jurisdiction.;
+run;
+	proc transpose data=jurisdiction_paymore out=jm prefix=level;;
+	by jurisdiction incomecat;
+	var count;
+
+	run;
+
+ data couldpaymore (drop=_label_ _name_);
+ 	set rm (in=a) jm (in=b);
+
+	length name $20.;
+
+	if _name_="COUNT" & a then name="Region Pay More";
+	if _name_="COUNT" & b then name="Juris Pay More";
+
+	run;
+
+proc export data=couldpaymore
+ outfile="&_dcdata_default_path\RegHsg\Prog\couldpaymore_&date..csv"
+  dbms=csv
+   replace;
+   run;
