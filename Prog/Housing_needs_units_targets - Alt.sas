@@ -1096,3 +1096,34 @@ proc export data=couldpaymore
   dbms=csv
    replace;
    run;
+
+
+*export cost burden and households counts by income category for jurisdiction level handouts; 
+
+   
+proc freq data=all;
+tables incomecat*jurisdiction /nopercent norow nocol  out=hhlds_juris;
+  weight hhwt_cog;
+    format jurisdiction jurisdiction.;
+run;
+proc freq data=all;
+where costburden=1;
+tables incomecat*jurisdiction /nopercent norow nocol out=hhlds_juris_cb;
+  weight hhwt_cog;
+    format jurisdiction jurisdiction.;
+run;
+
+data hhlds;
+merge hhlds_juris (drop=percent rename=(count=households)) hhlds_juris_cb (drop=percent rename=(count=costburden)); 
+by incomecat jurisdiction;
+
+run; 
+
+proc sort data=hhlds;
+by jurisdiction incomecat;
+
+proc export data=hhlds
+ outfile="&_dcdata_default_path\RegHsg\Prog\hhlds_&date..csv"
+  dbms=csv
+   replace;
+   run;
