@@ -249,6 +249,7 @@ data Housing_needs_baseline_&year.;
 			else if max_rent <= rentgrs_a*1.1 then couldpaymore=0; 
 		end; 
 
+	
     	*rent cost categories that make more sense for rents - no longer used in targets;
 			rentlevel=.;
 			if 0 <=rentgrs_a<750 then rentlevel=1;
@@ -412,6 +413,13 @@ data Housing_needs_baseline_&year.;
 			end; 
   end;
 
+	
+  		*costburden and couldpaymore do not overlap. create a category that measures who needs to pay less, 
+		who pays the right amount, and who could pay more;
+		paycategory=.;
+		if costburden=1 then paycategory=1;
+		if costburden=0 and couldpaymore=0 then paycategory=2;
+		if couldpaymore=1 then paycategory=3; 
 
 	total=1;
 
@@ -423,6 +431,7 @@ data Housing_needs_baseline_&year.;
 				  ownlevel = 'Owner Cost Categories based on First-Time HomeBuyer Costs'
 				  mownlevel = 'Owner Cost Categories based on Max affordable-desired First-Time HomeBuyer Costs'
 				  couldpaymore = "Occupant Could Afford to Pay More - Costs+10% are > Max affordable cost"
+				  paycategory = "Whether Occupant pays too much, the right amount or too little" 
 
 				;
 	
@@ -517,9 +526,14 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 
 	  end;
 
+
+	  paycategory=4; *add vacant as a category to paycategory; 
+
+
 		label rentlevel = 'Rent Level Categories based on Current Gross Rent'
 		 		  allcostlevel='Housing Cost Categories (tenure combined) based on Current Rent or First-time Buyer Mtg'
 				  ownlevel = 'Owner Cost Categories based on First-Time HomeBuyer Costs'
+				  paycategory = "Whether Occupant pays too much, the right amount or too little" 
 				;
 	format ownlevel ocost. rentlevel rcost. vacancy_r VACANCY_F. allcostlevel acost. ; 
 
@@ -709,6 +723,10 @@ tables incomecat*allcostlevel /nopercent norow nocol out=region_paymore;
 weight hhwt_COG;
 
 run; 
+proc freq data=all;
+tables paycategory*allcostlevel /nopercent norow nocol out=region_paycategory;
+weight hhwt_COG;
+run; 
 
 	proc transpose data=region_owner prefix=level out=ro;
 	by incomecat;
@@ -725,6 +743,10 @@ run;
 	*transpose here but output later with jurisdiction level; 
 	proc transpose data=region_paymore prefix=level out=rm; 
 	by incomecat;
+	var count;
+	run; 
+	proc transpose data=region_paycategory prefix=level out=rp;
+	by paycategory;
 	var count;
 	run; 
 
@@ -1082,12 +1104,15 @@ run;
 	run;
 
  data couldpaymore (drop=_label_ _name_);
- 	set rm (in=a) jm (in=b);
+ 	set rp (in=a) rm (in=b) jm (in=c);
 
 	length name $20.;
 
-	if _name_="COUNT" & a then name="Region Pay More";
-	if _name_="COUNT" & b then name="Juris Pay More";
+	if _name_="COUNT" & a then name="Region Pay Category";
+
+	if _name_="COUNT" & b then name="Region Pay More";
+
+	if _name_="COUNT" & c then name="Juris Pay More";
 
 	run;
 
@@ -1127,3 +1152,5 @@ proc export data=hhlds
   dbms=csv
    replace;
    run;
+
+
