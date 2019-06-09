@@ -325,7 +325,7 @@ run;
 
 data housing1990(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
 set NCDB.Ncdb_master_update;
-keep geo2010 county Jurisdiction mdvalhs9 mdvalhs9_a mdvalhs0 mdvalhs0_a  SPOWNOC9 OWNOCC0;
+keep geo2010 county Jurisdiction mdvalhs9 mdvalhs9_a mdvalhs0 mdvalhs0_a  SPOWNOC9 SPOWNOC0 OWNOCC0;
 county= substr(geo2010,1,5);
 %dollar_convert( mdvalhs0, mdvalhs0_a, 2000, 20&endyr., series=CUUR0000SA0L2 )
 %dollar_convert( mdvalhs9, mdvalhs9_a, 1990, 20&endyr., series=CUUR0000SA0L2 )
@@ -344,11 +344,11 @@ proc sort data=changeintime;
 by geo2010;
 data housingmarket;
 merge changeintime housing1990;
-keep geo2010 geoid county SPOWNOC9 OWNOCC0 numowneroccupiedhu_&_years.  Jurisdiction mdvalhs9_a mdvalhs0_a medianhomevalue_&_years. appre90_&endyr. appre00_&endyr.;
+keep geo2010 geoid county SPOWNOC9 SPOWNOC0 OWNOCC0 numowneroccupiedhu_&_years.  Jurisdiction mdvalhs9_a mdvalhs0_a medianhomevalue_&_years. appre90_&endyr. appre00_&endyr.;
 by geo2010;
 
 if SPOWNOC9 < 50 then mdvalhs9_a=.n ;
-if OWNOCC0 < 50 then mdvalhs0_a=.n; 
+if SPOWNOC0 < 50 then mdvalhs0_a=.n; 
 if numowneroccupiedhu_&_years. < 50 then medianhomevalue_&_years.=.n; 
 
 	if (mdvalhs9_a ~= .n and medianhomevalue_&_years. ~=.n) then appre90_&endyr. = (medianhomevalue_&_years.- mdvalhs9_a)/ mdvalhs9_a; else appre90_&endyr.=.n;
@@ -436,7 +436,7 @@ by geo2010;
 run;
 
 proc export data = completetypology
-   outfile="&_dcdata_default_path\RegHsg\Prog\completetypology_Jurisdiction_0306.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\completetypology_Jurisdiction_0606.csv"
    dbms=csv
    replace;
 run;
@@ -540,7 +540,7 @@ where jurisdiction=.;
 run;
 
 proc export data = gentrificationstage
-   outfile="&_dcdata_default_path\RegHsg\Prog\Neighborhood typology for mapping.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\Neighborhood typology for mapping_0619.csv"
    dbms=csv
    replace;
 run;
@@ -593,12 +593,12 @@ set region_HHcounts_indexFAM juris_HHcounts_indexFAM;
 rename _freq_=NumTracts;
 run; 
 proc export data = HHcounts_typologywithFAM
-   outfile="&_dcdata_default_path\RegHsg\Prog\HH Counts-Typology with Median Family Inc.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\HH Counts-Typology with Median Family Inc_0619.csv"
    dbms=csv
    replace;
 run;
 proc export data = HHcounts_typologywithHH
-   outfile="&_dcdata_default_path\RegHsg\Prog\HH Counts-Typology with Median HH Inc.csv"
+   outfile="&_dcdata_default_path\RegHsg\Prog\HH Counts-Typology with Median HH Inc_0619.csv"
    dbms=csv
    replace;
 run;
