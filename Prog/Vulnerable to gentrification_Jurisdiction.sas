@@ -75,11 +75,11 @@ run;
 
 data demographics00(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
 	set NCDB.Ncdb_master_update;
-	keep geo2010 county Jurisdiction percentrenter_00 percentwhite_00 percentcollege_00 sprntoc0 spownoc0 shr0d SHRNHW0N educpp0 educ160 
+	keep geo2010 county Jurisdiction percentrenter_00 percentwhite_00 percentcollege_00 RNTOCC0 OWNOCC0 shr0d SHRNHW0N educpp0 educ160 
 		 AVHHIN0N agghhinc_00a avhhin0 avghhinc_00a avghhinc_00
 		 numhhs0 percentinclt75000_00 thy0100 thy0150 thy0200 thy0250 thy0300 thy0350 thy0400 thy0450 thy0500 thy0600 thy0750 mdfamy0 mdhhy0 mdfamy0a mdhhy0a;
 	county= substr(geo2010,1,5);
-	percentrenter_00= sprntoc0/(sprntoc0+spownoc0);
+	percentrenter_00= RNTOCC0/(RNTOCC0+OWNOCC0);
 	percentwhite_00= SHRNHW0N/shr0d;
 	percentcollege_00= educ160/educpp0;
 	avghhinc_00= avhhin0;
@@ -110,7 +110,7 @@ data changeintime;
 merge demographics&endyr. demographics00;
 by geo2010;
 COG=1;
-deltarenter = numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.)- sprntoc0/(sprntoc0+spownoc0);
+deltarenter = numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years.+numowneroccupiedhu_&_years.)- RNTOCC0/(RNTOCC0+OWNOCC0);
 deltawhite= percentwhite_20&endyr.- percentwhite_00;
 deltacollege= percentcollege_20&endyr.- percentcollege_00;
 deltahhinc= (avghhinc_20&endyr.-avghhinc_00a)/avghhinc_00a;
@@ -126,7 +126,7 @@ by jurisdiction;
 proc summary data= changeintime;
 	by Jurisdiction;
 	var numrenteroccupiedhu_&_years. numowneroccupiedhu_&_years. popwhitenonhispbridge_&_years. popwithrace_&_years. pop25andoverwcollege_&_years. pop25andoveryears_&_years.
-		agghshldincome_&_years. numhshlds_&_years. agghhinc_00a sprntoc0 spownoc0 SHRNHW0N shr0d educ160 educpp0 numhhs0 hshldincunder15000_&_years.  hshldinc15000to34999_&_years.
+		agghshldincome_&_years. numhshlds_&_years. agghhinc_00a RNTOCC0 OWNOCC0 SHRNHW0N shr0d educ160 educpp0 numhhs0 hshldincunder15000_&_years.  hshldinc15000to34999_&_years.
 		hshldinc35000to49999_&_years.  hshldinc50000to74999_&_years. numowneroccupiedhu_&_years. thy0100 thy0150 thy0200 thy0250 thy0300 thy0350 thy0400 thy0450 thy0500 thy0600 thy0750 ;
 	output out = vulnerable_20&endyr.  sum=;
 run;
@@ -143,7 +143,7 @@ data vulnerablethreshold (keep = Jurisdiction threshold_renter_20&endyr. thresho
 	avghhinc_20&endyr.= agghshldincome_&_years./(numhshlds_&_years. );
 	percentinclt75000= (hshldincunder15000_&_years. + hshldinc15000to34999_&_years.+ hshldinc35000to49999_&_years.+ hshldinc50000to74999_&_years.)/(numhshlds_&_years. );
 
-	deltarenter = numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years. +numowneroccupiedhu_&_years.)- sprntoc0/(sprntoc0+spownoc0);
+	deltarenter = numrenteroccupiedhu_&_years./(numrenteroccupiedhu_&_years. +numowneroccupiedhu_&_years.)- RNTOCC0/(RNTOCC0+OWNOCC0);
 	deltawhite= popwhitenonhispbridge_&_years./popwithrace_&_years.- SHRNHW0N/shr0d;
 	deltacollege= pop25andoverwcollege_&_years./pop25andoveryears_&_years. - educ160/educpp0;
 
@@ -325,7 +325,7 @@ run;
 
 data housing1990(where=(county in ("11001", "24017", "24021", "24031", "24033", "51013", "51059", "51107", "51153", "51510", "51600","51610", "51683", "51685" )));
 set NCDB.Ncdb_master_update;
-keep geo2010 county Jurisdiction mdvalhs9 mdvalhs9_a mdvalhs0 mdvalhs0_a  SPOWNOC9 SPOWNOC0;
+keep geo2010 county Jurisdiction mdvalhs9 mdvalhs9_a mdvalhs0 mdvalhs0_a  SPOWNOC9 OWNOCC0;
 county= substr(geo2010,1,5);
 %dollar_convert( mdvalhs0, mdvalhs0_a, 2000, 20&endyr., series=CUUR0000SA0L2 )
 %dollar_convert( mdvalhs9, mdvalhs9_a, 1990, 20&endyr., series=CUUR0000SA0L2 )
@@ -344,11 +344,11 @@ proc sort data=changeintime;
 by geo2010;
 data housingmarket;
 merge changeintime housing1990;
-keep geo2010 geoid county SPOWNOC9 SPOWNOC0 numowneroccupiedhu_&_years.  Jurisdiction mdvalhs9_a mdvalhs0_a medianhomevalue_&_years. appre90_&endyr. appre00_&endyr.;
+keep geo2010 geoid county SPOWNOC9 OWNOCC0 numowneroccupiedhu_&_years.  Jurisdiction mdvalhs9_a mdvalhs0_a medianhomevalue_&_years. appre90_&endyr. appre00_&endyr.;
 by geo2010;
 
 if SPOWNOC9 < 50 then mdvalhs9_a=.n ;
-if SPOWNOC0 < 50 then mdvalhs0_a=.n; 
+if OWNOCC0 < 50 then mdvalhs0_a=.n; 
 if numowneroccupiedhu_&_years. < 50 then medianhomevalue_&_years.=.n; 
 
 	if (mdvalhs9_a ~= .n and medianhomevalue_&_years. ~=.n) then appre90_&endyr. = (medianhomevalue_&_years.- mdvalhs9_a)/ mdvalhs9_a; else appre90_&endyr.=.n;
