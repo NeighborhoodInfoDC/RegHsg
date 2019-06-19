@@ -94,7 +94,7 @@ zoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel
 # property shape stored in geodatabase- assign gdb for extraction
 prop <- "L:/Libraries/RegHsg/Maps/montgomery/property/property.gdb"
 
-# function below lists later in geodatabase
+# function below lists layers in geodatabase
 # rgdal::ogrListLayers(prop)
 
 propsf <- read_sf(prop, layer = "Property_poly_with_data")
@@ -182,7 +182,7 @@ jur1 <- jur %>%
                                   0)) %>% 
   left_join(propmerge, by = c("assessorsparcelnumberapnpin" = "parcel_id"))
 
-# from master address file- select obs that are distict address + parcel ID pairs
+# from master address file- select obs that are distinct address + parcel ID pairs
 mac <- ma %>% 
   filter(str_detect(ACCT, "C")) %>% 
   group_by(FULL_ADDRESS) %>% 
@@ -279,6 +279,8 @@ jur3 %>%
 ```
 
 ### Fix land use
+
+Use the property land use file to fix Black Knight land use where it is (most likely) wrong.
 
 ```{r fix-landuse}
 
@@ -405,7 +407,7 @@ zjoin %>%
 
 ### Jurisdiction flags
 
-Our Data on the property city is not reliable, so we need to create a flag ourselves using the Rockville and Gaithersburg zoning layers to.
+Our Data on the property city is not reliable, so we need to create a flag ourselves using the Tiger line shapefiles.
 
 ```{r read tiger line 2018 place shapefile}
 
@@ -479,7 +481,6 @@ Remove overlaps so that points do not join more than once.
 # remove overlap in the zoning shapefile
 rzoning <- st_intersection(rockzoning_sf1) %>% 
   filter(n.overlaps == 1)
-
 
 rjoin <- st_join(pjoin2, rzoning, join = st_intersects)
 
