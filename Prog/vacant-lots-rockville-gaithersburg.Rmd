@@ -79,10 +79,9 @@ Since Rockville and Gaithersburg blacknight data was cleaned together with Mongo
 
 ```{r read}
 if (!exists("jur")) {
-  jur <- readRDS(paste0("L:/Libraries/RegHsg/Data/", "montgomery",
-                     "/", "postcleaned-", "montgomery", "-data.Rdata"))
+  jur <- readRDS("L:/Libraries/RegHsg/Data/montgomery/postcleaned-montgomery-data.Rdata")
 } else {
-  warning(filepath, " data already read in")
+  warning("Data already read in")
 }
 
 ```
@@ -184,14 +183,28 @@ zoning_gaithersburg %>%
 #notice there are two single family semidetached dwelling_type, use str_replace to clean up the spaces
 
 zoning_gaithersburg1 <- zoning_gaithersburg %>% 
-  mutate(dwelling_type=str_trim(dwelling_type, side="right"),
-    dwelling_type= ifelse(dwelling_type=="single family semidetached", "single-family semidetached", dwelling_type),
-    dwelling_type= ifelse(zoning_code=="R6", "townhouse", dwelling_type),
-    dwelling_type= ifelse(zone=="Mixed Use Development", "multiple family dwelling", dwelling_type),
-    dwelling_type= ifelse(zone=="Central Business District", "multiple family dwelling", dwelling_type),
-    dwelling_type= ifelse(zone=="Corridor Development", "multiple family dwelling", dwelling_type),
-    dwelling_type= ifelse(zone=="RB", "townhouse", dwelling_type),
-    flag= ifelse(dwelling_type=="single family semidetached", 1, 0))
+  mutate(dwelling_type = str_trim(dwelling_type, side = "right"),
+         dwelling_type = ifelse(dwelling_type == "single family semidetached", 
+                                "single-family semidetached", 
+                                dwelling_type),
+         dwelling_type = ifelse(zoning_code == "R6",
+                                "townhouse", 
+                                dwelling_type),
+         dwelling_type = ifelse(zone == "Mixed Use Development", 
+                                "multiple family dwelling", 
+                                dwelling_type),
+         dwelling_type = ifelse(zone == "Central Business District", 
+                                "multiple family dwelling", 
+                                dwelling_type),
+         dwelling_type = ifelse(zone == "Corridor Development", 
+                                "multiple family dwelling", 
+                                dwelling_type),
+         dwelling_type = ifelse(zone == "RB", 
+                                "townhouse", 
+                                dwelling_type),
+         flag = ifelse(dwelling_type == "single family semidetached", 
+                       1, 
+                       0))
 
 zoning_gaithersburg1 %>% 
   count(dwelling_type) %>% 
@@ -211,6 +224,7 @@ Since the variables are not always comparable, the following order, from most to
 8. all (dwelling type is NA)
 
 ### Create factor variable for Gaithersburg
+
 To use this hierarchy, we transform the `dwelling_type` variable into a factor, assign the factors to the appropriate level, (1-8, as listed above).
 We will also create a designation for dwelling types that are restricted to a certain amount of units (one unit for "One Family Dwelling" and one for two units for "Duplex"). 
 
@@ -218,17 +232,20 @@ We will also create a designation for dwelling types that are restricted to a ce
 
 **NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
 
+create housing type that are consistent with the table shell for reporting unit estimates later. For MXD code, the zoning code doesn't have parameters specified, and I'm here using R20 as an assumption for MX, because R20 is a medium density residential code.  
+
+
 ```{r dwelling-factor Gaithersburg}
-#create housing type that are consistent with the table shell for reporting unit estimates later. For MXD code, the zoning code doesn't have parameters specified, and I'm here using R20 as an assumption for MX, because R20 is a medium density residential code.  
 
 SF_g <- c("R-A", "R-90")
-SFA_g <- c()
 MF_g <- c("RP-T","R-20","R-18","R-H","CB","R-6")
 COM_g <- c("CBD","CD","RB")
 MXD_g <- c("MXD")
 
 zoning_gaithersburg2 <- zoning_gaithersburg1 %>% 
-  mutate(dwelling_type=ifelse(is.na(dwelling_type)==1, "all", dwelling_type)) %>% 
+  mutate(dwelling_type = ifelse(is.na(dwelling_type) == 1, 
+                                "all", 
+                                dwelling_type)) %>% 
   mutate(dwelling_type = factor(dwelling_type,
                                 levels = c("multiple family dwelling", 
                                            "multiple family condominium dwellings",
@@ -248,23 +265,38 @@ zoning_gaithersburg2 <- zoning_gaithersburg1 %>%
                                 1,
                                 0)) %>% 
         mutate(housing_type= case_when(zoning_code %in% SF_g ~ "SF", 
-                                       zoning_code %in% SFA_g ~ "SFA",
                                        zoning_code %in% MF_g ~ "MF",
-                                       zoning_code %in% COM_g ~ "MXD", #categorize commercial to mixed use according to zoning ordinance
+                                       zoning_code %in% COM_g ~ "MXD", 
+                                       # categorize commercial to mixed use,
+                                       # according to zoning ordinance
                                        zoning_code %in% MXD_g ~ "MXD")) %>% 
-        mutate(lot_area_min= ifelse(housing_type=="MXD", 1800, lot_area_min),
-               height_ft=ifelse(housing_type=="MXD", 45, height_ft),
-               lot_coverage_max = ifelse(housing_type=="MXD", 0.4, lot_coverage_max),
-               density= ifelse(housing_type=="MXD", 21.5, density)) #assign MXD with R-20
+        mutate(lot_area_min = ifelse(housing_type == "MXD", 
+                                     1800, 
+                                     lot_area_min),
+               height_ft = ifelse(housing_type == "MXD", 
+                                  45, 
+                                  height_ft),
+               lot_coverage_max = ifelse(housing_type == "MXD",
+                                         0.4, 
+                                         lot_coverage_max),
+               #assign MXD with R-20
+               density= ifelse(housing_type == "MXD", 
+                               21.5, 
+                               density))
+
+count(zoning_gaithersburg2, housing_type)
 
 ```
 
 *For Rockville*
+
+As the table shows, Rockville zoning code doesn't break out by the dwelling type we use for other jurisdictions.
+
 ```{r list codes Rockville}
 zoning_rockville %>% 
   count(dwelling_type) %>% 
   knitr::kable()
-# as the table shows, rockville zoning code doesn't break out by the dwelling type we have been using for other jurisdictions.
+
 
 zoning_rockville %>% 
   count(zoning_code) %>% 
@@ -273,11 +305,13 @@ zoning_rockville %>%
 ```
 
 ### Create factor variable for Rockville
+
 All rockville zoning codes are unique, so we do not need a factor. We will automatically select "all", or treat it as dwelling type is NA. In addition, rockville zoning code doesn't have dups except for MXTD and LPNC, which are for parks and mixes use transition. We don't have a density preference over the two. 
 
 **NOTE** This will be VERY jurisdiction specific.
 
 **NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
+
 
 ```{r dwelling-factor Rockville}
 #create housing type that are consistent with the table shell for reporting unit estimates later.
@@ -293,17 +327,27 @@ pdcodes <- c("PD")
 #http://rockvillemd.gov/DocumentCenter/View/11186/Zoning-Ordinance---Article-14?bidId=
 
 zoning_rockville1 <- zoning_rockville %>% 
-         mutate(newdwelling_type= ifelse(zone=="Mixed-Use Transition"| dwelling_type=="Existing housing", "all-2", "all")) %>% 
-        mutate(newdwelling_type=ifelse(is.na(newdwelling_type)==1, "all", newdwelling_type)) %>% 
-        mutate(newdwelling_type = factor(newdwelling_type,
-                                levels = c("all", "all-2"))) %>% 
-        mutate(housing_type= case_when (zoning_code %in%  sfcodes ~ "SF",
-                                        zoning_code %in%  sfacodes ~ "SFA",
-                                        zoning_code %in%  mfcodes ~ "MF",
-                                        zoning_code %in%  pdcodes ~ "Planned Development"),
-               lot_area_min= ifelse(housing_type=="Planned Development", 43560, lot_area_min), #following RMD-10 assumption
-               height_ft= ifelse(housing_type=="Planned Development", 40, height_ft),
-               lot_coverage_max= ifelse(housing_type=="Planned Development", 0.3, lot_coverage_max) )
+  mutate(newdwelling_type = ifelse(zone == "Mixed-Use Transition" | 
+                                     dwelling_type == "Existing housing", 
+                                   "all-2", 
+                                   "all")) %>% 
+  mutate(newdwelling_type = ifelse(is.na(newdwelling_type) == 1, 
+                                   "all", 
+                                   newdwelling_type)) %>% 
+  mutate(newdwelling_type = factor(newdwelling_type,
+                                   levels = c("all", "all-2"))) %>% 
+  mutate(housing_type = case_when (zoning_code %in%  sfcodes ~ "SF",
+                                   zoning_code %in%  sfacodes ~ "SFA",
+                                   zoning_code %in%  mfcodes ~ "MF",
+                                   zoning_code %in%  pdcodes ~ "Planned Development"),
+         lot_area_min = ifelse(housing_type=="Planned Development", 43560, lot_area_min),
+         # following RMD-10 assumption
+         height_ft = ifelse(housing_type == "Planned Development", 
+                            40, 
+                            height_ft),
+         lot_coverage_max = ifelse(housing_type == "Planned Development", 
+                                   0.3, 
+                                   lot_coverage_max))
 
 
 ```
@@ -333,7 +377,7 @@ The difference between the land value, improvement value, and total value can he
 ```{r check-assess}
 
 jur %>% 
-  filter(category=="vacant") %>% 
+  filter(category == "vacant") %>% 
   group_by(category_detail) %>% 
   summarize(nprops = n(),
             imp_zero = sum(assessedimprovementvalue == 0, na.rm = TRUE),
@@ -351,7 +395,7 @@ Most of the vacant properties have either a 0 or a missing value for the improve
 ```{r not-so-vacant}
 
 jur %>% 
-  filter(category=="vacant") %>% 
+  filter(category == "vacant") %>% 
   mutate(assessedlandvalue = if_else(is.na(assessedlandvalue), 
                                      LAND_ASSMT, 
                                      as.integer(assessedlandvalue))) %>% 
@@ -446,17 +490,21 @@ Merge on zoning code variable. Test that all variables merged.
 
 total_rockvile <- jur1 %>% 
   mutate(zoning_bk = zoning) %>% 
-  mutate(zoning_code= zoning_bk) %>% 
-  filter(rockflag=="1")
+  mutate(zoning_code = zoning_bk) %>% 
+  filter(rockflag == "1")
 
 total_gaithersburg <- jur1 %>% 
   mutate(zoning_bk = zoning) %>% 
-  mutate(zoning_code= zoning_bk) %>% 
-  filter(gaitflag=="1") 
+  mutate(zoning_code = zoning_bk) %>% 
+  filter(gaitflag == "1") 
   
 
-zoningtotal_rockvile <- left_join(total_rockvile, zoning_rockville1, by = "zoning_code")
-zoningtotal_gaithersburg <- left_join(total_gaithersburg, zoning_gaithersburg2, by = "zoning_code")
+zoningtotal_rockvile <- left_join(total_rockvile, 
+                                  zoning_rockville1, 
+                                  by = "zoning_code")
+zoningtotal_gaithersburg <- left_join(total_gaithersburg, 
+                                      zoning_gaithersburg2, 
+                                      by = "zoning_code")
 
 ```
 
@@ -506,14 +554,21 @@ Merge on zoning code variable. Test that all variables merged.
 
 ```{r zoning-merge}
 
-zoningdata_rockvile1_total <- left_join(total_rockvile1, zoning_rockville1, by = "zoning_code")
+zoningdata_rockvile1_total <- left_join(total_rockvile1, 
+                                        zoning_rockville1, 
+                                        by = "zoning_code")
 
-zoningdata_gaithersburg1_total<- left_join(total_gaithersburg1, zoning_gaithersburg2, by = "zoning_code") %>% 
-    mutate(one_unit_flag= ifelse(zoning_code=="R-A"|zoning_code=="R-90", 1, 0))
+zoningdata_gaithersburg1_total<- left_join(total_gaithersburg1, 
+                                           zoning_gaithersburg2, 
+                                           by = "zoning_code") %>% 
+    mutate(one_unit_flag= ifelse(zoning_code == "R-A" | zoning_code == "R-90", 
+                                 1, 
+                                 0))
 
 count(zoningdata_rockvile1_total, zoning_code)
 
 count(zoningdata_gaithersburg1_total, zoning_code)
+
 ```
 Flag lots with missing zoning information, and select most dense zoning code for those that are big enough, by Jurisdiction because the factor are different for each jurisdiction. 
 
@@ -573,30 +628,37 @@ We can create a function that will allow us to easily adjust these parameters an
 MixeduseRockville <- c("MXTD", "MXCD", "MXE", "MXB", "MXCT", "MXNC", "MXC", "MXTD")
 
 
-get_unit_variables_r <- function(dataset, 
-                               construction_efficiency, 
-                               average_unit_size) {
-  
-  dataset %>% 
-    mutate(parameters = paste0("CE: ", construction_efficiency * 100,
-                               "% , Unit size: ", average_unit_size,
-                               " sf"),
-           one_unit_flag= ifelse((lot_area_min/lotarea_per_unit)== 1,1,0),
-           lot_coverage_max= ifelse(is.na(lot_coverage_max)==1, 0.75, lot_coverage_max),
-           buildable_area = lotsize_sf * lot_coverage_max,
-           living_area = buildable_area * construction_efficiency,
-           units_per_floor = floor(living_area / average_unit_size),
-           floors = floor(height_ft / 10),
-           units_height= units_per_floor * floors) %>% 
-    mutate(subset=floor(lotsize_sf/lot_area_min), na.rm=TRUE) %>% 
-    mutate(units_total = case_when(
-      one_unit_flag == 1 & subset<1 & units_height >1 ~ 1,
-      one_unit_flag == 1 & subset>=1 & units_height > subset ~ subset,
-      zoning_code=="RMD-15" & units_height>(15 *(lotsize_sf/43560))~ floor(15 *(lotsize_sf/43560)),
-      zoning_code=="RMD-20" & units_height>(20 * (lotsize_sf/87120))~ floor(20 * (lotsize_sf/87120)),
-      zoning_code=="RMD-10" & units_height>(10 * (lotsize_sf/43560))~ floor(10 * (lotsize_sf/43560)), #RMD-10: 10 units per acre max
-      housing_type=="Planned Development" & units_height>(10 * (lotsize_sf/43560))~ floor(10 * (lotsize_sf/43560)),
-      TRUE ~ units_height))
+  get_unit_variables_r <- function(dataset, 
+                                   construction_efficiency, 
+                                   average_unit_size) {
+    
+    dataset %>% 
+      mutate(parameters = paste0("CE: ", construction_efficiency * 100,
+                                 "% , Unit size: ", average_unit_size,
+                                 " sf"),
+             one_unit_flag = ifelse((lot_area_min/lotarea_per_unit)== 1,1,0),
+             lot_coverage_max = ifelse(is.na(lot_coverage_max) == 1, 
+                                       0.75, 
+                                       lot_coverage_max),
+             buildable_area = lotsize_sf * lot_coverage_max,
+             living_area = buildable_area * construction_efficiency,
+             units_per_floor = floor(living_area / average_unit_size),
+             floors = floor(height_ft / 10),
+             units_height = units_per_floor * floors) %>% 
+      mutate(subset = floor(lotsize_sf/lot_area_min), na.rm=TRUE) %>% 
+      mutate(units_total = case_when(
+        one_unit_flag == 1 & subset< 1 & units_height >1 ~ 1,
+        one_unit_flag == 1 & subset >= 1 & units_height > subset ~ subset,
+        zoning_code=="RMD-15" & units_height>(15 *(lotsize_sf/43560)) ~ 
+          floor(15  *  (lotsize_sf/43560)),
+        zoning_code=="RMD-20" & units_height>(20 * (lotsize_sf/87120)) ~ 
+          floor(20 * (lotsize_sf/87120)),
+        zoning_code == "RMD-10" & units_height > (10 * (lotsize_sf/43560)) ~ 
+          floor(10 * (lotsize_sf/43560)), #
+        # RMD-10: 10 units per acre max
+        housing_type == "Planned Development" & units_height > (10 * (lotsize_sf/43560))~ 
+          floor(10 * (lotsize_sf/43560)),
+        TRUE ~ units_height))
 }
 
 #' Get maximum unit summary
@@ -655,24 +717,28 @@ Get summary statistics for several different parameters
 ```{r sum Rockville}
 
 get_unit_summary_r(dataset = zoningdata_rockvile1_final,
-                 construction_efficiency = .7,
-                 average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE) %>% 
+                   construction_efficiency = .7,
+                   average_unit_size = 940,
+                   dwelling_type_breakdown = TRUE) %>% 
   knitr::kable()
 
 
 testdataset <- get_unit_variables_r(dataset = zoningdata_rockvile1_final,
-                 construction_efficiency = .7,
-                 average_unit_size = 940) %>% 
- filter(housing_type=="SFA") %>% 
-  filter(category=="vacant") %>% 
-  filter(smallsize_flag==0) %>% 
-  select(zoning_code, propaddress, dwelling_type, lotsize_sf, height_ft, lot_coverage_max, units_height, buildable_area, living_area, units_total, units_per_floor, floors, one_unit_flag,  subset, lot_area_min, lotarea_per_unit, smallsize_flag, housing_type, zone)
+                                    construction_efficiency = .7,
+                                    average_unit_size = 940) %>% 
+  filter(housing_type == "SFA") %>% 
+  filter(category == "vacant") %>% 
+  filter(smallsize_flag == 0) %>% 
+  select(zoning_code, propaddress, dwelling_type, lotsize_sf, 
+         height_ft, lot_coverage_max, units_height, buildable_area, 
+         living_area, units_total, units_per_floor, floors, 
+         one_unit_flag,  subset, lot_area_min, lotarea_per_unit, 
+         smallsize_flag, housing_type, zone)
 
 map_df(c(.7, .85), ~ get_unit_summary_r(dataset = zoningdata_rockvile1_final,
-                                      construction_efficiency = .,
-                                      average_unit_size = 940,
-                                      dwelling_type_breakdown = FALSE)) %>% 
+                                        construction_efficiency = .,
+                                        average_unit_size = 940,
+                                        dwelling_type_breakdown = FALSE)) %>% 
   knitr::kable()
 
 ```
@@ -767,15 +833,63 @@ saveRDS(runits,
         "L:/Libraries/RegHsg/Data/montgomery/Rockville-max-units.Rdata")
 
 
-get_unit_summary_r(dataset =  Rockvillevacant,
+sumunits <- get_unit_summary_r(dataset =  Rockvillevacant,
                  construction_efficiency = .7,
                  average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE) %>% 
-  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
-                   "montgomery",
-                   "-Rockville-vacant-lots-analysis.csv"))
+                 dwelling_type_breakdown = TRUE)
+
+write_csv(sumunits,
+          "L:/Libraries/RegHsg/Prog/Tables/montgomery-Rockville-vacant-lots-analysis.csv")
 
 ```
+
+
+Table for Rockville
+
+```{r tableV}
+
+mf <- zoningdata_rockvile1_final %>% 
+  filter(category == "vacant",
+         housing_type %in% c("MF", "Planned Development")) %>% 
+  group_by(propaddress) %>%
+  count() %>% 
+  nrow()
+
+mf.summary <- 
+  c(nrow(total_rockvile), 
+    nrow(filter(total_rockvile, category == "vacant")), 
+    mf, 
+    sumunits %>% 
+      filter(housing_type %in% c("MF", "Planned Development")) %>% 
+      pull(lots) %>% 
+      sum(),
+    sumunits %>% 
+      filter(housing_type %in% c("MF", "Planned Development")) %>% 
+      pull(units_total) %>% 
+      sum())
+
+
+breakdown <- sumunits %>% 
+  ungroup() %>% 
+  mutate(housing_type = ifelse(housing_type %in% c("MF", "Planned Development"),
+                                "Multifamily",
+                                housing_type),
+         housing_type = ifelse(housing_type %in% c("MF", "Planned Development"),
+                                "Multifamily",
+                                housing_type)) %>% 
+  group_by(housing_type) %>% 
+  summarize_at(vars(lots, units_total),sum) %>% 
+  filter(housing_type != "All") %>% 
+  arrange(desc(units_total))
+
+
+mf.summary
+
+breakdown %>% knitr::kable()
+
+```
+
+
 
 ## Calculate missing units for Gaithersburg
 
@@ -992,10 +1106,58 @@ gunits <- get_unit_variables_g(dataset =  zoningdata_gaithersburg1_final,
 saveRDS(gunits,
         "L:/Libraries/RegHsg/Data/montgomery/Gaithersburg-max-units.Rdata")
 
-get_unit_summary_g(dataset =  gaithersburg1vacant,
+sumunitsg <- get_unit_summary_g(dataset =  gaithersburg1vacant,
                    construction_efficiency = .7,
                    average_unit_size = 940,
-                   dwelling_type_breakdown = TRUE) %>% 
-  write_csv("L:/Libraries/RegHsg/Prog/Tables/montgomery-Gaithersburg-vacant-lots-analysis.csv")
+                   dwelling_type_breakdown = TRUE)
+
+
+
+write_csv(sumunitsg,
+          "L:/Libraries/RegHsg/Prog/Tables/montgomery-Gaithersburg-vacant-lots-analysis.csv")
+
+```
+Table for Geithersburg
+
+```{r tableg}
+
+mf <- zoningdata_gaithersburg1_final %>% 
+  filter(category == "vacant",
+         housing_type %in% c("MF", "MXD")) %>% 
+  group_by(propaddress) %>%
+  count() %>% 
+  nrow()
+
+mf.summary <- 
+  c(nrow(total_gaithersburg), 
+    nrow(filter(total_gaithersburg, category == "vacant")), 
+    mf, 
+    sumunitsg %>% 
+      filter(housing_type %in% c("MF", "MXD")) %>% 
+      pull(lots) %>% 
+      sum(),
+    sumunitsg %>% 
+      filter(housing_type %in% c("MF", "MXD")) %>% 
+      pull(units_total) %>% 
+      sum())
+
+
+breakdown <- sumunitsg %>% 
+  ungroup() %>% 
+  mutate(housing_type = ifelse(housing_type %in% c("MF", "MXD"),
+                                "Multifamily",
+                                housing_type),
+         housing_type = ifelse(housing_type %in% c("MF", "MXD"),
+                                "Multifamily",
+                                housing_type)) %>% 
+  group_by(housing_type) %>% 
+  summarize_at(vars(lots, units_total),sum) %>% 
+  filter(housing_type != "Sum") %>% 
+  arrange(desc(units_total))
+
+
+mf.summary
+
+breakdown %>% knitr::kable()
 
 ```

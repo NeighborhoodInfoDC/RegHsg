@@ -47,11 +47,7 @@ The two steps are:
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
-#library(urbnthemes) #urban themes was causeing bugs, I took it out.
 library(sf)
-library(ggplot2)
-
-#set_urbn_defaults("print")
 
 ```
 
@@ -391,8 +387,6 @@ All of these codes that didn't join are either non-residential, or they correspo
 ```{r fillin-for-caluculation}
 
 zoningdata1 <- zoningdata %>% 
-  # DO NOT DO THIS
-  # filter(residential == 1) %>% 
   mutate(lot_area_min = case_when(
     is.na(lot_area_min) ~ site_area_min,
     TRUE ~ lot_area_min)) %>% 
@@ -427,6 +421,7 @@ count(zoningdata1, category)
 
 
 Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
+
 ```{r slice-and-dice}
 
 
@@ -455,7 +450,7 @@ count(zoningdata2, category)
 ```
 
 
-##Calculate Missing Units
+## Calculate Missing Units
 
 There are several variables we will use to calculate how many units we can put on each vacant lot.
 
@@ -480,7 +475,7 @@ We can create a function that will allow us to easily adjust these parameters an
 #' @param construction_efficiency Assumption for construction efficiency
 #' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
 #'
-#' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`,`FAR_stories`,`stories`, `units_FAR`,  `units_height`, `units_lotsize`, and `units_total`
+#' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`,`FAR_stories`,`stories`, `units_FAR`,  `units_height`, `units_lotsize`, `units_density`, and `units_total`
 #'
 #' @examples
 get_unit_variables <- function(dataset, 
@@ -587,7 +582,9 @@ get_unit_summary <- function(dataset,
 ```
 
 
-I created a dataset with results for troubleshooting purposes. Then I checked to make sure there aren't more townhouses than are allowed to be built on any one property.
+Create a dataset with results for troubleshooting purposes. Check to make sure there aren't more townhouses than are allowed to be built on any one property.
+
+
 ```{r sumassign}
 resultsall <- get_unit_variables(dataset = zoningdata2,
                             construction_efficiency = .7,
@@ -828,8 +825,7 @@ write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
 
 
 
-##Calculate values needed to fill table
-
+## Calculate values needed to fill table
 ```{r tableV}
 mf.br <- zoningdata1 %>% 
   filter(!is.na(dwelling_type),
