@@ -349,13 +349,21 @@ jursf <- jur_3 %>%
 
 
 Filter out Herndon and Vienna as these jurisdictions do not fall under Fairfax County zoning.
+
 ```{r}
-options(tigris_use_cache=T)
-places<-places("Virginia") %>% st_as_sf() %>% st_transform(st_crs(zon)) %>% filter(NAME=="Herndon"|NAME=="Vienna"|NAME=="Clifton") %>% select()
+
+options(tigris_use_cache = TRUE)
+
+places <- places("Virginia") %>% 
+  st_as_sf() %>% 
+  st_transform(st_crs(zon)) %>% 
+  filter(NAME=="Herndon"|NAME=="Vienna"|NAME=="Clifton") %>% 
+  select()
 
 
-jursf_temp<-jursf %>% mutate(notIsPlace= sapply(st_intersects(jursf, places),function(x){length(x)==0})) %>% 
-               filter(notIsPlace)
+jursf_temp <- jursf %>% 
+  mutate(notIsPlace= sapply(st_intersects(jursf, places),function(x){length(x)==0})) %>%
+  filter(notIsPlace)
 
 removed <-  nrow(jursf) - nrow(jursf_temp) 
 
@@ -367,6 +375,7 @@ jursf_temp1 <- jursf_temp %>% mutate(id = seq(1, nrow(jursf_temp), 1))
 
 
 Spatial join
+
 ```{r spatial-join}
 
 jurjoin <- st_join(jursf_temp1, zon, join = st_intersects)
@@ -374,7 +383,6 @@ jurjoin <- st_join(jursf_temp1, zon, join = st_intersects)
 ```
 
 23 observations are gained through this join - these are added because points are falling in more than one zone.
-
 
 
 After the join, we convert back to a dataframe, for ease of computations.
@@ -399,14 +407,22 @@ if (sum(is.na(jur_4$ZONECODE)) / nrow(jur_4) > .05) {
 
 
 Drop new observations that were added in the join
+
 ```{r}
-tempjur <- jur_4 %>% mutate(newId = seq(1, nrow(jur_4), 1))
+tempjur <- jur_4 %>% 
+  mutate(newId = seq(1, nrow(jur_4), 1))
 
-tempjur1<-tempjur %>% group_by(id) %>% count() %>% arrange(desc(n)) %>% filter(n>1)
+tempjur1 <- tempjur %>% 
+  group_by(id) %>% 
+  count() %>% 
+  arrange(desc(n)) %>% 
+  filter(n>1)
+
 tempjur2 <- left_join(tempjur1, tempjur %>% select(id, newId))
-tempjur3<- tempjur2[seq(1, nrow(tempjur2), 2), ]
 
-jur_5<- tempjur %>% filter(!newId%in%tempjur3$newId) %>% select(-id, -newId)
+tempjur3 <- tempjur2[seq(1, nrow(tempjur2), 2), ]
+
+jur_5 <- tempjur %>% filter(!newId%in%tempjur3$newId) %>% select(-id, -newId)
 
 ```
 
@@ -454,51 +470,54 @@ others <- jur_5 %>% filter(is.na(newZoning)|is.na(ZONECODE))
 
 differents %<>% mutate(ZONECODE = gsub(pattern="-", replacement = "", ZONECODE))
 
-sames1 <- differents %>% filter(newZoning==ZONECODE)
-differents1 <- differents %>% filter(newZoning != ZONECODE)
+sames1 <- differents %>% 
+  filter(newZoning == ZONECODE)
+differents1 <- differents %>% 
+  filter(newZoning != ZONECODE)
 
 
 differents1 %<>% mutate(ZONECODE = case_when(
-                     ZONECODE=="R3" ~ "R-3",
-                     ZONECODE=="R1" ~ "R-1",
-                     ZONECODE=="C8" ~ "C-8",
-                     ZONECODE=="R2" ~ "R-2",
-                     ZONECODE=="C3" ~ "C-3",
-                     ZONECODE=="R8" ~ "R-8",
-                     ZONECODE=="I4" ~ "I-4",
-                     ZONECODE=="I5" ~ "I-5",
-                     ZONECODE=="I3" ~ "I-3",
-                     ZONECODE=="PDH2" ~ "PDH-2",
-                     ZONECODE=="PDH5" ~ "PDH-5",
-                     ZONECODE=="C5" ~ "C-5",
-                     ZONECODE=="R20" ~ "R-20",
-                     ZONECODE=="PDH12" ~ "PDH-12",
-                     ZONECODE=="C7"~"C-7",
-                     ZONECODE=="C4" ~ "C-4",
-                     ZONECODE=="I1" ~ "I-1",
-                     ZONECODE=="C6" ~ "C-6",
-                     ZONECODE=="R4" ~ "R-4",
-                     ZONECODE=="C2" ~ "C-2",
-                     ZONECODE=="R5" ~ "R-5",
-                     ZONECODE=="R12" ~ "R-12",
-                     ZONECODE=="PDH4" ~ "PDH-4",
-                     ZONECODE=="PDH3" ~ "PDH-3",
-                     ZONECODE=="PDH20"~ "PDH-20",
-                     ZONECODE=="PDH30" ~ "PDH-30",
-                     ZONECODE=="PDH8" ~ "PDH-8",
-                     ZONECODE=="PDH40" ~ "PDH-40",
-                     ZONECODE=="I6" ~ "I-6",
-                     ZONECODE=="I2" ~ "I-2",
-                     ZONECODE=="PDH1" ~ "PDH-1",
-                     ZONECODE=="PDH16" ~ "PDH-16",
-                     ZONECODE=="R30" ~ "R-30",
-                     ZONECODE=="R16" ~ "R-16",
-                     T ~ ZONECODE
-)) %>% mutate(newZoning=case_when(newZoning=="PLANNED RES MIXED USE"~ZONECODE,
-        newZoning=="R-10 SINGLE FAM 10000 3+D"~ZONECODE,
-        newZoning=="R12" ~ "R-12",
-        newZoning=="R" ~ "RC",
-        T~newZoning))
+                     ZONECODE == "R3" ~ "R-3",
+                     ZONECODE == "R1" ~ "R-1",
+                     ZONECODE == "C8" ~ "C-8",
+                     ZONECODE == "R2" ~ "R-2",
+                     ZONECODE == "C3" ~ "C-3",
+                     ZONECODE == "R8" ~ "R-8",
+                     ZONECODE == "I4" ~ "I-4",
+                     ZONECODE == "I5" ~ "I-5",
+                     ZONECODE == "I3" ~ "I-3",
+                     ZONECODE == "PDH2" ~ "PDH-2",
+                     ZONECODE == "PDH5" ~ "PDH-5",
+                     ZONECODE == "C5" ~ "C-5",
+                     ZONECODE == "R20" ~ "R-20",
+                     ZONECODE == "PDH12" ~ "PDH-12",
+                     ZONECODE == "C7"~"C-7",
+                     ZONECODE == "C4" ~ "C-4",
+                     ZONECODE == "I1" ~ "I-1",
+                     ZONECODE == "C6" ~ "C-6",
+                     ZONECODE == "R4" ~ "R-4",
+                     ZONECODE == "C2" ~ "C-2",
+                     ZONECODE == "R5" ~ "R-5",
+                     ZONECODE == "R12" ~ "R-12",
+                     ZONECODE == "PDH4" ~ "PDH-4",
+                     ZONECODE == "PDH3" ~ "PDH-3",
+                     ZONECODE == "PDH20"~ "PDH-20",
+                     ZONECODE == "PDH30" ~ "PDH-30",
+                     ZONECODE == "PDH8" ~ "PDH-8",
+                     ZONECODE == "PDH40" ~ "PDH-40",
+                     ZONECODE == "I6" ~ "I-6",
+                     ZONECODE == "I2" ~ "I-2",
+                     ZONECODE == "PDH1" ~ "PDH-1",
+                     ZONECODE == "PDH16" ~ "PDH-16",
+                     ZONECODE == "R30" ~ "R-30",
+                     ZONECODE == "R16" ~ "R-16",
+                     TRUE ~ ZONECODE
+)) %>% mutate(newZoning=case_when(
+  newZoning == "PLANNED RES MIXED USE"     ~ ZONECODE,
+  newZoning == "R-10 SINGLE FAM 10000 3+D" ~ ZONECODE,
+  newZoning == "R12"                       ~ "R-12",
+  newZoning == "R"                         ~ "RC",
+  TRUE                                     ~ newZoning))
 
 
 others %<>%  mutate(ZONECODE = case_when(
@@ -536,14 +555,16 @@ others %<>%  mutate(ZONECODE = case_when(
                      ZONECODE=="PDH16" ~ "PDH-16",
                      ZONECODE=="R30" ~ "R-30",
                      ZONECODE=="R16" ~ "R-16",
-                     T ~ ZONECODE
-)) %>%  mutate(newZoning=case_when(newZoning=="PLANNED RES MIXED USE"~ZONECODE,
-        newZoning=="R-10 SINGLE FAM 10000 3+D"~ZONECODE,
-        newZoning=="R12" ~ "R-12",
-        newZoning=="R" ~ "R-1",
-        T~newZoning))
+                     TRUE ~ ZONECODE
+)) %>%  mutate(newZoning=case_when(
+  newZoning == "PLANNED RES MIXED USE"      ~ ZONECODE,
+  newZoning =="R-10 SINGLE FAM 10000 3+D"   ~ ZONECODE,
+  newZoning =="R12"                         ~ "R-12",
+  newZoning =="R"                           ~ "R-1",
+  TRUE                                      ~ newZoning))
 
-differents2 <- differents1 %>% filter(newZoning != ZONECODE)
+differents2 <- differents1 %>% 
+  filter(newZoning != ZONECODE)
 
 
 
@@ -558,6 +579,7 @@ jur_5a <- differents1 %>%
 ```
 
 Fix newZoning that has weird residential values
+
 ```{r}
 residential_weird <- c("RES ",
                        "RD",
@@ -612,7 +634,7 @@ stopifnot((nrow(jurfinal)+removed) == nrow(jur_3))
 
 ### Dual zoning codes
 
-Fairfax does not have dual zoningcodes.
+Fairfax does not have dual zoning codes.
 
 
 
@@ -749,6 +771,7 @@ There are `r planned_vacants` vacant lots in the aforementioned planned jurisdic
 
 
 Alter lotsize for a lot - at "KATELYN ZINN PL" - that has a lotsize that is far too high - size was in acres when it should have been feet.
+
 ```{r}
 zoningdata_sub <- zoningdata %>% mutate(lotsize_sf = ifelse(grepl("KATELYN ZINN PL", propaddress), lotsize_sf/43560, lotsize_sf))
 ```
