@@ -43,7 +43,6 @@ The goal of this analysis is to combine parcels for the upzoning analysis.
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
-library(sf)
 
 source("../Macros/read-fairfax.R")
 source("../Macros/read-arlington.R")
@@ -79,7 +78,7 @@ if (!exists("dc_full")) {
 
 ```{r read-mon}
 if (!exists("montgomery")) {
- montgomery <- read_montgomery()
+ montgomery <- readRDS("L:/Libraries/RegHsg/Data/montgomery/postcleaned-montgomery-data.Rdata")
 } else {
   warning(filepath, " data already read in")
 }
@@ -426,14 +425,15 @@ dc <- dc1 %>%
            numberofunits, 
            category,
            category_detail, 
-           propaddress = parcelbase_address, 
+           propaddress, 
            countylandusedescription, 
            residential,
            totalassessedvalue,
            assessedimprovementvalue,
            assessedlandvalue,
            lat, long,
-           parcelgeo_x, parcelgeo_y)
+           parcelgeo_x, parcelgeo_y,
+           parcelbase_address)
 
 ```
 
