@@ -140,9 +140,10 @@ First, we look at all the options, and filter out all the observations marked as
 
 ```{r tab-dwellings}
 
- zoningcode %>% 
-   count(dwelling_type) %>% 
-   knitr::kable()
+zoningcode %>% 
+  count(dwelling_type) %>% 
+  knitr::kable()
+
 ```
 
 Count the number of unique zoning codes to make sure we won't get rid of any codes entirely.
@@ -178,21 +179,26 @@ We will also create a designation for dwelling types that are restricted to a ce
 
 zoningcode <- zoningcode %>% 
   mutate(dwelling_type = factor(dwelling_type,
-                                levels = c("multiple family dwellings (ADU)",
+                                levels = c(# "single family detached (ADU)",
+                                           "multiple family dwellings (ADU)",
                                            "single family attached (ADU)", 
                                            "single family attached",
-                                           "single family detached (ADU)",
+                                           "single family detached (ADU)",
                                            "single family detached",
                                            "dwellings (all structures -- standard)",
-                                           "mobile home park"
-)),
-         one_unit_flag = ifelse(dwelling_type =="single family detached (ADU)"| dwelling_type=="single family detached",
-                                
+                                           "mobile home park"))) %>% 
+  mutate(one_unit_flag = ifelse(dwelling_type == "single family detached (ADU)" |
+                                  dwelling_type == "single family detached",
                                 1,
-                                0),
-         two_unit_flag = ifelse(dwelling_type == "single family attached (ADU)"| dwelling_type=="single family attached",
-                                1,
-                                0))
+                                0)) #  %>% 
+  # mutate(two_unit_flag = ifelse(dwelling_type == "single family attached (ADU)" |
+  #                                 dwelling_type == "single family attached",
+  #                               1,
+  #                               0))
+
+# count(zoningcode, dwelling_type)
+# count(zoningcodex, dwelling_type)
+# count(zoningcodex, one_unit_flag)
 
 ```
 
@@ -290,21 +296,24 @@ count(jur_2, category)
 Need to clean the zoning variable to get rid of parenthesis in BlackKnight data and make readable. 
 
 ```{r}
-jur_2 %<>% mutate(newZoning=case_when(
-                  str_detect(zoning, "\\(") ~ substring(zoning,1, regexpr("\\(", zoning)-1),
-                  T~zoning)) %>%
-         mutate(newZoning = case_when(
-        newZoning=="PRC" ~ "PRC",
-        newZoning=="PDC" ~ "PDC",
-        newZoning=="PTC" ~ "PTC",
-        newZoning=="RC" ~ "RC",
-        str_ends(newZoning, "C") ~ str_sub(newZoning, 1, str_length(newZoning)-1),
-        T ~ newZoning)) 
+jur_2 %<>% 
+  mutate(newZoning = case_when(
+    str_detect(zoning, "\\(") ~ substring(zoning, 1, regexpr("\\(", zoning) - 1),
+    TRUE ~ zoning)) %>%
+  mutate(newZoning = case_when(
+    newZoning=="PRC" ~ "PRC",
+    newZoning=="PDC" ~ "PDC",
+    newZoning=="PTC" ~ "PTC",
+    newZoning=="RC" ~ "RC",
+    str_ends(newZoning, "C") ~ str_sub(newZoning, 1, str_length(newZoning)-1),
+    TRUE ~ newZoning)) 
 ```
 
 
 We make a flag for missing coordinates.
+
 ```{r}
+
 jur_3 <- jur_2 %>% 
   mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
                                 1,
@@ -316,6 +325,7 @@ jur_3 <- jur_2 %>%
 To determine zoning codes for addresses that have a missing zoning designation or multiple zoning designations, we will use a spatial join to the county's zoning layer.
 
 Read in zoning layer, set CRS
+
 ```{r read-zoning}
 zdir <- paste0("L:/Libraries/RegHsg/Maps/",
                filepath,
@@ -344,11 +354,12 @@ jursf <- jur_3 %>%
   filter(missing_coord==0) %>% 
   st_as_sf(coords = c("long", "lat")) %>% 
   st_set_crs(st_crs(zon))
+
 ```
 
 
 
-Filter out Herndon and Vienna as these jurisdictions do not fall under Fairfax County zoning.
+Filter out Herndon, Vienna, and Clifton as these jurisdictions do not fall under Fairfax County zoning.
 
 ```{r}
 
@@ -357,24 +368,33 @@ options(tigris_use_cache = TRUE)
 places <- places("Virginia") %>% 
   st_as_sf() %>% 
   st_transform(st_crs(zon)) %>% 
-  filter(NAME=="Herndon"|NAME=="Vienna"|NAME=="Clifton") %>% 
+  filter(NAME %in% c("Herndon", "Vienna", "Clifton")) %>% 
   select()
 
 
 jursf_temp <- jursf %>% 
-  mutate(notIsPlace= sapply(st_intersects(jursf, places),function(x){length(x)==0})) %>%
-  filter(notIsPlace)
+  mutate(notIsPlace= sapply(st_intersects(jursf, places),
+                            function(x){length(x)==0}))
 
-removed <-  nrow(jursf) - nrow(jursf_temp) 
+# check that these jurisdictions are in Clifton, Herndon, or Vienna
+jursf_temp %>% 
+  filter(notIsPlace == FALSE) %>% 
+  count(propcity)
 
-jursf_temp1 <- jursf_temp %>% mutate(id = seq(1, nrow(jursf_temp), 1))
+# count many rows were removed
+removed <- nrow(jursf) - nrow(filter(jursf_temp, notIsPlace == TRUE)) 
+removed
 
+# remove those jurisdictions
+jursf_temp1 <- jursf_temp %>% 
+  filter(notIsPlace == TRUE) %>% 
+  mutate(id = seq(1, nrow(.), 1))
 
 ```
 
 
 
-Spatial join
+Spatial join to zoning layer
 
 ```{r spatial-join}
 
@@ -418,7 +438,8 @@ tempjur1 <- tempjur %>%
   arrange(desc(n)) %>% 
   filter(n>1)
 
-tempjur2 <- left_join(tempjur1, tempjur %>% select(id, newId))
+tempjur2 <- left_join(tempjur1, tempjur %>% select(id, newId),
+                       by = "id")
 
 tempjur3 <- tempjur2[seq(1, nrow(tempjur2), 2), ]
 
@@ -600,8 +621,8 @@ residential_weird <- c("RES ",
                        "RM-2")
 
 jur_6 <- jur_5a %>% mutate(newZoning = case_when(
-                        newZoning %in% residential_weird ~ ZONECODE,
-                        T ~ newZoning
+  newZoning %in% residential_weird ~ ZONECODE,
+  TRUE ~ newZoning
 ))
 
 
@@ -684,7 +705,8 @@ There are `r ` observations that did not have a match in the zoning code. Below,
 ```{r antijoin}
 
 anti_join(jurfinal, zoningcode, by = c("zoning_code"="code")) %>% 
-  count(zoning_code) %>% arrange(desc(n)) %>%
+  count(zoning_code) %>% 
+  arrange(desc(n)) %>%
   knitr::kable()
 
 ```
@@ -692,6 +714,7 @@ anti_join(jurfinal, zoningcode, by = c("zoning_code"="code")) %>%
 
 Categorize those lots that are not joining
 ```{r unjoined-categories}
+
 planned<-c("PRC",
            "PDH-3",
            "PDH-4",
@@ -744,14 +767,17 @@ notResidential <- c("I-5",
   
 
 
-tempTable<-anti_join(jurfinal, zoningcode, by = c("zoning_code"="code")) %>% 
-  count(zoning_code) %>% arrange(desc(n)) %>% mutate(type = case_when(
-                                            zoning_code %in% planned ~ "planned",
-                                            zoning_code %in% notResidential ~ "not residential",
-                                            zoning_code %in% residential_weird ~ "residential weird",
-                                            T ~ "other"))
+tempTable <- anti_join(jurfinal, zoningcode, by = c("zoning_code"="code")) %>% 
+  count(zoning_code) %>% arrange(desc(n)) %>% 
+  mutate(type = case_when(
+    zoning_code %in% planned ~ "planned",
+    zoning_code %in% notResidential ~ "not residential",
+    zoning_code %in% residential_weird ~ "residential weird",
+    TRUE ~ "other"))
 
-temperTable <- tempTable %>% group_by(type) %>% summarise(totalLots = sum(n, na.rm=T))
+temperTable <- tempTable %>% 
+  group_by(type) %>% 
+  summarise(totalLots = sum(n, na.rm=T))
 
 temperTable%>%
   knitr::kable()
@@ -759,12 +785,14 @@ temperTable%>%
 ```
 
 Of those that do not match, `r paste0(round(temperTable %>% filter(type=="planned") %>% pull(totalLots) / temperTable$totalLots %>% sum, 2)*100, "%")` (`r temperTable %>% filter(type=="planned") %>% pull(totalLots)`) are in planning development districts, some of which have residential uses. However, developers must pass the development plan process before building in these districts. `r temperTable %>% filter(type == "residential weird") %>% pull(totalLots)` of those classified as "residential weird" are vacant.
+
 ```{r results = F}
 
+planned_vacants<- jurfinal %>% 
+  filter(zoning_code %in% planned,
+         category=="vacant") %>%
+  nrow()
 
-planned_vacants<- jurfinal %>% filter(zoning_code%in%planned, 
-                    category=="vacant") %>%
-                   nrow()
 ```
 
 There are `r planned_vacants` vacant lots in the aforementioned planned jurisdictions
@@ -772,11 +800,15 @@ There are `r planned_vacants` vacant lots in the aforementioned planned jurisdic
 
 Alter lotsize for a lot - at "KATELYN ZINN PL" - that has a lotsize that is far too high - size was in acres when it should have been feet.
 
+
 ```{r}
-zoningdata_sub <- zoningdata %>% mutate(lotsize_sf = ifelse(grepl("KATELYN ZINN PL", propaddress), lotsize_sf/43560, lotsize_sf))
+
+zoningdata_sub <- zoningdata %>% 
+  mutate(lotsize_sf = ifelse(grepl("KATELYN ZINN PL", propaddress),
+                                                            lotsize_sf/43560, 
+                                                            lotsize_sf))
+
 ```
-
-
 
 
 Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
@@ -803,9 +835,12 @@ nrow(zoningdata1) + nrow(filter(zoningdata_sub, is.na(zoning_code)))
 # this is the number of all parcels, including those with 
 zoningdata_sub %>% group_by(propaddress) %>% count() %>% nrow()
 
+count(zoningdata1, smallsize_flag)
 
+t <- zoningdata1 %>% 
+  filter(smallsize_flag == 1)
 
-
+count(zoningdata1, one_unit_flag)
 
 ```
 
@@ -852,15 +887,14 @@ get_unit_variables <- function(dataset,
            units_height = units_per_floor * floors,
            units_density = floor(lotsize_sf / density),
            subset = ifelse(is.na(lot_area_min), NA, floor(lotsize_sf/lot_area_min))) %>%   
-         
       mutate_at(vars(units_height, units_density),
               funs(case_when(
                 living_area < density ~ 0,
                 one_unit_flag == 1 & is.na(.) ~ 1,
                 one_unit_flag == 1 & subset > 1 & !is.na(subset) ~ subset,
                 one_unit_flag == 1 & (subset < 1 | is.na(subset)) ~ 1,
-                two_unit_flag == 1 & . >= 2 & !is.na(subset) ~ 2 * subset,
-                two_unit_flag == 1 & . >= 2 & (subset < 1 | is.na(subset)) ~ 2,
+                # two_unit_flag == 1 & . >= 2 & !is.na(subset) ~ 2 * subset,
+                # two_unit_flag == 1 & . >= 2 & (subset < 1 | is.na(subset)) ~ 2,
                 TRUE ~ .))) %>% 
       mutate(units_total = case_when(
              lotsize_sf < lot_area_min ~ 0,
@@ -1050,14 +1084,14 @@ Write out the results to a csv. Include jurisdiction name in the title.
 
 ```{r write-results}
 
- brsum<-zoningdata1 %>% 
+brsum <- zoningdata1 %>% 
   filter(category == "vacant",
          smallsize_flag == 0) %>% 
   get_unit_summary(construction_efficiency = .7,
-                     average_unit_size = 940,
-                    dwelling_type_breakdown = T) 
+                   average_unit_size = 940,
+                   dwelling_type_breakdown = TRUE) 
 
-brsum%>% 
+brsum %>% 
   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
                    filepath,
                    "-vacant-lots-analysis.csv"))
@@ -1077,8 +1111,8 @@ mf.br <- zoningdata %>%
 
 
 br.summary <- 
-  c(nrow(jur), 
-    nrow(filter(jur, category == "vacant")), 
+  c(nrow(jurfinal), 
+    nrow(filter(jurfinal, category == "vacant")), 
     mf.br, 
     brsum %>% filter(dwelling_type == "multiple family dwellings (ADU)") %>% pull(lots) %>% sum(),
     brsum %>% filter(dwelling_type == "multiple family dwellings (ADU)") %>% pull(units_total) %>% sum())
