@@ -105,7 +105,7 @@ parcel %>%
   group_by(county_name) %>% 
   summarize(count = sum(assessedimprovementvalue > 0 & !is.na(assessedimprovementvalue)),
             med_imp = mean(ifelse(assessedimprovementvalue > 0, assessedimprovementvalue, NA),
-                             na.rm = TRUE))
+                           na.rm = TRUE))
 
 parcel <- parcel %>% 
   mutate(category = ifelse(category == "vacant" &
@@ -659,6 +659,7 @@ dcnd <- dcn %>%
   arrange(desc(density_residential)) %>% 
   st_difference()
 
+
 ggplot() +
   geom_sf(dcb, mapping = aes(),
           fill = "grey", color = "black")+
@@ -1062,8 +1063,8 @@ all_units <- bind_rows(t_units_c, a_units_c) %>%
          density_min, new_units_min,
          density_custom = density_new, new_units_custom = new_units)
 
-write_csv(all_units,
-          "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-nodes.csv")
+# write_csv(all_units,
+#          "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-nodes.csv")
 
 ```
 
@@ -1088,7 +1089,7 @@ Write out summary table.
 
 ```{r write-summary}
 
-write_csv(upsum, 
-          "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary.csv")
+# write_csv(upsum, 
+#          "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary.csv")
 
 ```
