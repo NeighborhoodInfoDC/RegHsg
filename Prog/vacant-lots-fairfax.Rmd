@@ -835,12 +835,13 @@ nrow(zoningdata1) + nrow(filter(zoningdata_sub, is.na(zoning_code)))
 # this is the number of all parcels, including those with 
 zoningdata_sub %>% group_by(propaddress) %>% count() %>% nrow()
 
-count(zoningdata1, smallsize_flag)
-
-t <- zoningdata1 %>% 
-  filter(smallsize_flag == 1)
-
-count(zoningdata1, one_unit_flag)
+# 
+# count(zoningdata1, smallsize_flag)
+# 
+# t <- zoningdata1 %>% 
+#   filter(smallsize_flag == 1)
+# 
+# count(zoningdata1, one_unit_flag)
 
 ```
 
@@ -886,10 +887,10 @@ get_unit_variables <- function(dataset,
            floors = floor(height / 10),
            units_height = units_per_floor * floors,
            units_density = floor(lotsize_sf / density),
-           subset = ifelse(is.na(lot_area_min), NA, floor(lotsize_sf/lot_area_min))) %>%   
+           subset = ifelse(is.na(lot_area_min), NA, floor(lotsize_sf/density))) %>%   
       mutate_at(vars(units_height, units_density),
               funs(case_when(
-                living_area < density ~ 0,
+                lotsize_sf < density ~ 0,
                 one_unit_flag == 1 & is.na(.) ~ 1,
                 one_unit_flag == 1 & subset > 1 & !is.na(subset) ~ subset,
                 one_unit_flag == 1 & (subset < 1 | is.na(subset)) ~ 1,
@@ -897,8 +898,8 @@ get_unit_variables <- function(dataset,
                 # two_unit_flag == 1 & . >= 2 & (subset < 1 | is.na(subset)) ~ 2,
                 TRUE ~ .))) %>% 
       mutate(units_total = case_when(
-             lotsize_sf < lot_area_min ~ 0,
-              living_area < density ~ 0,
+             # lotsize_sf < lot_area_min ~ 0,
+              lotsize_sf < density ~ 0,
               TRUE ~ pmin(units_density, units_height, na.rm = TRUE)))
     
 }
@@ -1001,50 +1002,58 @@ zoningdata1 %>%
   knitr::kable()
 
 
-```
+
+sfa <- units_vacant %>% 
+  filter(dwelling_type == "single family attached (ADU)")
 
 
-
-Get summary statistics for several different parameters
-
-```{r sum}
-
-map_df(c(.7, .85), ~ get_unit_summary(dataset = filter(zoningdata1,
-                                                       category == "vacant",
-                                                       smallsize_flag == 0),
-                                      construction_efficiency = .,
-                                      average_unit_size = 940,
-                                      dwelling_type_breakdown = FALSE)) %>% 
-  knitr::kable()
+sfd <- units_vacant %>% 
+  filter(dwelling_type == "single family detached")
 
 ```
 
 
-Look at the distribution of units for lots with more than 1 unit, to check for extreme outliers.
 
-```{r scatter, echo = FALSE}
+<!-- Get summary statistics for several different parameters -->
 
-zoningdata1 %>% 
-  filter(category == "vacant",
-         smallsize_flag == 0) %>% 
-  get_unit_variables(construction_efficiency = .7,
-                     average_unit_size = 940) %>% 
-  filter(units_total > 1) %>% 
-  ggplot() +
-  geom_point(mapping = aes(lotsize_sf, units_total),
-             alpha = .5) +
-  scale_x_continuous(labels = scales::comma,
-                     expand = expand_scale(mult = c(0, 0.002)), 
-                     limits = c(0, 250000),
-                     breaks = 0:6 * 50000) +
-  scale_y_continuous(expand = expand_scale(mult = c(0, 0.002)), 
-                     limits = c(0, 45),
-                     breaks = 0:7 * 50) +
-  scatter_grid() +
-  labs(x = "Lot size (square feet)", y = "Total units") +
-  theme(plot.margin = margin(t = 20, r = 20))
+<!-- ```{r sum} -->
 
-```
+<!-- map_df(c(.7, .85), ~ get_unit_summary(dataset = filter(zoningdata1, -->
+<!--                                                        category == "vacant", -->
+<!--                                                        smallsize_flag == 0), -->
+<!--                                       construction_efficiency = ., -->
+<!--                                       average_unit_size = 940, -->
+<!--                                       dwelling_type_breakdown = FALSE)) %>%  -->
+<!--   knitr::kable() -->
+
+<!-- ``` -->
+
+
+<!-- Look at the distribution of units for lots with more than 1 unit, to check for extreme outliers. -->
+
+<!-- ```{r scatter, echo = FALSE} -->
+
+<!-- zoningdata1 %>%  -->
+<!--   filter(category == "vacant", -->
+<!--          smallsize_flag == 0) %>%  -->
+<!--   get_unit_variables(construction_efficiency = .7, -->
+<!--                      average_unit_size = 940) %>%  -->
+<!--   filter(units_total > 1) %>%  -->
+<!--   ggplot() + -->
+<!--   geom_point(mapping = aes(lotsize_sf, units_total), -->
+<!--              alpha = .5) + -->
+<!--   scale_x_continuous(labels = scales::comma, -->
+<!--                      expand = expand_scale(mult = c(0, 0.002)),  -->
+<!--                      limits = c(0, 250000), -->
+<!--                      breaks = 0:6 * 50000) + -->
+<!--   scale_y_continuous(expand = expand_scale(mult = c(0, 0.002)),  -->
+<!--                      limits = c(0, 45), -->
+<!--                      breaks = 0:7 * 50) + -->
+<!--   scatter_grid() + -->
+<!--   labs(x = "Lot size (square feet)", y = "Total units") + -->
+<!--   theme(plot.margin = margin(t = 20, r = 20)) -->
+
+<!-- ``` -->
 
 
 Look more closely at vacant lots < 50,000 SF
@@ -1091,11 +1100,11 @@ brsum <- zoningdata1 %>%
                    average_unit_size = 940,
                    dwelling_type_breakdown = TRUE) 
 
-brsum %>% 
-  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
-                   filepath,
-                   "-vacant-lots-analysis.csv"))
-
+# brsum %>% 
+#   write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
+#                    filepath,
+#                    "-vacant-lots-analysis.csv"))
+# 
 
 ```
 
@@ -1124,7 +1133,7 @@ br.breakdown <- brsum %>%
                                 "sf attached",
                                 dwelling_type)) %>% 
   group_by(dwelling_type) %>% 
-  summarize_at(vars(lots, units_total),sum) %>% 
+  summarize_at(vars(lots, units_total) ,sum) %>% 
   filter(dwelling_type != "All") %>% 
   arrange(desc(units_total))
 
