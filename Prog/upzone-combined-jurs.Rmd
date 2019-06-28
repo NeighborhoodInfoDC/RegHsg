@@ -1,0 +1,1095 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Upzoning analysis for all jurisdictions"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The goal of this analysis is to estimate the number of units to be gained from upzoning the existing housing stock within 1 mile of COG activity centers and 1/2 mile of rail, including MARC/VRE.
+
+The metric that we use for density will be defined as units per acre. 
+
+## Set-up
+
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(sf)
+library(urbnthemes)
+library(units)
+library(broom)
+library(furrr)
+
+
+source("../Macros/read-combined-parcels.R")
+source("../Macros/get_node_geography.R")
+
+set_urbn_defaults("print")
+
+```
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+
+```
+
+
+Set directory for maps
+
+```{r fips}
+
+rhfdir <- "L:/Libraries/RegHsg/Maps"
+
+```
+
+### Get parcel data 
+
+Load in  cleaned data for Arlington, Fairfax, Montgomery, and DC. Check that there are no missing values in `category`
+
+
+```{r read}
+if (!exists("parcel")) {
+  parcel <- read_combined_parcels()
+} else {
+  warning("Parcel data already read in")
+}
+
+
+parcel %>% 
+  group_by(county_name, category) %>% 
+  count()
+
+```
+
+Make sure that vacant parcels are classified correctly. Change their designation to "vacant with structures" if there is a non-zero value for assessed improvement value.
+
+```{r improvement}
+
+parcel %>% 
+  filter(category == "vacant") %>% 
+  group_by(county_name) %>% 
+  summarize(count = sum(assessedimprovementvalue > 0 & !is.na(assessedimprovementvalue)),
+            med_imp = mean(ifelse(assessedimprovementvalue > 0, assessedimprovementvalue, NA),
+                           na.rm = TRUE))
+
+parcel <- parcel %>% 
+  mutate(category = ifelse(category == "vacant" &
+                             assessedimprovementvalue > 0 & !is.na(assessedimprovementvalue),
+                           "vacant with structures",
+                           category),
+         category = ifelse(county_fips == "11001" & category_detail == "Vacant with structures",
+                           "vacant with structures",
+                           category))
+
+parcel %>% 
+  group_by(county_name, category) %>% 
+  count()
+```
+
+Produce some summary statistics on land use for the region.
+
+```{r sum-stats}
+
+landuse_summary <- parcel %>% 
+  ungroup() %>% 
+  group_by(county_name, category) %>% 
+  summarize(lot_acres = sum(lotsize_acres, na.rm = TRUE)) %>% 
+  spread(key = category, value = lot_acres) %>% 
+  mutate(`vacant with structures` = ifelse(is.na(`vacant with structures`),
+                                           0,
+                                           `vacant with structures`)) %>% 
+  mutate(total_land = sf + mf + other + vacant + `vacant with structures`,
+         total_nonvacant = sf + mf + other,
+         sf_land = sf / total_land,
+         sf_land_nonvacant = sf / total_nonvacant,
+         sf_res = sf / (sf + mf))
+
+```
+
+## Get nodes
+
+Use the functions established in `clean-node-geographies.Rmd` to read in shapefiles for nodes. 
+
+We will end up making two different version of node geometries:
+
+1. Use 1 mile buffer for activity centers, 1/2 mile for transit.
+2. Use a 1/2 mile for activity centers within DC, 1 mile outside of DC. Use 1/2 mile for all transit.
+
+### Get uniform node boundaries
+
+```{r get-nodes}
+
+nodes_uniform_all <- get_node_geography(node_type = "joint",
+                                       style = "buffer",
+                                       activity_buffer = 1,
+                                       transit_buffer = .5) %>% 
+  mutate(node = ifelse(type == "Activity",
+                       "Activity",
+                       "Transit"))
+
+transit <- get_node_geography(node_type = "transit",
+                              style = "buffer",
+                              transit_buffer = .5) %>% 
+  summarize()
+
+activity <- get_node_geography(node_type = "activity",
+                               style = "buffer",
+                               activity_buffer = 1) %>% 
+  summarize()
+
+joint <- get_node_geography(node_type = "joint",
+                            style = "buffer",
+                            activity_buffer = 1,
+                            transit_buffer = .5) %>% 
+  summarize()
+
+```
+
+Read in COG boundaries, select the ones we will be using, and clip nodes layers to the correct jurisdictions.
+
+Some nodes are repeated (Union Station is listed as a transit node three times, one for MARC, Amtrak, and Metro). Identify them by grouping by name and node type, and select the first one (which line it is does not matter for the purposes of the calculation).
+
+We also drop four nodes with specialty uses- the Pentagon metro stop and activity center, the Arlington Cemetery metro stop, and the DCA metro stop.
+
+```{r cog-clip}
+
+regdir <- "L:/Libraries/Region/Maps"
+
+bound_cog <- st_read(dsn = regdir,
+                     layer = "Mapping_Boundaries__COG_Members") %>% 
+  st_transform(crs = 4326)
+
+
+bound <- bound_cog %>% 
+  filter(COGGEOID %in% parcel$county_fips | 
+           COGNAME %in% c("Rockville", "Gathersburg")) %>% 
+  mutate(jurisdiction = ifelse(COGNAME == "Gathersburg",
+                               "Gaithersburg",
+                               as.character(COGNAME))) %>% 
+  select(county_fips = COGGEOID,
+         jurisdiction,
+         jurisdiction_name = COGNAMELSA)
+
+# union the boundary layer so nodes that cross jurisdiction lines are still included
+bu <- bound %>% 
+  summarize()
+
+# select only nodes that are entirely in areas where we have parcel data
+nodes_uniform <- st_join(nodes_uniform_all, bu, join = st_covered_by,
+                         left = FALSE) %>% 
+  # filter out nodes that are repeated within a type
+  group_by(name, node) %>% 
+  filter(row_number() == 1) %>% 
+  ungroup() %>% 
+  filter(# drop Pentagon activity center and metro stop
+         !(name == "Pentagon"),
+         # drop Alrington Cemetery metro stop
+         !(name == "Arlington Cemetery"),
+         # drop DCA
+         !(name == "Ronald Reagan Washington National Airport"))
+
+```
+
+### Varied node boundaries
+
+```{r varied}
+
+# get DC boundary
+dc_bound <- bound %>% 
+  filter(county_fips == "11001")
+
+# get DC nodes
+act_points <- get_node_geography(node_type = "activity",
+                                 style = "point")
+
+dcact <- st_intersection(act_points, dc_bound)
+
+act_half <- get_node_geography(node_type = "activity",
+                                 style = "buffer",
+                                 activity_buffer = .5) %>% 
+  filter(name %in% dcact$name) %>% 
+  mutate(buffer = .5)
+
+nodes_other <- get_node_geography(node_type = "joint",
+                                  style = "buffer",
+                                  transit_buffer = .5,
+                                  activity_buffer = 1) %>% 
+  mutate(buffer = ifelse(type == "Activity", 1, .5))
+
+nodes_varies <- nodes_other %>% 
+  rbind(act_half) %>% 
+  mutate(node = ifelse(type == "Activity",
+                       "Activity",
+                       "Transit")) %>% 
+  st_join(bu, join = st_covered_by,
+                     left = FALSE) %>% 
+  group_by(name, node) %>% 
+  slice(which.min(buffer)) %>% 
+  # filter out nodes that are repeated within a type
+  group_by(name, node) %>% 
+  filter(row_number() == 1) %>% 
+  ungroup() %>% 
+  filter(# drop Pentagon activity center and metro stop
+         !(name == "Pentagon"),
+         # drop Alrington Cemetery metro stop
+         !(name == "Arlington Cemetery"),
+         # drop DCA
+         !(name == "Ronald Reagan Washington National Airport"))
+
+```
+
+
+
+Map to make sure correct nodes were selected.
+
+#### {.tabset .tabset.fade}
+
+##### Uniform
+
+```{r check-nodes1, echo=FALSE}
+
+ggplot() +
+  geom_sf(data = bound, mapping = aes(),
+          fill = "#d2d2d2") +
+  geom_sf(data = nodes_uniform, mapping = aes(fill = node),
+          alpha = .35, color = NA) +
+  theme_urbn_map() +
+  labs(fill = NULL) +
+  coord_sf(datum = NA)
+
+```
+
+##### Varied
+
+```{r check-nodes2, echo=FALSE}
+
+ggplot() +
+  geom_sf(data = bound, mapping = aes(),
+          fill = "#d2d2d2") +
+  geom_sf(data = nodes_varies, mapping = aes(fill = node),
+          alpha = .35, color = NA) +
+  theme_urbn_map() +
+  labs(fill = NULL) +
+  coord_sf(datum = NA)
+
+```
+
+## Spatial parcel data
+
+Convert Black Knight data to spatial. Filter out DC, adjust projection, and then recombine.
+
+```{r bk-spatial}
+
+dc <- parcel %>% 
+  filter(county_fips == "11001") %>% 
+  mutate(missing_parcelgeoXY= ifelse(is.na(parcelgeo_x) | is.na(parcelgeo_y),
+                                1,
+                                0),
+         missing_latlon= ifelse(is.na(lat) | is.na(long),
+                                1,
+                                0))
+
+
+dcparcel <- dc %>% 
+  filter(missing_parcelgeoXY == 0) %>% 
+  mutate(parcelx = parcelgeo_x, parcely = parcelgeo_y) %>% 
+  st_as_sf(coords = c("parcelx", "parcely")) %>% 
+  st_set_crs(2804) %>% 
+  st_transform(4326)
+
+dcbk <- dc %>% 
+  filter(missing_parcelgeoXY == 1 & missing_latlon == 0) %>% 
+  mutate(longx = long, laty = lat) %>% 
+  st_as_sf(coords = c("longx", "laty")) %>% 
+  st_set_crs(st_crs(4326))
+
+parcel1 <- parcel %>% 
+  filter(county_fips != "11001",
+         !is.na(lat),
+         !is.na(long)) %>% 
+  mutate(longx = long, laty = lat) %>% 
+  st_as_sf(coords = c("longx", "laty")) %>% 
+  st_set_crs(4326) %>% 
+  rbind(select(dcbk, -missing_parcelgeoXY, -missing_latlon)) %>% 
+  rbind(select(dcparcel, -missing_parcelgeoXY, -missing_latlon))
+
+```
+
+Test how many parcels have missing coordinates.
+
+```{r test-missing}
+
+scales::percent((nrow(parcel) - nrow(parcel1)) / nrow(parcel))
+
+```
+
+Plot a sample of the data to make sure the geographic conversion looks consistent.
+
+```{r plot-sample}
+
+parcel1 %>% 
+  sample_n(500) %>% 
+  ggplot() +
+  geom_sf(data = bound, mapping = aes()) +
+  geom_sf(mapping = aes())
+
+```
+
+
+## Upzone
+
+### Calculate density
+
+First- make sure that vacant and other parcels have a 0 for number of units.
+
+```{r replace-other}
+
+parcel2 <- parcel1 %>%
+  mutate(numberofunits = ifelse(category %in% c("vacant", "other"),
+                                0,
+                                numberofunits)) %>% 
+  # filter out wrong observations
+  filter(!(county_fips == "51059" & numberofunits >= 7000 & !is.na(numberofunits)),
+         !(propaddress == "16045 BOWERY ST" & !is.na(propaddress)))
+
+
+parcel2 %>% 
+  as.data.frame() %>% 
+  group_by(county_name, category) %>% 
+  summarize(n(),
+            numberofunits = sum(numberofunits, na.rm = TRUE),
+            lotsize = sum(lotsize_sf, na.rm = TRUE),
+            missing_ls = sum(is.na(numberofunits))) %>% 
+  knitr::kable()
+
+
+
+```
+
+#### Test method on one activity center.
+
+Pick one node to test and visualize the calculation. Use Crystal City as an example.
+
+```{r clar}
+
+cc <- filter(nodes_varies, name == "Crystal City", node == "Transit")
+dc <- filter(nodes_varies, name == "Dupont Circle", node == "Transit")
+
+```
+
+Clip the Black Knight data to the extent of the activity center.
+
+```{r clip-zon}
+
+bk_cc <- st_intersection(parcel2, cc)
+bk_dc <- st_intersection(parcel2, dc)
+
+```
+
+Create function for maps to check data.
+
+```{r map-check-points}
+
+#' Map points
+#'
+#' @description This function creates a map that allows you to visualize land use and number of units.
+#' @param spatial_data dataset with Black Knight `sf` point data, with number of units and  category variables
+#'
+#' @return Returns a `ggplot2` map
+map_points <- function(spatial_data) {
+  
+  spatial_data1 <- spatial_data %>% 
+  mutate(units_grouped = case_when(
+    category %in% c("other") ~ "commerical and office",
+    category %in% "vacant" ~ "vacant",
+    numberofunits == 1 ~ "1 unit",
+    numberofunits %in% 2:4 ~ "2-4 units",
+    numberofunits %in% 5:20 ~ "5-20 units",
+    numberofunits %in% 20:100 ~ "20-100 units",
+    numberofunits > 100 ~ "100+ units",
+    TRUE ~ "missing"
+  )) %>% 
+  mutate(units_grouped = factor(units_grouped,
+                                levels = c("1 unit", "2-4 units",
+                                           "5-20 units", "20-100 units",
+                                           "100+ units", 
+                                           "commerical and office", "vacant",
+                                           "missing")))
+
+ggplot() +
+  geom_sf(spatial_data1, mapping = aes(color = units_grouped),
+          show.legend = "point") +
+  scale_color_manual(values = c("#A2D4EC","#73BFE2","#1696d2","#12719e","#062635",
+                               "#fdbf11", "#ec008b", "#d2d2d2")) +
+  coord_sf(datum = NA)
+  
+}
+
+```
+
+#### {.tabset .tabset.fade}
+
+##### all properties
+
+```{r dupont, echo=FALSE}
+bk_dc %>% 
+  map_points()
+```
+
+##### missing BK address
+
+```{r dup-missing, echo=FALSE}
+bk_dc %>% 
+  filter(is.na(propaddress)) %>% 
+  map_points() +
+  geom_sf(dc, mapping = aes(),
+          fill = NA, color = "black") +
+  coord_sf(datum = NA)
+
+```
+##### missing parcel base address
+
+```{r dup-missing1, echo=FALSE}
+bk_dc %>% 
+  filter(is.na(parcelbase_address)) %>% 
+  map_points() +
+  geom_sf(dc, mapping = aes(),
+          fill = NA, color = "black") +
+  coord_sf(datum = NA)
+
+```
+
+
+#### Apply calculation to all activity centers and transit stops
+
+Calculate table. Remove observations that are missing either lot size of number of units- having one absent from the numerator or denominator will skew the calculation.
+
+This function calculates three different metric and summarizes the land use within each node.
+
+```{r inv-fxn}
+
+#' Generate density for individual transit stops and activity centers
+#'
+#' This function returns a dataframe with the density within each node. It clips the spatial parcel data to the radius of the node, and then uses the lot size and number of units to get a measure of density. Also included are variables that describe the land use within the node- what percent of lots are devoted to multifamily, singly family, vacant lots, and other uses.
+#'
+#' @param dataset SF object, parcel data, must contain the category of parcel, number of units, and lot size in acres
+#' @param node_geometry SF object, must contain the nodes with the appropriate buffers
+#' @param node_name Name of the transit stop or activity center
+#' @param node_type Either "Transit" or "Activity"
+#'
+#' @return A dataframe witht the density within each node.
+get_individual_density <- function(dataset, node_geometry, node_name, node_type) {
+  
+  options(warn = -1)
+  
+  n <- node_geometry %>% 
+    filter(name == node_name,
+           node == node_type)
+  
+  area <- st_area(n) %>% units::set_units("acres") %>% set_units(NULL)
+  
+  suppressMessages({
+    suppressWarnings({
+  dataset %>% 
+    st_intersection(n) %>% 
+        as.data.frame() %>% 
+        filter(!is.na(lotsize_sf), !is.na(numberofunits)) %>% 
+        summarize(residential_parcels = sum(residential, na.rm = TRUE),
+                  residential_acres = sum(ifelse(residential == 1, lotsize_acres, 0),
+                                          na.rm = TRUE),
+                  total_acres = sum(lotsize_acres, na.rm = TRUE),
+                  number_of_units = sum(numberofunits, na.rm = TRUE),
+                  density = number_of_units / total_acres,
+                  density_area = number_of_units / area,
+                  density_residential = number_of_units / residential_acres,
+                  pmf = sum(ifelse(category == "mf", 
+                                   lotsize_acres, 
+                                   0),
+                            na.rm = TRUE) / total_acres,
+                  psf = sum(ifelse(category == "sf", 
+                                   lotsize_acres, 
+                                   0),
+                            na.rm = TRUE) / total_acres,
+                  pvac = sum(ifelse(category == "vacant", 
+                                    lotsize_acres, 
+                                    0),
+                             na.rm = TRUE) / total_acres,
+                  pvacstruc = sum(ifelse(category == "vacant with structures", 
+                                         lotsize_acres, 
+                                         0),
+                                  na.rm = TRUE) / total_acres,
+                  pother = sum(ifelse(category == "other",
+                                      lotsize_acres, 
+                                      0),
+                              na.rm = TRUE) / total_acres) %>% 
+        mutate(name = node_name, 
+               type = node_type, 
+               pres = pmf + psf) %>% 
+        select(name, type, everything())
+    })
+  })
+}
+
+```
+
+
+Map function through all activity centers and transit zones. Run in parallel to increase speed.
+
+```{r map-inv-fxn}
+plan(multiprocess)
+options(future.globals.maxSize = 550*1024^2)
+
+transit_names <- nodes_uniform %>% filter(node == "Transit") %>% pull(name) %>% as.character()
+individual_transit <- 
+  future_map_dfr(transit_names, 
+                 ~ get_individual_density(dataset = parcel2,
+                                          node_geometry = nodes_uniform,
+                                          node_name = ., 
+                                          node_type = "Transit"))
+
+
+# activity_names_u <- nodes_uniform %>% filter(node == "Activity") %>% pull(name) %>% as.character()
+# individual_activity_uniform <- map_df(activity_names_u, 
+#                                      ~ get_individual_density(dataset = parcel2,
+#                                                               node_geometry = nodes_uniform,
+#                                                               node_name = ., 
+#                                                               node_type = "Activity"))
+
+activity_names_v <- nodes_varies %>% filter(node == "Activity") %>% pull(name) %>% as.character()
+individual_activity_varied <- 
+  future_map_dfr(activity_names_v, 
+                 ~ get_individual_density(dataset = parcel2,
+                                          node_geometry = nodes_varies,
+                                          node_name = ., 
+                                          node_type = "Activity"))
+
+# individual_uniform <- bind_rows(individual_transit, individual_activity_uniform)
+individual_varies <- bind_rows(individual_transit, individual_activity_varied)
+
+
+```
+
+
+
+Write out results.
+
+```{r write-inv}
+
+
+# write_csv(individual_transit,
+#           "L:/Libraries/RegHsg/Prog/Tables/upzoning-transit.csv")
+# 
+# write_csv(individual_activity_varied,
+#           "L:/Libraries/RegHsg/Prog/Tables/upzoning-activity.csv")
+# 
+# write_csv(individual_varies,
+#           "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-varied.csv")
+# 
+```
+
+
+### Calculate weights
+
+In order to get one number to summarize the analysis for the region and each jurisdiction, we will need to develop weights so that we are not over-counting units.
+
+The problem: nodes overlap.
+
+```{r dc-overlap}
+
+dcb <- bound %>% 
+  filter(county_fips == "11001")
+
+dcn <- individual_transit %>% 
+  left_join(nodes_varies, by = c("name", "type" = "node")) %>% 
+  st_as_sf(crs = 4326) %>% 
+  st_intersection(dcb)
+
+ggplot() +
+  geom_sf(dcb, mapping = aes(),
+          fill = "grey") +
+  geom_sf(dcn, mapping = aes(fill = density_residential),
+          alpha = .4) +
+  scale_fill_gradientn() +
+  theme_urbn_map() +
+  theme(legend.key.height = unit(.3, "in")) +
+  coord_sf(datum = NA)
+
+```
+
+Solution: give preference to denser node, and use remaining area to calculate a weight.
+
+```{r preference}
+
+dcnd <- dcn %>% 
+  arrange(desc(density_residential)) %>% 
+  st_difference()
+
+
+ggplot() +
+  geom_sf(dcb, mapping = aes(),
+          fill = "grey", color = "black")+
+  geom_sf(dcnd, mapping = aes(fill = density_residential),
+          alpha = .9) +
+  scale_fill_gradientn() +
+  coord_sf(datum = NA) +
+  theme_urbn_map() +
+  theme(legend.key.height = unit(.3, "in")) +
+  guides(fill = guide_colorbar(title = "Residential density"))
+
+```
+
+
+Use the percentage of a buffer to calculate weights.
+
+```{r calc-weight}
+
+
+get_weights <- function(dataset) {
+  
+  weighted0 <- dataset %>% 
+  left_join(nodes_varies, by = c("name", "type" = "node")) %>% 
+  st_as_sf(crs = 4326)
+
+  weighted0$total_area <-st_area(weighted0) %>% units::set_units("acres") %>% set_units(NULL)
+  
+  weighted <- weighted0 %>% 
+    arrange(desc(density_residential)) %>% 
+    st_difference()
+  
+  weighted$wt_area <-st_area(weighted) %>% units::set_units("acres") %>% set_units(NULL)
+  
+  weighted %>% 
+    mutate(wt = wt_area / total_area)
+
+}
+
+
+```
+
+Weight transit and activity centers.
+
+```{r apply-weights}
+
+t_weighted <- get_weights(individual_transit)
+st_geometry(t_weighted) <- NULL
+
+a_weighted <- get_weights(individual_activity_varied)
+st_geometry(a_weighted) <- NULL
+
+```
+
+### Group nodes based on density
+
+We will use K means clustering using `density_residential` as the clustering variable. This takes into account that in many of the nodes, the majority of land may not be residential, and this can deflate density, even when most housing in the node is dense/multifamily.
+
+#### K means
+
+Make functions to simplify clustering. Set seed inside function for consistency.
+
+```{r kmeans}
+  
+
+#' Get clusters
+#'
+#' @description This function takes a dataset and uses k means clustering to cluster the data, and then augments the clusters back on to the original dataset.
+#'
+#' @param dataset dataframe to cluster 
+#' @param n_clusters number of clusters to create
+#' @param seed set seed
+#'
+#' @return Returns the same dataframe with the addition of the .cluster variable
+get_clusters <- function(dataset, n_clusters, seed) {
+  
+  set.seed(seed)
+  
+  rescaled_data <- dataset %>% 
+  mutate(dr = scales::rescale(density_residential, 
+                                               to = c(1, 100)),
+         dr1 = scales::rescale(density_residential, 
+                                               to = c(1, 100)),
+         number_of_units = scales::rescale(number_of_units, 
+                                               to = c(1, 100))) %>% 
+  select(dr, dr1, number_of_units)
+
+  clusters <- kmeans(rescaled_data, centers = n_clusters, nstart = n_clusters,
+                     iter.max = 100)
+  
+  tc <- augment(clusters, dataset)
+  
+  
+  tb <- tc %>% 
+  group_by(.cluster) %>% 
+  summarize(cluster_mean = mean(density_residential)) %>% 
+  arrange(cluster_mean) %>% 
+  mutate(new_cluster = 1:n_clusters)
+
+  tc %>% 
+  left_join(tb, by = ".cluster") %>% 
+  select(-.cluster) %>% 
+  rename(.cluster = new_cluster)
+  
+}
+
+#' Summarize clusters
+#'
+#' This function creates a summary table of the number of observations and the mean of residential_density. It can be used to renumber the clusters in ascending order.
+#'
+#' @param cluster_data dataset that has been created by get_clusters function, with .cluster variable
+#'
+#' @return Returns a summary table of the number of observations and the mean of residential_density
+summarize_clusters <- function(cluster_data) {
+  
+  cluster_data %>% 
+  group_by(.cluster) %>% 
+  summarize(n(),
+            mean(density_residential))
+  
+}
+
+#' Clusters three ways
+#'
+#' @description This function creates three plots that summarize the density clusters: a choropleth map, a histogram, and a bar plot that displays the mean and midpoint of each group.
+#'
+#' @param cluster_data dataset that has been created by get_clusters function, with .cluster variable
+#'
+#' @return returns a grid of three plots
+clusters_three_ways <- function(cluster_data) {
+  
+  map <- cluster_data %>% 
+    left_join(nodes_varies, by = c("name", "type" = "node")) %>% 
+    ggplot() +
+    geom_sf(bound, mapping = aes(),
+            fill = "grey") +
+    geom_sf(mapping = aes(fill = factor(.cluster)),
+            alpha = .5) +
+    coord_sf(datum = NA)
+    
+  dist <- cluster_data %>% 
+    ggplot(mapping = aes(density_residential, fill = factor(.cluster))) +
+    geom_histogram(alpha = .7, binwidth = 3) +
+    scale_y_continuous(expand = expand_scale(mult = c(0, .05))) +
+    scale_x_continuous(breaks = c(0, 25, 50, 75, 100, 125)) +
+    labs(y = NULL, x = "Residential density")
+  
+  means <- cluster_data %>% 
+    group_by(.cluster) %>% 
+    summarize(mean = mean(density_residential),
+              midpoint = min(density_residential) + 
+                ((max(density_residential) - min(density_residential)) / 2 )) %>% 
+    gather(key = "operation", value = "metric", -.cluster) %>% 
+    ggplot(mapping = aes(.cluster, metric, fill = operation)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(mapping = aes(label = scales::number_format(accuracy = 1)(metric)),
+              position = position_dodge(width = .7),
+              vjust = -1) +
+    scale_y_continuous(expand = expand_scale(mult = c(0, .15))) +
+    labs(y = "Residential density", x = "Cluster")
+  
+ gridExtra::grid.arrange(map, dist, means,
+                         layout_matrix = rbind(c(1, 2),
+                                               c(1, 3)))
+}
+
+
+
+```
+
+Cluster transit nodes.
+
+```{r cluster-t}
+
+
+t_clusters <- t_weighted %>% 
+  filter(pother < .7) %>% 
+  get_clusters(n_clusters = 8, seed = 20190410)
+
+summarize_clusters(t_clusters) %>% 
+  knitr::kable()
+
+clusters_three_ways(t_clusters)
+
+ggplot(t_clusters) +
+  geom_point(mapping = aes(density_residential, number_of_units,
+                           color = factor(.cluster))) +
+    scale_x_continuous(breaks = 0:13 * 10,
+                       limits = c(0, 130),
+                       expand = expand_scale(mult = c(.002, 0))) +
+    scale_y_continuous(breaks = 0:6 * 3000,
+                       limits = c(0, 18000),
+                       labels = scales::comma,
+                       expand = expand_scale(mult = c(0, .002))) +
+    labs(x = "Residential density",
+         y = "Number of housing units in buffer") +
+    scatter_grid()
+
+```
+
+
+Cluster activity centers.
+
+```{r cluster-a}
+
+a_clusters <- a_weighted %>% 
+  filter(pother < .7) %>% 
+  get_clusters(n_clusters = 8, seed = 20190410)
+
+summarize_clusters(a_clusters) %>% 
+  knitr::kable()
+
+clusters_three_ways(a_clusters)
+
+ggplot(a_clusters) +
+  geom_point(mapping = aes(density_residential, number_of_units,
+                           color = factor(.cluster))) +
+    scale_x_continuous(breaks = 0:16 * 10,
+                       limits = c(0, 160),
+                       expand = expand_scale(mult = c(.002, 0))) +
+    scale_y_continuous(breaks = 0:8 * 4000,
+                       limits = c(0, 32000),
+                       labels = scales::comma,
+                       expand = expand_scale(mult = c(0, .002))) +
+    labs(x = "Residential density",
+         y = "Number of housing units in buffer") +
+    scatter_grid()
+
+```
+
+
+### Units added per node
+
+#### Group to next group
+
+Upzone each density group to the midpoint of the next group up.
+
+```{r add-units}
+
+#' Get additional units
+#'
+#' @description This function returns the results from one upzoning strategy- taking each group to the midpoint and minumum of the next density group.
+#'
+#' @param dataset Clustered data
+#'
+#' @return Returns a data frame with new variables that indicate how many units would be added if each node increased in density to the minimum and the midpoint of the next density group.
+get_additional_units <- function(dataset) {
+  
+  values <- dataset %>% 
+    group_by(.cluster) %>% 
+    summarize(midpoint = min(density_residential) + 
+                ((max(density_residential) - min(density_residential)) / 2 ),
+              min = min(density_residential))
+  
+  
+  v_midpoint <- pull(values, midpoint)
+  v_min <- pull(values, min)
+  
+  dataset %>% 
+    mutate(midpoint2 = v_midpoint[2],
+           midpoint3 = v_midpoint[3],
+           midpoint4 = v_midpoint[4],
+           midpoint5 = v_midpoint[5],
+           midpoint6 = v_midpoint[6],
+           midpoint7 = v_midpoint[7],
+           min2 = v_min[2],
+           min3 = v_min[3],
+           min4 = v_min[4],
+           min5 = v_min[5],
+           min6 = v_min[6],
+           min7 = v_min[7]) %>% 
+    mutate(density_midpoint = case_when(
+      .cluster == 1 ~ midpoint2,
+      .cluster == 2 ~ midpoint3,
+      .cluster == 3 ~ midpoint4,
+      .cluster == 4 ~ midpoint5,
+      .cluster == 5 ~ midpoint6,
+      .cluster == 6 ~ midpoint7,
+      TRUE ~ 0
+    )) %>% 
+    mutate(density_min = case_when(
+      .cluster == 1 ~ min2,
+      .cluster == 2 ~ min3,
+      .cluster == 3 ~ min4,
+      .cluster == 4 ~ min5,
+      .cluster == 5 ~ min6,
+      .cluster == 6 ~ min7,
+      TRUE ~ 0
+    )) %>% 
+    mutate(units_midpoint = density_midpoint * residential_acres,
+           new_units_midpoint = ifelse(.cluster %in% c(7, 8),
+                                       0,
+                                       units_midpoint - number_of_units),
+           units_min = density_min * residential_acres,
+           new_units_min = ifelse(.cluster %in% c(7, 8),
+                                  0,
+                                  units_min - number_of_units),
+           new_units_midpoint_wt = new_units_midpoint * wt,
+           new_units_min_wt = new_units_min * wt)
+  
+}
+```
+
+Apply function,
+
+```{r apply-density}
+
+t_units <- get_additional_units(t_clusters)
+a_units <- get_additional_units(a_clusters)
+
+
+bind_rows(t_units, a_units) %>% 
+  group_by(type, .cluster) %>% 
+    summarize_at(vars(density_residential, number_of_units,
+                      density_midpoint, new_units_midpoint,
+                      density_min, new_units_min),
+                 mean) %>% 
+  knitr::kable()
+
+```
+
+
+#### Custom
+
+Pick rules for groups. This will vary between transit and activity centers.
+
+For transit:
+
+* **Group 1:** Upzone to 10 units per acre.
+* **Groups 2, 3, 4, 6, and 7:** upzone by 20%.
+* **Groups 5 and 8:** No change.
+
+
+```{r t-custom}
+
+t_units_c <- t_units %>% 
+  mutate(density_new = 
+           case_when(
+             .cluster == 1 ~ 10,
+             .cluster %in% c(2, 3, 4, 6, 7) ~ density_residential * 1.2,
+             .cluster %in% c(5, 8) ~ density_residential
+           )) %>% 
+  mutate(units = density_new * residential_acres,
+         new_units = ifelse(.cluster %in% c(5, 8),
+                            0,
+                            units - number_of_units),
+         new_units_wt = new_units * wt)
+
+t_units_c %>% 
+    group_by(type, .cluster) %>% 
+    summarize_at(vars(density_residential, number_of_units,
+                      density_new, 
+                      units, new_units),
+                 mean) %>% 
+  knitr::kable()
+
+
+```
+
+For activity centers:
+
+* **Groups 1, 2, 3, 5, 6:** upzone by 20%.
+* **Groups 4, 7 and 8:** No change.
+
+```{r a-custom}
+
+a_units_c <- a_units %>% 
+  mutate(density_new = 
+           case_when(
+             .cluster == 1 ~ density_residential * 1.2,
+             .cluster %in% c(2, 3, 5, 6) ~ density_residential * 1.2,
+             .cluster %in% c(4, 7, 8) ~ density_residential
+           )) %>% 
+  mutate(units = density_new * residential_acres,
+         new_units = ifelse(.cluster %in% c(7, 8),
+                            0,
+                            units - number_of_units)) %>% 
+  mutate(new_units_wt = new_units * wt)
+
+a_units_c %>% 
+    group_by(type, .cluster) %>% 
+    summarize_at(vars(density_residential, number_of_units,
+                      density_new, 
+                      units, new_units),
+                 mean) %>% 
+  knitr::kable()
+
+
+```
+
+
+Clean up and export clusters and new units added.
+
+```{r}
+
+all_units <- bind_rows(t_units_c, a_units_c) %>% 
+  arrange(type, .cluster) %>% 
+  select(type, group = .cluster, name, 
+         residential_parcels, residential_acres, total_acres,
+         number_of_units, density_residential,
+         density_midpoint, new_units_midpoint,
+         density_min, new_units_min,
+         density_custom = density_new, new_units_custom = new_units)
+
+# write_csv(all_units,
+#          "L:/Libraries/RegHsg/Prog/Tables/upzoning-individual-nodes.csv")
+
+```
+
+### Total units
+
+Calculate sum of new units for each method, using weights.
+
+```{r sum-units}
+
+upsum <- t_units_c %>% 
+  bind_rows(a_units_c) %>% 
+  rename(new_units_custom_wt = new_units_wt) %>% 
+  as.data.frame() %>% 
+  group_by(type) %>% 
+  summarize_at(vars(new_units_midpoint_wt, new_units_min_wt, new_units_custom_wt),
+               ~ floor(sum(.)))
+knitr::kable(upsum)
+
+```
+
+Write out summary table.
+
+```{r write-summary}
+
+# write_csv(upsum, 
+#          "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary.csv")
+
+```
