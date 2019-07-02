@@ -884,7 +884,6 @@ get_unit_variables <- function(dataset,
            living_area = buildable_area * construction_efficiency,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height / 10),
-           floors = ifelse(category_detail %in% c("sf attached", "duplex", "townhouse"), 1, floors),
            units_height = units_per_floor * floors,
            units_density = floor(lotsize_sf / density),
            subset = ifelse(is.na(lot_area_min), NA, floor(lotsize_sf/density))) %>%   
