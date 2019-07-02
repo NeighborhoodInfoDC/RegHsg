@@ -394,6 +394,12 @@ jur_1 <- jur %>%
   mutate(lotsize_acres = case_when(lotsizeareaunit == "AC" ~ lotsizeorarea ,
                                    lotsizeareaunit == "SF" ~ lotsizeorarea / 43560),
          lotsize_sf = lotsize_acres * 43560) %>% 
+  #due to very high lot sizes in blackknight - if parcel area is much less than lotsize_sf, use parcel area instead
+  mutate(lotsize_sf = case_when(
+         (lotsize_sf - parcel_area) > 1000000 ~parcel_area,
+         TRUE ~ lotsize_sf
+    
+  )) %>%
   mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %>%
   mutate(num_livunit=case_when(
          num_livunit==0|is.na(num_livunit) ~ units_rental,
