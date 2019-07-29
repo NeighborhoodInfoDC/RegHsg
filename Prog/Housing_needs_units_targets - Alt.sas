@@ -1,5 +1,5 @@
 /**************************************************************************
- Program:  Housing_needs_units_targets.sas
+ Program:  Housing_needs_units_targets-Alt.sas
  Library:  RegHsg
  Project:  Regional Housing Framework
  Author:   L. Hendey
@@ -7,7 +7,14 @@
  Version:  SAS 9.4
  Environment:  Local Windows session (desktop)
  
- Description:  Produce numbers for housing needs and targets analysis from 2013-17
+ Description:  
+
+ ****Housing_needs_units_targets-Alt.sas USES ACTUAL COSTS FOR OWNERS NOT COSTS FOR FIRST TIME HOMEBUYERS
+	AS IN Housing_needs_units_targets.sas*** 
+
+***aS OF 4-26-19 -CURRENT NEEDS WILL BE BASED ON THE ALT PROGRAM AND FUTURE NEEDS ON THE ORIGINAL TARGET PROGRAM***
+
+ Produce numbers for housing needs and targets analysis from 2013-17
  ACS IPUMS data. Program outputs counts of units based on distribution of income categories
  and housing cost categories for the region and jurisdictions for 3 scenarios:
 
@@ -38,7 +45,8 @@
 						 	so that occupied units match COG 2015 HH estimation.
                 02-17-19 LH Readjust weights after changes to calibration to move 2 HH w/ GQ=5 out of head of HH
 				03-30-19 LH Remove hard coding and merge in contract rent to gross rent ratio for vacant units. 
-				04-26-19 LH Change halfway from 30% of income to max_rent or max_ocost.
+				04-23-19 LH Test using actual costs for current gap (renters and owners). 
+				05-02-19 LH Add couldpaymore flag
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -47,7 +55,7 @@
 %DCData_lib( RegHsg )
 %DCData_lib( Ipums )
 
-%let date=04262019; 
+%let date=04232019Alt; 
 
 proc format;
 
@@ -232,8 +240,16 @@ data Housing_needs_baseline_&year.;
 		else if hud_inc = 5 then max_rent=HHINCOME_a/12*costratio; *allow 120-200% above average to spend more; 
 	  if costratio <=.12 and hud_inc = 6 then max_rent=HHINCOME_a/12*.12; *avg for all HH hud_inc=6; 
 	  	else if hud_inc=6 then max_rent=HHINCOME_a/12*costratio; *allow 200%+ above average to spend more; 
+     
+	 *create flag for household could "afford" to pay more; 
+		couldpaymore=.;
 
+		if max_rent ~= . then do; 
+			if max_rent > rentgrs_a*1.1 then couldpaymore=1; 
+			else if max_rent <= rentgrs_a*1.1 then couldpaymore=0; 
+		end; 
 
+	
     	*rent cost categories that make more sense for rents - no longer used in targets;
 			rentlevel=.;
 			if 0 <=rentgrs_a<750 then rentlevel=1;
@@ -262,12 +278,33 @@ data Housing_needs_baseline_&year.;
 
 
 			mallcostlevel=.;
-			if max_rent<800 then mallcostlevel=1;
-			if 800 <=max_rent<1300 then mallcostlevel=2;
-			if 1300 <=max_rent<1800 then mallcostlevel=3;
-			if 1800 <=max_rent<2500 then mallcostlevel=4;
-			if 2500 <=max_rent<3500 then mallcostlevel=5;
-			if max_rent >= 3500 then mallcostlevel=6;
+
+			*for desired cost for current housing needs is current payment if not cost-burdened
+			or income-based payment if cost-burdened;
+
+			if costburden=1 then do; 
+
+				if max_rent<800 then mallcostlevel=1;
+				if 800 <=max_rent<1300 then mallcostlevel=2;
+				if 1300 <=max_rent<1800 then mallcostlevel=3;
+				if 1800 <=max_rent<2500 then mallcostlevel=4;
+				if 2500 <=max_rent<3500 then mallcostlevel=5;
+				if max_rent >= 3500 then mallcostlevel=6;
+
+			end; 
+
+			else if costburden=0 then do;
+
+				if rentgrs_a<800 then mallcostlevel=1;
+				if 800 <=rentgrs_a<1300 then mallcostlevel=2;
+				if 1300 <=rentgrs_a<1800 then mallcostlevel=3;
+				if 1800 <=rentgrs_a<2500 then mallcostlevel=4;
+				if 2500 <=rentgrs_a<3500 then mallcostlevel=5;
+				if rentgrs_a >= 3500 then mallcostlevel=6;
+
+			end; 
+
+
 
 
 	end;
@@ -289,6 +326,14 @@ data Housing_needs_baseline_&year.;
 			else if hud_inc = 5 then max_ocost=HHINCOME_a/12*costratio; *allow 120-200% above average to pay more; 
 		if costratio <=.12 and hud_inc=6 then max_ocost=HHINCOME_a/12*.12; *avg for all HH HUD_inc=6;
 			else if hud_inc = 6 then max_ocost=HHINCOME_a/12*costratio; *allow 120-200% above average to pay more; 
+		
+		*create flag for household could "afford" to pay more; 
+		couldpaymore=.;
+
+		if max_ocost ~= . then do; 
+			if max_ocost > owncost_a*1.1 then couldpaymore=1; 
+			else if max_ocost <= owncost_a*1.1 then couldpaymore=0; 
+		end; 
 
 	    **** 
 	    Calculate monthly payment for first-time homebuyers. 
@@ -308,7 +353,8 @@ data Housing_needs_baseline_&year.;
 	    tax_ins = .25 * monthly_PI; **taxes assumed to be 25% of monthly PI; 
 	    total_month = monthly_PI + PMI + tax_ins; **Sum of monthly payment components;
 
-
+		
+	
 		*owner cost categories that make more sense for owner costs - no longer used in targets;
 
 		ownlevel=.;
@@ -330,34 +376,62 @@ data Housing_needs_baseline_&year.;
 
 		 *owner cost categories now used in targets that provide a set of categories useable for renters and owners combined; 
 			allcostlevel=.;
-			if total_month<800 then allcostlevel=1;
-			if 800 <=total_month<1300 then allcostlevel=2;
-			if 1300 <=total_month<1800 then allcostlevel=3;
-			if 1800 <=total_month<2500 then allcostlevel=4;
-			if 2500 <=total_month<3500 then allcostlevel=5;
-			if total_month >= 3500 then allcostlevel=6; 
+			if owncost_a<800 then allcostlevel=1;
+			if 800 <=owncost_a<1300 then allcostlevel=2;
+			if 1300 <=owncost_a<1800 then allcostlevel=3;
+			if 1800 <=owncost_a<2500 then allcostlevel=4;
+			if 2500 <=owncost_a<3500 then allcostlevel=5;
+			if owncost_a >= 3500 then allcostlevel=6; 
 
-				mallcostlevel=.;
-			if max_ocost<800 then mallcostlevel=1;
-			if 800 <=max_ocost<1300 then mallcostlevel=2;
-			if 1300 <=max_ocost<1800 then mallcostlevel=3;
-			if 1800 <=max_ocost<2500 then mallcostlevel=4;
-			if 2500 <=max_ocost<3500 then mallcostlevel=5;
-			if max_ocost >= 3500 then mallcostlevel=6;
+				
 
+			
+			*for desired cost for current housing needs is current payment if not cost-burdened
+			or income-based payment if cost-burdened;
+			mallcostlevel=.;
 
+			if costburden=1 then do; 
+
+				if max_ocost<800 then mallcostlevel=1;
+				if 800 <=max_ocost<1300 then mallcostlevel=2;
+				if 1300 <=max_ocost<1800 then mallcostlevel=3;
+				if 1800 <=max_ocost<2500 then mallcostlevel=4;
+				if 2500 <=max_ocost<3500 then mallcostlevel=5;
+				if max_ocost >= 3500 then mallcostlevel=6;
+
+			end;
+
+			else if costburden=0 then do; 
+
+				if owncost_a<800 then mallcostlevel=1;
+				if 800 <=owncost_a<1300 then mallcostlevel=2;
+				if 1300 <=owncost_a<1800 then mallcostlevel=3;
+				if 1800 <=owncost_a<2500 then mallcostlevel=4;
+				if 2500 <=owncost_a<3500 then mallcostlevel=5;
+				if owncost_a >= 3500 then mallcostlevel=6;
+
+			end; 
   end;
 
+	
+  		*costburden and couldpaymore do not overlap. create a category that measures who needs to pay less, 
+		who pays the right amount, and who could pay more;
+		paycategory=.;
+		if costburden=1 then paycategory=1;
+		if costburden=0 and couldpaymore=0 then paycategory=2;
+		if couldpaymore=1 then paycategory=3; 
 
 	total=1;
 
 
 			label rentlevel = 'Rent Level Categories based on Current Gross Rent'
 		 		  mrentlevel='Rent Level Categories based on Max affordable-desired rent'
-				  allcostlevel='Housing Cost Categories (tenure combined) based on Current Rent or First-time Buyer Mtg'
-				  mallcostlevel='Housing Cost Categories (tenure combined) based on Max affordable-desired Rent-Buyer Mtg'
+				  allcostlevel='Housing Cost Categories (tenure combined) based on Current Rent or Current Owner Costs'
+				  mallcostlevel='Housing Cost Categories (tenure combined) based on Max affordable-desired Rent-Owner Cost'
 				  ownlevel = 'Owner Cost Categories based on First-Time HomeBuyer Costs'
 				  mownlevel = 'Owner Cost Categories based on Max affordable-desired First-Time HomeBuyer Costs'
+				  couldpaymore = "Occupant Could Afford to Pay More - Costs+10% are > Max affordable cost"
+				  paycategory = "Whether Occupant pays too much, the right amount or too little" 
 
 				;
 	
@@ -452,9 +526,14 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 
 	  end;
 
+
+	  paycategory=4; *add vacant as a category to paycategory; 
+
+
 		label rentlevel = 'Rent Level Categories based on Current Gross Rent'
 		 		  allcostlevel='Housing Cost Categories (tenure combined) based on Current Rent or First-time Buyer Mtg'
 				  ownlevel = 'Owner Cost Categories based on First-Time HomeBuyer Costs'
+				  paycategory = "Whether Occupant pays too much, the right amount or too little" 
 				;
 	format ownlevel ocost. rentlevel rcost. vacancy_r VACANCY_F. allcostlevel acost. ; 
 
@@ -638,6 +717,16 @@ where tenure=2;
 weight hhwt_COG;
 
 run;
+proc freq data=all;
+where couldpaymore=1;
+tables incomecat*allcostlevel /nopercent norow nocol out=region_paymore;
+weight hhwt_COG;
+
+run; 
+proc freq data=all;
+tables paycategory*allcostlevel /nopercent norow nocol out=region_paycategory;
+weight hhwt_COG;
+run; 
 
 	proc transpose data=region_owner prefix=level out=ro;
 	by incomecat;
@@ -651,13 +740,24 @@ run;
 	by incomecat;
 	var count;
 	run;
+	*transpose here but output later with jurisdiction level; 
+	proc transpose data=region_paymore prefix=level out=rm; 
+	by incomecat;
+	var count;
+	run; 
+	proc transpose data=region_paycategory prefix=level out=rp;
+	by paycategory;
+	var count;
+	run; 
+
 	data region (drop=_label_ _name_); 
-		set ru (in=a) ro (in=b) rr (in=c);
+		set ru (in=a) ro (in=b) rr (in=c) ;
 	
 		length name $20.; 
 	if _name_="COUNT" & a then name="Actual All";
 	if _name_="COUNT" & b then name="Actual Owner";
 	if _name_="COUNT" & c then name="Actual Rental";
+
 	run; 
 
 
@@ -705,9 +805,9 @@ end;
 
 if tenure=2 then do; 
 
-	if reduced_costb=1 then reduced_totalmonth =total_month;
+	if reduced_costb=1 then reduced_totalmonth =owncost_a; *using owncost_a (actual costs) instead of First-time homebuyer costs;
 	if reduced_costb=0 and costburden=1 then reduced_totalmonth=max_ocost;
-	if reduced_costb=0 and costburden=0 then reduced_totalmonth=total_month; 
+	if reduced_costb=0 and costburden=0 then reduced_totalmonth=owncost_a; 
 
 		 allcostlevel_halfway=.; 
 
@@ -722,6 +822,11 @@ end;
 label allcostlevel_halfway ='Housing Cost Categories (tenure combined) based on Current Rent or First-time Buyer Mtg -Reduced Cost Burden by Half';
 format allcostlevel_halfway acost.;
 
+run; 
+
+proc print data=fiveyearrandom (obs=20);
+where reduced_costb=0; 
+var reduced_costb incomecat costburden tenure reduced_rent rentgrs_a hhincome reduced_totalmonth total_month owncost_a  ;
 run; 
 	proc freq data=fiveyeartotal_c;
 	tables incomecat*costburden /nofreq nopercent nocol;
@@ -982,4 +1087,70 @@ proc export data=jurisdiction_all
    dbms=csv
    replace;
    run;
+
+
+*finish could pay more;
+proc freq data=all;
+where couldpaymore=1; 
+by jurisdiction;
+tables incomecat*allcostlevel /nopercent norow nocol out=jurisdiction_paymore;
+weight hhwt_COG;
+format jurisdiction Jurisdiction.;
+run;
+	proc transpose data=jurisdiction_paymore out=jm prefix=level;;
+	by jurisdiction incomecat;
+	var count;
+
+	run;
+
+ data couldpaymore (drop=_label_ _name_);
+ 	set rp (in=a) rm (in=b) jm (in=c);
+
+	length name $20.;
+
+	if _name_="COUNT" & a then name="Region Pay Category";
+
+	if _name_="COUNT" & b then name="Region Pay More";
+
+	if _name_="COUNT" & c then name="Juris Pay More";
+
+	run;
+
+proc export data=couldpaymore
+ outfile="&_dcdata_default_path\RegHsg\Prog\couldpaymore_&date..csv"
+  dbms=csv
+   replace;
+   run;
+
+
+*export cost burden and households counts by income category for jurisdiction level handouts; 
+
+   
+proc freq data=all;
+tables incomecat*jurisdiction /nopercent norow nocol  out=hhlds_juris;
+  weight hhwt_cog;
+    format jurisdiction jurisdiction.;
+run;
+proc freq data=all;
+where costburden=1;
+tables incomecat*jurisdiction /nopercent norow nocol out=hhlds_juris_cb;
+  weight hhwt_cog;
+    format jurisdiction jurisdiction.;
+run;
+
+data hhlds;
+merge hhlds_juris (drop=percent rename=(count=households)) hhlds_juris_cb (drop=percent rename=(count=costburden)); 
+by incomecat jurisdiction;
+
+run; 
+
+proc sort data=hhlds;
+by jurisdiction incomecat;
+
+proc export data=hhlds
+ outfile="&_dcdata_default_path\RegHsg\Prog\hhlds_&date..csv"
+  dbms=csv
+   replace;
+   run;
+
 

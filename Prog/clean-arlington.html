@@ -305,12 +305,12 @@ div.tocify {
 </div>
 
 
-<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv14%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
+<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv15%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 15, 2019</p>
+<p>Last updated April 04, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -328,6 +328,7 @@ div.tocify {
 <pre class="r"><code>library(tidyverse)
 library(DescTools)
 library(purrr)
+library(sf)
 
 source(&quot;../Macros/sample-properties.R&quot;)
 source(&quot;../Macros/classify-addresses.R&quot;)</code></pre>
@@ -738,9 +739,9 @@ rm(newcat, mf)</code></pre>
 <pre><code>## # A tibble: 3 x 2
 ##   lotsizeareaunit     n
 ##   &lt;chr&gt;           &lt;int&gt;
-## 1 AC               1921
-## 2 SF              36209
-## 3 &lt;NA&gt;            28152</code></pre>
+## 1 &lt;NA&gt;            28152
+## 2 AC               1921
+## 3 SF              36209</code></pre>
 <pre class="r"><code>jur &lt;- jur %&gt;% 
   mutate(lotsize_acres = case_when(lotsizeareaunit == &quot;AC&quot; ~ lotsizeorarea ,
                                    lotsizeareaunit == &quot;SF&quot; ~ lotsizeorarea / 43560),
@@ -757,7 +758,7 @@ rm(newcat, mf)</code></pre>
 <p>First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace <code>parcel_address</code> with <code>NA</code>.</p>
 <p><strong>Note:</strong> It is possible that this may not hold for all jurisdiction. Visually confirm with a few multiple addresses.</p>
 <pre class="r"><code>jur &lt;- jur %&gt;% 
-  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6)) 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6))
 
 bad_parcels &lt;- jur %&gt;% 
   group_by(propaddress) %&gt;% 
@@ -766,7 +767,16 @@ bad_parcels &lt;- jur %&gt;%
                                   function(x) length(unique(x))))) %&gt;% 
   filter(unq_parcels &gt; 1)
 
-bad_addresses &lt;- bad_parcels %&gt;% 
+bad_reverse &lt;- jur %&gt;% 
+  group_by(parcel_address) %&gt;% 
+  summarize(address = list(propaddress)) %&gt;% 
+  mutate(unq_address = as.integer(map(address, 
+                                  function(x) length(unique(x))))) %&gt;% 
+  filter(unq_address &gt; 1)
+
+sum(bad_reverse$unq_address)</code></pre>
+<pre><code>## [1] 41859</code></pre>
+<pre class="r"><code>bad_addresses &lt;- bad_parcels %&gt;% 
   pull(propaddress)
 
 jur &lt;- jur %&gt;% 
@@ -1357,7 +1367,8 @@ missing_f &lt;- missing %&gt;%
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type)
+         category, category_detail, residential, building_type,
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
 
 multiples_f &lt;- nested_final %&gt;% 
   select(-ends_with(&quot;_list&quot;), -lsmode, -lsfirst, 
@@ -1370,27 +1381,187 @@ multiples_f &lt;- nested_final %&gt;%
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = &quot;multiple&quot;)
 
-finaljur &lt;- bind_rows(singles_f, multiples_f, missing_f) %&gt;% 
+jur4 &lt;- bind_rows(singles_f, multiples_f, missing_f) %&gt;% 
   fill(county_fips) %&gt;% 
   fill(county_name)
 
-finaljur[finaljur == &quot;NULL&quot;] = NA
-finaljur[finaljur == &quot;character(0)&quot;] = NA</code></pre>
+jur4[jur4 == &quot;NULL&quot;] = NA
+jur4[jur4 == &quot;character(0)&quot;] = NA</code></pre>
 <p>Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were 570 multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, 1144, minus 570.</p>
-<pre class="r"><code>mult &lt;- finaljur %&gt;% 
+<pre class="r"><code>mult &lt;- jur4 %&gt;% 
   filter(address_type == &quot;multiple&quot;) %&gt;% 
   summarize(num = sum(numberofunits)) %&gt;% 
   pull()
 
-other &lt;- finaljur %&gt;% 
+other &lt;- jur4 %&gt;% 
   filter(address_type != &quot;multiple&quot;)
 
 stopifnot(mult + nrow(other) == nrow(jur) - 
             (nunits - nrow(filter(cdties, test_vacant == 1))))
 
 rm(mult, other, nunits, cdties)</code></pre>
+</div>
+<div id="add-additional-variables" class="section level2">
+<h2>Add additional variables</h2>
+<p>Get additional metric for number of units from the Arlington County address file, which was downloaded in the preclean step.</p>
+<pre class="r"><code># read address file
+rdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Raw/&quot;, filepath, &quot;/&quot;)
+adfile &lt;- paste0(rdir, filepath, &quot;-address-file.csv&quot;)
+address &lt;- read_csv(adfile)
+
+address1 &lt;- address %&gt;% 
+  mutate(address_cap = toupper(FULL_ADDRESS)) %&gt;% 
+  select(address_cap, units_address = UNITCOUNT) %&gt;% 
+  group_by(address_cap) %&gt;% 
+  summarize(units_address = sum(units_address))
+
+
+jur5 &lt;- jur4 %&gt;% 
+  mutate(address_cap = toupper(propaddress)) %&gt;% 
+  left_join(address1, by = &quot;address_cap&quot;) %&gt;% 
+  select(-address_cap)</code></pre>
+<p>BEFORE spatial join: collapse condos that were not collapsed by address via the first five digits of their parcel ID.</p>
+<pre class="r"><code>test &lt;- jur5 %&gt;% 
+  filter(category_detail == &quot;condo&quot;,
+         address_type != &quot;missing&quot;,
+         !is.na(parcel_address))
+
+
+grouped_condos &lt;- test %&gt;% 
+  group_by(parcel_address, countylandusedescription) %&gt;% 
+  summarize()</code></pre>
+<p>Use a spatial join to the parcel shapefule to fill in lot size.</p>
+<pre class="r"><code># read parcel shapefile
+par &lt;- st_read(dsn = &quot;L:/Libraries/RegHsg/Maps/arlington-parcel-map&quot;,
+               layer = &quot;Parcel_Polygons&quot;) %&gt;% 
+  st_transform(crs = 4326)</code></pre>
+<pre><code>## Reading layer `Parcel_Polygons' from data source `L:\Libraries\RegHsg\Maps\arlington-parcel-map' using driver `ESRI Shapefile'
+## Simple feature collection with 38538 features and 3 fields
+## geometry type:  MULTIPOLYGON
+## dimension:      XY
+## bbox:           xmin: 11860790 ymin: 6987492 xmax: 11900920 ymax: 7026257
+## epsg (SRID):    NA
+## proj4string:    +proj=lcc +lat_1=38.03333333333333 +lat_2=39.2 +lat_0=37.66666666666666 +lon_0=-78.5 +x_0=3499999.999999999 +y_0=2000000 +datum=NAD83 +units=us-ft +no_defs</code></pre>
+<pre class="r"><code># calculate area in square feet
+par &lt;- par %&gt;% 
+  mutate(area = st_area(par) %&gt;% units::set_units(&quot;feet^2&quot;) %&gt;% units::set_units(NULL))
+
+# convert arlington to spatial
+jursf &lt;- jur5 %&gt;% 
+  filter(!is.na(lat), !is.na(long)) %&gt;% 
+  mutate(longx = long, laty = lat) %&gt;% 
+  st_as_sf(coords = c(&quot;longx&quot;, &quot;laty&quot;)) %&gt;% 
+  st_set_crs(st_crs(4326))
+
+# join to zoning layer
+jurj &lt;- st_join(jursf, par, st_intersects)
+
+# check match rate
+jurj %&gt;% 
+  as.data.frame() %&gt;% 
+  count(is.na(OBJECTID))</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   `is.na(OBJECTID)`     n
+##   &lt;lgl&gt;             &lt;int&gt;
+## 1 FALSE             41465
+## 2 TRUE                269</code></pre>
+<pre class="r"><code>jur6 &lt;- jurj %&gt;% 
+  # strip geometry
+  st_set_geometry(NULL)
+
+# identify when multiple condos join to one lot
+jur6condo &lt;- jur6 %&gt;%
+  filter(category_detail == &quot;condo&quot;) %&gt;% 
+  group_by(RPCMSTR) %&gt;% 
+  count() %&gt;% 
+  filter(n &gt; 1)
+sum(jur6condo$n)</code></pre>
+<pre><code>## [1] 1660</code></pre>
+<pre class="r"><code># collapse by parcel ID and county land use. 
+# the area will be the same for all the parcels within a parcel ID- so take the average,
+# and divide this by the number of parcels joining to it.
+correct_area &lt;- jur6 %&gt;% 
+  group_by(RPCMSTR, countylandusedescription) %&gt;% 
+  filter(n() &gt; 1,
+         !is.na(RPCMSTR)) %&gt;% 
+  summarize(n(),
+            area_new = mean(area, na.rm = TRUE) / n()) %&gt;% 
+  mutate(area_new = ifelse(area_new == &quot;NaN&quot;,
+                           NA,
+                           area_new))
+
+# select only what we want to join
+correct_area_merge &lt;- correct_area %&gt;% 
+  select(RPCMSTR, countylandusedescription, area_new)
+
+# merge on corrected area fill in lot size
+jur6a &lt;- jur6 %&gt;%
+  left_join(correct_area_merge, by = c(&quot;RPCMSTR&quot;, &quot;countylandusedescription&quot;)) %&gt;% 
+  # substitute when needed
+  mutate(area = ifelse(!is.na(area_new),
+                       area_new,
+                       area)) %&gt;% 
+  # fill in lot size with area
+  mutate(lotsize_sf = ifelse((lotsize_sf == 0 | is.na(lotsize_sf)) &amp; !is.na(OBJECTID),
+                             area,
+                             lotsize_sf)) %&gt;% 
+  select(-OBJECTID, -EVENT_ID, -RPCMSTR) %&gt;% 
+  # bind back to obs with missing coords
+  bind_rows(filter(jur5, is.na(lat)))
+
+sum(is.na(jur6$lotsize_sf))</code></pre>
+<pre><code>## [1] 6717</code></pre>
+<pre class="r"><code>sum(jur6$lotsize_sf == 0, na.rm = TRUE)</code></pre>
+<pre><code>## [1] 0</code></pre>
+</div>
+<div id="replace-missing-variables-when-possible" class="section level2">
+<h2>Replace missing variables when possible</h2>
+<pre class="r"><code>jur7 &lt;- jur6a %&gt;% 
+  mutate(lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) &amp; !is.na(parcel_area),
+                             parcel_area,
+                             lotsize_sf),
+         lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) &amp; !is.na(lotsize_prop),
+                             lotsize_prop,
+                             lotsize_sf),
+         lotsize_acres = lotsize_sf / 43560) %&gt;% 
+  mutate(numberofunits = ifelse(category_detail == &quot;duplex&quot; &amp; numberofunits == 0,
+                                2,
+                                numberofunits),
+         numberofunits = ifelse(category == &quot;sf&quot; &amp; numberofunits == 0,
+                                1,
+                                numberofunits),
+         numberofunits = ifelse(numberofunits == 0 &amp; units_address != 0 &amp; 
+                                  !is.na(units_address) &amp; units_address != 0,
+                                units_address,
+                                numberofunits),
+         numberofunits = ifelse((is.na(numberofunits) | numberofunits == 0) &amp; 
+                                  !is.na(numberofunits_prop) &amp; numberofunits_prop != 0,
+                                numberofunits_prop,
+                                numberofunits))
+
+
+sum(is.na(jur7$lotsize_sf))</code></pre>
+<pre><code>## [1] 60</code></pre>
+<pre class="r"><code>sum(jur6$numberofunits == 0)</code></pre>
+<pre><code>## [1] 38472</code></pre>
+<pre class="r"><code>jur7 %&gt;% 
+  filter(residential == 1, category != &quot;vacant&quot;) %&gt;% 
+  summarize(sum(is.na(numberofunits)),
+            sum(numberofunits == 0))</code></pre>
+<pre><code>##   sum(is.na(numberofunits)) sum(numberofunits == 0)
+## 1                         0                      14</code></pre>
+<pre class="r"><code>jur7 %&gt;% 
+  filter(residential == 1, 
+         category != &quot;vacant&quot;,
+         numberofunits == 0) %&gt;% 
+  count(category_detail)</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   category_detail     n
+##   &lt;chr&gt;           &lt;int&gt;
+## 1 apartment           8
+## 2 condo               6</code></pre>
 <p>Write out clean data. This time, we will save as a <code>.csv</code> so that it can be read into another program if necessary.</p>
-<pre class="r"><code>write_csv(finaljur, 
+<pre class="r"><code>write_csv(jur7, 
           paste0(jdir, filepath, &quot;-cleaned-data.csv&quot;))</code></pre>
 </div>
 

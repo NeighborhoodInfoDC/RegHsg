@@ -31,7 +31,8 @@
 UNITSSTR: 1-4 units: 03,04, 05, 06  4+ units: 07, 08, 09, 10
 BUILTYR: less than 30: 1-5 30-60: 6-8 60+: 9
 
- Modifications: 
+ Modifications: 04-03-19 LH Added COG-adjustments to weights. Changes affordable break to $1300 to match "low" cost band
+							Corrected inflation adjustment to less shelter series.
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -40,7 +41,7 @@ BUILTYR: less than 30: 1-5 30-60: 6-8 60+: 9
 %DCData_lib( RegHsg )
 %DCData_lib( Ipums )
 
-%let date=02082019; 
+%let date=04032019; 
 
 
 proc format;
@@ -109,6 +110,7 @@ proc format;
 	5 = '81-120%'
     6 = '120-200%'
     7 = 'More than 200%'
+	8 = 'Vacant'
 	;
 
   value struc
@@ -148,41 +150,35 @@ run;
 	run;
 
 
-	data Ratio;
+	 %**create ratio for rent to rentgrs to adjust rents on vacant units**;
+	 data Ratio_&year.;
 
-	  set COGSarea_&year.
-	    (keep= rent rentgrs pernum gq ownershpd Jurisdiction
-	     where=(pernum=1 and gq in (1,2) and ownershpd in ( 22 )));
-	     
-	  Ratio_rentgrs_rent_&year. = rentgrs / rent;
-	 
-	run;
+		  set COGSarea_&year.
+		    (keep= rent rentgrs pernum gq ownershpd Jurisdiction
+		     where=(pernum=1 and gq in (1,2) and ownershpd in ( 22 )));
+		     
+		  Ratio_rentgrs_rent_&year. = rentgrs / rent;
+		 
+		run;
 
-	proc means data=Ratio;
-	  var  Ratio_rentgrs_rent_&year. rentgrs rent;
-	run;
-		%** Value copied from Proc Means output **;
-	%if &year=2013 %then %let Ratio_rentgrs_rent_&year.= 1.1429187;
-	%if &year=2014 %then %let Ratio_rentgrs_rent_&year.= 1.1600331;
-	%if &year=2015 %then %let Ratio_rentgrs_rent_&year.= 1.1556884;
-	%if &year=2016 %then %let Ratio_rentgrs_rent_&year.= 1.1425105;
-	%if &year=2017 %then %let Ratio_rentgrs_rent_&year.= 1.1193682;
-
-	%put Ratio_rentgrs_rent_&year.=&&Ratio_rentgrs_rent_&year.;
+		proc means data=Ratio_&year.;
+		  var  Ratio_rentgrs_rent_&year. rentgrs rent;
+		  output out=Ratio_&year (keep=Ratio_rentgrs_rent_&year.) mean=;
+		run;
 
 data Occupied_affordable_&year.;
 
   set COGSarea_&year.
         (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh Jurisdiction BUILTYR2 UNITSSTR 
-		 where=(pernum=1 and gq in (1,2) and ownershpd in ( 21,22 )));
+		 where=(pernum=1 and gq in (1,2) and ownershpd in (12,13,21,22 )));
 
-  %dollar_convert( rentgrs,rentgrs_a, &year., 2016, series=CUUR0000SA0 )
+  %dollar_convert( rentgrs,rentgrs_a, &year., 2016, series=CUUR0000SA0L2 )
 
-	if rentgrs_a in ( 9999999, .n , . ) then affordable=.;
+	if rentgrs in ( 9999999, .n , . ) then affordable=.;
 		else do; 
-		    if rentgrs_a<=1200 then affordable=1;
-			else if rentgrs_a>1200 then affordable=0;
-
+		    if rentgrs_a<1300 then affordable=1;
+			else if rentgrs_a>=1300 then affordable=0;
+			
 		end;
 
 	  label affordable = 'Natural affordable rental unit';
@@ -213,19 +209,19 @@ run;
 data Vacant_affordable_&year.;
 
   set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction BUILTYR2 UNITSSTR where=(vacancy in (1, 3) & rent ~=.n));
-
+  if _n_ = 1 then set Ratio_&year.;
   retain Totalvacant 1;
 	
   ** Impute gross rent for vacant units **;
-	  		rentgrs = rent*&&Ratio_rentgrs_rent_&year.;
+	  		rentgrs = rent*Ratio_rentgrs_rent_&year.;
 
 			  %dollar_convert( rentgrs, rentgrs_a, &year., 2016, series=CUUR0000SA0L2 )
 			
 
-	if rentgrs_a in ( 9999999, .n , . ) then affordable_vacant=.;
+	if rent in ( 9999999, .n , . ) then affordable_vacant=.;
 		else do; 
-		    if rentgrs_a<=1200 then affordable_vacant=1;
-			else if rentgrs_a>1200 then affordable_vacant=0;
+		    if rentgrs_a<1300 then affordable_vacant=1;
+			else if rentgrs_a>=1300 then affordable_vacant=0;
 
 		end;
 
@@ -260,6 +256,12 @@ if UNITSSTR in ( 00, 01, 02, 9999999, .n , . ) then unitcount=.;
 %single_year(2015); 
 %single_year(2016);
 %single_year(2017);
+/*merge single year data and reweight
+
+revised to match Steven's files in https://urbanorg.app.box.com/file/402454379812 (after changing 2 HH = GQ=5 in 2013
+ to non head of HH)
+*/
+
 
 data fiveyeartotal;
 	set Occupied_affordable_2013 Occupied_affordable_2014 Occupied_affordable_2015 Occupied_affordable_2016 Occupied_affordable_2017;
@@ -267,41 +269,124 @@ data fiveyeartotal;
 hhwt_5=hhwt*.2; 
 
 run; 
+
+proc sort data=fiveyeartotal;
+by jurisdiction;
+proc summary data=fiveyeartotal;
+by jurisdiction;
+var hhwt_5;
+output out=region_sum sum=ACS_13_17;
+run; 
+data calculate_calibration;
+ set region_sum;
+
+/*L:\Libraries\Region\Raw\Final_Round_9.1_Summary_Tables_101018.xlsx*/
+COG_2015=.;
+if jurisdiction=1 then COG_2015=297112; *DC;
+else if jurisdiction=2 then COG_2015=53659; *charles; 
+else if jurisdiction=3 then COG_2015=89462; *frederick; 
+else if jurisdiction=4 then COG_2015=374850; *montgomery;
+else if jurisdiction=5 then COG_2015=321143; *prince georges;
+else if jurisdiction=6 then COG_2015=103761; *arlington; 
+else if jurisdiction=7 then COG_2015=418360; *fairfax, fairfax city, fallschurch; 
+else if jurisdiction=8 then COG_2015=121106; *loudoun; 
+else if jurisdiction=9 then COG_2015=161073; *pw, manassas, manassas park; 
+else if jurisdiction=10 then COG_2015=71191; *alexandria;
+
+calibration=(COG_2015/ACS_13_17);
+run;
+
+
+data fiveyeartotal_c;
+merge fiveyeartotal calculate_calibration;
+by jurisdiction;
+
+hhwt_COG=.; 
+
+hhwt_COG=hhwt_5*calibration; 
+
+label hhwt_COG="Household Weight Calibrated to COG Estimates for Households"
+	  calibration="Ratio of COG 2015 estimate to ACS 2013-17 for Jurisdiction";
+
+run; 
+
+proc tabulate data=fiveyeartotal_c format=comma12. noseps missing;
+  class jurisdiction;
+  var hhwt_5 hhwt_cog;
+  table
+    all='Total' jurisdiction=' ',
+    sum='Sum of HHWTs' * ( hhwt_5='Original 5-year' hhwt_cog='Adjusted to COG totals' )
+  / box='Occupied housing units';
+  format jurisdiction jurisdiction.;
+run;
+
+/*need data just for rental*/ 
+data fiveyeartotal_renters;
+	set fiveyeartotal_c (where =(ownershpd in (21,22 )));
+
+run;
 data fiveyeartotal_vacant;
 	set Vacant_affordable_2013 Vacant_affordable_2014 Vacant_affordable_2015 Vacant_affordable_2016 Vacant_affordable_2017;
 
 hhwt_5=hhwt*.2; 
 
 run; 
+proc sort data=fiveyeartotal_vacant;
+by jurisdiction;
+data fiveyeartotal_vacant_c;
+merge fiveyeartotal_vacant  calculate_calibration;
+by jurisdiction;
 
-proc sort data=fiveyeartotal;
-by Jurisdiction structureyear unitcount;run;
+hhwt_COG=.; 
 
-proc summary data=fiveyeartotal ;
-by Jurisdiction structureyear unitcount;
-var affordable total;
-weight hhwt_5;
-output out = region_occupied_afford  (drop=_TYPE_ _FREQ_) sum=;
+hhwt_COG=hhwt_5*calibration; 
+
+label hhwt_COG="Household Weight Calibrated to COG Estimates for Households"
+	  calibration="Ratio of COG 2015 estimate to ACS 2013-17 for Jurisdiction";
+
+run; 
+
+proc tabulate data=fiveyeartotal_vacant_c format=comma12. noseps missing;
+  class jurisdiction;
+  var hhwt_5 hhwt_cog;
+  table
+    all='Total' jurisdiction=' ',
+    sum='Sum of HHWTs' * ( hhwt_5='Original 5-year' hhwt_cog='Adjusted to COG totals' )
+  / box='Vacant (nonseasonal) housing units';
+  format jurisdiction jurisdiction.;
 run;
 
-proc sort data=fiveyeartotal_vacant;
+
+/*produce tables on naturally affordable*/
+
+proc sort data=fiveyeartotal_renters;
 by Jurisdiction structureyear unitcount;run;
 
-proc summary data=fiveyeartotal_vacant;
+proc summary data=fiveyeartotal_renters ;
+by Jurisdiction structureyear unitcount;
+var affordable total ;
+weight hhwt_cog;
+output out = region_occupied_afford  (drop=_TYPE_ _FREQ_) sum= affordable_occ total_occ;
+run;
+
+proc sort data=fiveyeartotal_vacant_c;
+by Jurisdiction structureyear unitcount;run;
+
+proc summary data=fiveyeartotal_vacant_c;
 by Jurisdiction structureyear unitcount;
 var affordable_vacant total_vacant;
-weight hhwt_5;
+weight hhwt_cog;
 output out = region_vacant_afford (drop=_TYPE_ _FREQ_) sum=;
 run;
 
-data naturalaffordablestock (drop=_TYPE_ _FREQ_);
+data naturalaffordablestock ;
 merge region_occupied_afford  region_vacant_afford;
 by Jurisdiction structureyear unitcount;
-format affordable_vacant affordable;
+format affordable_vacant affordable_occ;
 if affordable_vacant=. then affordable_vacant=0;
 if total_vacant=. then total_vacant=0;
-totalaffordable= affordable_vacant+ affordable;
-Totalunits= total+total_vacant;
+totalaffordable= affordable_vacant+ affordable_occ;
+Totalunits= total_occ+total_vacant;
 pctafford= totalaffordable/Totalunits;
 run;
 
@@ -313,32 +398,32 @@ proc export data=naturalaffordablestock
 
 /*for COG region*/
    
-proc sort data=fiveyeartotal;
+proc sort data=fiveyeartotal_renters;
 by structureyear unitcount;run;
 
-proc summary data=fiveyeartotal;
+proc summary data=fiveyeartotal_renters;
 by structureyear unitcount;
-var affordable total;
-weight hhwt_5;
-output out = region_occupied_afford_COG  (drop=_TYPE_ _FREQ_) sum=;
+var affordable total ;
+weight hhwt_cog;
+output out = region_occupied_afford_COG  (drop=_TYPE_ _FREQ_) sum=affordable_occ total_occ ;
 run;
 
-proc sort data=fiveyeartotal_vacant;
+proc sort data=fiveyeartotal_vacant_c;
 by structureyear unitcount;run;
 
-proc summary data=fiveyeartotal_vacant ;
+proc summary data=fiveyeartotal_vacant_c ;
 by structureyear unitcount;
 var affordable_vacant total_vacant;
-weight hhwt_5;
+weight hhwt_cog;
 output out = region_vacant_afford_COG (drop=_TYPE_ _FREQ_) sum=;
 run;
 
-data naturalaffordablestock_COG (drop=_TYPE_ _FREQ_);
+data naturalaffordablestock_COG ;
 merge region_occupied_afford_COG  region_vacant_afford_COG;
 by structureyear unitcount;
-format affordable_vacant affordable;
-totalaffordable= affordable_vacant+ affordable;
-Totalunits= total+total_vacant;
+format affordable_vacant affordable_occ;
+totalaffordable= affordable_vacant+ affordable_occ;
+Totalunits= total_occ+total_vacant;
 pctafford= totalaffordable/Totalunits;
 run;
 
@@ -348,6 +433,3 @@ proc export data=naturalaffordablestock_COG
    replace;
    run;
 
-proc univariate data= fiveyeartotal_vacant;
-var rent ;
-run;

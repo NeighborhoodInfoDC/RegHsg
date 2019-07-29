@@ -1,0 +1,311 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Pre-clean DC parcel base data"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Yipeng adapted from Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The purpose of this program is to obtain additional data from the county to supplement the Black Knight data when possible.
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+
+source("../Macros/read-bk.R")
+source("../Macros/filter-bk.R")
+source("../Macros/select-vars.R")
+
+```
+
+
+Set FIPS code, filepath name, and directory for data storage (on L drive)
+
+```{r fips}
+currentfips <- "11001"
+filepath <- "DC"
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
+
+```
+
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../Data")) {
+  dir.create("../Data")
+}
+
+if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
+  dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))
+}
+
+
+```
+
+Load in Black Knight data for the region, select jurisdiction and standard variables
+```{r read}
+if (!exists("region")) {
+  region <- read_bk("dc-cog-assessment_20181228.csv")
+} else {
+  warning("region data already read in")
+}
+
+jurraw <- region %>% 
+  filter_bk(fips = currentfips) %>% 
+  select_vars()
+
+```
+## Import DC files
+
+I used the DC parcel base data for merging to provide alternative property and lot information for cleaning DC data
+
+```{r import sas data}
+
+library(haven)
+
+parcelbase <- haven::read_sas("L:/Libraries/realprop/data/parcel_base.sas7bdat")
+
+parcelgeo <- haven::read_sas("L:/Libraries/realprop/data/parcel_geo.sas7bdat")
+
+```
+
+## Clean and merge
+
+Select variables from each dataset that we want to keep: parcel id, UI property type for categorization crosscheck, address from the parcelbase data, property area, and XY coordinates
+
+We also archive the raw parcel ID and create a new version that will merge with the Black Knight data.
+
+```{r select-parcel}
+parcelbaseDCraw <- parcelbase %>% 
+  select(parcelbase_parcelID = SSL,
+         parcelbase_UIproptype = ui_proptype,
+         parcelbase_address=PREMISEADD,
+         parcelbase_proparea=LANDAREA,
+         parcelbase_usecode= USECODE,
+         parcelbase_proptype= PROPTYPE,
+         parcelbase_phasebuild= PHASEBUILD,
+         parcelbase_phaseland= PHASELAND,
+         parcelbase_suffix= SUFFIX,
+         in_last_ownerpt= in_last_ownerpt,
+         parcelbase_mixeduse = MIXEDUSE,
+         parcelbase_mix1txtype= MIX1TXTYPE,
+         parcelbase_mix2txtype= MIX2TXTYPE,
+         parcelbase_newland=NEW_LAND,
+         parcelbase_newimpr=NEW_IMPR
+        ) %>% 
+  mutate(parcelbase_parcelID= as.character(parcelbase_parcelID)) %>% 
+  filter(!is.na(parcelbase_parcelID))
+
+
+parcelgeoDCraw <- parcelgeo %>% 
+  select (parcelgeo_parcelID = SSL,
+          parcelgeo_x= X_COORD,
+          parcelgeo_y= Y_COORD) %>%
+mutate(parcelgeo_parcelID= as.character(parcelgeo_parcelID)) %>% 
+  filter(!is.na(parcelgeo_parcelID))
+
+
+```
+
+
+```{r dups-parcel}
+
+parcelbaseDCraw %>% group_by(parcelbase_parcelID) %>% filter(n()>1) %>% nrow()
+
+parcelgeoDCraw %>% group_by(parcelgeo_parcelID) %>% filter(n()>1) %>% nrow()
+
+
+```
+Clean up ID variable to remove spaces for join
+```{r cleanid}
+
+##separate the SSLs that have leading alphabets
+jursquare <- jurraw %>% 
+      mutate(firstcharacter= str_sub(assessorsparcelnumberapnpin, 1,1),
+             characterdetect= ifelse(str_detect(firstcharacter, "[:alpha:]")==1, 1, 0)) %>% 
+      filter(characterdetect==1)
+
+jurrest <- jurraw %>% 
+      mutate(firstcharacter= str_sub(assessorsparcelnumberapnpin, 1,1),
+             characterdetect= ifelse(str_detect(firstcharacter, "[:alpha:]")==1, 1, 0)) %>% 
+      filter(characterdetect!=1)
+
+###clean the SSLs that don't have leading alphabets first
+
+jurrestmutate <- jurrest %>% 
+  mutate(square= substr(assessorsparcelnumberapnpin, 1, 4),
+         lot= substr(assessorsparcelnumberapnpin, 11, 14),
+         newsuffix= str_extract(assessorsparcelnumberapnpin, "[[:alpha:] ]+"),
+         newsuffix2= str_trim(newsuffix, side=c("both")),
+         suflen=str_length(newsuffix2),
+         newsuffix3= str_pad(newsuffix2, 4, side="right",pad=" "))
+ 
+jurrestmutate2 <- jurrestmutate %>% 
+  mutate(newparcelid = paste0(square, newsuffix3,lot)) 
+
+jurrestmutate3 <- select( jurrestmutate2, -newsuffix, -newsuffix2, -suflen, -characterdetect, firstcharacter)
+
+####then clean up the SSL with leading alphabets, there are two cases: 1. normal leading alphabets, we want to keep them. For SSL that start with "WF", "BD", "BDPI", "PI", we need to remove them 
+
+####break the jursquare dataset into two
+jursquare1 <- jursquare %>% 
+  mutate(firsttwo= str_sub(assessorsparcelnumberapnpin, 1,2),
+         newfirsttwo= str_trim(firsttwo, side=c("both")),
+         removeflag= ifelse(str_detect(newfirsttwo, "WF|BD|PI") ==1, 1, 0)) %>% 
+  filter(removeflag==1)
+
+jursquare2 <- jursquare %>% 
+  mutate(firsttwo= str_sub(assessorsparcelnumberapnpin, 1,2),
+         newfirsttwo= str_trim(firsttwo, side=c("both")),
+         removeflag= ifelse(str_detect(newfirsttwo,"WF|BD|PI")==1, 1, 0)) %>%
+  filter(removeflag!=1)
+
+
+jursquaremutate2 <- jursquare2 %>% 
+  mutate(square= substr(assessorsparcelnumberapnpin, 1, 4),
+         lot= substr(assessorsparcelnumberapnpin, 11, 14),
+         newsuffix= str_sub(assessorsparcelnumberapnpin, 5, 10),
+         newsuffix2= str_trim(newsuffix, side=c("both")),
+         suflen=str_length(newsuffix2),
+         newsuffix3= str_pad(newsuffix2, 4, side="right",pad=" "))
+
+jursquaremutatenew2 <- jursquaremutate2 %>% 
+  mutate(newparcelid = paste0(square, newsuffix3,lot)) 
+
+
+jursquaremutate1 <- jursquare1 %>% 
+   mutate(square= substr(assessorsparcelnumberapnpin, 5, 9),
+         lot= substr(assessorsparcelnumberapnpin, 11, 14),
+         newparcelid= paste0(square, "    ", lot)) 
+
+jursquaremutate <-  bind_rows(jursquaremutatenew2, jursquaremutate1) 
+
+jursquaremutate3 <- select( jursquaremutate, -removeflag, -newsuffix, -newsuffix2, -suflen, -characterdetect, firstcharacter)
+                          
+
+######then merge the two dataset together to get the new blackknight dataset
+finaljur1 <- bind_rows(jurrestmutate3, jursquaremutate3) 
+
+#### check if it has the same rows as the raw dataset
+stopifnot(nrow(finaljur1) == nrow(jurraw))
+
+#CHECK if duplate ids are introduced after the cleaning
+dup <- finaljur1 %>% group_by(newparcelid) %>% filter(n()>1) 
+
+#since duplicate is introduced because of removing "BD", "PI", "WF", need to remove duplicate record
+# here I'm keeping whichever record that have less missing information
+finaljur1$na_count <- apply(is.na(finaljur1), 1, sum)
+
+finaljur2 <- finaljur1 %>% group_by(newparcelid) %>% 
+  arrange(desc(-na_count)) %>% 
+    slice(1) %>%
+    ungroup()
+
+```
+
+
+Merge
+
+Use anti_join to identify SSL ID that don't exist in all datasets
+
+All parcelbase dataset was merged on to parcelgeo dataset 
+
+
+
+```{r merge}
+
+#since the parcel_geo file don't have suffix information, merge first and then construct the SSL
+parcel <- left_join(parcelbaseDCraw, parcelgeoDCraw, by = c("parcelbase_parcelID"="parcelgeo_parcelID"))
+
+parcelbaseDC <- parcel %>%
+            mutate( parcelbase_SSL = paste0(substr(parcelbase_parcelID, 1, 4), 
+                                            str_pad(parcelbase_suffix,width=4, side="right",pad=" "),
+                                            substr(parcelbase_parcelID, 9, 12))) %>%
+            filter(in_last_ownerpt==1) 
+
+parcelbaseDCnonupdate <- parcel %>%
+            mutate( parcelbase_SSL = paste0(substr(parcelbase_parcelID, 1, 4), 
+                                            str_pad(parcelbase_suffix,width=4, side="right",pad=" "),
+                                            substr(parcelbase_parcelID, 9, 12))) %>%
+            filter(in_last_ownerpt!=1) 
+
+#check is duplicate id is created due to cleaning
+dup2 <- parcelbaseDC %>% 
+  group_by(parcelbase_SSL) %>% filter(n()>1) 
+
+#final check of parcel id length before joining
+checkblk <- finaljur2 %>% 
+  mutate(idlength= str_length(newparcelid))
+
+checkparcel <- parcelbaseDC %>% 
+  mutate(idlength=str_length(parcelbase_SSL))
+
+#join with black knight data
+jur <- left_join(parcelbaseDC,finaljur2, 
+                 by = c( "parcelbase_SSL"= "newparcelid" ))
+
+#20072 observation from black knight didn't merge
+nonmatchingblackknight <- anti_join(finaljur2, parcelbaseDC ,
+                 by = c("newparcelid" = "parcelbase_SSL"))
+
+#2512 observations from parcelbase dataset didn't merge
+nonmatchingparcel <- anti_join(parcelbaseDC, finaljur2, 
+                 by = c( "parcelbase_SSL" = "newparcelid"))
+
+#of the 20072 observations from black knight didn't merge,14378 are in the parcelbase dataset but was not in the most recent update 
+nonmatchingblackknigtrest <- anti_join(nonmatchingblackknight, parcelbaseDCnonupdate,
+                 by = c("newparcelid" = "parcelbase_SSL"))
+
+
+```
+
+## Save
+
+Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.
+
+```{r save}
+currentfips <- "11001"
+filepath <- "DC"
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
+
+saveRDS(jur,
+        paste0(jdir, 
+               "precleaned-",
+               filepath,
+               "-data.Rdata"))
+
+```
