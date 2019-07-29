@@ -833,7 +833,7 @@ nested <- multiples %>%
   summarize_at(vars(zoning,lotsize_sf,
                     buildingarea, countylandusedescription,
                     residential, category, category_detail, building_type,
-                    yearbuilt, long, lat), list) %>% 
+                    yearbuilt, long, lat, totalassessedvalue, assessedlandvalue, assessedimprovementvalue), list) %>% 
   rename_at(vars(-propaddress, -parcel_address), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, mode_narm),
@@ -848,7 +848,12 @@ nested <- multiples %>%
                                 NA),
          long = map(long_list, median),
          lat = map(lat_list, median),
-         yearbuilt_list = map(yearbuilt_list, max_narm))
+         yearbuilt_list = map(yearbuilt_list, max_narm),
+         totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE),
+         assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, sum, na.rm = TRUE)
+         )
+         
                       
 
 ```
@@ -1162,7 +1167,7 @@ singles_f <- singles %>%
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type)
+         category, category_detail, residential, building_type, totalassessedvalue, assessedlandvalue, assessedimprovementvalue)
 
 missing_f <- missing %>% 
   select(county_fips, county_name,
@@ -1173,7 +1178,7 @@ missing_f <- missing %>%
          countylandusedescription, zoning, buildingarea, noofbuildings,
          noofstories, numberofunits, yearbuilt,
          lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type)
+         category, category_detail, residential, building_type, totalassessedvalue, assessedlandvalue, assessedimprovementvalue)
 
 multiples_f <- nested_final %>% 
   select(-ends_with("_list"), -lsmode, -lsfirst, 
@@ -1219,7 +1224,7 @@ rm(mult, other, nunits, cdties)
 save as an R dataset for easy reading into the spatial join.
 
 ```{r save}
-saveRDS(jur,
+saveRDS(finaljur,
         paste0(jdir, 
                "cleaned-",
                filepath,
@@ -1227,10 +1232,7 @@ saveRDS(jur,
 ```
 
 
-
+*Patrick* Removed writing out clean data step because will write out csv after merge
 Write out clean data.
 
-```{r write}
-write_csv(finaljur, 
-          paste0("../Data/", filepath, "-cleaned-data.csv"))
-```
+
