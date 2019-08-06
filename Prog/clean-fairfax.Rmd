@@ -386,10 +386,11 @@ rm(jur_1, jur_2, jur_3)
 ### Recreate lot size
 There are errors in the different Black Knight lot size variables that make it impossible to compare lot size when reported in acres and square feet. Here, we create two new variables, `lotsize_acres` and `lotsize_sf` that standardize the unit of measurement. These variables will also convert values of 0 to `NA`, which will simplify calculations down the line.
 ```{r count}
-count(jur, lotsizeareaunit)
+count(jur, lotsizeareaunit) %>% 
+  knitr::kable()
 ```
 
-Test different lot size variables.
+Test different the difference between `area_tax` and `lotsize_sf`. 
 
 ```{r}
 
@@ -422,7 +423,8 @@ area_testing %>%
   knitr::kable()
 
 ```
-Most of the differences between `area_tax` and `lotsize_sf` are small.
+
+Most of the differences between `area_tax` and `lotsize_sf` are small. Replace `lotsize_sf` with `area_tax` if `area_tax` is non-missing. If `lotsize_sf` is still missing, then replace with `parcel_area`. 
 
 
 ```{r lot}
@@ -449,7 +451,9 @@ jur_1 <- jur %>%
   mutate(num_livunit = case_when(
     num_livunit == 0 | is.na(num_livunit) ~ units_rental,
     TRUE ~ num_livunit
-  ))
+  )) %>% 
+  # recreate acres variable
+  mutate(lotsize_acres = lotsize_sf / 43560)
 
 
 ```

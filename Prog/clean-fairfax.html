@@ -7,6 +7,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 
@@ -162,56 +163,12 @@ summary {
 }
 </style>
 
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
-});
-</script>
-
 <!-- code folding -->
 <style type="text/css">
 .code-folding-btn { margin-bottom: 4px; }
 </style>
-<script>
-$(document).ready(function () {
-  window.initializeCodeFolding("show" === "show");
-});
-</script>
 
 
-
-<script>
-$(document).ready(function ()  {
-
-    // move toc-ignore selectors from section div to header
-    $('div.section.toc-ignore')
-        .removeClass('toc-ignore')
-        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
-
-    // establish options
-    var options = {
-      selectors: "h1,h2,h3",
-      theme: "bootstrap3",
-      context: '.toc-content',
-      hashGenerator: function (text) {
-        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
-      },
-      ignoreSelector: ".toc-ignore",
-      scrollTo: 0
-    };
-    options.showAndHide = true;
-    options.smoothScroll = true;
-
-    // tocify
-    var toc = $("#TOC").tocify(options).data("toc-tocify");
-});
-</script>
 
 <style type="text/css">
 
@@ -309,12 +266,12 @@ div.tocify {
 </div>
 
 
-<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv15%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
+<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv16%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
 <p>Author: Chris Davis, adapting from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated July 02, 2019</p>
+<p>Last updated August 06, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <p>Note: The following jurisdictions are not inside Fairfax County:</p>
 <p>City of Fairfax</p>
@@ -669,41 +626,124 @@ rm(jur_1, jur_2, jur_3)</code></pre>
 <div id="recreate-lot-size" class="section level3">
 <h3>Recreate lot size</h3>
 <p>There are errors in the different Black Knight lot size variables that make it impossible to compare lot size when reported in acres and square feet. Here, we create two new variables, <code>lotsize_acres</code> and <code>lotsize_sf</code> that standardize the unit of measurement. These variables will also convert values of 0 to <code>NA</code>, which will simplify calculations down the line.</p>
-<pre class="r"><code>count(jur, lotsizeareaunit)</code></pre>
-<pre><code>## # A tibble: 3 x 2
-##   lotsizeareaunit      n
-##   &lt;chr&gt;            &lt;int&gt;
-## 1 &lt;NA&gt;             59880
-## 2 AC               27846
-## 3 SF              274243</code></pre>
+<pre class="r"><code>count(jur, lotsizeareaunit) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">lotsizeareaunit</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">AC</td>
+<td align="right">27846</td>
+</tr>
+<tr class="even">
+<td align="left">SF</td>
+<td align="right">274243</td>
+</tr>
+<tr class="odd">
+<td align="left">NA</td>
+<td align="right">59880</td>
+</tr>
+</tbody>
+</table>
+<p>Test different the difference between <code>area_tax</code> and <code>lotsize_sf</code>.</p>
+<pre class="r"><code>jur_1a &lt;- jur %&gt;% 
+  mutate(lotsize_acres = case_when(lotsizeareaunit == &quot;AC&quot; ~ lotsizeorarea ,
+                                   lotsizeareaunit == &quot;SF&quot; ~ lotsizeorarea / 43560),
+         lotsize_sf = lotsize_acres * 43560)
+
+# identify obs that likely had an error in the unit label in black knight data
+area_testing &lt;- jur_1a %&gt;% 
+  filter(!is.na(lotsize_sf), !is.na(area_tax)) %&gt;% 
+  mutate(conversion_error = ifelse(lotsize_sf / 43560 == area_tax,
+                                   1,
+                                   0),
+         difference = lotsize_sf - area_tax)
+
+# count the number of unit conversion errors
+count(area_testing, conversion_error) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">conversion_error</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0</td>
+<td align="right">299991</td>
+</tr>
+<tr class="even">
+<td align="right">1</td>
+<td align="right">376</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># look more closely at observations that did not have a conversion error, but are still different
+area_testing %&gt;% 
+  filter(conversion_error == 0) %&gt;% 
+  summarize(same_area = sum(lotsize_sf == area_tax),
+            different_area = sum(lotsize_sf != area_tax),
+            median_difference = median(difference[difference != 0]),
+            max_difference = max(difference),
+            difference_lt_10 = sum(difference[difference != 0] &lt; 10),
+            difference_over_100 = sum(difference &gt; 100)) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">same_area</th>
+<th align="right">different_area</th>
+<th align="right">median_difference</th>
+<th align="right">max_difference</th>
+<th align="right">difference_lt_10</th>
+<th align="right">difference_over_100</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">231998</td>
+<td align="right">67993</td>
+<td align="right">0</td>
+<td align="right">87466392</td>
+<td align="right">62404</td>
+<td align="right">148</td>
+</tr>
+</tbody>
+</table>
+<p>Most of the differences between <code>area_tax</code> and <code>lotsize_sf</code> are small. Replace <code>lotsize_sf</code> with <code>area_tax</code> if <code>area_tax</code> is non-missing. If <code>lotsize_sf</code> is still missing, then replace with <code>parcel_area</code>.</p>
 <pre class="r"><code>jur_1 &lt;- jur %&gt;% 
   mutate(lotsize_acres = case_when(lotsizeareaunit == &quot;AC&quot; ~ lotsizeorarea ,
                                    lotsizeareaunit == &quot;SF&quot; ~ lotsizeorarea / 43560),
          lotsize_sf = lotsize_acres * 43560) %&gt;% 
-  #due to very high lot sizes in blackknight - if parcel area is much less than lotsize_sf, use parcel area instead
+  # replace 0s with missing values
+  mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., . == 0, NA)) %&gt;%
+  # replace lotsize_sf with area_tax when area_tax is not missing and the two values are different
   mutate(lotsize_sf = case_when(
-         (lotsize_sf - parcel_area) &gt; 1000000 ~parcel_area,
-         TRUE ~ lotsize_sf
-    
+    (is.na(lotsize_sf) &amp; !is.na(area_tax)) | 
+      lotsize_sf != area_tax  &amp; !is.na(area_tax) ~ as.double(area_tax),
+    TRUE ~ lotsize_sf
   )) %&gt;%
-  mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA)) %&gt;%
-  mutate(num_livunit=case_when(
-         num_livunit==0|is.na(num_livunit) ~ units_rental,
-         T~num_livunit
-  )) %&gt;%
+  # reset lotsize_sf to NA if 0
+  mutate_at(vars(lotsize_sf), ~ replace(., . == 0, NA)) %&gt;%
+  # if lotsize_sf is still missing, use parcel_area
   mutate(lotsize_sf = case_when(
-         is.na(lotsize_sf) ~ jur$area_legal%&gt;%as.double,
-         T ~ lotsize_sf
+    is.na(lotsize_sf) ~
+      as.double(parcel_area),
+    TRUE ~ lotsize_sf))  %&gt;%
+  # replace variables for number of units
+  mutate(num_livunit = case_when(
+    num_livunit == 0 | is.na(num_livunit) ~ units_rental,
+    TRUE ~ num_livunit
   )) %&gt;% 
-    mutate_at(vars(lotsize_sf), ~ replace(., .==0, NA)) %&gt;%
-  mutate(lotsize_sf = case_when(
-            (is.na(lotsize_sf)|lotsize_sf==0)~jur$area_tax %&gt;% as.double,
-            T ~ lotsize_sf
-  ))  %&gt;% mutate_at(vars(lotsize_sf), ~ replace(., .==0, NA)) %&gt;%
-    mutate(lotsize_sf = case_when(
-        is.na(lotsize_sf) ~
-         jur$parcel_area %&gt;% as.double(),
-        T ~ lotsize_sf)) </code></pre>
+  # recreate acres variable
+  mutate(lotsize_acres = lotsize_sf / 43560)</code></pre>
 </div>
 </div>
 <div id="collapsing-properties" class="section level2">
@@ -994,9 +1034,9 @@ nested_2 %&gt;% count(fxn)</code></pre>
 <pre><code>## # A tibble: 3 x 2
 ##   fxn       n
 ##   &lt;chr&gt; &lt;int&gt;
-## 1 first  4468
-## 2 other   150
-## 3 sum    1188</code></pre>
+## 1 first  4461
+## 2 other   148
+## 3 sum    1197</code></pre>
 <pre class="r"><code>nested_done &lt;- nested_2 %&gt;% 
   filter(fxn != &quot;other&quot;)</code></pre>
 <p><strong>NOTE:</strong> The following assumptions are specific to Fairfax County. Develop new logic for other jurisdictions!</p>
@@ -1013,11 +1053,12 @@ nested_2 %&gt;% count(fxn)</code></pre>
            TRUE ~ &quot;sum&quot;))
 
 count(nested_other, fxn)</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   fxn       n
-##   &lt;chr&gt; &lt;int&gt;
-## 1 max      12
-## 2 sum     138</code></pre>
+<pre><code>## # A tibble: 3 x 2
+##   fxn         n
+##   &lt;chr&gt;   &lt;int&gt;
+## 1 max        10
+## 2 missing     1
+## 3 sum       137</code></pre>
 <p>Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot size.</p>
 <pre class="r"><code>nested_all &lt;- bind_rows(nested_done, nested_other) %&gt;% 
   mutate_at(vars(lotsize_sf_sum, lsfirst, lsmode_num), as.double) %&gt;% 
@@ -1029,15 +1070,17 @@ count(nested_other, fxn)</code></pre>
                      fxn == &quot;max&quot; ~ maxsize))</code></pre>
 <p>The number of NAs should be the same as the number of those with the designation “missing”</p>
 <pre class="r"><code>count(nested_all, fxn == &quot;missing&quot;)</code></pre>
-<pre><code>## # A tibble: 1 x 2
+<pre><code>## # A tibble: 2 x 2
 ##   `fxn == &quot;missing&quot;`     n
 ##   &lt;lgl&gt;              &lt;int&gt;
-## 1 FALSE               5806</code></pre>
+## 1 FALSE               5805
+## 2 TRUE                   1</code></pre>
 <pre class="r"><code>count(nested_all, is.na(lotsize_sf_final))</code></pre>
-<pre><code>## # A tibble: 1 x 2
+<pre><code>## # A tibble: 2 x 2
 ##   `is.na(lotsize_sf_final)`     n
 ##   &lt;lgl&gt;                     &lt;int&gt;
-## 1 FALSE                      5806</code></pre>
+## 1 FALSE                      5805
+## 2 TRUE                          1</code></pre>
 <p>Lastly, the number of rows should be the same as before we split and re-combined.</p>
 <pre class="r"><code>stopifnot(nrow(nested_all) == nrow(nested))
 
@@ -1334,6 +1377,54 @@ $(document).ready(function () {
 });
 
 
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
 </script>
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
