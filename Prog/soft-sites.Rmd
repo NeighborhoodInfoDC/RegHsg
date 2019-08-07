@@ -52,6 +52,8 @@ set_urbn_defaults("print")
 
 source("../Macros/read-combined-parcels.R")
 
+today <- Sys.Date()
+
 ```
 
 ## Get maximum unit data for each jurisdiction.
@@ -262,7 +264,8 @@ mfsum <- mfmax %>%
             units_behind = sum(units_behind),
             units_behind_30 = sum(units_behind_30))
 knitr::kable(mfsum)
-write_csv(mfsum, "L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf.csv")
+write_csv(mfsum, 
+          str_glue("L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf_{today}.csv"))
 
 
 mflevels <- mfmax %>% 
@@ -278,7 +281,8 @@ mflevels <- mfmax %>%
             under70 = sum(under70),
             units_behind_70 = sum(units_behind_70))
 knitr::kable(mflevels)
-write_csv(mflevels, "L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf-levels.csv")
+write_csv(mflevels, 
+          str_glue("L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf-levels_{today}.csv"))
 
 mfmax %>% 
   filter(putil < 1, putil > 0,
@@ -327,8 +331,5 @@ r <- mfmax %>%
 
 ```
 
-### Townhouses
-
-How many townhouses are on land zoned for multifamily?
 
 
