@@ -1,12 +1,11 @@
-
-#' Read in cleaned Black Knight data for Arlington County
+#' Read in cleaned Black Knight data for all jursidictions
 #'
 #'
 #'
 #' @param rmd indicates whether or not function is being called from an 
 #' Rmd document or not. Default is set to TRUE.
 #'
-#' @return dataframe of black knight data for Arlington county, with all variables that were created in the clean and preclean phase.
+#' @return dataframe of black knight data for all jurisdictions, with select variables that were created in the clean and preclean phase.
 #' @export
 #'
 #' @examples jur <- read_jurisdiction("arlington", rmd = TRUE)
@@ -43,12 +42,4 @@ read_combined_parcels <- function(rmd = TRUE) {
              ))
   }
 }
-
-
-
-
-
-
-
-
 
