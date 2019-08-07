@@ -99,7 +99,7 @@ z <- c("text", "text", "text", "numeric",
        "numeric", "text", "numeric")
 
 
-se <- readxl::read_excel("L:/Libraries/RegHsg/Doc/zoning-codes/Arlington Multiple Family Special Exceptions 2.19.19.xlsx", 
+se <- readxl::read_excel("L:/Libraries/RegHsg/Doc/zoning-codes/Arlington Multiple Family Special Exceptions 4.18.19.xlsx", 
                          range = "A1:S49", 
                          col_types = z)
 
@@ -134,8 +134,14 @@ se1 <- se %>%
   mutate(height_ft = ifelse(str_detect(height_ft, "[:alpha:]") == TRUE,
                             NA,
                             as.numeric(height_ft))) %>% 
+  mutate(far_max = ifelse(str_detect(far_max, "[:alpha:]") == TRUE,
+                            NA,
+                            far_max)) %>% 
   mutate(special_exception = 1) %>% 
   mutate(dwelling_type = ifelse(dwelling_type == "Multiple-family dwellings",
+                                "Multiple-family",
+                                dwelling_type)) %>% 
+  mutate(dwelling_type = ifelse(dwelling_type == "Apartment",
                                 "Multiple-family",
                                 dwelling_type)) %>% 
   mutate(height_ft = ifelse(is.na(height_ft) & !is.na(height_stories),
@@ -200,7 +206,8 @@ Join the multiple-family special exceptions to the by-right zoning code. This is
 zoningcode1 <- mf_fill %>% 
   ungroup() %>% 
   filter(special_exception == 1) %>% 
-  bind_rows(zoningcode)
+  bind_rows(zoningcode) %>% 
+  mutate(far_max = as.numeric(far_max))
 
 ```
 
@@ -240,6 +247,7 @@ zoningcode2 <- zoningcode1 %>%
                                 1,
                                 0))
 
+count(zoningcode2, dwelling_type)
 
 ```
 
@@ -327,9 +335,10 @@ count(specialexception, dwelling_type)
 ```{r }
 
 specialexception1 <- specialexception %>% 
-  mutate(height_se = case_when(
+  mutate(height_ft = case_when(
     zoning == "C-O-1.5" & lotsize_sf < 871200 ~ 80,
     zoning == "C-O-1.5" & lotsize_sf >= 871200 ~ 180,
+    zoning == "C-O-A" ~ 151,
     TRUE ~ height_ft))
 
 ```
@@ -370,19 +379,31 @@ get_unit_variables <- function(dataset,
            living_area = buildable_area * construction_efficiency,
            units_per_floor = floor(living_area / average_unit_size),
            floors = floor(height_ft / 10),
+           subset = ifelse(one_unit_flag == 1,
+                           floor(lotsize_sf / lot_area_min),
+                           NA), 
            units_height = units_per_floor * floors,
-           units_lotsize = floor(lotsize_sf / lotarea_per_unit)) %>% 
-    mutate_at(vars(units_height, units_lotsize),
+           units_lotsize = floor(lotsize_sf / lotarea_per_unit),
+           units_density = floor(density_units_per_acre * (lotsize_sf / 43560)),
+           percent_per_floor_far = (units_per_floor*average_unit_size*1/construction_efficiency)/lotsize_sf,
+           stories_far = ifelse(percent_per_floor_far!=0&!is.na(percent_per_floor_far),
+                                floor(far_max/percent_per_floor_far),
+                                0),
+            units_far = (stories_far*units_per_floor)) %>% 
+    mutate_at(vars(units_height, units_lotsize, units_density, units_far),
               funs(case_when(
-                one_unit_flag == 1 ~ 1,
-                two_unit_flag == 1 ~ 2,
+                living_area < average_unit_size ~ 0,
+                one_unit_flag == 1 & is.na(.) ~ 1,
+                one_unit_flag == 1 & subset > 1 & !is.na(subset) ~ subset,
+                one_unit_flag == 1 & (subset < 1 | is.na(subset)) ~ 1,
+                two_unit_flag == 1 & . >= 2 & !is.na(subset) ~ 2 * subset,
+                two_unit_flag == 1 & . >= 2 & (subset < 1 | is.na(subset)) ~ 2,
                 TRUE ~ .))) %>% 
     mutate(units_total = case_when(
-      one_unit_flag == 1 ~ 1,
-      two_unit_flag == 1 ~ 2,
-      is.na(units_lotsize) ~ units_height,
-      units_height < units_lotsize ~ units_height,
-      TRUE ~ units_lotsize))
+       subset < 1 ~ 0,
+       lotsize_sf < lot_area_min ~ 0,
+       living_area < average_unit_size ~ 0,
+      TRUE ~ pmin(units_lotsize, units_height, units_density, units_far, na.rm = TRUE)))
   
 }
 
@@ -408,8 +429,10 @@ get_unit_summary <- function(dataset,
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_density = sum(units_density, na.rm = TRUE),
+              units_far = sum(units_far, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
-              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE)))
+              units_per_lot = floor(sum(units_total / lots)))
   
   y <- dataset %>% 
     get_unit_variables(construction_efficiency,
@@ -418,8 +441,10 @@ get_unit_summary <- function(dataset,
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
+              units_density = sum(units_density, na.rm = TRUE),
+              units_far = sum(units_far, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
-              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE))) %>% 
+              units_per_lot = floor(sum(units_total / lots))) %>% 
     mutate(dwelling_type = as.character(dwelling_type))
   
   
@@ -447,6 +472,10 @@ brunits <- get_unit_variables(dataset = byright,
                               construction_efficiency = .7,
                               average_unit_size = 940)
 
+sub <- seunits %>% 
+  filter(category == "vacant",
+         subset > 1)
+
 saveRDS(seunits, "L:/Libraries/RegHsg/Data/arlington/arlington-max-units-se.Rdata")
 saveRDS(brunits, "L:/Libraries/RegHsg/Data/arlington/arlington-max-units-br.Rdata")
 
@@ -457,12 +486,25 @@ Compare different between special exception and by right.
 
 ```{r compare-se-br}
 
+vacant_units <- specialexception1 %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
+  get_unit_variables(construction_efficiency = .7,
+                              average_unit_size = 940)
+
+vacant_mf <- specialexception1 %>% 
+  filter(category == "vacant",
+         smallsize_flag == 0) %>% 
+  get_unit_variables(construction_efficiency = .7,
+                              average_unit_size = 940) %>% 
+  filter(dwelling_type == "Multiple-family special exception")
+
 brsum <- byright %>% 
   filter(category == "vacant",
          smallsize_flag == 0) %>% 
   get_unit_summary(construction_efficiency = .75,
                  average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE) 
+                 dwelling_type_breakdown = TRUE)
 brsum %>% 
   knitr::kable(caption = "By right only")
 
@@ -484,7 +526,9 @@ Make scatterplot of special exceptions.
 specialexception1 %>% 
   get_unit_variables(construction_efficiency = .7,
                      average_unit_size = 940) %>% 
-  filter(units_total > 1) %>% 
+  filter(units_total > 1,
+         category == "vacant",
+         lotsize_sf < 500000) %>% 
   ggplot() +
   geom_point(mapping = aes(lotsize_sf, units_total,
                            color = dwelling_type),

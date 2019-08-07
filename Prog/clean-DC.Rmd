@@ -146,11 +146,11 @@ rm(res_codes)
 
 I used this code to check some of the confusing ones in the parcel base data to assign the right category. May not need this step if we are identifying vacant lots/structures based on the ui_proptype
 ```{r}
-## some Flase vacant are actually not vacant
+## some False vacant are actually not vacant
 jur %>% 
  filter(countylandusedescription == "FALSE VACANT") %>% 
-  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuilt) %>% 
-    arrange(desc(parcelbase_phasebuilt)) %>% 
+  select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuild, parcelbase_newimpr) %>% 
+    arrange(desc(parcelbase_phasebuild)) %>% 
   head(20)
 
 ```
@@ -510,7 +510,6 @@ jur2 <- jur2 %>%
                                     sep = " "),
                               propaddress))
 
-
 ```
 
 Compare the first 20 addresses . Leah-- I'm not sure if we need to clean up the parcelbase_address again. It seems like using propaddress is better in this case for collapsing. We can replace propaddress NAs with parcelbase_address.
@@ -638,50 +637,28 @@ stopifnot(sum(is.na(jur$propaddress)) <= nrow(filter(jur,
 In order to do the collapse, we first identify addresses with more than one observation, and filter out those with a missing house number or address to avoid an improper collapse. Then, run a quick check to make sure there are no NAs.
 
 
-```{r sep}
-
-#Sarahs macro is fixed and we can't use it if the address variable is different. So had to copy paste the macro and modify it here to create another macro called classify_parceladdress
-
-classify_parceladdresses <- function(dataset) {
-  
-  group <- dataset %>% 
-    group_by(propaddress) %>% 
-    count()
-  
-  singles <- group %>% 
-    filter(n == 1) %>% 
-    pull(propaddress)
-  
-  multiples <- group %>% 
-    filter(n > 1) %>% 
-    pull(propaddress)
-  
-  dataset %>% 
-    mutate(address_type = case_when(
-      is.na(propaddress) ~ "missing",
-      propaddress %in% singles ~ "single",
-      propaddress %in% multiples ~ "multiple"))
-  
-}
-
-
-```
-
 Using parcelbase address actually make the collapse not clean. Jurtest dataset shows addresses are classified as NA from blackknight are almost identical to parcelbase dataset before cleaning. Which means unless we clean the parcelbase address, collapsing by parcelbase address would be wrong in a lot of cases. I've replaced NA blackknight data with parcelbase address and cleaned where possible
 ```{r comparison of address}
 
 #create jur4 from blackknight address
 jur5 <- jur4 %>% 
   filter(category_detail!="Garage") %>%
-  classify_parceladdresses() %>% 
+  classify_addresses() %>% 
   mutate(ID = row_number())
 
-if (TRUE %in% is.na(jur4$address_type)) {
-  warning("NAs in address_type")
-}
-
-#aftercleaning the missing category dropped from 9562 to 7429, dropped 2030 from parcelbase address plus 103 garage cases, which matches the total observation of cleanparceladdress dataset
+#if (TRUE %in% is.na(jur4$address_type)) {
+ # warning("NAs in address_type")
+#}
 count(jur5, address_type)
+
+#reclassify any non-residential property as single except for office condos and commercial retail condo (one unit in residential condo used for retail)
+#add 'not in' function
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+argh <- jur5 %>%
+  mutate(address_type = ifelse((residential == 0 & parcelbase_usecode %!in% c("056","057","048"))
+                               ,"single", address_type))
+count(argh, address_type)
 
 
 ```
@@ -696,22 +673,73 @@ For townhouses and other forms of attached housing, we do not want a collapse, s
 Seperate the address types for different operations.
 
 ```{r mlt}
-multiples <- jur5 %>% 
+multiples <- argh %>% 
   filter(address_type == "multiple")
 
-singles <- jur5 %>% 
+singles <- argh %>% 
   filter(address_type == "single")
 
-missing <- jur5 %>% 
+missing <- argh %>% 
   filter(address_type == "missing")
 
 ```
+There are still parcels in the missing data set that could be collapsed based on parcelbase_address. Recreating Sarah's macro to do so.
+
+```{r sep}
+
+#Sarahs macro is fixed and we can't use it if the address variable is different. So had to copy paste the macro and modify it here to create another macro called classify_parceladdress
+
+classify_parceladdresses <- function(dataset) {
+  
+  group <- dataset %>% 
+    group_by(parcelbase_address) %>% 
+    count()
+  
+  singles <- group %>% 
+    filter(n == 1) %>% 
+    pull(parcelbase_address)
+  
+  multiples <- group %>% 
+    filter(n > 1) %>% 
+    pull(parcelbase_address)
+  
+  dataset %>% 
+    mutate(address_type = case_when(
+      is.na(parcelbase_address) ~ "missing",
+      parcelbase_address %in% singles ~ "single",
+      parcelbase_address %in% multiples ~ "multiple"))
+  
+}
+
+missing2 <- missing %>% 
+  filter(category_detail!="Garage") %>%
+  classify_parceladdresses() %>% 
+  mutate(ID = row_number())
+
+count(missing2, address_type)
+
+
+#separate and recombine with previous single and multiple files.
+
+multiples2 <- missing2 %>% 
+  filter(address_type == "multiple")
+
+singles2 <- missing2 %>% 
+  filter(address_type == "single")
+
+allmultiple <- bind_rows(multiples, multiples2)
+
+allsingle <- bind_rows(singles, singles2) 
+
+```
+
+
 
 For addresses that have some records with missing zoning, but others that have a zoning designation: we need to fill the NAs with the appropriate zoning code. `group_by()` means that zoning codes will not be passed on to observations with a different address, and using `fill()` in both directions means that the NAs will be filled regardless of their position.
 
 ### Multiple addresses
 ```{r fill}
-multiples <- multiples %>% 
+allmultiple2 <- allmultiple %>% 
   group_by(propaddress) %>% 
   fill(zoning) %>% 
   fill(zoning, .direction = "up") %>% 
@@ -768,7 +796,7 @@ Again, because propaddress is better than parcelbase dataset address, I will kee
 
 ```{r nest}
 
-nested <- multiples %>% 
+nested <- allmultiple2 %>% 
   group_by(propaddress) %>%
   summarize_at(vars(zoning,lotsize_sf,
                     buildingarea, parcelbase_usecode, 
@@ -776,7 +804,8 @@ nested <- multiples %>%
                     yearbuilt, 
                     parcelgeo_x, parcelgeo_y, 
                     lat, long,
-                    assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %>% 
+                    assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
+                    parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype, parcelbase_newimpr), list) %>% 
   rename_at(vars(-propaddress), ~ paste0(., "_list")) %>% 
   mutate(nprops = map(zoning_list, length),
          zoning = map(zoning_list, mode_narm),
@@ -803,14 +832,16 @@ nested <- multiples %>%
          totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
          assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
                                             sum, na.rm = TRUE),
-         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))
-
-# nestedtest should have 0 observation
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE),
+         parcelbase_phasebuild=map_dbl(parcelbase_phasebuild_list,sum, na.rm = TRUE),
+         parcelbase_phaseland=map_dbl(parcelbase_phaseland_list,sum, na.rm = TRUE),
+         parcelbase_mix1txtype= map(parcelbase_mix1txtype_list, mode_narm),
+         parcelbase_newimpr =map_dbl(parcelbase_newimpr_list,sum, na.rm = TRUE))%>% 
+  mutate(ties_cat = ifelse(map(category, length) > 1, 1, 0)) %>% 
+  mutate(category = ifelse(ties_cat == 1,
+                           map(category_list, 1),
+                           category)) 
   
-stopifnot(
-  nested %>% filter(nprops == 1) %>% nrow() == 0
-)
-
 
 ```
 
@@ -1010,16 +1041,10 @@ Here, we create a variable to indicate how many of the values in `category_detai
 
 ```{r cd-resolve}
 cdties <- cdties %>% 
-  mutate(test_vacant = as.integer(map(category_detail, 
+ mutate(test_vacant = as.integer(map(category_detail, 
                                       ~ sum(str_detect(., "Vacant")))))
 
-count(cdties, test_vacant) %>% 
-  rename(`Number of vacant categories` = test_vacant,
-         `Number of instances` = n) %>% 
-  mutate(`What to do?` = c("Take the residential code",
-                           "Take the non-vacant categoty",
-                           "Pick the more general vacant category")) %>% 
-  knitr::kable()
+
 ```
 
 We will separate and then recombine to perform different operations and look at the individual cases for each instance.
@@ -1030,6 +1055,10 @@ For all instances- we will determine position using the entire listed variable (
 - If the tie is between commercial or office -> first value
 
 We use the residential indicator to determine which argument of the vector contains the residential category, and then select the same values by arguement position for each other variable that conflicts.
+
+
+**LH note 4/3/19**
+No longer have any vacant properties in multiple - these were forced to single in earlier revisions to the code as we were incorrectly collapsing vacant properties where the BK address was incorrect - represented the mailing address. 
 
 ```{r no-vac}
 
@@ -1053,6 +1082,7 @@ novac <- cdties %>%
                            map(parcelbase_usecode_list, 1),
                            map(parcelbase_usecode_list, 2))) %>% 
   select(-test_res1, -test_res2, -argnum)
+
 
 ```
 
@@ -1082,6 +1112,8 @@ onevac <- cdties %>%
          vacant_flag = 1) %>% 
   select(-vac1)
 
+#YS comment: here I get a list of category
+
 # this value will be used later to check the number of rows
 nunits <- cdties %>% filter(test_vacant == 1) %>% summarize(sum(nprops)) %>% pull()
 ```
@@ -1109,6 +1141,7 @@ nested_final <- bind_rows(
   novac, bothvac, onevac) %>% 
   select(-test_vacant)
 
+
 stopifnot(nrow(nested_all) == nrow(nested_final))
 
 rm(novac, onevac, bothvac, nested_all)
@@ -1119,13 +1152,13 @@ rm(novac, onevac, bothvac, nested_all)
 For single addresses, we have to reclassify condos that have a unique observation as single-family structures, since condos are listed seperately for each unit
 
 ```{r singles-count}
-count(singles, category_detail)
-count(singles, category)
+count(allsingle, category_detail)
+count(allsingle, category)
 ```
 
 ```{r singles-redo}
 
-singles <- singles %>% 
+allsingle <- allsingle %>% 
   mutate(category = ifelse(category_detail == "Condominium unit",
                            "sf",
                            category),
@@ -1147,7 +1180,7 @@ Supplement number of units for rental buildings.
 See how many are missing or 0
 ```{r missing-units}
 
-singles %>% 
+allsingle %>% 
   filter(category_detail == "Rental apartment building",
          is.na(numberofunits) | numberofunits == 0) %>% 
   nrow()
@@ -1158,17 +1191,17 @@ singles %>%
 
 units <- read_csv("L:/Libraries/RegHsg/Data/dc_apt_with_units.csv")
 
-singles1 <- singles %>% 
+allsingle1 <- allsingle %>% 
   left_join(units, by = c("parcelbase_SSL" = "SSL")) %>% 
   rename(numberofunits_mar = numberofunits.y,
          numberofunits = numberofunits.x)
 
 # how many did not join
 nrow(units) -
-     (nrow(singles1) - nrow(anti_join(singles, units, by = c("parcelbase_SSL" = "SSL"))))
+     (nrow(allsingle1) - nrow(anti_join(allsingle, units, by = c("parcelbase_SSL" = "SSL"))))
 
 # the bulk of the properties that did not join have no rental units
-singles %>% 
+allsingle %>% 
   anti_join(units, by = c("parcelbase_SSL" = "SSL")) %>% 
   count(category_detail)
 
@@ -1178,7 +1211,7 @@ Compare the two variables.
 ```{r units-compare}
 
 # how many are different?
-singles1 %>% 
+allsingle1 %>% 
   filter(!is.na(numberofunits),
          numberofunits != 0,
          !is.na(numberofunits_mar)) %>% 
@@ -1188,7 +1221,7 @@ singles1 %>%
   count(units_flag)
 
 # how different are they?
-singles1 %>% 
+allsingle1 %>% 
   filter(!is.na(numberofunits),
          numberofunits != 0,
          !is.na(numberofunits_mar)) %>% 
@@ -1201,7 +1234,7 @@ singles1 %>%
             max_difference = max(difference))
 
 # plot the difference
-singles1 %>% 
+allsingle1 %>% 
   filter(!is.na(numberofunits),
          numberofunits != 0,
          !is.na(numberofunits_mar)) %>% 
@@ -1216,13 +1249,13 @@ Since there are significant differences- give preference to the variable from th
 
 ```{r replace-units}
 
-singles2 <- singles1 %>% 
+allsingle2 <- allsingle1 %>% 
   mutate(numberofunits = ifelse((!is.na(numberofunits_mar) | numberofunits_mar != 0),
                                 numberofunits_mar,
                                 numberofunits))
 
 # check how many are missing now
-singles2 %>% 
+allsingle2 %>% 
   filter(category_detail == "Rental apartment building",
          is.na(numberofunits) | numberofunits == 0) %>% 
   nrow()
@@ -1235,7 +1268,7 @@ The final outputted dataset should not contain nested lists, but should capture 
 First, select approptiate variables from the singles file. Then, re-introduce rename and transform variables from multiple addressess and bind dataframes.
 
 ```{r final}
-singles_f <- singles2 %>% 
+singles_f <- allsingle2 %>% 
   select(county_fips, county_name,
          parcelbase_SSL, 
          propaddress, propcity, propstate, propzip,
@@ -1246,26 +1279,29 @@ singles_f <- singles2 %>%
          lotsize_acres, lotsize_sf, address_type,
          category, category_detail, residential, building_type,
          parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
-         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
+         parcelbase_phasebuild, parcelbase_phaseland, parcelbase_mix1txtype, parcelbase_newimpr)
 
-missing_f <- missing %>% 
-  select(county_fips, county_name,
-         parcelbase_SSL, 
-         propaddress, propcity, propstate, propzip,
-         propunitno, prophouseno, propstreetname, propstreetsuffix,
-         lat, long, tract, owneroccupiedresidential,
-         countylandusedescription, zoning, buildingarea, noofbuildings,
-         noofstories, numberofunits, yearbuilt,
-         lotsize_acres, lotsize_sf, address_type,
-         category, category_detail, residential, building_type,
-         parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
-         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
+#no longer any missing -commenting out code
+#missing_f <- missing %>% 
+ # select(county_fips, county_name,
+       #  parcelbase_SSL, 
+        # propaddress, propcity, propstate, propzip,
+         #propunitno, prophouseno, propstreetname, propstreetsuffix,
+         #lat, long, tract, owneroccupiedresidential,
+         #countylandusedescription, zoning, buildingarea, noofbuildings,
+         #noofstories, numberofunits, yearbuilt,
+         #lotsize_acres, lotsize_sf, address_type,
+         #category, category_detail, residential, building_type,
+         #parcelbase_address, parcelbase_usecode, parcelgeo_x, parcelgeo_y, 
+         #assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
+        # parcelbase_phasebuild, parcelbase_phaseland)
+
 
 multiples_f <- nested_final %>% 
   select(-ends_with("_list"), -lsmode, -lsfirst, 
          -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %>% 
-  mutate_at(vars(category, category_detail, building_type, yearbuilt, zoning, parcelbase_usecode),
-            as.character) %>% 
+  mutate_at(vars(category, category_detail, building_type, yearbuilt, zoning, parcelbase_usecode, parcelbase_mix1txtype), as.character) %>% 
   mutate_at(vars(buildingarea, residential, lat, long), as.double) %>% 
   mutate(parcelgeo_x = as.numeric(Xcoord),
          parcelgeo_y = as.numeric(Ycoord)) %>% 
@@ -1273,13 +1309,21 @@ multiples_f <- nested_final %>%
   mutate(lotsize_acres = lotsize_sf / 43560,
          address_type = "multiple")
 
-finaljur <- bind_rows(singles_f, multiples_f, missing_f) %>% 
+
+
+finaljur <- bind_rows(singles_f, multiples_f) %>% 
   fill(county_fips) %>% 
   fill(county_name) %>% 
   select(-Xcoord, -Ycoord, -usecode) 
 
+finaljur %>% 
+  group_by(category) %>% 
+  count() %>% 
+  knitr::kable()
+
 finaljur[finaljur == "NULL"] = NA
 finaljur[finaljur == "character(0)"] = NA
+
 ```
 
 Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were `r nrow(filter(cdties, test_vacant == 1))` multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, `r nunits`,  minus `r nrow(filter(cdties, test_vacant == 1))`.

@@ -3,14 +3,13 @@
 #'
 #'
 #'
-#' @param rmd indicates whether or not function is being called from an 
-#' Rmd document or not. Default is set to TRUE.
-#'
 #' @return dataframe of black knight data for Arlington county, with all variables that were created in the clean and preclean phase.
 #' @export
 #'
 #' @examples jur <- read_jurisdiction("arlington", rmd = TRUE)
-read_arlington <- function(rmd = TRUE) {
+read_arlington <- function() {
+  
+  filepath <- "arlington"
   
   filename <- paste0("L:/Libraries/RegHsg/Data/", filepath,
                      "/", filepath, "-cleaned-data.csv")
@@ -56,13 +55,13 @@ read_arlington <- function(rmd = TRUE) {
                               lotsize_prop = col_double(),
                               propaddress_prop = col_character(),
                               numberofunits_prop = col_character(),
-                              lat_prop = col_double(),
-                              long_prop = col_double(),
                               parcel_area = col_double(),
                               parcel_length = col_double(),
                               raw_parcelid_par = col_character(),
                               parcel_address = col_character(),
-                              vacant_flag = col_integer()))
+                              vacant_flag = col_integer(),
+                              units_address = col_double(),
+                              area = col_double()))
   }
 }
 

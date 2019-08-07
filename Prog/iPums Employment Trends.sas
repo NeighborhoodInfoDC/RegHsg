@@ -31,7 +31,7 @@
 proc format;
 	value wagecat
 		1 = "Low wage"
-		2 = "Medium wage"
+		2 = "Middle wage"
 		3 = "High wage"
 		. = "Total";
 	value empstat_new
@@ -54,10 +54,11 @@ proc format;
 		9="Prince William, Manassas and Manassas Park"
     	10="Alexandria"
 		. ="All jurisdictinos";
-quit;
-
+run;
 
 %macro ipumsyear(year);
+
+title2 "-- &year --";
 
 /* Load Ipums for region, flag full-time year-round workers */
 data RegEmp_&year.;
@@ -78,7 +79,9 @@ data RegEmp_&year.;
 	%oldpuma_jurisdiction;
 	%end; 
 
-	/* Flag 25+ hours worked as full time */
+      %Ipums_wt_adjust()
+
+	/* Flag 35+ hours worked as full time */
 	if uhrswork >= 35 then fulltime=1;
 
 	/* Flag 50-52 weeks per year as year-round */
@@ -98,39 +101,40 @@ run;
 proc freq data = RegEmp_&year.; tables empstatd ; run;
 
 
-/* Caclulate average salary for full-time year-round workers */
-proc means data = RegEmp_&year. (where = (fulltime=1 and yearround=1));
+/* Caclulate median salary for full-time year-round workers */
+proc means data = RegEmp_&year. (where = (fulltime=1 and yearround=1)) noprint;
 	var incwage;
 	weight perwt;
-	output out = avewage_&year. mean=;
+	output out = medianwage_&year. median=;
 run;
 
 
-/* Put average salary into macro variable */
+/* Put median salary into macro variable */
 proc sql;
 	select incwage
-	into :avesalary separated by " "
-	from avewage_&year.;
+	into :mediansalary separated by " "
+	from medianwage_&year.;
 quit;
 
 
-/* Calculate high/medium/low from average */
+/* Add median salary to data */
 data RegWage_&year.;
 	set RegEmp_&year.;
 
 	if fulltime = 1 and yearround = 1 then do;
 		ftworker = 1;
+    medianwage = &mediansalary.;
 
-		if incwage >= (1.5 * &avesalary.) then wagecat = 3;
-		else if incwage <= (0.5 * &avesalary.) then wagecat = 2;
-		else wagecat = 1;
 	end;
 
-	keep year serial pernum incwage wagecat jurisdiction fulltime yearround ftworker empstat_new trantime perwt hhwt;
 
-	format wagecat wagecat. empstat_new empstat_new. jurisdiction jurisdiction.;
+	keep year serial pernum incwage medianwage jurisdiction fulltime yearround ftworker empstatd empstat_new trantime perwt hhwt;
+
+	format empstat_new empstat_new. jurisdiction jurisdiction.;
 
 run;
+
+title2;
 
 %mend ipumsyear;
 %ipumsyear (2017);
@@ -142,18 +146,27 @@ run;
 data allyears;
 	set RegWage_2017 RegWage_2010 RegWage_2000;
 
+  if ftworker then do;
+    if incwage > ((4/3) * medianwage) then wagecat = 3;  /** High wage **/
+		else if incwage < ((2/3) * medianwage) then wagecat = 1;  /** Low wage **/
+		else wagecat = 2;  /** Middle wage **/
+  end;
+
 	if year = 0 then do;
 		empstatd_2000 = empstat_new;
 		ftworker_2000 = ftworker;
 		worker_2000 = 1;
+    %dollar_convert( incwage, incwage_d2018, 1999, 2018 ) 
+    wagecat_2000 = wagecat;
 		if empstat_new in (1,2) then trantime_2000 = trantime;
 	end;
-
 
 	else if year = 2010 then do;
 		empstatd_2010 = empstat_new;
 		ftworker_2010 = ftworker;
 		worker_2010 = 1;
+    %dollar_convert( incwage, incwage_d2018, 2010, 2018 )
+    wagecat_2010 = wagecat;
 		if empstat_new in (1,2) then trantime_2010 = trantime;
 	end;
 
@@ -161,23 +174,46 @@ data allyears;
 		empstatd_2017 = empstat_new;
 		ftworker_2017 = ftworker;
 		worker_2017 = 1;
+    %dollar_convert( incwage, incwage_d2018, 2017, 2018 )
+    wagecat_2017 = wagecat;
 		if empstat_new in (1,2) then trantime_2017 = trantime;
 	end;
 
+	format wagecat wagecat.;
+
 run;
+
+proc format;
+  value year_f 
+    0 = '2000';
+run;
+
+proc tabulate data=allyears format=comma10.0 noseps missing;
+  where ftworker;
+  class year wagecat;
+  var ftworker incwage incwage_d2018;
+  weight perwt;
+  table 
+    /** Pages **/
+    year=' ',
+    /** Rows **/
+    all='Total' wagecat=' ',
+    /** Columns **/
+    ftworker='Workers' * sum=' '
+    incwage='Annual earnings (nominal)' * ( mean min max )
+    incwage_d2018='Annual earnings ($ 2018)' * ( mean min max )
+    / condense;
+  format year year_f.;
+run;
+
 
 
 /* Adults by employment status by year */
 proc summary data = allyears;
 	class empstat_new;
 	var worker_: wagecat_:;
-	output out = workers_t sum=;
+	output out = workers_byyear (drop=_type_ _freq_) sum=;
 	weight perwt; 
-run;
-
-data workers_byyear;
-	set workers_t;
-	drop _type_ _freq_;
 run;
 
 proc export data = workers_byyear
@@ -191,13 +227,8 @@ run;
 proc summary data = allyears;
 	class wagecat;
 	var ftworker_:;
-	output out = wage_t sum=;
+	output out = wage_byyear (drop=_type_ _freq_) sum=;
 	weight perwt; 
-run;
-
-data wage_byyear;
-	set wage_t;
-	drop _type_ _freq_;
 run;
 
 proc export data = wage_byyear

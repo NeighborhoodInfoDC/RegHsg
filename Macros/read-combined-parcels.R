@@ -37,7 +37,9 @@ read_combined_parcels <- function(rmd = TRUE) {
                long = col_double(),
                parcelgeo_x = col_double(),
                parcelgeo_y = col_double(),
-               lotsize_acres = col_double()
+               lotsize_acres = col_double(),
+               parcelbase_address = col_character()
              ))
   }
 }
+

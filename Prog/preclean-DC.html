@@ -305,12 +305,12 @@ div.tocify {
 </div>
 
 
-<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv14%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
+<p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv15%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
 <p>Author: Yipeng adapted from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated February 15, 2019</p>
+<p>Last updated April 08, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -368,9 +368,15 @@ parcelgeo &lt;- haven::read_sas(&quot;L:/Libraries/realprop/data/parcel_geo.sas7
          parcelbase_proparea=LANDAREA,
          parcelbase_usecode= USECODE,
          parcelbase_proptype= PROPTYPE,
-         parcelbase_phasebuilt= PHASEBUILD,
-         parcelbase_suffix= SUFFIX，
-         in_last_ownerpt= in_last_ownerpt
+         parcelbase_phasebuild= PHASEBUILD,
+         parcelbase_phaseland= PHASELAND,
+         parcelbase_suffix= SUFFIX,
+         in_last_ownerpt= in_last_ownerpt,
+         parcelbase_mixeduse = MIXEDUSE,
+         parcelbase_mix1txtype= MIX1TXTYPE,
+         parcelbase_mix2txtype= MIX2TXTYPE,
+         parcelbase_newland=NEW_LAND,
+         parcelbase_newimpr=NEW_IMPR
         ) %&gt;% 
   mutate(parcelbase_parcelID= as.character(parcelbase_parcelID)) %&gt;% 
   filter(!is.na(parcelbase_parcelID))
