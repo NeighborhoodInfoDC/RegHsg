@@ -9,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -53,8 +53,8 @@ library(sf)
 
 Create directory for data exports
 ```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
+if (!dir.exists("../../Data")) {
+  dir.create("../../Data")
 }
 
 if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
@@ -69,7 +69,7 @@ currentfips <- "24031"
 filepath <- "montgomery"
 jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
 
-source("../Macros/read-montgomery.R")
+source("../../Macros/read-montgomery.R")
 
 
 ```

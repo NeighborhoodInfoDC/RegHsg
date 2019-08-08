@@ -65,12 +65,34 @@ pwalk(preclean,
 
 ```{r clean}
 
-preclean <- list.files(pattern = "02_clean") %>% 
+clean <- list.files(pattern = "02_clean") %>% 
   list()
 
-pwalk(preclean,
+pwalk(clean,
       ~ render(input = ., output_dir = "output"))
 
 ```
 
 ## Postclean
+
+```{r postclean}
+
+postclean <- list.files(pattern = "03_postclean") %>% 
+  list()
+
+pwalk(postclean,
+      ~ render(input = ., output_dir = "output"))
+
+```
+
+## Vacant Lots
+
+```{r vacant-lots}
+
+vacant <- list.files(pattern = "04_vacant") %>% 
+  list()
+
+pwalk(vacant,
+      ~ render(input = ., output_dir = "output"))
+
+```
