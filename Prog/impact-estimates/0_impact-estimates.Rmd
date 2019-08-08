@@ -63,4 +63,14 @@ pwalk(preclean,
 
 ## Clean
 
+```{r clean}
+
+preclean <- list.files(pattern = "02_clean") %>% 
+  list()
+
+pwalk(preclean,
+      ~ render(input = ., output_dir = "output"))
+
+```
+
 ## Postclean
