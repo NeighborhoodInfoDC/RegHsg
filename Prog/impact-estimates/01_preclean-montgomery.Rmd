@@ -1,13 +1,7 @@
 ---
-title: "preclean-montgomery"
-author: "Patrick Spauster"
-date: "February 7, 2019"
-output: html_document
----
----
 title: "Regional Housing Framework"
-subtitle: "Pre Clean Arlington County public records data"
-author: "Patrick Spauster and Sarah Strochak"
+subtitle: "Pre-clean Montgomery County public records data"
+author: ""
 output:
   html_document:
     number_sections: FALSE
@@ -15,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -26,7 +20,7 @@ Library: RegHsg
 
 Project: Regional Housing Framework
 
-Author: Sarah Strochak
+Author: Patrick Spauster, adapted from Sarah Strochak
 
 Version: R 3.5.1, RStudio 1.1.423
 
@@ -55,13 +49,13 @@ library(purrr)
 library(lwgeom)
 library(sf)
 
-source("../Macros/read-bk.R")
-source("../Macros/filter-bk.R")
-source("../Macros/select-vars.R")
-source("../Macros/sample-properties.R")
-source("../Macros/classify-addresses.R")
-source("../Macros/mode_narm.R")
-source("../Macros/max_narm.R")
+source("../../Macros/read-bk.R")
+source("../../Macros/filter-bk.R")
+source("../../Macros/select-vars.R")
+source("../../Macros/sample-properties.R")
+source("../../Macros/classify-addresses.R")
+source("../../Macros/mode_narm.R")
+source("../../Macros/max_narm.R")
 ```
 
 #### Set FIPS code and filepath name
@@ -75,8 +69,8 @@ rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
 
 ####Create directory for data exports
 ```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
+if (!dir.exists("../../Data")) {
+  dir.create("../../Data")
 }
 if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
   dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))

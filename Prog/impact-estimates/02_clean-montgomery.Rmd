@@ -9,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -55,13 +55,13 @@ library(purrr)
 library(lwgeom)
 library(sf)
 
-source("../Macros/read-bk.R")
-source("../Macros/filter-bk.R")
-source("../Macros/select-vars.R")
-source("../Macros/sample-properties.R")
-source("../Macros/classify-addresses.R")
-source("../Macros/max_narm.R")
-source("../Macros/mode_narm.R")
+source("../../Macros/read-bk.R")
+source("../../Macros/filter-bk.R")
+source("../../Macros/select-vars.R")
+source("../../Macros/sample-properties.R")
+source("../../Macros/classify-addresses.R")
+source("../../Macros/max_narm.R")
+source("../../Macros/mode_narm.R")
 ```
 
 #### Create local directory for data exports
@@ -102,9 +102,9 @@ currentjur_county <- jur %>%
   group_by(countylandusedescription) %>% 
   count()
 
-if (!file.exists(paste0("../Data/", filepath, "-county-land-use.csv"))) {
+if (!file.exists(paste0("../../Data/", filepath, "-county-land-use.csv"))) {
   write_csv(currentjur_county,
-            paste0("../Data/", filepath, "-county-land-use.csv"))
+            paste0("../../Data/", filepath, "-county-land-use.csv"))
 }
 
 rm(currentjur_county)

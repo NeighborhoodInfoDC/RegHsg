@@ -9,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -44,9 +44,9 @@ Load libraries and functions
 ```{r setup}
 library(tidyverse)
 
-source("../Macros/read-bk.R")
-source("../Macros/filter-bk.R")
-source("../Macros/select-vars.R")
+source("../../Macros/read-bk.R")
+source("../../Macros/filter-bk.R")
+source("../../Macros/select-vars.R")
 
 ```
 
@@ -64,8 +64,8 @@ rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
 
 Create directory for data exports
 ```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
+if (!dir.exists("../../Data")) {
+  dir.create("../../Data")
 }
 
 if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {

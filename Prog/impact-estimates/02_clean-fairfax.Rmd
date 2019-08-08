@@ -9,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -64,13 +64,13 @@ library(tidyverse)
 library(DescTools)
 library(purrr)
 
-source("../Macros/sample-properties.R")
-source("../Macros/classify-addresses.R")
+source("../../Macros/sample-properties.R")
+source("../../Macros/classify-addresses.R")
 ```
 #### Create directory for data exports on local computer
 ```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
+if (!dir.exists("../../Data")) {
+  dir.create("../../Data")
 }
 
 ```
@@ -112,9 +112,9 @@ currentjur_county <- jur %>%
   group_by(countylandusedescription) %>% 
   count()
 
-if (!file.exists(paste0("../Data/", filepath, "-county-land-use.csv"))) {
+if (!file.exists(paste0("../../Data/", filepath, "-county-land-use.csv"))) {
   write_csv(currentjur_county,
-            paste0("../Data/", filepath, "-county-land-use.csv"))
+            paste0("../../Data/", filepath, "-county-land-use.csv"))
 }
 
 rm(currentjur_county)

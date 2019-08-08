@@ -9,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -53,19 +53,19 @@ library(tidyverse)
 library(DescTools)
 library(purrr)
 
-source("../Macros/read-bk.R")
-source("../Macros/filter-bk.R")
-source("../Macros/select-vars.R")
-source("../Macros/sample-properties.R")
-source("../Macros/classify-addresses.R")
-source("../Macros/max_narm.R")
-source("../Macros/mode_narm.R")
+source("../../Macros/read-bk.R")
+source("../../Macros/filter-bk.R")
+source("../../Macros/select-vars.R")
+source("../../Macros/sample-properties.R")
+source("../../Macros/classify-addresses.R")
+source("../../Macros/max_narm.R")
+source("../../Macros/mode_narm.R")
 
 ```
 #### Create directory for data exports on local computer
 ```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
+if (!dir.exists("../../Data")) {
+  dir.create("../../Data")
 }
 
 ```
@@ -109,15 +109,23 @@ crosstab_category <- jur %>%
   group_by(countylandusedescription, parcelbase_usecode) %>% 
   count()
 
-if (!file.exists(paste0("../Data/", filepath, "-county-land-use-new.csv"))) {
+if (!file.exists(paste0("../../Data/", 
+                        filepath, 
+                        "-county-land-use-new.csv"))) {
   write_csv(currentjur_county,
-            paste0("../Data/", filepath, "-county-land-use-new.csv"))
+            paste0("../../Data/", 
+                   filepath, 
+                   "-county-land-use-new.csv"))
 }
 
 
-if (!file.exists(paste0("../Data/", filepath, "-county-land-use-crosstab-new.csv"))) {
+if (!file.exists(paste0("../../Data/", 
+                        filepath, 
+                        "-county-land-use-crosstab-new.csv"))) {
   write_csv(crosstab_category,
-            paste0("../Data/", filepath, "-county-land-use-crosstab-new.csv"))
+            paste0("../../Data/", 
+                   filepath, 
+                   "-county-land-use-crosstab-new.csv"))
 }
 
 rm(currentjur_county)
