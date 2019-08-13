@@ -48,7 +48,7 @@ This step outputs a `max-units` dataset which will be used in the soft sites.
 
 The purpose of this program is to combine the cleaned parcel data to be used in the upzoning analysis.
 
-#### 06_clean-geography
+#### 06_clean-node-geographies
 
 The purpose of this program is to walk through the geospatial data cleaning process that combines and buffers transit stops and activity zones to be used in the upzoning analysis.
 

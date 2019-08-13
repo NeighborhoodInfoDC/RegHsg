@@ -96,3 +96,43 @@ pwalk(vacant,
       ~ render(input = ., output_dir = "output"))
 
 ```
+
+## Combine parcels
+
+```{r combine-parcels}
+
+render(input = "05_combine-parcels.Rmd",
+       output_dir = "output")
+
+```
+
+
+## Clean node geography
+
+```{r nodes}
+
+render(input = "06_clean-node-geographies.Rmd",
+       output_dir = "output")
+
+```
+
+
+## Soft sites
+
+```{r soft-sites}
+
+render(input = "07_soft-sites.Rmd",
+       output_dir = "output")
+
+```
+
+
+## Upzoning
+
+```{r upzoning}
+
+render(input = "08_upzoning.Rmd",
+       output_dir = "output")
+
+```
+
