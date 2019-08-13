@@ -1076,3 +1076,28 @@ get_unit_summary(dataset = vacantlotunits,
 
 
 ```
+
+
+## Generate table
+
+```{r get-table}
+
+mf.dc <- jurzoningdata7 %>% 
+  filter(!is.na(newdwelling_type),
+         dwelling_type == "Multiple-family",
+         category == "vacant") %>% 
+  group_by(propaddress) %>%
+  count() %>% 
+  nrow()
+
+
+dc.summary <- 
+  c(nrow(jur), 
+    nrow(filter(jur, category == "vacant")), 
+    mf.br, 
+    brsum %>% filter(dwelling_type == "Multiple-family") %>% pull(lots) %>% sum(),
+    brsum %>% filter(dwelling_type == "Multiple-family") %>% pull(units_total) %>% sum())
+
+
+
+```
