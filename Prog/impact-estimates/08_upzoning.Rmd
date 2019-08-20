@@ -9,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -53,8 +53,8 @@ library(broom)
 library(furrr)
 
 
-source("../Macros/read-combined-parcels.R")
-source("../Macros/get_node_geography.R")
+source("../../Macros/read-combined-parcels.R")
+source("../../Macros/get_node_geography.R")
 
 set_urbn_defaults("print")
 

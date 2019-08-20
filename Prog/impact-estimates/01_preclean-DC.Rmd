@@ -43,6 +43,7 @@ The purpose of this program is to obtain additional data from the county to supp
 Load libraries and functions
 ```{r setup}
 library(tidyverse)
+library(sf)
 
 source("../../Macros/read-bk.R")
 source("../../Macros/filter-bk.R")
@@ -99,6 +100,33 @@ library(haven)
 parcelbase <- haven::read_sas("L:/Libraries/realprop/data/parcel_base.sas7bdat")
 
 parcelgeo <- haven::read_sas("L:/Libraries/realprop/data/parcel_geo.sas7bdat")
+
+#read in park shapefile
+parkdir <- paste0("L:/Libraries/RegHsg/Maps/",
+               filepath,
+               "-parks")
+
+zparkfile <- str_sub(list.files(parkdir), end = -5) %>% unique()
+
+DCparks <- read_sf(dsn = parkdir,
+               layer = zparkfile) %>% 
+        filter(ACTIVE!= "N") %>%
+        st_transform(crs = 4326)
+
+
+#national parks
+nationalparkdir <- paste0("L:/Libraries/RegHsg/Maps/",
+               "National_parks")
+
+znationalparkfile <- str_sub(list.files(nationalparkdir), end = -5) %>% unique()
+
+
+nationalpark <- read_sf(dsn = nationalparkdir,
+               layer = znationalparkfile) %>% 
+               st_transform(crs = 4326)
+
+
+
 
 ```
 
@@ -292,6 +320,81 @@ nonmatchingblackknigtrest <- anti_join(nonmatchingblackknight, parcelbaseDCnonup
 
 ```
 
+
+## Merge in data for parks and national parks
+
+Convert dataset to sf
+```{r}
+
+
+jur_sf<- jur %>% 
+    mutate( missing_parcelgeoXY= ifelse(is.na(parcelgeo_x) | is.na(parcelgeo_y),
+                                1,
+                                0)) %>%
+    filter(missing_parcelgeoXY == 0) %>% 
+  st_as_sf(coords = c("parcelgeo_x", "parcelgeo_y")) %>% 
+  st_set_crs(2804) %>% 
+  st_transform(4326)
+```
+
+
+Merge in parks data and create flag 
+```{r}
+
+#DC parks merge
+
+jurjoin_parks <- st_join(jur_sf, DCparks, join = st_intersects)
+
+#convert back to data frame, only keeping the ones that fall into a park (PROPID is from park shapefile, if it is NA then parcel is not joined)
+jur_parks <- st_drop_geometry(jurjoin_parks) %>% 
+           filter(is.na(PROPID)==0) %>%
+           mutate(parkflag = 1)
+
+park_parcels <- jur_parks %>% 
+  select (parcelbase_SSL, parkflag)
+
+```
+
+Merge in national parks data and create flag
+```{r}
+
+
+jurjoin_nationalparks <- st_join(jur_sf, nationalpark, join = st_intersects)
+
+jur_nationalparks <- st_drop_geometry(jurjoin_nationalparks) %>% 
+           filter(!is.na(ALPHA_CODE)) %>%
+           mutate(nationalparkflag = 1)
+
+#jur_nationalparks is not unique by parcelid; there were multiple intersections for some parcels
+jur_nationalparks %>% 
+  group_by(parcelbase_SSL) %>%
+  count() %>%
+  arrange(desc(n))
+
+nationalpark_parcels <- jur_nationalparks %>% 
+  select(parcelbase_SSL, nationalparkflag) %>%
+  distinct()
+
+
+
+
+```
+
+Merge back to original dataset
+```{r}
+
+
+jur_1 <- left_join (jur, park_parcels, by = "parcelbase_SSL")
+
+jur_2 <- left_join (jur_1, nationalpark_parcels, by = "parcelbase_SSL")
+
+
+jur_final <- jur_2 %>%
+       mutate(parkflag = ifelse(is.na(parkflag), 0, parkflag),
+              nationalparkflag = ifelse(is.na(nationalparkflag), 0, nationalparkflag))
+
+```
+
 ## Save
 
 Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.
@@ -302,7 +405,7 @@ filepath <- "DC"
 jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
 rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
 
-saveRDS(jur,
+saveRDS(jur_final,
         paste0(jdir, 
                "precleaned-",
                filepath,

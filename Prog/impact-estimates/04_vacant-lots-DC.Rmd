@@ -9,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -447,7 +447,8 @@ jur1 %>%
 ### Missing zoning variables
 Blackknight zoning data for DC is outdated, making it complicated to crosswalk it to the new zoning code and our zoning statistics. Instead, we will use a spatial join to the county's zoning layer to get zoning information for all parcels. 
 
-Read in zoning layer, set CRS. Also read in parks shapefile for identifying vacant lots that are parks. 
+Read in zoning layer, set CRS. 
+
 ```{r read-zoning}
 zdir <- paste0("L:/Libraries/RegHsg/Maps/",
                filepath,
@@ -460,36 +461,6 @@ zon <- read_sf(dsn = zdir,
 
 st_geometry(zon)
 zon <- st_transform(zon, crs = 4326)
-
-#read in park shapefile
-parkdir <- paste0("L:/Libraries/RegHsg/Maps/",
-               filepath,
-               "-parks")
-
-zparkfile <- str_sub(list.files(parkdir), end = -5) %>% unique()
-
-
-DCparks <- read_sf(dsn = parkdir,
-               layer = zparkfile) %>% 
-        filter(ACTIVE!= "N") 
-
-
-st_geometry(DCparks)
-DCparks <- st_transform(DCparks, crs = 4326)
-
-#national parks
-nationalparkdir <- paste0("L:/Libraries/RegHsg/Maps/",
-               "National_parks")
-
-znationalparkfile <- str_sub(list.files(nationalparkdir), end = -5) %>% unique()
-
-
-nationalpark <- read_sf(dsn = nationalparkdir,
-               layer = znationalparkfile)
-
-st_geometry(nationalpark)
-nationalpark <- st_transform(nationalpark, crs = 4326)
-
 
 ```
 
@@ -695,7 +666,8 @@ jurzoningdata1 <- jurzoningdata %>%
   slice(which.min(newdwelling_type)) %>% 
   ungroup() %>% 
   group_by(propaddress) %>% 
-  slice(which.min(smallsize_flag))
+  slice(which.min(smallsize_flag)) %>%
+  ungroup()
 
 nrow(jurzoningdata1)
 
@@ -717,92 +689,8 @@ jurzoningdata3 <- jurzoningdata2 %>%
                                    newdwelling_type=="One Family-F" ~ "SF-attached",
                                    newdwelling_type=="One Family-E" ~ "SF-attached", 
                                    newdwelling_type=="One Family-A" ~ "Single Family" 
-                                   ))
+                                   )) 
 
-
-```
-
-
-## Filtering vacant lots that are educational, Cemeteries and parks
-
-Some vacant lots in DC are cemetery, lots on campuses or parks that can't be built upon. We are identifying those cases by two sources: using the tax type information to filter our cemeteries and educational. For parks, we will be joining the parcels with parks shapefile and filter out or at least flag the one that are within a park. 
-
-### Educational and cemetery
-```{r filter-tax type}
-
-jurzoningdata4 <- jurzoningdata3 %>% 
-  filter(parcelbase_mix1txtype!= "E2" & parcelbase_mix1txtype!= "E7")
-
-
-```
-
-### DC Parks and Rec
-
-```{r join with parks}
-
-#convert dataset back to sf
-jurzoningdata4_parcel <- jurzoningdata4 %>% 
-    filter(missing_parcelgeoXY == 0) %>% 
-  st_as_sf(coords = c("parcelgeo_x", "parcelgeo_y")) %>% 
-  st_set_crs(2804) %>% 
-  st_transform(4326)
-
-jurjoin3_parks <- st_join(jurzoningdata4_parcel, DCparks, join = st_intersects)
-
-#convert back to data frame, only keeping the ones that fall into a park (PROPID is from park shapefile, if it is NA then parcel is not joined)
-jur3_parks <- st_set_geometry(jurjoin3_parks, NULL) %>% 
-           filter(is.na(PROPID)==0) 
-
-#create a flag=1 
-jur3_parks$parkflag <- 1
-
-parkflag <- jur3_parks %>% 
-  select (parcelbase_SSL, parkflag)
-
-
-
-```
-
-### National Parks
-```{r join with national parks}
-
-
-#Do the same thing for national parks
-
-jurjoin3_nationalparks <- st_join(jurzoningdata4_parcel, nationalpark, join = st_intersects)
-
-jur3_nationalparks <- st_set_geometry(jurjoin3_nationalparks, NULL) %>% 
-           filter(is.na(ALPHA_CODE)==0) 
-
-#create a flag=1 
-jur3_nationalparks$nationalparkflag <- 1
-
-nationalparkflag <- jur3_nationalparks %>% 
-  select(parcelbase_SSL, nationalparkflag)
-
-```
-
-```{r filter our parks}
-
-jurzoningdata5 <- left_join (jurzoningdata4, parkflag, by = "parcelbase_SSL")
-
-jurzoningdata6 <- left_join (jurzoningdata5, nationalparkflag, by = "parcelbase_SSL")
-
-#14 vacant lots are now flagged as DC parks
-testpark <- jurzoningdata6 %>% 
-  filter(parkflag==1) %>% 
-  filter(category=="vacant") %>% 
-  select(propaddress, zoning_code,nationalparkflag, parkflag)
-
-#44 lots are flagged as national park. one lot is both national and DC park. 
-testnationalpark <- jurzoningdata6 %>% 
-  filter(nationalparkflag==1) %>% 
-  filter(category=="vacant") %>% 
-  select(propaddress, zoning_code, nationalparkflag, parkflag)
-
-jurzoningdata7 <- jurzoningdata6 %>% 
-  filter(is.na(parkflag)) %>% 
-  filter(is.na(nationalparkflag))
 
 ```
 
@@ -943,7 +831,7 @@ Get summary statistics for several different parameters
 #add 'not in' function
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
-vacantlotunits <- jurzoningdata7 %>% 
+vacantlotunits <- jurzoningdata3 %>% 
   filter(parcelbase_usecode %!in% c("093","193","094","194","095","195")) %>% 
   filter(category=="vacant" & smallsize_flag==0)
 
@@ -969,7 +857,7 @@ get_unit_variables(dataset = vacantlotunits,
 
 
 #write out whole dataset for Sarah
-get_unit_variables(dataset = jurzoningdata7,
+get_unit_variables(dataset = jurzoningdata3,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
   mutate(units_bk= as.numeric(case_when(category== "vacant" ~ 0,
@@ -980,7 +868,7 @@ get_unit_variables(dataset = jurzoningdata7,
                    "-units.csv"))
 
 #write out a Rdata version
-DCmaxunit <- get_unit_variables(dataset = jurzoningdata7,
+DCmaxunit <- get_unit_variables(dataset = jurzoningdata3,
                  construction_efficiency = .7,
                  average_unit_size = 940) %>% 
   mutate(units_bk= as.numeric(case_when(category== "vacant" ~ 0,
@@ -990,7 +878,7 @@ DCmaxunit <- get_unit_variables(dataset = jurzoningdata7,
 
  saveRDS(DCmaxunit, "L:/Libraries/RegHsg/Data/DC/DC-max-units.Rdata")
 
-jurzoningdata7 %>% 
+jurzoningdata3 %>% 
     group_by(category) %>% 
     summarize(lots = n()) %>% 
     write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
@@ -1082,7 +970,7 @@ get_unit_summary(dataset = vacantlotunits,
 
 ```{r get-table}
 
-mf.dc <- jurzoningdata7 %>% 
+mf.dc <- jurzoningdata3 %>% 
   filter(!is.na(newdwelling_type),
          dwelling_type == "Multiple-family",
          category == "vacant") %>% 
@@ -1090,13 +978,14 @@ mf.dc <- jurzoningdata7 %>%
   count() %>% 
   nrow()
 
+#Sarah - fyi - code below doesn't run - we never instanstiated these variables in this version.
 
-dc.summary <- 
-  c(nrow(jur), 
-    nrow(filter(jur, category == "vacant")), 
-    mf.br, 
-    brsum %>% filter(dwelling_type == "Multiple-family") %>% pull(lots) %>% sum(),
-    brsum %>% filter(dwelling_type == "Multiple-family") %>% pull(units_total) %>% sum())
+# dc.summary <- 
+#   c(nrow(jur), 
+#     nrow(filter(jur, category == "vacant")), 
+#     mf.br, 
+#     brsum %>% filter(dwelling_type == "Multiple-family") %>% pull(lots) %>% sum(),
+#     brsum %>% filter(dwelling_type == "Multiple-family") %>% pull(units_total) %>% sum())
 
 
 

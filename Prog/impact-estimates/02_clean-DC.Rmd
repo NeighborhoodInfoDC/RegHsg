@@ -62,6 +62,7 @@ source("../../Macros/max_narm.R")
 source("../../Macros/mode_narm.R")
 
 ```
+
 #### Create directory for data exports on local computer
 ```{r dir}
 if (!dir.exists("../../Data")) {
@@ -87,6 +88,7 @@ jur <- readRDS(paste0(jdir,
                "-data.Rdata"))
     
 ```
+
 ## Recatagorize county land use
 In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates four variables:
 
@@ -285,13 +287,20 @@ allother <- c("000",
 
 jur <- jur %>% 
   mutate(category = case_when(
+       #cast cemeteries, educational institutions, and parks, and allother as `all other category`
+           parcelbase_mix1txtype %in% c("E2", "E7") | 
+             parcelbase_usecode %in% allother | 
+             nationalparkflag ==1 |
+             parkflag ==1 ~ "all other category",
            parcelbase_usecode %in% mf ~ "mf",
-           parcelbase_usecode %in% allother ~ "all other category",
            parcelbase_usecode %in% sf ~ "sf",
            parcelbase_usecode %in% vacant ~ "vacant"))
 
 rm(mf, sf, vacant, allother)
 ```
+
+
+
 
 ##### `category_detail`
 ```{r cr-catd}

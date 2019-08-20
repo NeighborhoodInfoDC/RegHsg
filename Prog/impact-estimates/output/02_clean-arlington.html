@@ -7,7 +7,6 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
-<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 
@@ -163,12 +162,56 @@ summary {
 }
 </style>
 
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
 <!-- code folding -->
 <style type="text/css">
 .code-folding-btn { margin-bottom: 4px; }
 </style>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
 
 
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
 
 <style type="text/css">
 
@@ -271,7 +314,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated August 08, 2019</p>
+<p>Last updated August 20, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -615,28 +658,67 @@ rm(garden, highrise, midrise, parking, stacked, coop, duplex, other)           <
 <h4></h4>
 <div id="residential-1" class="section level5">
 <h5><code>residential</code></h5>
-<pre class="r"><code>count(jur, residential)
-count(jur, is.na(residential))
-
-if (TRUE %in% is.na(jur$residential)) {
+<pre class="r"><code>count(jur, residential)</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   residential     n
+##         &lt;dbl&gt; &lt;int&gt;
+## 1           0  2507
+## 2           1 63775</code></pre>
+<pre class="r"><code>count(jur, is.na(residential))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   `is.na(residential)`     n
+##   &lt;lgl&gt;                &lt;int&gt;
+## 1 FALSE                66282</code></pre>
+<pre class="r"><code>if (TRUE %in% is.na(jur$residential)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
 </div>
 <div id="category-1" class="section level5">
 <h5><code>category</code></h5>
-<pre class="r"><code>count(jur, category)
-count(jur, is.na(category))
-
-if (TRUE %in% is.na(jur$category)) {
+<pre class="r"><code>count(jur, category)</code></pre>
+<pre><code>## # A tibble: 4 x 2
+##   category     n
+##   &lt;chr&gt;    &lt;int&gt;
+## 1 mf       27767
+## 2 other     1524
+## 3 sf       33841
+## 4 vacant    3150</code></pre>
+<pre class="r"><code>count(jur, is.na(category))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   `is.na(category)`     n
+##   &lt;lgl&gt;             &lt;int&gt;
+## 1 FALSE             66282</code></pre>
+<pre class="r"><code>if (TRUE %in% is.na(jur$category)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
 </div>
 <div id="category_detail-1" class="section level5">
 <h5><code>category_detail</code></h5>
-<pre class="r"><code>count(jur, category_detail)
-count(jur, is.na(category_detail))
-
-if (TRUE %in% is.na(jur$category_detail)) {
+<pre class="r"><code>count(jur, category_detail)</code></pre>
+<pre><code>## # A tibble: 15 x 2
+##    category_detail             n
+##    &lt;chr&gt;                   &lt;int&gt;
+##  1 apartment                 707
+##  2 commercial               1351
+##  3 condo                   26782
+##  4 duplex                    278
+##  5 office                    173
+##  6 sf attached              1983
+##  7 sf detached             27566
+##  8 townhouse                4292
+##  9 vacant commercial         798
+## 10 vacant exempt              69
+## 11 vacant light industrial     5
+## 12 vacant mf                 113
+## 13 vacant office             111
+## 14 vacant residential        755
+## 15 vacant sf                1299</code></pre>
+<pre class="r"><code>count(jur, is.na(category_detail))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   `is.na(category_detail)`     n
+##   &lt;lgl&gt;                    &lt;int&gt;
+## 1 FALSE                    66282</code></pre>
+<pre class="r"><code>if (TRUE %in% is.na(jur$category_detail)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
 </div>
@@ -658,6 +740,12 @@ rm(newcat, mf)</code></pre>
 <h3>Recreate lot size</h3>
 <p>There are errors in the different Black Knight lot size variables that make it impossible to compare lot size when reported in acres and square feet. Here, we create two new variables, <code>lotsize_acres</code> and <code>lotsize_sf</code> that standardize the unit of measurement. These variables will also convert values of 0 to <code>NA</code>, which will simplify calculations down the line.</p>
 <pre class="r"><code>count(jur, lotsizeareaunit)</code></pre>
+<pre><code>## # A tibble: 3 x 2
+##   lotsizeareaunit     n
+##   &lt;chr&gt;           &lt;int&gt;
+## 1 &lt;NA&gt;            28152
+## 2 AC               1921
+## 3 SF              36209</code></pre>
 <pre class="r"><code>jur &lt;- jur %&gt;% 
   mutate(lotsize_acres = case_when(lotsizeareaunit == &quot;AC&quot; ~ lotsizeorarea ,
                                    lotsizeareaunit == &quot;SF&quot; ~ lotsizeorarea / 43560),
@@ -742,6 +830,29 @@ if (x == y) {
   filter(house_letter == 1) %&gt;% 
   select(oldadd, propaddress, category_detail) %&gt;% 
   head(20)</code></pre>
+<pre><code>## # A tibble: 20 x 3
+##    oldadd                 propaddress          category_detail
+##    &lt;chr&gt;                  &lt;chr&gt;                &lt;chr&gt;          
+##  1 4870-G OLD DOMINION DR 4870 OLD DOMINION DR sf detached    
+##  2 4870-F OLD DOMINION DR 4870 OLD DOMINION DR sf detached    
+##  3 4870-E OLD DOMINION DR 4870 OLD DOMINION DR sf detached    
+##  4 4870-D OLD DOMINION DR 4870 OLD DOMINION DR sf detached    
+##  5 4870-C OLD DOMINION DR 4870 OLD DOMINION DR sf detached    
+##  6 4870-B OLD DOMINION DR 4870 OLD DOMINION DR sf detached    
+##  7 4870-A OLD DOMINION DR 4870 OLD DOMINION DR sf detached    
+##  8 3706N N KENSINGTON ST  3706 KENSINGTON ST   sf detached    
+##  9 1708N N MONROE ST      1708 MONROE ST       vacant sf      
+## 10 887B N KENSINGTON ST   887 KENSINGTON ST    sf detached    
+## 11 887A N KENSINGTON ST   887 KENSINGTON ST    sf detached    
+## 12 1112A N TAYLOR ST      1112 TAYLOR ST       condo          
+## 13 1112B N TAYLOR ST      1112 TAYLOR ST       condo          
+## 14 1112C N TAYLOR ST      1112 TAYLOR ST       condo          
+## 15 1119A N UTAH ST        1119 UTAH ST         townhouse      
+## 16 1127A N UTAH ST        1127 UTAH ST         townhouse      
+## 17 1125A N STUART ST      1125 STUART ST       townhouse      
+## 18 1125B N STUART ST      1125 STUART ST       townhouse      
+## 19 1113E N STUART ST      1113 STUART ST       townhouse      
+## 20 1113D N STUART ST      1113 STUART ST       townhouse</code></pre>
 <p>After this change, the number of NAs in the address variable should be the same as the number of observations that previously had either a missing address, missing house number, or both.</p>
 <pre class="r"><code>stopifnot(sum(is.na(jur$propaddress)) == nrow(filter(jur, 
             is.na(propaddress) | is.na(prophouseno))))</code></pre>
@@ -752,9 +863,14 @@ if (x == y) {
 <pre class="r"><code>jur &lt;- jur %&gt;% 
   classify_addresses()
 
-count(jur, address_type)
-
-if (TRUE %in% is.na(jur$address_type)) {
+count(jur, address_type)</code></pre>
+<pre><code>## # A tibble: 3 x 2
+##   address_type     n
+##   &lt;chr&gt;        &lt;int&gt;
+## 1 missing       1729
+## 2 multiple     26970
+## 3 single       37583</code></pre>
+<pre class="r"><code>if (TRUE %in% is.na(jur$address_type)) {
   warning(&quot;NAs in address_type&quot;)
 }</code></pre>
 <p>For townhouses and other forms of attached housing, we do not want a collapse, since this is a function of addressing and not the unit type. We will reclassify the address type as <code>single</code> for properties that have a value of <code>sf attached</code> and <code>townhouse</code> for the <code>category_detail</code> variable.</p>
@@ -964,9 +1080,15 @@ missing &lt;- jur %&gt;%
     TRUE ~ &quot;other&quot;
   ))
 
-nested %&gt;% count(fxn)
-
-nested_done &lt;- nested %&gt;% 
+nested %&gt;% count(fxn)</code></pre>
+<pre><code>## # A tibble: 4 x 2
+##   fxn         n
+##   &lt;chr&gt;   &lt;int&gt;
+## 1 first      52
+## 2 missing  1653
+## 3 other      76
+## 4 sum       722</code></pre>
+<pre class="r"><code>nested_done &lt;- nested %&gt;% 
   filter(fxn != &quot;other&quot;)</code></pre>
 <p><strong>NOTE:</strong> The following assumptions are specific to Arlington County. Develop new logic for other jurisdictions!</p>
 <p>Based on examining the 77 addressess with different criteria, we develop these assumptions: 1. Properties with more than 500 units are majority missing, and should be marked missing. 2. If the mode is &gt; 8,000 SF, we will use the mode. 3. For all others, we use the sum.</p>
@@ -982,6 +1104,12 @@ nested_done &lt;- nested %&gt;%
   ))
 
 count(nested_other, fxn)</code></pre>
+<pre><code>## # A tibble: 3 x 2
+##   fxn         n
+##   &lt;chr&gt;   &lt;int&gt;
+## 1 missing     2
+## 2 mode       34
+## 3 sum        40</code></pre>
 <p>Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot side.</p>
 <pre class="r"><code>nested_all &lt;- bind_rows(nested_done, nested_other) %&gt;% 
   mutate_at(vars(lotsize_sf_sum, lsfirst, lsmode_num), as.double) %&gt;% 
@@ -990,8 +1118,18 @@ count(nested_other, fxn)</code></pre>
                      fxn == &quot;sum&quot; ~ lotsize_sf_sum,
                      fxn == &quot;mode&quot; ~ lsmode_num))</code></pre>
 <p>The number of NAs should be the same as the number of those with the designation “missing”</p>
-<pre class="r"><code>count(nested_all, fxn == &quot;missing&quot;)
-count(nested_all, is.na(lotsize_sf_final))</code></pre>
+<pre class="r"><code>count(nested_all, fxn == &quot;missing&quot;)</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   `fxn == &quot;missing&quot;`     n
+##   &lt;lgl&gt;              &lt;int&gt;
+## 1 FALSE                848
+## 2 TRUE                1655</code></pre>
+<pre class="r"><code>count(nested_all, is.na(lotsize_sf_final))</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   `is.na(lotsize_sf_final)`     n
+##   &lt;lgl&gt;                     &lt;int&gt;
+## 1 FALSE                       848
+## 2 TRUE                       1655</code></pre>
 <p>Lastly, the number of rows should be the same as before we split and re-combined.</p>
 <pre class="r"><code>stopifnot(nrow(nested_all) == nrow(nested))
 
@@ -1019,6 +1157,14 @@ rm(nested, nested_done, nested_other)</code></pre>
 ties %&gt;%
   select(propaddress, z1, z2) %&gt;% 
   head(5)</code></pre>
+<pre><code>## # A tibble: 5 x 3
+##   propaddress          z1    z2         
+##   &lt;chr&gt;                &lt;chr&gt; &lt;chr&gt;      
+## 1 1100 N GLEBE RD      C-2   R-6/C-O-2.5
+## 2 1102 S MONROE ST     C-2   R-6        
+## 3 129 S ABINGDON ST    R-10T R-6        
+## 4 1317 S ROLFE ST      R-5   R-5/RA8-18 
+## 5 1345 N COURTHOUSE RD C-3   C-O</code></pre>
 <p>Since there is no definitive way to break these ties, we replace the <code>zoning</code> variable with <code>NA</code>. In a later step, we will spatially join with the zoning layer to determine which zone these properties are in.</p>
 <pre class="r"><code>nested_all &lt;- nested_all %&gt;% 
   mutate(ties_z = ifelse(map(zoning, length) &gt; 1, 1, 0)) %&gt;% 
@@ -1042,6 +1188,21 @@ cdties %&gt;%
   group_by(category_detail_chr) %&gt;% 
   count() %&gt;% 
   arrange(desc(n))</code></pre>
+<pre><code>## # A tibble: 23 x 2
+## # Groups:   category_detail_chr [23]
+##    category_detail_chr                              n
+##    &lt;chr&gt;                                        &lt;int&gt;
+##  1 &quot;c(\&quot;sf detached\&quot;, \&quot;vacant sf\&quot;)&quot;            494
+##  2 &quot;c(\&quot;commercial\&quot;, \&quot;vacant commercial\&quot;)&quot;      22
+##  3 &quot;c(\&quot;sf detached\&quot;, \&quot;vacant residential\&quot;)&quot;     9
+##  4 &quot;c(\&quot;commercial\&quot;, \&quot;office\&quot;)&quot;                  6
+##  5 &quot;c(\&quot;office\&quot;, \&quot;vacant commercial\&quot;)&quot;           6
+##  6 &quot;c(\&quot;office\&quot;, \&quot;vacant office\&quot;)&quot;               6
+##  7 &quot;c(\&quot;condo\&quot;, \&quot;vacant residential\&quot;)&quot;           5
+##  8 &quot;c(\&quot;sf detached\&quot;, \&quot;vacant commercial\&quot;)&quot;      5
+##  9 &quot;c(\&quot;apartment\&quot;, \&quot;vacant mf\&quot;)&quot;                4
+## 10 &quot;c(\&quot;apartment\&quot;, \&quot;vacant residential\&quot;)&quot;       4
+## # ... with 13 more rows</code></pre>
 <p>Here, we create a variable to indicate how many of the values in <code>category_detail</code> are one of the vacant designations.</p>
 <p><strong>Note:</strong> this logic will likely apply to other jurisdictions- but visually check some of the ties first to make sure this makes sense.</p>
 <pre class="r"><code>cdties &lt;- cdties %&gt;% 
@@ -1156,6 +1317,24 @@ rm(novac, onevac, bothvac, nested_all)</code></pre>
 <h3>Single addresses</h3>
 <p>For single addresses, we have to reclassify condos that have a unique observation as single-family structures, since condos are listed seperately for each unit</p>
 <pre class="r"><code>count(singles, category_detail)</code></pre>
+<pre><code>## # A tibble: 15 x 2
+##    category_detail             n
+##    &lt;chr&gt;                   &lt;int&gt;
+##  1 apartment                 573
+##  2 commercial                939
+##  3 condo                    2146
+##  4 duplex                    267
+##  5 office                    133
+##  6 sf attached              1983
+##  7 sf detached             26945
+##  8 townhouse                4292
+##  9 vacant commercial         156
+## 10 vacant exempt              15
+## 11 vacant light industrial     1
+## 12 vacant mf                  31
+## 13 vacant office              26
+## 14 vacant residential        178
+## 15 vacant sf                 129</code></pre>
 <pre class="r"><code>singles &lt;- singles %&gt;% 
   mutate(category = ifelse(category_detail == &quot;condo&quot;,
                            &quot;sf&quot;,
@@ -1284,9 +1463,13 @@ jurj &lt;- st_join(jursf, par, st_intersects)
 # check match rate
 jurj %&gt;% 
   as.data.frame() %&gt;% 
-  count(is.na(OBJECTID))
-
-jur6 &lt;- jurj %&gt;% 
+  count(is.na(OBJECTID))</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   `is.na(OBJECTID)`     n
+##   &lt;lgl&gt;             &lt;int&gt;
+## 1 FALSE             41465
+## 2 TRUE                269</code></pre>
+<pre class="r"><code>jur6 &lt;- jurj %&gt;% 
   # strip geometry
   st_set_geometry(NULL)
 
@@ -1368,14 +1551,21 @@ sum(is.na(jur7$lotsize_sf))</code></pre>
 <pre class="r"><code>jur7 %&gt;% 
   filter(residential == 1, category != &quot;vacant&quot;) %&gt;% 
   summarize(sum(is.na(numberofunits)),
-            sum(numberofunits == 0))
-
-
-jur7 %&gt;% 
+            sum(numberofunits == 0))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   `sum(is.na(numberofunits))` `sum(numberofunits == 0)`
+##                         &lt;int&gt;                     &lt;int&gt;
+## 1                           0                        14</code></pre>
+<pre class="r"><code>jur7 %&gt;% 
   filter(residential == 1, 
          category != &quot;vacant&quot;,
          numberofunits == 0) %&gt;% 
   count(category_detail)</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   category_detail     n
+##   &lt;chr&gt;           &lt;int&gt;
+## 1 apartment           8
+## 2 condo               6</code></pre>
 <p>Write out clean data. This time, we will save as a <code>.csv</code> so that it can be read into another program if necessary.</p>
 <pre class="r"><code>write_csv(jur7, 
           paste0(jdir, filepath, &quot;-cleaned-data.csv&quot;))</code></pre>
@@ -1399,54 +1589,6 @@ $(document).ready(function () {
 });
 
 
-</script>
-
-<!-- tabsets -->
-
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
-});
-</script>
-
-<!-- code folding -->
-<script>
-$(document).ready(function () {
-  window.initializeCodeFolding("show" === "show");
-});
-</script>
-
-<script>
-$(document).ready(function ()  {
-
-    // move toc-ignore selectors from section div to header
-    $('div.section.toc-ignore')
-        .removeClass('toc-ignore')
-        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
-
-    // establish options
-    var options = {
-      selectors: "h1,h2,h3",
-      theme: "bootstrap3",
-      context: '.toc-content',
-      hashGenerator: function (text) {
-        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
-      },
-      ignoreSelector: ".toc-ignore",
-      scrollTo: 0
-    };
-    options.showAndHide = true;
-    options.smoothScroll = true;
-
-    // tocify
-    var toc = $("#TOC").tocify(options).data("toc-tocify");
-});
 </script>
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
