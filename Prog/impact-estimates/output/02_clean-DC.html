@@ -7,6 +7,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 
@@ -162,56 +163,12 @@ summary {
 }
 </style>
 
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
-});
-</script>
-
 <!-- code folding -->
 <style type="text/css">
 .code-folding-btn { margin-bottom: 4px; }
 </style>
-<script>
-$(document).ready(function () {
-  window.initializeCodeFolding("show" === "show");
-});
-</script>
 
 
-
-<script>
-$(document).ready(function ()  {
-
-    // move toc-ignore selectors from section div to header
-    $('div.section.toc-ignore')
-        .removeClass('toc-ignore')
-        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
-
-    // establish options
-    var options = {
-      selectors: "h1,h2,h3",
-      theme: "bootstrap3",
-      context: '.toc-content',
-      hashGenerator: function (text) {
-        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
-      },
-      ignoreSelector: ".toc-ignore",
-      scrollTo: 0
-    };
-    options.showAndHide = true;
-    options.smoothScroll = true;
-
-    // tocify
-    var toc = $("#TOC").tocify(options).data("toc-tocify");
-});
-</script>
 
 <style type="text/css">
 
@@ -314,7 +271,7 @@ div.tocify {
 <p>Project: Regional Housing Framework</p>
 <p>Author: Yipeng Su adapted from Sarah Strochak</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
-<p>Last updated August 20, 2019</p>
+<p>Last updated August 21, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
@@ -426,30 +383,6 @@ jur %&gt;%
   select(assessorsparcelnumberapnpin, parcelbase_address, owneroccupiedresidential,  parcelbase_phasebuild, parcelbase_newimpr) %&gt;% 
     arrange(desc(parcelbase_phasebuild)) %&gt;% 
   head(20)</code></pre>
-<pre><code>## # A tibble: 20 x 5
-##    assessorsparcel~ parcelbase_addr~ owneroccupiedre~ parcelbase_phas~
-##    &lt;chr&gt;            &lt;chr&gt;            &lt;chr&gt;                       &lt;dbl&gt;
-##  1 0701      0870   1277  1ST ST SE  &lt;NA&gt;                      3914620
-##  2 0340      0831   1013-1015  M ST~ &lt;NA&gt;                      1470320
-##  3 0363      0807   1714  9TH ST NW  &lt;NA&gt;                       608040
-##  4 1452      0842   POTOMAC AV NW    &lt;NA&gt;                        52500
-##  5 1856      0814   3815 KANAWHA ST~ &lt;NA&gt;                         9910
-##  6 3056      0004   0534 HARVARD ST~ &lt;NA&gt;                         7930
-##  7 0204      0848   U ST NW          &lt;NA&gt;                         3550
-##  8 0054      7013   2200  PENNSYLVA~ &lt;NA&gt;                         1000
-##  9 0054      7014   2200  PENNSYLVA~ &lt;NA&gt;                         1000
-## 10 0054      7015   2200  PENNSYLVA~ &lt;NA&gt;                         1000
-## 11 2610      0756   NEWTON ST        &lt;NA&gt;                          830
-## 12 3535      0052   2020 SUMMIT ST ~ &lt;NA&gt;                          750
-## 13 2850      0815   IRVING ST NW     &lt;NA&gt;                          320
-## 14 2906      7002   GEORGIA AVE NW   &lt;NA&gt;                          100
-## 15 2906      7005   GEORGIA AVE NW   &lt;NA&gt;                          100
-## 16 2906      7006   GEORGIA AVE NW   &lt;NA&gt;                          100
-## 17 2906      7007   GEORGIA AVE NW   &lt;NA&gt;                          100
-## 18 2906      7009   GEORGIA AVE NW   &lt;NA&gt;                          100
-## 19 2906      7011   GEORGIA AVE NW   &lt;NA&gt;                          100
-## 20 2906      7012   GEORGIA AVE NW   &lt;NA&gt;                          100
-## # ... with 1 more variable: parcelbase_newimpr &lt;dbl&gt;</code></pre>
 <pre class="r"><code>mf &lt;- c(&quot;002&quot;,
         &quot;003&quot;,
         &quot;016&quot;,
@@ -648,67 +581,28 @@ rm(vertical, horizontal, othermf )           </code></pre>
 <h4></h4>
 <div id="residential-1" class="section level5">
 <h5><code>residential</code></h5>
-<pre class="r"><code>count(jur, residential)</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   residential      n
-##         &lt;dbl&gt;  &lt;int&gt;
-## 1           0  35623
-## 2           1 170807</code></pre>
-<pre class="r"><code>count(jur, is.na(residential))</code></pre>
-<pre><code>## # A tibble: 1 x 2
-##   `is.na(residential)`      n
-##   &lt;lgl&gt;                 &lt;int&gt;
-## 1 FALSE                206430</code></pre>
-<pre class="r"><code>if (TRUE %in% is.na(jur$residential)) {
+<pre class="r"><code>count(jur, residential)
+count(jur, is.na(residential))
+
+if (TRUE %in% is.na(jur$residential)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
 </div>
 <div id="category-1" class="section level5">
 <h5><code>category</code></h5>
-<pre class="r"><code>count(jur, category)</code></pre>
-<pre><code>## # A tibble: 4 x 2
-##   category               n
-##   &lt;chr&gt;              &lt;int&gt;
-## 1 all other category 25663
-## 2 mf                 76903
-## 3 sf                 94013
-## 4 vacant              9851</code></pre>
-<pre class="r"><code>count(jur, is.na(category))</code></pre>
-<pre><code>## # A tibble: 1 x 2
-##   `is.na(category)`      n
-##   &lt;lgl&gt;              &lt;int&gt;
-## 1 FALSE             206430</code></pre>
-<pre class="r"><code>if (TRUE %in% is.na(jur$category)) {
+<pre class="r"><code>count(jur, category)
+count(jur, is.na(category))
+
+if (TRUE %in% is.na(jur$category)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
 </div>
 <div id="category_detail-1" class="section level5">
 <h5><code>category_detail</code></h5>
-<pre class="r"><code>count(jur, category_detail)</code></pre>
-<pre><code>## # A tibble: 15 x 2
-##    category_detail               n
-##    &lt;chr&gt;                     &lt;int&gt;
-##  1 Condominium unit          60172
-##  2 Cooperative building        340
-##  3 Garage                    13120
-##  4 Group quarters              109
-##  5 Hotel/motel                 209
-##  6 Industrial                  473
-##  7 Office                     2509
-##  8 Other commerical           2716
-##  9 Parking                     867
-## 10 Rental apartment building 16218
-## 11 Residential: Other          275
-## 12 Retail                     3538
-## 13 Single-family home        94077
-## 14 Vacant unimproved         11565
-## 15 Vacant with structures      242</code></pre>
-<pre class="r"><code>count(jur, is.na(category_detail))</code></pre>
-<pre><code>## # A tibble: 1 x 2
-##   `is.na(category_detail)`      n
-##   &lt;lgl&gt;                     &lt;int&gt;
-## 1 FALSE                    206430</code></pre>
-<pre class="r"><code>if (TRUE %in% is.na(jur$category_detail)) {
+<pre class="r"><code>count(jur, category_detail)
+count(jur, is.na(category_detail))
+
+if (TRUE %in% is.na(jur$category_detail)) {
   warning(&quot;NAs introduced&quot;)
 }</code></pre>
 </div>
@@ -731,12 +625,6 @@ rm(newcat, mf)</code></pre>
 <p>There are errors in the different Black Knight lot size variables that make it impossible to compare lot size when reported in acres and square feet. Here, we create two new variables, <code>lotsize_acres</code> and <code>lotsize_sf</code> that standardize the unit of measurement. These variables will also convert values of 0 to <code>NA</code>, which will simplify calculations down the line.</p>
 <p>Note the parcelbase source file also has a landarea variable, but that’s the square footage of property so we can’t use it for calculating lot sizes.</p>
 <pre class="r"><code>count(jur, lotsizeareaunit)</code></pre>
-<pre><code>## # A tibble: 3 x 2
-##   lotsizeareaunit      n
-##   &lt;chr&gt;            &lt;int&gt;
-## 1 &lt;NA&gt;             20908
-## 2 AC                2395
-## 3 SF              183127</code></pre>
 <pre class="r"><code>jur &lt;- jur %&gt;% 
   mutate(lotsize_acres = case_when(lotsizeareaunit == &quot;AC&quot; ~ lotsizeorarea ,
                                    lotsizeareaunit == &quot;SF&quot; ~ lotsizeorarea / 43560),
@@ -826,16 +714,9 @@ if (x == y) {
 <pre class="r"><code>jur2 %&gt;% 
   filter(house_letter == 1) %&gt;% 
   select(oldadd, propaddress, category_detail,parcelbase_address, parcelbase_parcelID) %&gt;% 
-  head(20)</code></pre>
-<pre><code>## # A tibble: 5 x 5
-##   oldadd    propaddress category_detail  parcelbase_addr~ parcelbase_parce~
-##   &lt;chr&gt;     &lt;chr&gt;       &lt;chr&gt;            &lt;chr&gt;            &lt;chr&gt;            
-## 1 2114R N ~ 2114 N ST   Single-family h~ 2114R V ST NW    0272    0843     
-## 2 2108V N ~ 2108 N ST   Single-family h~ 2108R V ST NW    0272    0846     
-## 3 2106R N ~ 2106 N ST   Single-family h~ 2106R V ST NW    0272    0847     
-## 4 2104V N ~ 2104 N ST   Single-family h~ 2104R V ST NW    0272    0848     
-## 5 6A N ST ~ 6 N ST      Single-family h~ 6 A N ST SW      0653    0063</code></pre>
-<pre class="r"><code>#replace NA propaddress with parcelbase_address, need to trim several times sometimes before clean, also need to exclude street number and see if housenumber is available. (note a lot of parcelbasee_address missing either houseno or street number, notice how a lot of the address that appears more than once shou't be collapsed without a house number. )
+  head(20)
+
+#replace NA propaddress with parcelbase_address, need to trim several times sometimes before clean, also need to exclude street number and see if housenumber is available. (note a lot of parcelbasee_address missing either houseno or street number, notice how a lot of the address that appears more than once shou't be collapsed without a house number. )
 
 
 parceladdress1 &lt;- jur2 %&gt;% 
@@ -909,13 +790,10 @@ jur3 &lt;- left_join(x = jur2, y= cleanparceladdress, by =&quot;parcelbase_parce
                                     propaddress_new3, 
                                     propaddress_bk))
 
-count(jur3, is.na(propaddress))</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   `is.na(propaddress)`      n
-##   &lt;lgl&gt;                 &lt;int&gt;
-## 1 FALSE                198898
-## 2 TRUE                   7532</code></pre>
-<pre class="r"><code>#redo the check address step to make sure the same new address don't have different partial parcel IDs, if so need to remove those address again.
+count(jur3, is.na(propaddress))
+
+
+#redo the check address step to make sure the same new address don't have different partial parcel IDs, if so need to remove those address again.
 jurparcel2 &lt;- jur3 %&gt;% 
   mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 8),
          parcelbase_parceladdress= substr(parcelbase_parcelID, 1, 8)) 
@@ -959,14 +837,9 @@ jur5 &lt;- jur4 %&gt;%
 #if (TRUE %in% is.na(jur4$address_type)) {
  # warning(&quot;NAs in address_type&quot;)
 #}
-count(jur5, address_type)</code></pre>
-<pre><code>## # A tibble: 3 x 2
-##   address_type      n
-##   &lt;chr&gt;         &lt;int&gt;
-## 1 missing        9193
-## 2 multiple      63950
-## 3 single       120167</code></pre>
-<pre class="r"><code>#reclassify any non-residential property as single except for office condos and commercial retail condo (one unit in residential condo used for retail)
+count(jur5, address_type)
+
+#reclassify any non-residential property as single except for office condos and commercial retail condo (one unit in residential condo used for retail)
 #add 'not in' function
 '%!in%' &lt;- function(x,y)!('%in%'(x,y))
 
@@ -974,12 +847,6 @@ argh &lt;- jur5 %&gt;%
   mutate(address_type = ifelse((residential == 0 &amp; parcelbase_usecode %!in% c(&quot;056&quot;,&quot;057&quot;,&quot;048&quot;))
                                ,&quot;single&quot;, address_type))
 count(argh, address_type)</code></pre>
-<pre><code>## # A tibble: 3 x 2
-##   address_type      n
-##   &lt;chr&gt;         &lt;int&gt;
-## 1 missing        1976
-## 2 multiple      59134
-## 3 single       132200</code></pre>
 <p>For townhouses and other forms of attached housing, we do not want a collapse, since this is a function of addressing and not the unit type. We will reclassify the address type as <code>single</code> for properties that have a value of <code>sf attached</code> and <code>townhouse</code> for the <code>category_detail</code> variable. For parcel base data we have already precleaned the type so don’t need more cleaning here.</p>
 <p>Seperate the address types for different operations.</p>
 <pre class="r"><code>multiples &lt;- argh %&gt;% 
@@ -1020,13 +887,10 @@ missing2 &lt;- missing %&gt;%
   classify_parceladdresses() %&gt;% 
   mutate(ID = row_number())
 
-count(missing2, address_type)</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   address_type     n
-##   &lt;chr&gt;        &lt;int&gt;
-## 1 multiple        68
-## 2 single        1908</code></pre>
-<pre class="r"><code>#separate and recombine with previous single and multiple files.
+count(missing2, address_type)
+
+
+#separate and recombine with previous single and multiple files.
 
 multiples2 &lt;- missing2 %&gt;% 
   filter(address_type == &quot;multiple&quot;)
@@ -1231,15 +1095,9 @@ allsingle &lt;- bind_rows(singles, singles2) </code></pre>
   ))
 
 
-nested %&gt;% count(fxn)</code></pre>
-<pre><code>## # A tibble: 4 x 2
-##   fxn         n
-##   &lt;chr&gt;   &lt;int&gt;
-## 1 first     177
-## 2 missing    10
-## 3 other    1801
-## 4 sum      4334</code></pre>
-<pre class="r"><code>nested_done &lt;- nested %&gt;% 
+nested %&gt;% count(fxn)
+
+nested_done &lt;- nested %&gt;% 
   filter(fxn != &quot;other&quot;)</code></pre>
 <p>There are a total of 2032 cases that are not taken care of by the above function. Use basic statisitcs for range of nprops, mode and other variables of interest. After examining the extreme cases, I followed most of Sarah’s logic, but had some with the nprops one.</p>
 <ol style="list-style-type: decimal">
@@ -1273,20 +1131,9 @@ summary(nested_other$lotsize_sf_sum)</code></pre>
   ))
 
 
-nested_other %&gt;% count(fxn)</code></pre>
-<pre><code>## # A tibble: 3 x 2
-##   fxn       n
-##   &lt;chr&gt; &lt;int&gt;
-## 1 max       9
-## 2 mode      3
-## 3 sum    1789</code></pre>
-<pre class="r"><code>count(nested_other, fxn)</code></pre>
-<pre><code>## # A tibble: 3 x 2
-##   fxn       n
-##   &lt;chr&gt; &lt;int&gt;
-## 1 max       9
-## 2 mode      3
-## 3 sum    1789</code></pre>
+nested_other %&gt;% count(fxn)
+
+count(nested_other, fxn)</code></pre>
 <p>Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot size.</p>
 <pre class="r"><code>nested_all &lt;- bind_rows(nested_done, nested_other) %&gt;% 
   mutate_at(vars(lotsize_sf_sum, lsfirst, lsmode_num), as.double) %&gt;% 
@@ -1297,18 +1144,8 @@ nested_other %&gt;% count(fxn)</code></pre>
                      fxn == &quot;max&quot; ~ (nprops-1)*lsmode_num 
                    ))</code></pre>
 <p>The number of NAs should be the same as the number of those with the designation “missing”</p>
-<pre class="r"><code>count(nested_all, fxn == &quot;missing&quot;)</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   `fxn == &quot;missing&quot;`     n
-##   &lt;lgl&gt;              &lt;int&gt;
-## 1 FALSE               6312
-## 2 TRUE                  10</code></pre>
-<pre class="r"><code>count(nested_all, is.na(lotsize_sf_final))</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   `is.na(lotsize_sf_final)`     n
-##   &lt;lgl&gt;                     &lt;int&gt;
-## 1 FALSE                      6312
-## 2 TRUE                         10</code></pre>
+<pre class="r"><code>count(nested_all, fxn == &quot;missing&quot;)
+count(nested_all, is.na(lotsize_sf_final))</code></pre>
 <p>Lastly, the number of rows should be the same as before we split and re-combined.</p>
 <pre class="r"><code>stopifnot(nrow(nested_all) == nrow(nested))
 
@@ -1322,13 +1159,9 @@ rm(nested, nested_done, nested_other)</code></pre>
 <pre class="r"><code>tiescount &lt;- nested_all %&gt;% 
   mutate(ties_z = ifelse(map(zoning, length) &gt; 1, &quot;tie&quot;, &quot;not tie&quot;)) 
 
-tiescount %&gt;% count(ties_z)</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   ties_z      n
-##   &lt;chr&gt;   &lt;int&gt;
-## 1 not tie  6316
-## 2 tie         6</code></pre>
-<pre class="r"><code>ties &lt;- nested_all %&gt;% 
+tiescount %&gt;% count(ties_z)
+
+ties &lt;- nested_all %&gt;% 
   mutate(ties_z = ifelse(map(zoning, length) &gt; 1, 1, 0)) %&gt;% 
   filter(ties_z == 1) %&gt;% 
   mutate(z1 = map(zoning, 1),
@@ -1345,14 +1178,6 @@ tiescount %&gt;% count(ties_z)</code></pre>
 ties %&gt;%
   select(propaddress, z1, z2, cl1, cl2) %&gt;% 
   head(5)</code></pre>
-<pre><code>## # A tibble: 5 x 5
-##   propaddress            z1          z2        cl1   cl2  
-##   &lt;chr&gt;                  &lt;chr&gt;       &lt;chr&gt;     &lt;chr&gt; &lt;chr&gt;
-## 1 1312 8TH ST NW         C-2-A       R-4       023   024  
-## 2 203 3RD ST SE          C-2-A       C-2-A,R-4 011   024  
-## 3 3201 P ST NW           C-2-A,R-3   R-3       012   013  
-## 4 3208 VOLTA PL NW       C-2-A,R-3   R-3       011   012  
-## 5 4447 MACARTHUR BLVD NW R-1-B,R-5-A R-5-A     011   NULL</code></pre>
 <p>Since there is no definitive way to break these ties, we replace the <code>zoning</code> variable with <code>NA</code>. Here Sarah replaced the countyland description to NA when zoning is NA, but I don’t think we need to do the same for usecode because usecode is pretty reliable in this case?</p>
 <pre class="r"><code>nested_all &lt;- nested_all %&gt;% 
   mutate(ties_z = ifelse(map(zoning, length) &gt; 1, 1, 0)) %&gt;% 
@@ -1373,15 +1198,6 @@ cdties %&gt;%
   group_by(category_detail_chr) %&gt;% 
   count() %&gt;% 
   arrange(desc(n))</code></pre>
-<pre><code>## # A tibble: 5 x 2
-## # Groups:   category_detail_chr [5]
-##   category_detail_chr                                            n
-##   &lt;chr&gt;                                                      &lt;int&gt;
-## 1 &quot;c(\&quot;Rental apartment building\&quot;, \&quot;Single-family home\&quot;)&quot;    25
-## 2 &quot;c(\&quot;Condominium unit\&quot;, \&quot;Retail\&quot;)&quot;                          9
-## 3 &quot;c(\&quot;Condominium unit\&quot;, \&quot;Single-family home\&quot;)&quot;              7
-## 4 &quot;c(\&quot;Condominium unit\&quot;, \&quot;Rental apartment building\&quot;)&quot;       2
-## 5 &quot;c(\&quot;Condominium unit\&quot;, \&quot;Office\&quot;)&quot;                          1</code></pre>
 <p>Here, we create a variable to indicate how many of the values in <code>category_detail</code> are one of the vacant designations.</p>
 <pre class="r"><code>cdties &lt;- cdties %&gt;% 
  mutate(test_vacant = as.integer(map(category_detail, 
@@ -1460,32 +1276,8 @@ rm(novac, onevac, bothvac, nested_all)</code></pre>
 <div id="single-addresses" class="section level3">
 <h3>Single addresses</h3>
 <p>For single addresses, we have to reclassify condos that have a unique observation as single-family structures, since condos are listed seperately for each unit</p>
-<pre class="r"><code>count(allsingle, category_detail)</code></pre>
-<pre><code>## # A tibble: 14 x 2
-##    category_detail               n
-##    &lt;chr&gt;                     &lt;int&gt;
-##  1 Condominium unit           4124
-##  2 Cooperative building        331
-##  3 Group quarters              109
-##  4 Hotel/motel                 209
-##  5 Industrial                  473
-##  6 Office                     2193
-##  7 Other commerical           2716
-##  8 Parking                     867
-##  9 Rental apartment building 15795
-## 10 Residential: Other          275
-## 11 Retail                     3303
-## 12 Single-family home        91906
-## 13 Vacant unimproved         11565
-## 14 Vacant with structures      242</code></pre>
-<pre class="r"><code>count(allsingle, category)</code></pre>
-<pre><code>## # A tibble: 4 x 2
-##   category               n
-##   &lt;chr&gt;              &lt;int&gt;
-## 1 all other category 11981
-## 2 mf                 20430
-## 3 sf                 91846
-## 4 vacant              9851</code></pre>
+<pre class="r"><code>count(allsingle, category_detail)
+count(allsingle, category)</code></pre>
 <pre class="r"><code>allsingle &lt;- allsingle %&gt;% 
   mutate(category = ifelse(category_detail == &quot;Condominium unit&quot;,
                            &quot;sf&quot;,
@@ -1525,20 +1317,6 @@ nrow(units) -
 allsingle %&gt;% 
   anti_join(units, by = c(&quot;parcelbase_SSL&quot; = &quot;SSL&quot;)) %&gt;% 
   count(category_detail)</code></pre>
-<pre><code>## # A tibble: 11 x 2
-##    category_detail            n
-##    &lt;chr&gt;                  &lt;int&gt;
-##  1 Group quarters           109
-##  2 Hotel/motel              209
-##  3 Industrial               473
-##  4 Office                  2193
-##  5 Other commerical        2716
-##  6 Parking                  867
-##  7 Residential: Other       275
-##  8 Retail                  3303
-##  9 Single-family home     96361
-## 10 Vacant unimproved      11565
-## 11 Vacant with structures   242</code></pre>
 <p>Compare the two variables.</p>
 <pre class="r"><code># how many are different?
 allsingle1 %&gt;% 
@@ -1548,13 +1326,9 @@ allsingle1 %&gt;%
   mutate(units_flag = ifelse(numberofunits == numberofunits_mar,
                              0,
                              1)) %&gt;% 
-  count(units_flag)</code></pre>
-<pre><code>## # A tibble: 2 x 2
-##   units_flag     n
-##        &lt;dbl&gt; &lt;int&gt;
-## 1          0  1747
-## 2          1  1250</code></pre>
-<pre class="r"><code># how different are they?
+  count(units_flag)
+
+# how different are they?
 allsingle1 %&gt;% 
   filter(!is.na(numberofunits),
          numberofunits != 0,
@@ -1565,13 +1339,9 @@ allsingle1 %&gt;%
             median_difference = median(difference),
             difference_2 = sum(difference &lt;= 2),
             difference_100 = sum(difference &gt;= 100),
-            max_difference = max(difference))</code></pre>
-<pre><code>## # A tibble: 1 x 5
-##   avg_difference median_differen~ difference_2 difference_100
-##            &lt;dbl&gt;            &lt;dbl&gt;        &lt;int&gt;          &lt;int&gt;
-## 1           7.90                2          686             13
-## # ... with 1 more variable: max_difference &lt;dbl&gt;</code></pre>
-<pre class="r"><code># plot the difference
+            max_difference = max(difference))
+
+# plot the difference
 allsingle1 %&gt;% 
   filter(!is.na(numberofunits),
          numberofunits != 0,
@@ -1581,7 +1351,7 @@ allsingle1 %&gt;%
   ggplot() +
   geom_histogram(mapping = aes(difference),
                  bins = 70)</code></pre>
-<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAADFBMVEUAAAAWltLe3d3///+yUSKWAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAacklEQVR4nO3d4ULiSLuFUc5w//d8vm5tDSgq5S5Iaq/1YyBoO3khPAIJeDoDMOT07BUAOCoBBRgkoACDBBRgkIACDBJQgEECCjBIQAEGCSjAIAEFGCSgAIMEFGCQgAIMElCAQQIKMEhAAQYJKMCg+wN6+uP7BYDV3R2806vtwvnjAsDy7u3dWzm/XgBY32BAX05vLwCs7zcBfUvlhwWAAsNP4QUUaPeb10A3zTxdLrz7D+Co0gHd7msXUGBpDwnoeRtQz+GBEvc/hX9v508egQIs687YbY6aF1Cg3N0B3ZyxFx6oJqAAg34TUO9EAqr95kB674UHqg3shfdpTAB/+DxQgEGCBzBIQAEGCSjAIAEFGCSgAIMEFGCQgAIMElCAQQIKMEhAAQYJKMAgAQUYJKAAgwQUYJCA0uT/rjx7fTg4AaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBEDQX0dDq9n3s7f7kAOySgRA0G9O3MJpoXC7BHAkrUSO82/dycXCzALgkoUQO5O10H9OX0YgF2SUCJGgroZ2c+Xgq7I6BE3V+77U6jzRkB5QAElKi7a/e/Pp6uX+48/b1ws/DuP9iR64A+e33YuXRAT6f3ne0CytEIKHeZENC3k4sn8588s4e98RSeqPsD+n76k0egsCcCStSdsbu130hAOQQBJSoUUHvhOQQBJUpAaSKgRP3mNVDvROJoBJSowYB+8vZ374Vn/wSUqIED6TcfuuTTmDgWASVq5K2ctz4CVD/ZOwElSvBoIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCSpSA0kRAiRJQmggoUQJKEwElSkBpIqBECShNBJQoAaWJgBIloDQRUKIElCYCStTnAT3pKksSUKK+C6iSshIBJerbgCooCxFQoj728fTq39KDVwgmElCiPuvj6cLDVwmmEVCibj+F10/WI6BE2QtPEwElSilpIqBEjQX07RHqxbN8T/nZOwEl6kbwvn4BdLOP/mKHvYKycwJK1K3XQL/cC//v0ouTy8tgjwSUqK93In0e0P9ddrr6tusF2CUBJWpgL/zfY5wuvuvlqKef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" width="672" /> Since there are significant differences- give preference to the variable from the master address repository. Replace <code>numberofunits</code> with <code>numberofunits_mar</code> unless <code>numberofunits_mar</code> is missing or 0.</p>
+<p><img src="data:image/png;base64,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" width="672" /> Since there are significant differences- give preference to the variable from the master address repository. Replace <code>numberofunits</code> with <code>numberofunits_mar</code> unless <code>numberofunits_mar</code> is missing or 0.</p>
 <pre class="r"><code>allsingle2 &lt;- allsingle1 %&gt;% 
   mutate(numberofunits = ifelse((!is.na(numberofunits_mar) | numberofunits_mar != 0),
                                 numberofunits_mar,
@@ -1713,6 +1483,54 @@ $(document).ready(function () {
 });
 
 
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
 </script>
 
 <!-- dynamically load mathjax for compatibility with self-contained -->

@@ -9,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -44,10 +44,10 @@ Load libraries and functions
 ```{r setup}
 library(tidyverse)
 
-source("../Macros/read-fairfax.R")
-source("../Macros/read-arlington.R")
-source("../Macros/read-montgomery.R")
-source("../Macros/read-DC.R")
+source("../../Macros/read-fairfax.R")
+source("../../Macros/read-arlington.R")
+source("../../Macros/read-montgomery.R")
+source("../../Macros/read-DC.R")
 
 ```
 

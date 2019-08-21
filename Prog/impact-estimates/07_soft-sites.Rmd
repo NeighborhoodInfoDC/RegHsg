@@ -9,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -50,7 +50,7 @@ library(urbnthemes)
 
 set_urbn_defaults("print")
 
-source("../Macros/read-combined-parcels.R")
+source("../../Macros/read-combined-parcels.R")
 
 today <- Sys.Date()
 

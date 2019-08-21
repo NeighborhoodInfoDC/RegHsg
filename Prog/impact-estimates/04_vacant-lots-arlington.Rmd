@@ -9,7 +9,7 @@ output:
     code_folding: show
     toc: TRUE
     toc_float: TRUE
-    css: ../www/web_report.css
+    css: ../../www/web_report.css
     editor_options:
       chunk_output_type: console
 ---
@@ -53,14 +53,14 @@ library(sf)
 
 set_urbn_defaults("print")
 
-source("../Macros/read-arlington.R")
+source("../../Macros/read-arlington.R")
 
 ```
 
 Create directory for data exports
 ```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
+if (!dir.exists("../../Data")) {
+  dir.create("../../Data")
 }
 
 if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
