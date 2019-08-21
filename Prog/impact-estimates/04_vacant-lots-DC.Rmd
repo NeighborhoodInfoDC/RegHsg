@@ -992,3 +992,11 @@ dc.summary <-
 dc.summary
 
 ```
+
+Clear global environment.
+
+```{r}
+
+rm(list=ls())
+
+```

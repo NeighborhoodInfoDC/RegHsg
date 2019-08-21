@@ -261,7 +261,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Regional Housing Framework</h1>
-<h3 class="subtitle">Vacant lots analysis for Arlington County: special exceptions</h3>
+<h3 class="subtitle">Vacant lots analysis for Montgomery County</h3>
 
 </div>
 
@@ -269,184 +269,446 @@ div.tocify {
 <p><link href="data:text/css; charset=utf-8,%40font%2Dface%20%7B%0A%20%20font%2Dfamily%3A%20%27Lato%27%3B%0A%20%20font%2Dstyle%3A%20normal%3B%0A%20%20font%2Dweight%3A%20400%3B%0A%20%20src%3A%20local%28%27Lato%20Regular%27%29%2C%20local%28%27Lato%2DRegular%27%29%2C%20url%28http%3A%2F%2Ffonts%2Egstatic%2Ecom%2Fs%2Flato%2Fv16%2FS6uyw4BMUTPHjx4wWw%2Ettf%29%20format%28%27truetype%27%29%3B%0A%7D%0A" rel="stylesheet" /></p>
 <p>Library: RegHsg</p>
 <p>Project: Regional Housing Framework</p>
-<p>Author: Sarah Strochak</p>
+<p>Author: Patrick Spauster</p>
 <p>Version: R 3.5.1, RStudio 1.1.423</p>
 <p>Last updated August 21, 2019</p>
 <p>Environment: Local Windows session (desktop)</p>
 <div id="description" class="section level2">
 <h2>Description</h2>
-<p>The goal of this analysis is to modify the previous vacant lots analysis to include special exceptions that are written into the zoning code. We will rely on two datasets that were created in <code>vacant-lots-arlington.Rmd</code> - the cleaned general zoning code, and the cleaned set of vacant lots.</p>
-<p>The site plan process is mostly used for multifamily construction, so we will consider only the special exceptions for multiple family dwellings.</p>
+<p>The goal of this analysis is to determine how many units could be added by filling vacant lots with the most-dense developments allowed under the current zoning codes. The two steps are:</p>
+<ol style="list-style-type: decimal">
+<li>Merge cleaned vacant lots data with zoning code data.</li>
+<li>Calculate how many units are allowed one each vacant lot.</li>
+</ol>
 </div>
 <div id="set-up" class="section level2">
 <h2>Set-up</h2>
 <p>Load libraries and functions</p>
 <pre class="r"><code>library(tidyverse)
-library(urbnthemes)
-
-set_urbn_defaults(&quot;print&quot;)</code></pre>
+library(sf)</code></pre>
 <p>Create directory for data exports</p>
-<pre class="r"><code>if (!dir.exists(&quot;L:/Libraries/RegHsg/Prog/Tables&quot;)) {
+<pre class="r"><code>if (!dir.exists(&quot;../../Data&quot;)) {
+  dir.create(&quot;../../Data&quot;)
+}
+
+if (!dir.exists(&quot;L:/Libraries/RegHsg/Prog/Tables&quot;)) {
   dir.create(&quot;L:/Libraries/RegHsg/Prog/Tables&quot;)
 }</code></pre>
 <p>Set FIPS code and filepath name</p>
-<pre class="r"><code>currentfips &lt;- &quot;51013&quot;
-filepath &lt;- &quot;arlington&quot;</code></pre>
-<p>Load in cleaned lots and zoning code.</p>
-<pre class="r"><code>jur &lt;- readRDS(&quot;L:/Libraries/RegHsg/Data/arlington/arlington-lots.Rdata&quot;)
-zoningcode &lt;- readRDS(&quot;L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-code.Rdata&quot;) %&gt;% 
-  # create flag to indicate these do not come from the special exceptions file
-  mutate(special_exception = 0)</code></pre>
-<p>Pick up where we left off: clean the special exceptions, and then bind that to the by right zoning code.</p>
+<pre class="r"><code>currentfips &lt;- &quot;24031&quot;
+filepath &lt;- &quot;montgomery&quot;
+jdir &lt;- paste0(&quot;L:/Libraries/RegHsg/Data/&quot;, filepath, &quot;/&quot;)
+
+source(&quot;../../Macros/read-montgomery.R&quot;)</code></pre>
+<p>Load in cleaned Black Knight data for Montgomery County. First is R dataset</p>
+<pre class="r"><code>if (!exists(&quot;jur&quot;)) {
+  jur &lt;- readRDS(paste0(jdir, 
+               &quot;postcleaned-&quot;,
+               filepath,
+               &quot;-data.Rdata&quot;))
+} else {
+  warning(filepath, &quot; data already read in&quot;)
+}
+
+
+count(jur, rockflag != 1, gaitflag != 1, othernotmoco !=1)</code></pre>
 </div>
-<div id="clean-special-exceptions." class="section level2">
-<h2>Clean special exceptions.</h2>
+<div id="clean-zoning-code-information" class="section level2">
+<h2>Clean zoning code information</h2>
 <div id="move-file" class="section level3">
 <h3>Move file</h3>
-<p>First- <strong>manually</strong> move file from Box to the <code>zoning-codes</code> directory in the <code>Doc</code> folder on the L drive.</p>
+<p>First- <strong>manually</strong> move file from Box to the <code>zoning-codes</code> directory in the <code>Doc</code> folder on the L drive. Name file accordingly: “jursidiction-zoning-code.csv”</p>
 </div>
 <div id="read-file" class="section level3">
 <h3>Read file</h3>
-<pre class="r"><code>z &lt;- c(&quot;text&quot;, &quot;text&quot;, &quot;text&quot;, &quot;numeric&quot;,
-       &quot;numeric&quot;, &quot;numeric&quot;, &quot;text&quot;, &quot;text&quot;,
-       &quot;numeric&quot;, &quot;numeric&quot;, &quot;numeric&quot;, &quot;text&quot;,
-       &quot;text&quot;, &quot;numeric&quot;, &quot;numeric&quot;, &quot;numeric&quot;,
-       &quot;numeric&quot;, &quot;text&quot;, &quot;numeric&quot;)
+<p>Read in zoning code, rename variables so that they are machine readable</p>
+<pre class="r"><code>if (!file.exists(paste0(&quot;L:/Libraries/RegHsg/Doc/zoning-codes/&quot;,
+                              filepath,
+                              &quot;-zoning-code.csv&quot;))) {
+  
+  stop(&quot;Move zoning file for jurisdiction to L:/Libraries/RegHsg/Doc/zoning-codes directory&quot;)
+}</code></pre>
+<pre class="r"><code>z &lt;- cols(
+  Jur = col_character(),
+  Code = col_character(),
+  `Zone` = col_character(),
+  `Type of Dwelling` = col_character(),
+  `Site Area` = col_number(),
+  `Site area per dwelling unit (sq. ft.) (minimum)` = col_number(),
+  `Lot area` = col_number(),
+  `Lot area per dwelling unit (sq. ft.) (minimum)` = col_number(),
+  `Lot Width (average minimum, ft)` = col_character(),
+  `Lot Width building line (average minimum, ft)` = col_character(),
+  `Height (ft)` = col_double(),
+  `Site coverage maximum` = col_number(),
+  `Lot coverage maximum` = col_number(),
+  `Floor area minimum` = col_double(),
+  `Maximum Density of Floor-Area-Ratio (FAR)` = col_number(),
+  `Setbacks (front)` = col_character(),
+  `Side (ft)` = col_character(),
+  `Rear (ft)` = col_character(),
+  `Density (units/acre)` = col_number(),
+  `Massing Units/Row` = col_number(),
+  `Open Space minimum percentage` = col_number(),
+  Comments = col_character()
+)
 
+zoningcode &lt;- read_csv(paste0(&quot;L:/Libraries/RegHsg/Doc/zoning-codes/&quot;,
+                              filepath,
+                              &quot;-zoning-code.csv&quot;),
+                       col_types = z)
 
-se &lt;- readxl::read_excel(&quot;L:/Libraries/RegHsg/Doc/zoning-codes/Arlington Multiple Family Special Exceptions 4.18.19.xlsx&quot;, 
-                         range = &quot;A1:S49&quot;, 
-                         col_types = z)
+names(zoningcode) &lt;- 
+  c(&quot;juristdiction&quot;, &quot;zoning_code&quot;, &quot;zone&quot;, &quot;dwelling_type&quot;,
+    &quot;site_area_min&quot;, &quot;sitearea_per_unit&quot;, &quot;lot_area_min&quot;, &quot;lotarea_per_unit&quot;,
+    &quot;lot_width&quot;,&quot;lot_width_building&quot;, &quot;height_ft&quot;,
+    &quot;site_coverage_max&quot;, &quot;lot_coverage_max&quot;, &quot;floor_area_min&quot;, &quot;far_max&quot;,
+    &quot;setbacks_front&quot;, &quot;setbacks_side&quot;,
+    &quot;setbacks_rear&quot;, &quot;density&quot;, &quot;massing&quot;, &quot;open_space&quot;, &quot;comments&quot;)
 
-names(se) &lt;- 
-  c(&quot;zoning_code&quot;, &quot;district_type&quot;, &quot;dwelling_type&quot;,
-    &quot;site_area&quot;, &quot;lot_area_min&quot;, &quot;lotarea_per_unit&quot;,
-    &quot;lot_width&quot;, &quot;height_ft&quot;, &quot;height_stories&quot;,
-    &quot;lot_coverage_max&quot;, &quot;floor_area_min&quot;, &quot;far_max&quot;,
-    &quot;setbacks_center&quot;, &quot;setbacks_row&quot;,
-    &quot;front_side_yard&quot;, &quot;side_yard&quot;, &quot;frontage&quot;, &quot;comments&quot;, &quot;density_units_per_acre&quot;)
-
+# fix variables read in as whole numbers (should be percent)
+zoningcode &lt;- zoningcode %&gt;% 
+  mutate_at(vars(lot_coverage_max, site_coverage_max, open_space),
+            ~ . / 100)
 rm(z)</code></pre>
 </div>
-<div id="clean-up-special-exceptions" class="section level3">
-<h3>Clean up special exceptions</h3>
-<p>A few cleaning tasks:</p>
-<ul>
-<li>We need to extract the oddities in the height variable, and archive them in case we need them later. We reset these to NA, and convert the variable type back to numeric.</li>
-<li>Create <code>special_exception</code> flag</li>
-<li>Filter out <code>dwelling_type</code> values that we cannot use</li>
-<li>Change <code>dwelling_type</code> values incorrectly recorded as “Multiple-family dwellings” to “Multiple-family”</li>
-<li>If <code>height_ft</code> is missing, fill in with <code>height_stories</code></li>
-</ul>
-<pre class="r"><code>height_problems &lt;- se %&gt;% 
-  filter(str_detect(height_ft, &quot;[:alpha:]&quot;))
+<div id="creating-dwelling_type-hierarchy" class="section level3">
+<h3>Creating dwelling_type hierarchy</h3>
+<p>For the vacant lots analysis, we want to determine the <code>dwelling_type</code> that allows for the most dense construction for that zone.</p>
+<div id="split-jurisdictions" class="section level4">
+<h4>Split jurisdictions</h4>
+<p>Create zoning for each jurisdiction so we can split the analysis</p>
+<pre class="r"><code>zoning_montgomery &lt;- zoningcode %&gt;% 
+  filter(juristdiction == &quot;Montgomery&quot;)
 
-se1 &lt;- se %&gt;% 
-  mutate(height_ft = ifelse(str_detect(height_ft, &quot;[:alpha:]&quot;) == TRUE,
-                            NA,
-                            as.numeric(height_ft))) %&gt;% 
-  mutate(far_max = ifelse(str_detect(far_max, &quot;[:alpha:]&quot;) == TRUE,
-                            NA,
-                            far_max)) %&gt;% 
-  mutate(special_exception = 1) %&gt;% 
-  mutate(dwelling_type = ifelse(dwelling_type == &quot;Multiple-family dwellings&quot;,
-                                &quot;Multiple-family&quot;,
-                                dwelling_type)) %&gt;% 
-  mutate(dwelling_type = ifelse(dwelling_type == &quot;Apartment&quot;,
-                                &quot;Multiple-family&quot;,
-                                dwelling_type)) %&gt;% 
-  mutate(height_ft = ifelse(is.na(height_ft) &amp; !is.na(height_stories),
-                            height_stories * 10,
-                            height_ft)) %&gt;% 
-  filter(dwelling_type != &quot;Hotel&quot;)</code></pre>
-<p>Check to make sure there are no codes in the special exceptions that are NOT in the by-right zoning code, due to being entered incorrectly.</p>
-<pre class="r"><code>se1 %&gt;% 
-  filter(!zoning_code %in% zoningcode$zoning_code) %&gt;% 
-  nrow()</code></pre>
-<pre><code>## [1] 0</code></pre>
-<p>Filter out multiple-family exceptions.</p>
-<pre class="r"><code>semf &lt;- se1 %&gt;% 
-  filter(dwelling_type == &quot;Multiple-family&quot;)</code></pre>
-</div>
-<div id="fill-in-missing-variables-in-special-exceptions" class="section level3">
-<h3>Fill in missing variables in special exceptions</h3>
-<p>If the special exceptions inherit the same stipulations as the by-right zoning code, the fields were left blank. Use <code>fill()</code> to fill in these gaps.</p>
-<p>Replace missing lot coverage maximums with 56%- this is to be used if there is no specific designation, per the Arlington County zoning code.</p>
-<pre class="r"><code>mf_fill &lt;- semf %&gt;% 
-  bind_rows(filter(zoningcode,
-                   zoning_code %in% semf$zoning_code,
-                   dwelling_type == &quot;Multiple-family&quot;)) %&gt;% 
-  group_by(zoning_code, dwelling_type) %&gt;% 
-  fill(lot_area_min, .direction = &quot;down&quot;) %&gt;% 
-  fill(lot_area_min, .direction = &quot;up&quot;) %&gt;% 
-  fill(lotarea_per_unit, .direction = &quot;down&quot;) %&gt;% 
-  fill(lotarea_per_unit, .direction = &quot;up&quot;) %&gt;%
-  fill(height_ft, .direction = &quot;down&quot;) %&gt;% 
-  fill(height_ft, .direction = &quot;up&quot;) %&gt;% 
-  fill(lot_coverage_max, .direction = &quot;down&quot;) %&gt;% 
-  fill(lot_coverage_max, .direction = &quot;up&quot;) %&gt;% 
-  mutate(lot_coverage_max = ifelse(is.na(lot_coverage_max),
-                                   .56,
-                                   lot_coverage_max))</code></pre>
-<p>There are four mixed-use zoning codes that only allow for multiple-family development via special exception. The stipulations for height and FAR vary based on the lot size. Additionally, there is no lot size per unit, we will instead rely on the height or FAR (whichever one is more restrictive) to determine the number of units. This will occur after the lots have been merged with the zoning codes.</p>
-<p>Join the multiple-family special exceptions to the by-right zoning code. This is the zoning code we will use for analysis.</p>
-<pre class="r"><code>zoningcode1 &lt;- mf_fill %&gt;% 
-  ungroup() %&gt;% 
-  filter(special_exception == 1) %&gt;% 
-  bind_rows(zoningcode) %&gt;% 
-  mutate(far_max = as.numeric(far_max))</code></pre>
-</div>
-<div id="dwelling-type-hierarchy" class="section level3">
-<h3>Dwelling type hierarchy</h3>
-<p>We can adjust the hierarchy we used to select the most dense zoning codes in the previous analysis by adding those that now occur, and prioritizing the multiple-family dwelling type from the special exception over the by-right.</p>
-<p>First, remove dwelling types that are not possible to include. These cannot be calculated since they depend on adjacent lots, or which lots share a lot line with the lot in question. Additionally, we take out those with a dwelling type with All or All Other, as long as that zoning code has another dwelling type we can use in the calculation.</p>
-<pre class="r"><code>count(zoningcode1, dwelling_type)
 
-zoningcode2 &lt;- zoningcode1 %&gt;% 
-  group_by(zoning_code) %&gt;% 
-  filter(!(dwelling_type %in% c(&quot;All&quot;,
-                                &quot;All Other&quot;,
-                                &quot;Duplex; share a lot line with RA, C, or M&quot;,
-                                &quot;Semi-detatched; share a lot line with RA, C, or M&quot;)
-           &amp; n() &gt; 1)) %&gt;% 
-  ungroup() %&gt;% 
-  mutate(dwelling_type = ifelse(dwelling_type %in% c(&quot;Multiple-family&quot;) &amp; special_exception == 1,
-                                &quot;Multiple-family special exception&quot;,
-                                dwelling_type)) %&gt;% 
+zoning_rockville &lt;- zoningcode %&gt;% 
+  filter(juristdiction == &quot;Rockville&quot;)
+
+write_csv(zoning_rockville, 
+          &quot;L:/Libraries/RegHsg/Doc/zoning-codes/rockville-zoning-code-clean.csv&quot;)
+
+zoning_gaithersburg &lt;- zoningcode %&gt;% 
+  filter(juristdiction == &quot;Gaithersburg&quot;)
+
+write_csv(zoning_gaithersburg,
+          &quot;L:/Libraries/RegHsg/Doc/zoning-codes/gaithersburg-zoning-code-clean.csv&quot;)</code></pre>
+<p><em>For Montgomery</em></p>
+<pre class="r"><code>zoning_montgomery %&gt;% 
+  count(dwelling_type) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">dwelling_type</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">6</td>
+</tr>
+<tr class="even">
+<td align="left">detached house</td>
+<td align="right">19</td>
+</tr>
+<tr class="odd">
+<td align="left">duplex-over</td>
+<td align="right">11</td>
+</tr>
+<tr class="even">
+<td align="left">duplex-side</td>
+<td align="right">11</td>
+</tr>
+<tr class="odd">
+<td align="left">general</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td align="left">multi-use</td>
+<td align="right">3</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">16</td>
+</tr>
+</tbody>
+</table>
+<p>Since the variables are not always comparable, the following order, from most to least dense, applies:</p>
+<ol style="list-style-type: decimal">
+<li>apartment</li>
+<li>townhouse</li>
+<li>duplex-over</li>
+<li>duplex-side</li>
+<li>detached house</li>
+</ol>
+<p>multi-use and general have the same zoning specs as apartment. Change all of the multi-use and general zoning codes to apartments for simplicity.</p>
+<pre class="r"><code>zoning_montgomery &lt;- zoning_montgomery %&gt;% 
+  mutate(dwelling_type = ifelse(dwelling_type == &quot;general&quot;| dwelling_type == &quot;multi-use&quot;, 
+                                &quot;apartment&quot;, 
+                                dwelling_type))</code></pre>
+<p>Check to see if they were replaced</p>
+<pre class="r"><code>zoning_montgomery %&gt;% 
+  count(dwelling_type) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">dwelling_type</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">12</td>
+</tr>
+<tr class="even">
+<td align="left">detached house</td>
+<td align="right">19</td>
+</tr>
+<tr class="odd">
+<td align="left">duplex-over</td>
+<td align="right">11</td>
+</tr>
+<tr class="even">
+<td align="left">duplex-side</td>
+<td align="right">11</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">16</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="create-factor-variable" class="section level3">
+<h3>Create factor variable</h3>
+<p>To use this hierarchy, we transform the <code>dwelling_type</code> variable into a factor, assign the factors to the appropriate level, (1-6, as listed above). We will also create a designation for dwelling types that are restricted to a certain amount of units (one unit for “One Family Dwelling” and one for two units for “Duplex”).</p>
+<p><strong>NOTE</strong> This will be VERY jurisdiction specific.</p>
+<p><strong>NOTE</strong> If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.</p>
+<pre class="r"><code>zoning_montgomery1 &lt;- zoning_montgomery %&gt;% 
+  mutate(dwelling_type=ifelse(is.na(dwelling_type)==1, &quot;all&quot;, dwelling_type)) %&gt;% 
   mutate(dwelling_type = factor(dwelling_type,
-                                levels = c(&quot;Multiple-family special exception&quot;,
-                                           &quot;Multiple-family&quot;,
-                                           &quot;Townhouse&quot;,
-                                           &quot;Semi-detached&quot;,
-                                           &quot;Duplex&quot;,
-                                           &quot;Other Residential&quot;,
-                                           &quot;One Family Dwelling&quot;)),
-         one_unit_flag = ifelse(dwelling_type == &quot;One Family Dwelling&quot;,
+                                levels = c(&quot;apartment&quot;,
+                                           &quot;townhouse&quot;,
+                                           &quot;duplex-over&quot;,
+                                           &quot;duplex-side&quot;,
+                                           &quot;detached house&quot;
+                                           )),
+         one_unit_flag = ifelse(dwelling_type == &quot;detached house&quot;,
                                 1,
                                 0),
-         two_unit_flag = ifelse(dwelling_type == &quot;Duplex&quot;,
+         two_unit_flag = ifelse(dwelling_type == &quot;duplex-over&quot; | dwelling_type == &quot;duplex-side&quot;,
                                 1,
-                                0))
+                                0))</code></pre>
+<p><em>Cleaning and Calculation</em></p>
+</div>
+</div>
+<div id="clean-data-for-the-whole-juristdiction" class="section level2">
+<h2>Clean data for the whole juristdiction</h2>
+<p>Filter out really large lots that should not be part of the calculation. These properties create a huge number of properties, and upon looking at them on google Maps, do not appear buildable. Chris also did this filter in fairfax.</p>
+<p>Fliter out rockville and gaithersburg</p>
+<p>Count how many vacant lots</p>
+<pre class="r"><code>jur %&gt;% 
+  filter(lotsize_sf&gt;1000000 &amp; category==&quot;vacant&quot;) %&gt;% 
+count(lotsize_sf, propaddress)
 
-count(zoningcode2, dwelling_type)</code></pre>
-</div>
-</div>
-<div id="merge-with-parcel-data" class="section level2">
-<h2>Merge with parcel data</h2>
+mont &lt;- jur %&gt;% 
+  filter(rockflag != 1, gaitflag!=1, othernotmoco != 1) %&gt;% 
+  filter(lotsize_sf &lt; 1000000) #filter out unreasonably large lots that mess up the calculation
+
+
+count(mont, rockflag, gaitflag, othernotmoco)
+
+count(mont, category == &quot;vacant&quot;)</code></pre>
+<p>See how many lots have missing key variables</p>
+<pre class="r"><code>mont %&gt;% 
+  mutate(num = NA) %&gt;% 
+  group_by(category_detail) %&gt;% 
+  summarize_at(vars(propaddress, lotsize_sf, zoning, num),
+               ~ sum(is.na(.))) %&gt;% 
+  mutate_at(vars(propaddress, lotsize_sf, zoning),
+            .funs = funs(percent = scales::percent(. / num))) %&gt;% 
+  knitr::kable(caption = &quot;Number and percent of missing values&quot;)</code></pre>
+<table>
+<caption>Number and percent of missing values</caption>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">propaddress</th>
+<th align="right">lotsize_sf</th>
+<th align="right">zoning</th>
+<th align="right">num</th>
+<th align="left">propaddress_percent</th>
+<th align="left">lotsize_sf_percent</th>
+<th align="left">zoning_percent</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">apartment</td>
+<td align="right">5</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">719</td>
+<td align="left">0.7%</td>
+<td align="left">0%</td>
+<td align="left">0.00%</td>
+</tr>
+<tr class="even">
+<td align="left">condo</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">32</td>
+<td align="right">14051</td>
+<td align="left">0.0%</td>
+<td align="left">0%</td>
+<td align="left">0.23%</td>
+</tr>
+<tr class="odd">
+<td align="left">mf other</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">11</td>
+<td align="left">0.0%</td>
+<td align="left">0%</td>
+<td align="left">0.00%</td>
+</tr>
+<tr class="even">
+<td align="left">mixeduse</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">23</td>
+<td align="left">0.0%</td>
+<td align="left">0%</td>
+<td align="left">4.35%</td>
+</tr>
+<tr class="odd">
+<td align="left">NULL</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">2</td>
+<td align="left">0.0%</td>
+<td align="left">0%</td>
+<td align="left">0.00%</td>
+</tr>
+<tr class="even">
+<td align="left">other</td>
+<td align="right">1289</td>
+<td align="right">0</td>
+<td align="right">32</td>
+<td align="right">9572</td>
+<td align="left">13.5%</td>
+<td align="left">0%</td>
+<td align="left">0.33%</td>
+</tr>
+<tr class="odd">
+<td align="left">sf detached</td>
+<td align="right">15</td>
+<td align="right">0</td>
+<td align="right">16</td>
+<td align="right">161868</td>
+<td align="left">0.0%</td>
+<td align="left">0%</td>
+<td align="left">0.01%</td>
+</tr>
+<tr class="even">
+<td align="left">townhouse</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">9</td>
+<td align="right">46848</td>
+<td align="left">0.0%</td>
+<td align="left">0%</td>
+<td align="left">0.02%</td>
+</tr>
+<tr class="odd">
+<td align="left">vacant mf</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">2</td>
+<td align="left">0.0%</td>
+<td align="left">0%</td>
+<td align="left">0.00%</td>
+</tr>
+<tr class="even">
+<td align="left">vacant mixed use</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="left">0.0%</td>
+<td align="left">0%</td>
+<td align="left">0.00%</td>
+</tr>
+<tr class="odd">
+<td align="left">vacant residential</td>
+<td align="right">4244</td>
+<td align="right">0</td>
+<td align="right">645</td>
+<td align="right">8153</td>
+<td align="left">52.1%</td>
+<td align="left">0%</td>
+<td align="left">7.91%</td>
+</tr>
+<tr class="even">
+<td align="left">## Merge with cleaned</td>
+<td align="right">data</td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="left"></td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+</tbody>
+</table>
 <p>Now that we have selected the correct records from the zoning code file, we can merge with the cleaned property records data. First, we have to do a bit of cleaning of these codes, including getting rid of instances where there is a tie, and correcting some of the notation. We will create a new variable in order to archive the original <code>zoning</code> variable.</p>
-<pre class="r"><code>jurfinal &lt;- jur %&gt;% 
+<pre class="r"><code>montfinal &lt;- mont %&gt;% 
   mutate(zoning_code = case_when(
-    zoning == &quot;RC&quot; ~ &quot;R-C&quot;,
-    zoning == &quot;C-0 Crystal City&quot; ~ &quot;C-O Crystal City&quot;,
-    zoning %in% c(&quot;C-O-ROSSLYN&quot;, &quot;C-O-ROSS&quot;) ~ &quot;C-O Rosslyn&quot;,
-    zoning == &quot;RA-H-3.2&quot; ~ &quot;RA-H 3.2&quot;,
-    zoning == &quot;C-1-O&quot; ~ &quot;C-1-0&quot;,
+    zoning %in% c(&quot;CR1.0&quot;,&quot;CR0.5&quot;, &quot;CR2.0&quot;, &quot;CR5.0&quot;, 
+                  &quot;cR3&quot;, &quot;CR5&quot;, &quot;CR3.0&quot;, &quot;CR4.0&quot;) ~ &quot;CR&quot;,
+    # if there is no number after RT we go with the most restrictive code
+    zoning %in% c(&quot;RT&quot;,&quot;RT6&quot;, &quot;RT6.0&quot;) ~ &quot;RT-6.0&quot;,
+    zoning %in% c(&quot;RT8&quot;, &quot;RT8.0&quot;) ~ &quot;RT-8.0&quot;,
+    zoning %in% c(&quot;RT10&quot;, &quot;RT10.0&quot;) ~ &quot;RT-10.0&quot;,
+    zoning %in% c(&quot;RT125&quot;, &quot;RT12&quot;, &quot;RT12.5&quot;) ~ &quot;RT-12.5&quot;,
+    zoning %in% c(&quot;RT15&quot;, &quot;RT15.0&quot;) ~ &quot;RT-15.0&quot;,
+    zoning %in% c( &quot;CR2.0&quot;, &quot;CR5.0&quot;, &quot;CR3&quot;) ~ &quot;CR&quot;,
+    zoning %in% c(&quot;CRN0.5&quot;,&quot;CRN1.5&quot;, &quot;CRN025&quot;, &quot;CRN075&quot;) ~ &quot;CRN&quot;,
+    zoning %in% c(&quot;CRT0.5&quot;,&quot;CRT075&quot;, &quot;CRT1.5&quot;, &quot;CRT1.0&quot;, 
+                  &quot;CRT125&quot;, &quot;CRT1&quot;, &quot;CRT175&quot;, &quot;CRT2.25&quot;, 
+                  &quot;CRT2.5&quot;, &quot;CRT 1&quot;) ~ &quot;CRT&quot;,
+    zoning %in% c(&quot;R3&quot;, &quot;R30&quot;) ~ &quot;R-30&quot;,
+    zoning %in% c(&quot;R200T&quot;, &quot;R200&quot;) ~ &quot;R-200&quot;,
+    zoning %in% c(&quot;R20&quot;) ~ &quot;R-20&quot;,
+    zoning %in% c(&quot;R40&quot;) ~ &quot;R-40&quot;,
+    zoning %in% c(&quot;R90&quot;,&quot;R90TD&quot;) ~ &quot;R-90&quot;,
+    zoning %in% c(&quot;R60&quot;) ~ &quot;R-60&quot;,
+    zoning %in% c(&quot;R10&quot;) ~ &quot;R-10&quot;,
+    zoning %in% c(&quot;RE2&quot;) ~ &quot;Re-2&quot;,
+    zoning %in% c(&quot;RE2C&quot;) ~ &quot;Re-2C&quot;,
+    zoning %in% c(&quot;RE1&quot;) ~ &quot;Re-1&quot;,
+    zoning %in% c(&quot;RURAL&quot;, &quot;RUR&quot;) ~ &quot;R&quot;,
     TRUE ~ zoning
-  ))</code></pre>
+  ))
+
+z &lt;- count(montfinal, zoning_code)</code></pre>
 <p>Merge on zoning code variable. Test that all variables merged.</p>
-<pre class="r"><code>zoningdata &lt;- left_join(jurfinal, zoningcode2, by = &quot;zoning_code&quot;)</code></pre>
-<p>There are 207 observations that did not have a match in the zoning code. Below, we see which zoning codes were in the Black Knight data but NOT in the zoning code data.</p>
-<pre class="r"><code>anti_join(jurfinal, zoningcode1, by = c(&quot;zoning_code&quot;)) %&gt;% 
+<pre class="r"><code>zoningdata &lt;- left_join(montfinal, zoning_montgomery1, by = &quot;zoning_code&quot;)
+
+
+count(zoningdata, category)
+# count(zoningdata, zoning_code)
+# count(zoningdata, lot_area_min)</code></pre>
+<pre class="r"><code>anti_join(montfinal, zoning_montgomery1, by = c(&quot;zoning_code&quot;)) %&gt;% 
   count(zoning) %&gt;% 
   knitr::kable()</code></pre>
 <table>
@@ -458,41 +720,422 @@ count(zoningcode2, dwelling_type)</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">ACCESSORY DWELL</td>
+<td align="left">0</td>
 <td align="right">1</td>
 </tr>
 <tr class="even">
-<td align="left">CM</td>
-<td align="right">43</td>
+<td align="left">01</td>
+<td align="right">2</td>
 </tr>
 <tr class="odd">
-<td align="left">CP-FBC</td>
-<td align="right">12</td>
+<td align="left">AR</td>
+<td align="right">173</td>
 </tr>
 <tr class="even">
-<td align="left">M-1</td>
-<td align="right">87</td>
+<td align="left">C1</td>
+<td align="right">399</td>
 </tr>
 <tr class="odd">
-<td align="left">M-2</td>
-<td align="right">7</td>
+<td align="left">C2</td>
+<td align="right">656</td>
+</tr>
+<tr class="even">
+<td align="left">C3</td>
+<td align="right">51</td>
+</tr>
+<tr class="odd">
+<td align="left">C4</td>
+<td align="right">23</td>
+</tr>
+<tr class="even">
+<td align="left">C6</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="left">CBD05</td>
+<td align="right">17</td>
+</tr>
+<tr class="even">
+<td align="left">CBD1</td>
+<td align="right">477</td>
+</tr>
+<tr class="odd">
+<td align="left">CBD2</td>
+<td align="right">285</td>
+</tr>
+<tr class="even">
+<td align="left">CBD3</td>
+<td align="right">58</td>
+</tr>
+<tr class="odd">
+<td align="left">CBDR1</td>
+<td align="right">77</td>
+</tr>
+<tr class="even">
+<td align="left">CBDR2</td>
+<td align="right">73</td>
+</tr>
+<tr class="odd">
+<td align="left">CD</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">CI</td>
+<td align="right">3</td>
+</tr>
+<tr class="odd">
+<td align="left">CO</td>
+<td align="right">71</td>
+</tr>
+<tr class="even">
+<td align="left">CP</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="left">CT</td>
+<td align="right">156</td>
+</tr>
+<tr class="even">
+<td align="left">CZ</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">E1</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="left">EOF</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">EOF075</td>
+<td align="right">6</td>
+</tr>
+<tr class="even">
+<td align="left">EOF1.0</td>
+<td align="right">22</td>
+</tr>
+<tr class="odd">
+<td align="left">EOF1.5</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">HM</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">HVR</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td align="left">I1</td>
+<td align="right">735</td>
+</tr>
+<tr class="odd">
+<td align="left">I2</td>
+<td align="right">35</td>
+</tr>
+<tr class="even">
+<td align="left">I3</td>
+<td align="right">462</td>
+</tr>
+<tr class="odd">
+<td align="left">I4</td>
+<td align="right">466</td>
+</tr>
+<tr class="even">
+<td align="left">IM2.5</td>
+<td align="right">11</td>
+</tr>
+<tr class="odd">
+<td align="left">LDRC</td>
+<td align="right">13</td>
+</tr>
+<tr class="even">
+<td align="left">LSC</td>
+<td align="right">8</td>
+</tr>
+<tr class="odd">
+<td align="left">MXD</td>
+<td align="right">16</td>
+</tr>
+<tr class="even">
+<td align="left">MXE</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">MXN</td>
+<td align="right">5</td>
+</tr>
+<tr class="even">
+<td align="left">MXPD</td>
+<td align="right">179</td>
+</tr>
+<tr class="odd">
+<td align="left">MXTC</td>
+<td align="right">6</td>
 </tr>
 <tr class="even">
 <td align="left">NA</td>
-<td align="right">57</td>
+<td align="right">263</td>
+</tr>
+<tr class="odd">
+<td align="left">NR</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="left">NR0.75</td>
+<td align="right">10</td>
+</tr>
+<tr class="odd">
+<td align="left">O2</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">OM</td>
+<td align="right">86</td>
+</tr>
+<tr class="odd">
+<td align="left">P-RDT</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td align="left">PC</td>
+<td align="right">3</td>
+</tr>
+<tr class="odd">
+<td align="left">PCC</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">PD</td>
+<td align="right">6</td>
+</tr>
+<tr class="odd">
+<td align="left">PD11</td>
+<td align="right">526</td>
+</tr>
+<tr class="even">
+<td align="left">PD13</td>
+<td align="right">88</td>
+</tr>
+<tr class="odd">
+<td align="left">PD15</td>
+<td align="right">380</td>
+</tr>
+<tr class="even">
+<td align="left">PD18</td>
+<td align="right">113</td>
+</tr>
+<tr class="odd">
+<td align="left">PD2</td>
+<td align="right">1937</td>
+</tr>
+<tr class="even">
+<td align="left">PD25</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="left">PD3</td>
+<td align="right">1401</td>
+</tr>
+<tr class="even">
+<td align="left">PD4</td>
+<td align="right">1904</td>
+</tr>
+<tr class="odd">
+<td align="left">PD44</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">PD5</td>
+<td align="right">469</td>
+</tr>
+<tr class="odd">
+<td align="left">PD7</td>
+<td align="right">794</td>
+</tr>
+<tr class="even">
+<td align="left">PD75</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">PD9</td>
+<td align="right">3185</td>
+</tr>
+<tr class="even">
+<td align="left">PDTC</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">PN</td>
+<td align="right">958</td>
+</tr>
+<tr class="even">
+<td align="left">PNZ</td>
+<td align="right">193</td>
+</tr>
+<tr class="odd">
+<td align="left">PR33</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="left">PR75</td>
+<td align="right">8</td>
+</tr>
+<tr class="odd">
+<td align="left">PRA</td>
+<td align="right">5</td>
+</tr>
+<tr class="even">
+<td align="left">PRC</td>
+<td align="right">3334</td>
+</tr>
+<tr class="odd">
+<td align="left">PRR</td>
+<td align="right">15</td>
+</tr>
+<tr class="even">
+<td align="left">R&amp;D</td>
+<td align="right">7</td>
+</tr>
+<tr class="odd">
+<td align="left">R150</td>
+<td align="right">2801</td>
+</tr>
+<tr class="even">
+<td align="left">RA</td>
+<td align="right">8</td>
+</tr>
+<tr class="odd">
+<td align="left">RCBD</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td align="left">RDT</td>
+<td align="right">2306</td>
+</tr>
+<tr class="odd">
+<td align="left">RMH</td>
+<td align="right">704</td>
+</tr>
+<tr class="even">
+<td align="left">RMX</td>
+<td align="right">1162</td>
+</tr>
+<tr class="odd">
+<td align="left">RMX1</td>
+<td align="right">5</td>
+</tr>
+<tr class="even">
+<td align="left">RMX2</td>
+<td align="right">771</td>
+</tr>
+<tr class="odd">
+<td align="left">RMX3</td>
+<td align="right">133</td>
+</tr>
+<tr class="even">
+<td align="left">RR-1</td>
+<td align="right">3</td>
+</tr>
+<tr class="odd">
+<td align="left">RR-4</td>
+<td align="right">15</td>
+</tr>
+<tr class="even">
+<td align="left">RS</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="left">RZ</td>
+<td align="right">24</td>
+</tr>
+<tr class="even">
+<td align="left">SE</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">TMX2</td>
+<td align="right">5</td>
+</tr>
+<tr class="even">
+<td align="left">TOMX2</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">TS</td>
+<td align="right">12899</td>
+</tr>
+<tr class="even">
+<td align="left">TSM</td>
+<td align="right">13</td>
+</tr>
+<tr class="odd">
+<td align="left">TSR</td>
+<td align="right">156</td>
+</tr>
+<tr class="even">
+<td align="left">NA</td>
+<td align="right">735</td>
+</tr>
+<tr class="odd">
+<td align="left">All of th</td>
+<td align="right">ese codes that didn’t join are either non-residential, or they correspond to codes in Rockville and Gaithersburg, which are being calculated separately</td>
 </tr>
 </tbody>
 </table>
-<p>Aside from those with missing zoning information, these zoning codes do not allow for residential properties, which explains why they were not found in the zoning code data.</p>
-<div id="break-out-special-exceptions" class="section level3">
-<h3>Break out special exceptions</h3>
-<p>Two datasets will be created: one that includes special exceptions, and one that doesn’t. This way, we do not throw out any observations that have no special exceptions, or any lots that have the appropriate lot size for the by-right dwelling type, but not the special exception.</p>
-<p>There are many lots that are too small to build on, but we still need to include them. Create a flag to identify them. We can first group by both the address and the flag, and take the most dense dwelling type. This way, we can won’t filter out observations that are too small, but we will can use the lot size to eliminate less-dense dwelling types, if they exist. We can then group by the address again and take the minumum of the <code>smallsize_flag</code>, so we take the dwelling type that is appropriate for the lot size, if it exists.</p>
-<pre class="r"><code>byright &lt;- zoningdata %&gt;% 
-  filter(!is.na(dwelling_type),
-         special_exception == 0) %&gt;% 
-  mutate(smallsize_flag = ifelse(lotsize_sf &gt;= lot_area_min, 0, 1)) %&gt;% 
-  mutate(smallsize_flag = ifelse(is.na(smallsize_flag), 0, smallsize_flag)) %&gt;% 
+</div>
+<div id="fill-in-missing-codes" class="section level2">
+<h2>Fill in missing codes</h2>
+<ol style="list-style-type: decimal">
+<li>fill in lot area minimums from site minimums</li>
+<li>fill in lot coverage maximums from site coverage maximums</li>
+<li>fill in per unit lot size when there is not general minimum lot size restriction</li>
+<li><p>We also need to fill in missing lot coverage</p></li>
+<li>and make two assumptions for townhouses that do not have lot coverage restrictions in the montgomery zoning code.</li>
+<li>The highest lot coverage for townhouses elsewhere in the codes is 40, so I assume a lot max of 40.</li>
+<li><p>The highest density allowed for townhouses elsewhere in the codes is 15.02 units/acre, so I assume this density.</p></li>
+<li><p>finally, we need to fill in the lotsize_acre variable for those lot sizes that we filled in from the parcel file.</p></li>
+</ol>
+<pre class="r"><code>zoningdata1 &lt;- zoningdata %&gt;% 
+  mutate(lot_area_min = case_when(
+    is.na(lot_area_min) ~ site_area_min,
+    TRUE ~ lot_area_min)) %&gt;% 
+  mutate(lot_coverage_max = case_when(
+    is.na(lot_coverage_max) ~ site_coverage_max,
+    TRUE ~ lot_coverage_max)) %&gt;% 
+  mutate(lotarea_per_unit = case_when(
+    is.na(lotarea_per_unit) ~ sitearea_per_unit,
+    TRUE ~ lotarea_per_unit)) %&gt;% 
+  # Fill in lot coverage with site coverage and assume a maximum townhouse density of 40%
+  mutate(lot_coverage_max = if_else(is.na(lot_coverage_max) &amp; 
+                                      dwelling_type == &quot;townhouse&quot; &amp; 
+                                      zoning_code %in% c(&quot;CRN&quot;, &quot;CRT&quot;, &quot;CR&quot;), 
+                                    .4, 
+                                    lot_coverage_max )) %&gt;% 
+  # Assume a maximum townhouse density of 15.02
+  mutate(density = if_else(is.na(density) &amp;
+                             dwelling_type == &quot;townhouse&quot; &amp; 
+                             zoning_code %in% c(&quot;CRN&quot;, &quot;CRT&quot;, &quot;CR&quot;), 
+                           15.02, 
+                           density)) %&gt;% 
+  #i've filled in and modified a bunch of lotsize_sf, I make sure acres reflects that.
+  mutate(lotsize_acres = lotsize_sf / 43560) 
+
+# check that we got all the acres.
+count(zoningdata1, is.na(lotsize_acres), is.na(lotsize_sf))
+
+count(zoningdata1, category)</code></pre>
+<p>Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.</p>
+<pre class="r"><code>zoningdata2 &lt;- zoningdata1 %&gt;% 
+  filter(!is.na(zoning_code)) %&gt;% 
+  mutate(smallsize_flag= ifelse(lotsize_sf &gt;= lot_area_min, 
+                                0, 
+                                1)) %&gt;% 
+  mutate(smallsize_flag= ifelse(is.na(smallsize_flag), 
+                                0, 
+                                smallsize_flag)) %&gt;% 
   group_by(propaddress, smallsize_flag) %&gt;% 
   slice(which.min(dwelling_type)) %&gt;% 
   ungroup() %&gt;% 
@@ -500,41 +1143,25 @@ count(zoningcode2, dwelling_type)</code></pre>
   slice(which.min(smallsize_flag)) %&gt;% 
   ungroup()
 
+# see how many observations should drop between steps
+count(zoningdata1, is.na(zoning_code))
 
-specialexception &lt;- zoningdata %&gt;% 
-  filter(!is.na(dwelling_type)) %&gt;% 
-  mutate(smallsize_flag = ifelse(lotsize_sf &gt;= lot_area_min, 0, 1)) %&gt;% 
-  mutate(smallsize_flag = ifelse(is.na(smallsize_flag), 0, smallsize_flag)) %&gt;% 
-  group_by(propaddress, smallsize_flag) %&gt;% 
-  slice(which.min(dwelling_type)) %&gt;% 
-  ungroup() %&gt;% 
-  group_by(propaddress) %&gt;% 
-  slice(which.min(smallsize_flag)) %&gt;% 
-  ungroup()
+count(zoningdata2, smallsize_flag)
 
-
-count(byright, dwelling_type)
-count(specialexception, dwelling_type)</code></pre>
-</div>
-<div id="fill-in-stipulations-for-mixed-use-zones" class="section level3">
-<h3>Fill in stipulations for mixed use zones</h3>
-<pre class="r"><code>specialexception1 &lt;- specialexception %&gt;% 
-  mutate(height_ft = case_when(
-    zoning == &quot;C-O-1.5&quot; &amp; lotsize_sf &lt; 871200 ~ 80,
-    zoning == &quot;C-O-1.5&quot; &amp; lotsize_sf &gt;= 871200 ~ 180,
-    zoning == &quot;C-O-A&quot; ~ 151,
-    TRUE ~ height_ft))</code></pre>
-</div>
+count(zoningdata2, category)</code></pre>
 </div>
 <div id="calculate-missing-units" class="section level2">
-<h2>Calculate missing units</h2>
-<p>There are several variables we will use to calculate how many units we can put on each lot.</p>
+<h2>Calculate Missing Units</h2>
+<p>There are several variables we will use to calculate how many units we can put on each vacant lot.</p>
 <ol style="list-style-type: decimal">
 <li>Buildable area: this is <code>lotsize_sf</code> x the coverage ratio (<code>lot_coverage_max</code>)</li>
 <li>Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.</li>
 <li>Units per floor: this is the living area divided by the average unit size. We use 940 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.</li>
 <li>Units allowed based on height limits: This is the units per floor x the number of stories.</li>
 <li>Units allowed based on lot size: this is the lot area divided by <code>lotarea_per_unit</code></li>
+<li>massing - the number of units allowed in one row of townhouses</li>
+<li>FAR and FAR per unit - I calculate the number of units per floor and multiply it by the number of floors allowed by height</li>
+<li>density - the number of units allowed per acre</li>
 </ol>
 <p>We can create a function that will allow us to easily adjust these parameters and compare results.</p>
 <pre class="r"><code>#' Get maximum unit variables
@@ -544,7 +1171,7 @@ count(specialexception, dwelling_type)</code></pre>
 #' @param construction_efficiency Assumption for construction efficiency
 #' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
 #'
-#' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`, `units_height`, `units_lotsize`, and `units_total`
+#' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`,`FAR_stories`,`stories`, `units_FAR`,  `units_height`, `units_lotsize`, `units_density`, and `units_total`
 #'
 #' @examples
 get_unit_variables &lt;- function(dataset, 
@@ -555,35 +1182,42 @@ get_unit_variables &lt;- function(dataset,
     mutate(parameters = paste0(&quot;CE: &quot;, construction_efficiency * 100,
                                &quot;% , Unit size: &quot;, average_unit_size,
                                &quot; sf&quot;),
-           buildable_area = lotsize_sf * lot_coverage_max,
-           living_area = buildable_area * construction_efficiency,
-           units_per_floor = floor(living_area / average_unit_size),
-           floors = floor(height_ft / 10),
-           subset = ifelse(one_unit_flag == 1,
-                           floor(lotsize_sf / lot_area_min),
-                           NA), 
-           units_height = units_per_floor * floors,
+           lot_coverage_max = ifelse(is.na(lot_coverage_max), .75, lot_coverage_max),
+           buildable_area_height = lotsize_sf * lot_coverage_max,
+           living_area_height = buildable_area_height*construction_efficiency,
+           units_per_floor_height = floor(living_area_height/average_unit_size),
+           floors_height = floor(height_ft/10),
+           units_height = units_per_floor_height * floors_height,
            units_lotsize = floor(lotsize_sf / lotarea_per_unit),
-           units_density = floor(density_units_per_acre * (lotsize_sf / 43560)),
-           percent_per_floor_far = (units_per_floor*average_unit_size*1/construction_efficiency)/lotsize_sf,
+           perc_build_per_floor = ifelse(far_max &lt;= lot_coverage_max, 
+                                         far_max, 
+                                         lot_coverage_max),
+           buildable_area_far = perc_build_per_floor * lotsize_sf,
+           living_area_far = buildable_area_far * construction_efficiency,
+           units_per_floor_far = floor(living_area_far / average_unit_size),
+           percent_per_floor_far = (units_per_floor_far*average_unit_size*1/construction_efficiency)/lotsize_sf,
            stories_far = ifelse(percent_per_floor_far!=0&amp;!is.na(percent_per_floor_far),
                                 floor(far_max/percent_per_floor_far),
                                 0),
-            units_far = (stories_far*units_per_floor)) %&gt;% 
-    mutate_at(vars(units_height, units_lotsize, units_density, units_far),
+           subset = ifelse(is.na(lot_area_min), NA, (lotsize_sf/lot_area_min)),
+           units_height = units_per_floor_height * floors_height,
+           units_density = floor(density * lotsize_acres),
+           units_lotsize = floor(lotsize_sf / lotarea_per_unit),
+           units_far = (stories_far*units_per_floor_far) %&gt;% as.numeric,
+           units_far = ifelse(!is.na(far_max) &amp; is.na(units_far), 0 , units_far)
+          ) %&gt;% mutate_at(vars(units_height, units_lotsize, units_far),
               funs(case_when(
-                living_area &lt; average_unit_size ~ 0,
-                one_unit_flag == 1 &amp; is.na(.) ~ 1,
-                one_unit_flag == 1 &amp; subset &gt; 1 &amp; !is.na(subset) ~ subset,
-                one_unit_flag == 1 &amp; (subset &lt; 1 | is.na(subset)) ~ 1,
-                two_unit_flag == 1 &amp; . &gt;= 2 &amp; !is.na(subset) ~ 2 * subset,
-                two_unit_flag == 1 &amp; . &gt;= 2 &amp; (subset &lt; 1 | is.na(subset)) ~ 2,
+                one_unit_flag == 1 ~ 1,
+                two_unit_flag == 1 ~ 2,
                 TRUE ~ .))) %&gt;% 
     mutate(units_total = case_when(
        subset &lt; 1 ~ 0,
        lotsize_sf &lt; lot_area_min ~ 0,
-       living_area &lt; average_unit_size ~ 0,
-      TRUE ~ pmin(units_lotsize, units_height, units_density, units_far, na.rm = TRUE)))
+       one_unit_flag == 1 ~ 1,
+       two_unit_flag == 1 ~ 2,
+       one_unit_flag == 1 &amp; subset&gt;=1 &amp; units_lotsize/subset&gt;=1 ~ 1*subset,
+       two_unit_flag == 1 &amp; subset&gt;=1 &amp; units_lotsize/subset&gt;=2 ~ 2*subset,
+       TRUE ~ pmin(units_lotsize, units_height, units_density, units_far, na.rm = TRUE)))
   
 }
 
@@ -605,26 +1239,28 @@ get_unit_summary &lt;- function(dataset,
   x &lt;- dataset %&gt;% 
     get_unit_variables(construction_efficiency,
                        average_unit_size) %&gt;%
+    filter(units_total &gt; 0) %&gt;% #i've added an additional filter to my function - there are several units where the lotsize passes the first filter, but the buildable area is not large enough to build on - so it creates 0 units. 
     group_by(parameters) %&gt;% 
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
-              units_density = sum(units_density, na.rm = TRUE),
               units_far = sum(units_far, na.rm = TRUE),
+              units_density = sum(units_density, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
-              units_per_lot = floor(sum(units_total / lots)))
+              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE)))
   
   y &lt;- dataset %&gt;% 
     get_unit_variables(construction_efficiency,
                        average_unit_size) %&gt;%
+    filter(units_total &gt; 0) %&gt;% 
     group_by(parameters, dwelling_type) %&gt;% 
     summarize(lots = n(),
               units_height = sum(units_height, na.rm = TRUE),
               units_lotsize = sum(units_lotsize, na.rm = TRUE),
-              units_density = sum(units_density, na.rm = TRUE),
               units_far = sum(units_far, na.rm = TRUE),
+              units_density = sum(units_density, na.rm = TRUE),
               units_total = sum(units_total, na.rm = TRUE),
-              units_per_lot = floor(sum(units_total / lots))) %&gt;% 
+              units_per_lot = floor(sum(units_total / lots, na.rm = TRUE))) %&gt;% 
     mutate(dwelling_type = as.character(dwelling_type))
   
   
@@ -636,44 +1272,25 @@ get_unit_summary &lt;- function(dataset,
       x
     }
 }</code></pre>
-<p>Export all lots for soft sites.</p>
-<pre class="r"><code>seunits &lt;- get_unit_variables(dataset = specialexception1,
-                              construction_efficiency = .7,
-                              average_unit_size = 940)
-brunits &lt;- get_unit_variables(dataset = byright,
-                              construction_efficiency = .7,
-                              average_unit_size = 940)
+<p>Create a dataset with results for troubleshooting purposes. Check to make sure there aren’t more townhouses than are allowed to be built on any one property.</p>
+<pre class="r"><code>resultsall &lt;- get_unit_variables(dataset = zoningdata2,
+                            construction_efficiency = .7,
+                            average_unit_size = 940)</code></pre>
+<pre class="r"><code>testing123 &lt;- resultsall %&gt;% 
+  filter(dwelling_type == &quot;apartment&quot;| dwelling_type == &quot;townhouse&quot;, units_far == 0) %&gt;% 
+  select(units_total, dwelling_type, zoning_code, living_area_far, lot_coverage_max, far_max, stories_far , units_per_floor_far, units_far)
+  #filter(zoning_code %in% c(&quot;CR&quot;, &quot;CRT&quot;, &quot;CRN&quot;))
 
-sub &lt;- seunits %&gt;% 
-  filter(category == &quot;vacant&quot;,
-         subset &gt; 1)
-
-saveRDS(seunits, &quot;L:/Libraries/RegHsg/Data/arlington/arlington-max-units-se.Rdata&quot;)
-saveRDS(brunits, &quot;L:/Libraries/RegHsg/Data/arlington/arlington-max-units-br.Rdata&quot;)</code></pre>
-<p>Compare different between special exception and by right.</p>
-<pre class="r"><code>vacant_units &lt;- specialexception1 %&gt;% 
-  filter(category == &quot;vacant&quot;,
-         smallsize_flag == 0) %&gt;% 
-  get_unit_variables(construction_efficiency = .7,
-                              average_unit_size = 940)
-
-vacant_mf &lt;- specialexception1 %&gt;% 
-  filter(category == &quot;vacant&quot;,
-         smallsize_flag == 0) %&gt;% 
-  get_unit_variables(construction_efficiency = .7,
-                              average_unit_size = 940) %&gt;% 
-  filter(dwelling_type == &quot;Multiple-family special exception&quot;)
-
-brsum &lt;- byright %&gt;% 
-  filter(category == &quot;vacant&quot;,
-         smallsize_flag == 0) %&gt;% 
-  get_unit_summary(construction_efficiency = .75,
+testing1234 &lt;- resultsall %&gt;% 
+    filter(dwelling_type == &quot;townshouse&quot;, zoning_code %in% c(&quot;CR&quot;, &quot;CRT&quot;), units_total == 0) %&gt;% 
+  select(units_total, dwelling_type, zoning_code, living_area_far, lot_coverage_max, far_max, stories_far , units_per_floor_far, units_far, units_lotsize, units_height, units_density, subset, lot_area_min )</code></pre>
+<p>Get summary statistics for several different parameters</p>
+<pre class="r"><code>get_unit_summary(dataset = zoningdata2,
+                 construction_efficiency = .7,
                  average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE)
-brsum %&gt;% 
-  knitr::kable(caption = &quot;By right only&quot;)</code></pre>
+                 dwelling_type_breakdown = TRUE) %&gt;% 
+  knitr::kable()</code></pre>
 <table>
-<caption>By right only</caption>
 <thead>
 <tr class="header">
 <th align="left">parameters</th>
@@ -681,228 +1298,398 @@ brsum %&gt;%
 <th align="right">lots</th>
 <th align="right">units_height</th>
 <th align="right">units_lotsize</th>
-<th align="right">units_density</th>
 <th align="right">units_far</th>
+<th align="right">units_density</th>
 <th align="right">units_total</th>
 <th align="right">units_per_lot</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">Multiple-family</td>
-<td align="right">51</td>
-<td align="right">8080</td>
-<td align="right">3507</td>
-<td align="right">0</td>
-<td align="right">0</td>
-<td align="right">3507</td>
-<td align="right">68</td>
-</tr>
-<tr class="even">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">Townhouse</td>
-<td align="right">10</td>
-<td align="right">102</td>
-<td align="right">21</td>
-<td align="right">0</td>
-<td align="right">0</td>
-<td align="right">21</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">Semi-detached</td>
-<td align="right">21</td>
-<td align="right">126</td>
-<td align="right">23</td>
-<td align="right">0</td>
-<td align="right">0</td>
-<td align="right">23</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">One Family Dwelling</td>
-<td align="right">324</td>
-<td align="right">4753</td>
-<td align="right">495</td>
-<td align="right">324</td>
-<td align="right">324</td>
-<td align="right">324</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">All</td>
-<td align="right">406</td>
-<td align="right">13061</td>
-<td align="right">4046</td>
-<td align="right">324</td>
-<td align="right">324</td>
-<td align="right">3875</td>
-<td align="right">9</td>
-</tr>
-</tbody>
-</table>
-<pre class="r"><code>sesum &lt;- specialexception1 %&gt;% 
-  filter(category == &quot;vacant&quot;,
-         smallsize_flag == 0) %&gt;% 
-  get_unit_summary(construction_efficiency = .75,
-                 average_unit_size = 940,
-                 dwelling_type_breakdown = TRUE)
-sesum %&gt;% 
-  knitr::kable(caption = &quot;With special exceptions&quot;)</code></pre>
-<table>
-<caption>With special exceptions</caption>
-<thead>
-<tr class="header">
-<th align="left">parameters</th>
-<th align="left">dwelling_type</th>
-<th align="right">lots</th>
-<th align="right">units_height</th>
-<th align="right">units_lotsize</th>
-<th align="right">units_density</th>
-<th align="right">units_far</th>
-<th align="right">units_total</th>
-<th align="right">units_per_lot</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">Multiple-family special exception</td>
-<td align="right">56</td>
-<td align="right">17623</td>
-<td align="right">79</td>
-<td align="right">5236</td>
-<td align="right">361</td>
-<td align="right">8531</td>
-<td align="right">152</td>
-</tr>
-<tr class="even">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">Multiple-family</td>
-<td align="right">48</td>
-<td align="right">7818</td>
-<td align="right">3391</td>
-<td align="right">0</td>
-<td align="right">0</td>
-<td align="right">3391</td>
-<td align="right">70</td>
-</tr>
-<tr class="odd">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">Townhouse</td>
-<td align="right">10</td>
-<td align="right">102</td>
-<td align="right">21</td>
-<td align="right">0</td>
-<td align="right">0</td>
-<td align="right">21</td>
-<td align="right">2</td>
-</tr>
-<tr class="even">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">Semi-detached</td>
-<td align="right">21</td>
-<td align="right">126</td>
-<td align="right">23</td>
-<td align="right">0</td>
-<td align="right">0</td>
-<td align="right">23</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">One Family Dwelling</td>
-<td align="right">272</td>
-<td align="right">4113</td>
-<td align="right">443</td>
-<td align="right">272</td>
-<td align="right">272</td>
-<td align="right">272</td>
-<td align="right">1</td>
-</tr>
-<tr class="even">
-<td align="left">CE: 75% , Unit size: 940 sf</td>
-<td align="left">All</td>
-<td align="right">407</td>
-<td align="right">29782</td>
-<td align="right">3957</td>
-<td align="right">5508</td>
-<td align="right">633</td>
-<td align="right">12238</td>
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">apartment</td>
+<td align="right">1131</td>
+<td align="right">172197</td>
+<td align="right">31946</td>
+<td align="right">4317</td>
+<td align="right">31868</td>
+<td align="right">34502</td>
 <td align="right">30</td>
 </tr>
+<tr class="even">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">townhouse</td>
+<td align="right">1610</td>
+<td align="right">19525</td>
+<td align="right">8108</td>
+<td align="right">0</td>
+<td align="right">6519</td>
+<td align="right">5603</td>
+<td align="right">3</td>
+</tr>
+<tr class="odd">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">duplex-over</td>
+<td align="right">43</td>
+<td align="right">86</td>
+<td align="right">86</td>
+<td align="right">86</td>
+<td align="right">119</td>
+<td align="right">86</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">duplex-side</td>
+<td align="right">440</td>
+<td align="right">880</td>
+<td align="right">880</td>
+<td align="right">880</td>
+<td align="right">440</td>
+<td align="right">880</td>
+<td align="right">2</td>
+</tr>
+<tr class="odd">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">detached house</td>
+<td align="right">100661</td>
+<td align="right">100661</td>
+<td align="right">100661</td>
+<td align="right">100661</td>
+<td align="right">137668</td>
+<td align="right">100661</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">All</td>
+<td align="right">103885</td>
+<td align="right">293349</td>
+<td align="right">141681</td>
+<td align="right">105944</td>
+<td align="right">176614</td>
+<td align="right">141732</td>
+<td align="right">1</td>
+</tr>
 </tbody>
 </table>
-<p>Make scatterplot of special exceptions.</p>
-<pre class="r"><code>specialexception1 %&gt;% 
-  get_unit_variables(construction_efficiency = .7,
-                     average_unit_size = 940) %&gt;% 
-  filter(units_total &gt; 1,
-         category == &quot;vacant&quot;,
-         lotsize_sf &lt; 500000) %&gt;% 
-  ggplot() +
-  geom_point(mapping = aes(lotsize_sf, units_total,
-                           color = dwelling_type),
-             alpha = .8) +
-  scale_x_continuous(labels = scales::comma,
-                     expand = expand_scale(mult = c(0, 0.0002)) 
-                    # limits = c(0, 50000),
-                    # breaks = 0:5 * 10000
-                    ) +
-  scale_y_continuous(expand = expand_scale(mult = c(0, 0.0002)) 
-                    # limits = c(0, 60),
-                    # breaks = 0:4 * 15
-                    ) +
-  scatter_grid() +
-  labs(x = &quot;Lot size (square feet)&quot;, y = &quot;Total units&quot;) +
-  theme(plot.margin = margin(t = 20,
-                             r = 20))</code></pre>
-<p><img src="data:image/png;base64,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" width="672" /></p>
-<p>Calculate values needed to fill table.</p>
-<pre class="r"><code>mf.br &lt;- zoningdata %&gt;% 
+</div>
+<div id="write-out-results" class="section level2">
+<h2>Write out results</h2>
+<p>Write out the results to a csv. Include jurisdiction name in the title.</p>
+<pre class="r"><code>get_unit_summary(dataset = zoningdata2,#write out table
+                 construction_efficiency = .7,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE) %&gt;% 
+  
+  write_csv(paste0(&quot;L:/Libraries/RegHsg/Prog/Tables/&quot;,
+                   filepath,
+                   &quot;-max-units.csv&quot;))
+
+
+get_unit_variables(dataset = zoningdata2, #write out file for sarah
+                 construction_efficiency = .7,
+                 average_unit_size = 940) %&gt;% 
+  
+  saveRDS(paste0(jdir, 
+               filepath,
+               &quot;max-units.Rdata&quot;))</code></pre>
+</div>
+<div id="clean-vacant-lots-data" class="section level2">
+<h2>Clean vacant lots data</h2>
+<p>Select only vacant lots, filter out for rockville and gaithersburg which will be calculated separately, and check that I got them all.</p>
+<pre class="r"><code>vacant_mont &lt;- zoningdata2 %&gt;% 
+  filter(category == &quot;vacant&quot;, smallsize_flag == 0) #filter out all but vacant and small size flag
+
+count(vacant_mont, rockflag, gaitflag) #make sure no rock or gaith
+count(vacant_mont, category)</code></pre>
+<p>See how many lots have missing key variables</p>
+<pre class="r"><code>vacant_mont %&gt;% 
+  mutate(num = NA) %&gt;% 
+  group_by(category_detail) %&gt;% 
+  summarize_at(vars(propaddress, lotsize_sf, zoning, num),
+               ~ sum(is.na(.))) %&gt;% 
+  mutate_at(vars(propaddress, lotsize_sf, zoning),
+            .funs = funs(percent = scales::percent(. / num))) %&gt;% 
+  knitr::kable(caption = &quot;Number and percent of missing values&quot;)</code></pre>
+<table>
+<caption>Number and percent of missing values</caption>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">propaddress</th>
+<th align="right">lotsize_sf</th>
+<th align="right">zoning</th>
+<th align="right">num</th>
+<th align="left">propaddress_percent</th>
+<th align="left">lotsize_sf_percent</th>
+<th align="left">zoning_percent</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">other</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">333</td>
+<td align="left">0%</td>
+<td align="left">0%</td>
+<td align="left">0%</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">175</td>
+<td align="left">0%</td>
+<td align="left">0%</td>
+<td align="left">0%</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">37</td>
+<td align="left">0%</td>
+<td align="left">0%</td>
+<td align="left">0%</td>
+</tr>
+<tr class="even">
+<td align="left">vacant mixed use</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="left">0%</td>
+<td align="left">0%</td>
+<td align="left">0%</td>
+</tr>
+<tr class="odd">
+<td align="left">vacant residential</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1770</td>
+<td align="left">0%</td>
+<td align="left">0%</td>
+<td align="left">0%</td>
+</tr>
+</tbody>
+</table>
+<div id="assessed-value" class="section level3">
+<h3>Assessed Value</h3>
+<p>I fill in some missing values using the montgomer county shape file and then filter out any properties that have improvement values, implying there is a structure and not truly vacant.</p>
+<pre class="r"><code>vacant_mont1 &lt;- vacant_mont %&gt;% 
+  mutate(assessedlandvalue = if_else(is.na(assessedlandvalue), 
+                                     LAND_ASSMT, 
+                                     as.integer(assessedlandvalue))) %&gt;% 
+  mutate(assessedimprovementvalue = if_else(is.na(assessedimprovementvalue), 
+                                            IMPROV_ASSMT, 
+                                            as.integer(assessedimprovementvalue)))
+
+sum(is.na(vacant_mont$assessedimprovementvalue)) - sum(is.na(vacant_mont$assessedimprovementvalue))</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>vacant_mont1 %&gt;% 
+  filter(assessedimprovementvalue &gt; 0, 
+         !is.na(assessedimprovementvalue)) %&gt;% 
+  mutate(p_total = assessedimprovementvalue / totalassessedvalue) %&gt;% 
+  group_by(category_detail) %&gt;% 
+  summarize(n = n(),
+            mean = mean(assessedimprovementvalue),
+            median = median(assessedimprovementvalue),
+            min = min(assessedimprovementvalue),
+            max = max(assessedimprovementvalue),
+            p_total = median(p_total)) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">category_detail</th>
+<th align="right">n</th>
+<th align="right">mean</th>
+<th align="right">median</th>
+<th align="right">min</th>
+<th align="right">max</th>
+<th align="right">p_total</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">other</td>
+<td align="right">3</td>
+<td align="right">966.6667</td>
+<td align="right">100</td>
+<td align="right">100</td>
+<td align="right">2700</td>
+<td align="right">0.0006207</td>
+</tr>
+<tr class="even">
+<td align="left">sf detached</td>
+<td align="right">134</td>
+<td align="right">430684.3284</td>
+<td align="right">210700</td>
+<td align="right">100</td>
+<td align="right">2421800</td>
+<td align="right">0.2621468</td>
+</tr>
+<tr class="odd">
+<td align="left">townhouse</td>
+<td align="right">6</td>
+<td align="right">293950.0000</td>
+<td align="right">118900</td>
+<td align="right">118900</td>
+<td align="right">1158300</td>
+<td align="right">0.7985225</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>vacant_mont2 &lt;- vacant_mont1 %&gt;% 
+  mutate(category = ifelse(assessedimprovementvalue &gt; 0 &amp; 
+                           !is.na(assessedimprovementvalue),
+                           &quot;vacant with structure&quot;,
+                           category))
+count(vacant_mont2, category)
+vacant_mont2 &lt;- vacant_mont2 %&gt;% 
+  filter(category == &quot;vacant&quot;)</code></pre>
+<p>Assign results to a dataset</p>
+<pre class="r"><code>resultsvacant &lt;- get_unit_variables(dataset = vacant_mont2,
+                            construction_efficiency = .7,
+                            average_unit_size = 940)</code></pre>
+<p>Get summary statistics for several different parameters</p>
+<pre class="r"><code>get_unit_summary(dataset = vacant_mont2,
+                 construction_efficiency = .7,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">parameters</th>
+<th align="left">dwelling_type</th>
+<th align="right">lots</th>
+<th align="right">units_height</th>
+<th align="right">units_lotsize</th>
+<th align="right">units_far</th>
+<th align="right">units_density</th>
+<th align="right">units_total</th>
+<th align="right">units_per_lot</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">apartment</td>
+<td align="right">208</td>
+<td align="right">40277</td>
+<td align="right">384</td>
+<td align="right">1316</td>
+<td align="right">383</td>
+<td align="right">1673</td>
+<td align="right">8</td>
+</tr>
+<tr class="even">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">townhouse</td>
+<td align="right">6</td>
+<td align="right">840</td>
+<td align="right">162</td>
+<td align="right">0</td>
+<td align="right">32</td>
+<td align="right">29</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">duplex-over</td>
+<td align="right">2</td>
+<td align="right">4</td>
+<td align="right">4</td>
+<td align="right">4</td>
+<td align="right">8</td>
+<td align="right">4</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">duplex-side</td>
+<td align="right">2</td>
+<td align="right">4</td>
+<td align="right">4</td>
+<td align="right">4</td>
+<td align="right">2</td>
+<td align="right">4</td>
+<td align="right">2</td>
+</tr>
+<tr class="odd">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">detached house</td>
+<td align="right">1357</td>
+<td align="right">1357</td>
+<td align="right">1357</td>
+<td align="right">1357</td>
+<td align="right">3517</td>
+<td align="right">1357</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">CE: 70% , Unit size: 940 sf</td>
+<td align="left">All</td>
+<td align="right">1575</td>
+<td align="right">42482</td>
+<td align="right">1911</td>
+<td align="right">2681</td>
+<td align="right">3942</td>
+<td align="right">3067</td>
+<td align="right">1</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>brsum &lt;- get_unit_summary(dataset = vacant_mont2,
+                 construction_efficiency = .7,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE)</code></pre>
+<p>Look at the distribution of units for lots with more than 1 unit, to check for extreme outliers.</p>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAAjVBMVEUAAAAAADoAAGYAOjoAOpAAZrYWltIXltIZl9IdmdMknNQzo9c6AAA6ADo6AGY6Ojo6OpA6ZmY6kNtIp9RQsN1mAABmZgBmZrZmkNtmtv96udeKyuiQOgCQZpCQkGaQkLaQ29uQ2/+2ZgC225C2///bkDrbtmbb2//b///e3d3/tmb/25D//7b//9v////uEKfTAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAgAElEQVR4nO3dC3vbSJqYUXZn5LZFTS5eKoljJ5vmNrO9kuz///NCXIgLxesnkKgCztnnGUscmgIEz7sgqlBc/AIgZDH2BgDkSkABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIuDOjL4h9/11+uF4vF738d+gZgVi4L6GaxC+jr06L09d03ADNzUUC3/awD+vNHWcvXp9/+3PsGYG4uCeh68fu/PVUBfVk8/Gr+7H0DMDcXBHTbz79eq4Buzzm/lY+9Pf/2Z++bG24iQJouCOjPfy3eppcBfXvejRitF99639xsAwFSdeEofB3Q+o9fRTO/9r7pPPc/ADJzj4C2s5k2i4feNwIKZCyZgALMg4ACBN3gGijAPFwXUKPwAI3rAmoeKEDjuoA2VzvLP3vfAMzNlQF1LzzAzmX3wleKTlqNCaB2bUCtBwpQsyI9QJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECSgZWRXG3ghoCCjZWK2+FySUZAgomajzKaEkREDJQ5vPMqFjbw4UBJQ8CCgJElCy0O+ngpIGASULAkqKBJQc7PdTQUmCgJIDASVJAkoOBJQkCSg5EFCSJKDkQEBJkoCSBaPwpEhAyYKAkiIBJQ/uRCJBAkoeBJQECSiZsBoT6RFQsmE9UFIjoGTEivSkRUABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBTmYFUYeyOmR0Bh+lar7wUJHZqAwtTV+ZTQ4QkoTFybzzKhY2/OpAgoTJyA3o6AwrT1+6mggxJQmDYBvSEBhUnb76eCDklAYdIE9JYEFCZNQG9JQGHSBPSWBBQmTUBvSUBh2ozC35CAwrQJ6A0JKEycO5FuR0Bh4gT0dgQUps5qTDcjoDB91gO9EQGFObAi/U0IKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgM7GqjD2RsCkCOhMrFbfCxIKAxLQWajzKaEwKAGdgzafZULH3hyYCgGdAwGFmxDQGej3U0FhKAI6AwIKt9EG9Of//nvE7eB29vupoDCQNqDrxbftf24Wi38I6bQIKNxIE9C35yKcL4ut3/8ac4sYmoDCjXQC+rD9z/Vvf/56fXoYcYMYnIDCjTQB/fljewZatXPtTfykCCjcSHsNdLP4Wl8HXXsPPy1G4eE2OqPwPxbVAFJ5LsqECCjcRnceaH3xszgVZVLciQQ3cWAi/et/dQI6MQIKN7E3Cs80WY0JbuFAQN+ev420MdyO9UBheIfOQE1jmiQr0sPQyoC+PS9K9eCRaUwAF6jPQF+fFh3OQAHO69yJ9FCsJFJyDRTgvM5qTEbhAa5hQWWAIAEFCCoC+vPH4h9///z3sTcFIC9FQN+etwHdTWVauBQKcJHyLXzxcUhNQC1JD3CR99dANwIKcAmDSABBAgoQtLcivduQAC7V/Vx4g0gAV+gsZ1dlsxiNF1CA86xIDxDU+Vhji9gBXKMN6NuzD+MEuEJnGtPbs3NQgMt1roEW4++//TnmxgDkZC+gpjEBXGrvTqQqowIKcJ5bOQGCBBQgaP8aqNn0ABcyiAQQtP8Wfi2gAJd5fw10bS4owCUODCJtnIACXOBAQH/+MJIEcN6haUxOQZm6VWHsjSB//VH4spy7pZVholar7wUJ5aMOTmM69RZ+98kf35rv5Jas1PmUUD6u/xZ+U7bx1Lqgu4+eKxv7+rQ4+xcgLW0+y4SOvTlk7dpbObuf/LGNaZHO1ycTn8iHgDKcawP6+tSebr7U7/Vf3ABKNvr9VFA+5NqAvrSfG789Aa2+fnt2CkouBJQBXRvQTdvKdrR+3VYVkrbfTwXlI64N6LpdbeT1afcZSuveMNJ/QLL+5X/t+5exN4kkxANazmC67APldoPwRTFfmr+z6V0EHfsXAccJKId9MKA7F13OfCmediygkC5v4RlS8xZ+N6fzsuXsijftAkp+BJQhvbsGWpyOng9oMXPp2DVQSJhReAYU/EykIqBG4cmQgDKgYECLN+3mgZIjdyIxnDagmwsH4gtVO3eXPl0CJSMCynCagDYTlE4OxL/+s/zv1mVs3QtPjqzGxGA6y9k9NAPxxweRdovZVSerVmMiS9YDZSDdgJZ/nhkQqk5Um6dYD5QsWZGeQXTewteXQLsL1gFwVGcQaXcl8+3ZW3KA89qAdqZ1Xj4cDzBfnXmgL/W1zZ8/XNUEOK87kf5l0RtjB+CU3p1I9VxQJ6AAFwjeygnAu3mgAFzmQEDfnq2tBHDeoTNQ05gALlAGdPeZHvUE+rVRJIDz6jPQ7gd6mMYEcInOvfAPvzZ1QF0DBTivnca0NgoPcA3zQAGCBBQgqBvQjdXlAS7XXc5u4QM6AC7XGUSqZi+tFz5jE+ASnTuR6tmfzce9A3DKwXvhTaQHOO/9h8q5lRPgIp0PlWveuQsowAV6o/DVm/jXJ2/hAc7rzANt5jEZRAK4QO9OpI1+AlysCOjPfx97KwAyVATUxyEBBAgoQJCAAgQJKECQgAIEVQHdTQAVUoCL9QNacysnwHm9t/AbAQW4mGugAEECChAkoABB5WIib/9j7M0AyI/PhQcIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBLQtK0KY28EcJiApmy1+l6QUEiTgKarzqeEQqoENFltPsuEjr05wDsCmiwBhdQJaKr6/VRQSJCApkpAIXkCmqj9fioopEdAEyWgkD4BTZSAQvoENFECCukT0EQJKKRPQFNlFB6SJ6CpElBInoAmy51IkDoBTZaAQuoENF1WY4LECej9XL84corrgVriGRoCei+xGKaWqxSTDqMR0PuYxtvxaewFDEZA72IaA0LT2AsYjoDexTTSM429gOEI6D1MY1L8NPYCBiSg9zCN9ExjL2BAAnoH01gYZBp7AUMS0DuYRnqmsRcwJAG9g2mkZxp7AUMS0DuYRnqmsRcwJAG9g2mkZxp7AUMS0HuYxvj1NPYCBiSg9zCN9ExjL2BAAnoX07iHZxp7AcMR0LuYRnqmsRcwHAG9j2msYzSNvYDBCOi9TGMlzWnsBQxEQO8ntcWRY6axFzAIAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAf24VWHsjQDuT0A/arX6XpBQmB8B/Zg6nxIKcySgH9Lms0zo2JsD3JWAfoiAwpwJ6Ef0+6mgMDMC+hECCrMmoB+w308FhXkR0A8QUJg3Af0AAYV5E9APEFCYNwH9AAGFeRPQjzAKD7MmoB8hoDBrAvoh7kSCORPQDxFQmDMB/RirMcGMCehHWQ8UZktAP86K9DBTAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQLatSqMvRFALgS0tVp9L0gocBkB3anzKaHApQS01uazTOjYmwNkQEBrAgpcS0Ar/X4qKHABAa0IKHA1AS3t91NBgfMEtJR4QM1PhSQJaCnpgJqfCokS0FLCATU/FZIloKV0A2p6FaRLQCvJjsILKKRLQCupBjTV7QJ+CWgj0TM9AYWECWgtzYCme20WENBWkqPdAgopE9BWgvMtBRRSJqBdyd3xI6CQMgFNmoBCygQ0bUbhIWECmjYBhYQJaOLSnF4FFAQ0cQIK6RLQ1CU5PxUoCGj6EpyfChQENAfJzU8FCgIKECSgAEECChAkoABBAgoQJKAAQQI6NlOUIFsCOi6T5CFjAjomt2lC1gR0RBYKgbwJ6IgEFPImoOOxWDJkTkDHI6CQOQEdjQ+Mg9zNK6BJzbkUUMjdnAKa2JxLAYXczSegyc25FFDI3WwCmt6UIQGF3AnoeIzCQ+bmEtAUY5XiNgFXENARJXhWDFxhJgFN83qjgELe8g3o5XM6t897XO4H9DGFKaHJzQwArpFrQC+f01k+c7la9hK6rL4dv1qJzU0FrpFnQC8/c6ufudyebrYJXW6/XaZy4pfU3VHANbIM6OXXDnfPXJaZWna+WV7y1wFOmElAe9FcdvspoEBUjgG9fEpS+8zOKWj/BFRBgai5BLSTzf4JqIACURkG9PI5nd1nNqeg+yegCgoETTygy+VyN/i+XDYB7U9pElAgZtIBfaxPO9uELpspoAIKfNSEA7ot56rWJPRxtXq8uL8AJ003oKvddc/uFNBVqrfFAxnKMKAXjsJXd3D2A7q6/K8DnDPZgJZP2j8FFVBgQDkG9KI7kdp74NuAri7/6wBnTTWg9VP6p6ACCgwpy4BesBpTs4pIOxLfPtMynMAQ8gzo+XU0O3fB15NBH6/560d+5tGF56xJB3OUa0DPNat3F2d5O9Lec69O3onmWhUZ5infgJ429GzPE+/6XRCAuZpqQAeerHRi3MmQFMyWgAZeTUCBwmQDOmjYTtTYtHyYLwG9/rUEFChNN6ADDu6cGJGyNAnM2MQC2p+cNNT0IgEFDplUQN8Hc5gJ7gIKHDKhgN5uPqaAAodMJ6A3nE4koMAhAnr9axuFB0qTCehNQyagwAECGnh1dyIBhakE9MbXIgUUeE9AL3x9qzEB+wT04p9gPVCgT0Cv+BlWpAe6BBQgaCoBNZ0IuDsBBQiaTEBNJwLuTUABgqYT0FuuxmSMHThgQgG91XxMszyBwyYV0FucK7rPCDhmYgEdnCurwFECepqAAkcJ6ElmlwLHCehJAgocJ6CnuMMeOEFATxFQ4AQBPUVAgRME9BQBBU4Q0FMEFDhBQE8yCg8cJ6AnCShwnICe5k4k4CgBPU1AgaME9AyrMQHHzDOgV616Zz1Q4LA5BvTqIlqRHjhkfgH1nhwYyOwCalQIGIqAAgTNLaBmxgODEVCAoJkF1OogwHAEdOxNArIloGNvEpAtAR17k4BsCejYmwRka2YBNQoPDEdAAYLmFlB3IgGDEVCAoPkEdLcmndWYgIHMJaDdNUCtkAwMYh4B3T/rtEIyMIBZBNR1T+AWBBQgaA4BNfcTuAkBBQiaQUDd/w7choACBAkoQJCAAgQJKEDQDAJqFB64DQEFCJpDQN2JBNyEgAIEzSKgaawBagkomJp5BDSBNUBH3wBgcHMJ6MgngEmcAgMDm09Ax+QiLEySgN6DgMIkCegdmIgK0ySgdyCgME0CentuxoeJSieg050mKaAwUakEdMrTJAUUJiqNgE57mqSAwkQlEdCJz/IRUJgoAb0Do/AwTSkEdPJ9mfwOwkwJ6D1M/RQbZiqBgM7gEqGAwiQJ6F1Me5oBzFVqAV0WppiYKU90hblKK6DbdhYeJ1mZ6d5qBXOVUkDrfK5WSydqQAYSCOiuoLt8bvs5yeugwNQIKEBQCgGtCtrvp4ICyRNQgKAkAlrM8WkGkJbTnQ0KTMuYAe3O61k97uVTQIHUjRfQvZnlq3IK/bTvRwKmZayAvru3cQ43dALTMlJA36+uIaBAbpIJ6AwWtQMmZpyAHoqlgAKZSSegFs0EMjNKQA9f7xRQIC8JBdSqw0BeUgqoVYeBrKQVUKsOAxlJLaAA2UhoFB4gLwIKEJTOnUgAmRFQgKB7B3Q3yn79nE/j80Bi7hvQ7jzP6+Z8miEKJOeeAd0/67z8nNI9SkCC7hjQ+HVPV0yBFAkoQND9Ahqf+2nWKJAkAQUIultA4/e/u3MeSNOdArpaPfY/s7jI4IWj8AIKpOkuAS1mIS1Xq35Cl491Rs/+bQEFknSHgFaTOJfF6Wab0OVytfv6XEIFFEjT7QNa929ZvWNftt8tLwyigAJpultA64K2AV1eHESj8ECSbh7Qpn7dU9D+Cei1p6ACCiThfgHtnoL2T0CvPAXVTyANtw5op33tKej+Ceh1p6ACCqThjgEtRt53Ad2fFHruFNRqTEB67hPQZeH7H398+vTp8x/bP/74UnxfPXo2oNWJ68H1QC2yDIzoHgGtzjy37Xz8vC3opy9FQB8fH788tlNDj1ewKef7WFpkGRjV7QO6y+eXL8UJ6KfyLPTL521Dvywfm4Qea+CJ9+7e1gMju/kofNnI1TafxYln0c/iLfznP7b/97h9H1/9t8uj/Tx+odTAEjA2AQUIusNb+G4/PxX9LEaRPncLeiygJ2bQm1wPjE5AAYJuHNBqEL7Tz7Kg5X82BT06iHRiFRELjADju0NAv3//9Lm5AroLaPFAGdAvx6cxCSiQtLsE9I/Hz5+rk89OQL98/uPL58fH5fH8CSiQtDsF9PFx+459P6BfiiugAgrkSkABgu5zL3ynoNUo/CX9NAoPpE1AAYLutKDyrqCfPpdv4R8/X9JPdyIBSRNQgKA7fKhcmbo/tgn9XM6f//Tp0+Pjl0+fHx93S9mdqJ/VmIB03eFz4XcJ/fRl+aXo5/LL58+Py+Xy8Ww+27988GnWAwVG9cGArheLxe9/nX1atRjy563t2ec2n+VCoJeuJ3/iaVakB0b0oYC+Pi1KX4faGoCMfCSgP3+U6Xx9+u3PoTYHIB8fCejL4qH3J8CsfCCg2xPQb+UXb89OQYEZ+kBA3553w0fruqQAc/KBgL4+/ePv6qt1bxhpAZCZuwf0ZbEL6KZ7EXTs3wPA1dIJaPwlk2JHUmNHUmNHBPQoO5IaO5IaOzL8NVC/09TYkdTYkdSMEdAjo/B+p6mxI6mxI6kZI6BH5oH6nabGjqTGjqRmjIA2lz57l0D9TpNjR1JjR1IzSkAP3wvvd5oaO5IaO5KaUQJ6eDUmv9PU2JHU2JHUjBPQg+uB+p2mxo6kxo6kZqyAHnrF2f9OU2NHUmNHUpNQQAFmQkABggQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGChg7ogeWZkrWuP8/0W/Ndf8t7jxz/ZlztR/ud28TEd6fdkayPy6bd8ryPSHdHsj4iL90VNwc/IsMG9OACoan6+aPa2HI5/fdb3nvk+Dcj2/4zr7tzZhNT3512R3I+Lm/Px7Y95x3J+Yjstr2M3w2OyKABPbxEfarenttPInm/5b1Hjn8zsuI0oerOmU1MfXfaHcn5uNSbsK3Pt7yPSG9Hcj4i2zPHh+aPWxyRQQP6Un840kvvQ5JS9frU/v+T91vee+T4N+NaL37/t/rDpc9sYuK709mRnI/La/dg5HxEejuS8xHZfXRwuUO3OCJDBvTIx3Sm6qX9MOb3W9575Pg3d93gd7bZ+av+p35mExPfnc6OZH1cNvV7vGJfsj4i3R3J+oi8Pj3Um/D7Xzc5IkMG9MgHxadq0/4y3m9575Hj39xtYw/6+a/NucKZTUx8dzo7MoXjUg6I5X1EatXI3gSOSPGv6yZHZMiANv8T2P6cFAZYzlh3Ly7vb3nvkePf3HeLD6k358wmZrA7zYZM4LgUV9zyPyK/dlcQ8z8i5TnkTY7IkAFtJ6JsxrvocbHd8FzxK3m/5b1Hjn9z520+oD64ZzYxg93Z/SudwHEpBxvyPyKdIZSsj0gxo6DYj5sckfkGtPay2P/HXj+c+j+L2uQCWsv4uFRjtvkfkd3gcy3bI1JOyfomoDdSnJXn+M+iNtWA5ntcttmpRl5yPyL1jjSyPSLlPM6v6Qc0oWseV3jZv15V/pnFlZ3C9K6B1rI9LuvFRI7IejGRI/KrGj9P/hpoSqNulyv+WeQ6tvhrIqPwhUMBzXFH1vUdf9kfkfX+rYu5HpFCMYqU/Ch8CvO+rleclec2u61jEvNAC/sBzfS4NNnJ/Yi862eWR+T1n+1WJj8PtLlCMPoljytUv5z3W9575Pg3o9t158wmpr87ewHN9LisF83/xPI+Ip0dqWV5RHY/ukzfLY7IfO+Fr/9/U3Whp7flm9N3Mqe1l53ZP0c2MZPd2e1I1selm52sj0h3R3I+IvXd/NstebjNEZnvaky7Jbrq/9m2W779nRePJb3GTG23D8VxPbaJWexOZ0dyPi6bxW//p138J+Mj0tuRnI9ItZjdbuNvcERmvB5oNT+4uSjcbvlu9DHpVQ6b7ai78+voJuawO90dyfe4NDPOcz8iezuS7xH5tb/xgx8RK9IfsBn/3HJIk9kdO5IaOyKg773+5wROLoczmd2xI6mxIwL63s8fY09aG9RkdseOpMaOCChAmIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECSgJWz/c72dt/vH3/X4YEyGgDOrnj9/+vPS5r09nmvWy+PrhDdr9qMW57VpfvuFQE1AG9fZ8uEOvT9/ePbZZLN4/2PHzx+9/DbNVL4vF4uhr1Zs2XK2ZDwFlUK9Ph0P1cqCr585AX0739XLHql7/mOq/fHv2Hp5rCSiDelkczlDgDfLPH0MV7WVx6lpqvWnDne8yHwLKoI4ENFKn4d5Tb069UrNpLoJyNQFlUJvuyd56sSi//fljUdildVM/XHbtZbFo/8tN51m7oO2eXb9e8fXbc9m8ZsBq93jRwten8sHOK70+lT/gW//R+svOpm2GumLAfAgog1q3J3t1uPqV6tZ0XRRrF9CvRRe7na2uSXb+av3Mh+biaX1ps318+1f+Xzla1Hul6iW2T+082nwpoHyEgDKodVOhbaO+/doVtXMVsnln3pnxtKkz+63z6OvTQ/fZ26+K0876rLUOaPFI5/G35//0zz/LV+69Uv1F59HuE5pNG2zMivkQUIZUlalUX3h8qc/umhPT5lJjG9Bq6H5Tv92vL0lWPVv3n1P1uG5eeSJaP17+gO0579fqR/deqX7H33m0+4Rm05yBcjUBZUjthKHdV9Xb7fbEtDrbrJ7RBK54atXT7Xlrr2fNs+tXKP/otrn7eHUy+u6Vqh/UebT3hGbTBJSrCShDaqeB7iZ5vgtocdWxbOvuGdsHvv5qLpm2b+t377vLh+oXrtK33gX0of/4Zndm2n+l6gd1Hu09odk0o/BcTUAZUhvQ3aXFl+ryZjdORRTbK5m77L1UI0mNdXMFs3i8eddevH7dvM3+482Zaf+Vqud0Hu0+oXOl1DxQriWgDKmdBroLaD26049T+f3LLpzVX9mf7d6eEBbPriu7Kd6k180rR6m6j+/Cuv9Km/fjWO0TOhcS3InEtQSUIbXTQHtTjfZv8KxHcr7+6lw13b+xc9MEtHh29cLb997t+ex60QS09/j7V6ovETSPdp/QbJp74bmegDKkdhpoNYupub7Zxut//qqnKK3rJ9SXIOuvqtlLv+oxnebZL9Wp53+p5suXI0m///dtL+vH/9upxMcAAADISURBVNvTQ/tufP+VqhPTzqPdJzSb5hIo1xNQhrSup8WX79B389vreetlqOqJ680b7t1faKfUtxdRv3aeXX31UJ1MbsohoP/7o338pXehoP9Ku652Hu18uds07+AJEFAGVAevimUx1r07q3tpv2zv76xmtDcBrQbHOzcyPXSeXYbuW32GW/yt4iaiXQC/Ve+/2/Pc3is1Xe082vmy3jSTmAgQUBJ1cDGmdSBzF51bOgElQkBJ1eb9Rclr1rtvvD5dMDrkCigR/x98HK03wC6zewAAAABJRU5ErkJggg==" width="672" /></p>
+<p>Look more closely at vacant lots &lt; 50,000 SF</p>
+<p><img src="data:image/png;base64,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" width="672" /></p>
+</div>
+</div>
+<div id="write-out-results-1" class="section level2">
+<h2>Write out results</h2>
+<p>Write out the results to a csv. Include jurisdiction name in the title.</p>
+<pre class="r"><code>get_unit_summary(dataset = vacant_mont2,
+                 construction_efficiency = .7,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE) %&gt;% 
+  
+write_csv(paste0(&quot;L:/Libraries/RegHsg/Prog/Tables/&quot;,
+                   filepath,
+                   &quot;-vacant-lots-analysis.csv&quot;))</code></pre>
+</div>
+<div id="calculate-values-needed-to-fill-table" class="section level2">
+<h2>Calculate values needed to fill table</h2>
+<pre class="r"><code>mf.br &lt;- zoningdata1 %&gt;% 
   filter(!is.na(dwelling_type),
-         special_exception == 0,
-         dwelling_type == &quot;Multiple-family&quot;,
+         dwelling_type == &quot;apartment&quot;,
          category == &quot;vacant&quot;) %&gt;% 
   group_by(propaddress) %&gt;%
   count() %&gt;% 
-  nrow()
-
-mf.se &lt;- zoningdata %&gt;% 
-  filter(!is.na(dwelling_type),
-         dwelling_type %in% c(&quot;Multiple-family&quot;, &quot;Multiple-family special exception&quot;),
-         category == &quot;vacant&quot;) %&gt;% 
-  group_by(propaddress) %&gt;%
-  slice(which.min(dwelling_type)) %&gt;% 
   nrow()
 
 br.summary &lt;- 
   c(nrow(jur), 
     nrow(filter(jur, category == &quot;vacant&quot;)), 
     mf.br, 
-    brsum %&gt;% filter(dwelling_type == &quot;Multiple-family&quot;) %&gt;% pull(lots) %&gt;% sum(),
-    brsum %&gt;% filter(dwelling_type == &quot;Multiple-family&quot;) %&gt;% pull(units_total) %&gt;% sum())
-
-
-se.summary &lt;- 
-  c(nrow(jur), 
-    nrow(filter(jur, category == &quot;vacant&quot;)), 
-    mf.se, 
-    sesum %&gt;% filter(dwelling_type %in% 
-                       c(&quot;Multiple-family&quot;, &quot;Multiple-family special exception&quot;)) 
-    %&gt;% pull(lots) %&gt;% sum(),
-    sesum %&gt;% filter(dwelling_type %in% 
-                       c(&quot;Multiple-family&quot;, &quot;Multiple-family special exception&quot;)) 
-    %&gt;% pull(units_total) %&gt;% sum())
+    brsum %&gt;% filter(dwelling_type == &quot;apartment&quot;) %&gt;% pull(lots) %&gt;% sum(),
+    brsum %&gt;% filter(dwelling_type == &quot;apartment&quot;) %&gt;% pull(units_total) %&gt;% sum())
 
 
 br.breakdown &lt;- brsum %&gt;% 
   ungroup() %&gt;% 
-  mutate(dwelling_type = ifelse(dwelling_type %in% c(&quot;Townhouse&quot;, &quot;Semi-detached&quot;),
+  mutate(dwelling_type = ifelse(dwelling_type %in% c(&quot;townhouse&quot;, &quot;duplex-over&quot;, &quot;duplex-side&quot;),
                                 &quot;sf attached&quot;,
                                 dwelling_type)) %&gt;% 
   group_by(dwelling_type) %&gt;% 
@@ -911,21 +1698,8 @@ br.breakdown &lt;- brsum %&gt;%
   arrange(desc(units_total))
 
 
-se.breakdown &lt;- sesum %&gt;% 
-  ungroup() %&gt;% 
-  mutate(dwelling_type = case_when(
-    dwelling_type %in% c(&quot;Townhouse&quot;, &quot;Semi-detached&quot;) ~ &quot;sf attached&quot;,
-    dwelling_type %in% c(&quot;Multiple-family&quot;, &quot;Multiple-family special exception&quot;) ~ &quot;Multiple-family&quot;,
-    TRUE ~ dwelling_type)) %&gt;% 
-  group_by(dwelling_type) %&gt;% 
-  summarize_at(vars(lots, units_total),sum) %&gt;% 
-  filter(dwelling_type != &quot;All&quot;) %&gt;% 
-  arrange(desc(units_total))
-
 br.summary</code></pre>
-<pre><code>## [1] 42046  2224    82    51  3507</code></pre>
-<pre class="r"><code>se.summary</code></pre>
-<pre><code>## [1] 42046  2224   206   104 11922</code></pre>
+<pre><code>## [1] 279665   9160    766    208   1673</code></pre>
 <pre class="r"><code>br.breakdown %&gt;% knitr::kable()</code></pre>
 <table>
 <thead>
@@ -937,49 +1711,24 @@ br.summary</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">Multiple-family</td>
-<td align="right">51</td>
-<td align="right">3507</td>
+<td align="left">apartment</td>
+<td align="right">208</td>
+<td align="right">1673</td>
 </tr>
 <tr class="even">
-<td align="left">One Family Dwelling</td>
-<td align="right">324</td>
-<td align="right">324</td>
+<td align="left">detached house</td>
+<td align="right">1357</td>
+<td align="right">1357</td>
 </tr>
 <tr class="odd">
 <td align="left">sf attached</td>
-<td align="right">31</td>
-<td align="right">44</td>
+<td align="right">10</td>
+<td align="right">37</td>
 </tr>
 </tbody>
 </table>
-<pre class="r"><code>se.breakdown %&gt;% knitr::kable()</code></pre>
-<table>
-<thead>
-<tr class="header">
-<th align="left">dwelling_type</th>
-<th align="right">lots</th>
-<th align="right">units_total</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">Multiple-family</td>
-<td align="right">104</td>
-<td align="right">11922</td>
-</tr>
-<tr class="even">
-<td align="left">One Family Dwelling</td>
-<td align="right">272</td>
-<td align="right">272</td>
-</tr>
-<tr class="odd">
-<td align="left">sf attached</td>
-<td align="right">31</td>
-<td align="right">44</td>
-</tr>
-</tbody>
-</table>
+<p>Clear global environment.</p>
+<pre class="r"><code>rm(list=ls())</code></pre>
 </div>
 
 

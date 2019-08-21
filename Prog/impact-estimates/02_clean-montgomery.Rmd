@@ -1235,4 +1235,10 @@ saveRDS(finaljur,
 *Patrick* Removed writing out clean data step because will write out csv after merge
 Write out clean data.
 
+Clear global environment.
 
+```{r}
+
+rm(list=ls())
+
+```

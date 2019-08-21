@@ -59,6 +59,8 @@ preclean <- list.files(pattern = "01_preclean") %>%
 pwalk(preclean,
       ~ render(input = ., output_dir = "output"))
 
+rm(list=ls())
+
 ```
 
 ## Clean

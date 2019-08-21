@@ -481,4 +481,10 @@ write_csv(all_jurs, "L:/Libraries/RegHsg/Data/parcel-all-cleaned-data.csv")
 
 ```
 
+Clear global environment.
 
+```{r}
+
+rm(list=ls())
+
+```

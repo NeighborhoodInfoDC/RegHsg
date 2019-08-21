@@ -1245,6 +1245,8 @@ rm(mult, other, nunits, cdties)</code></pre>
 <p>Write out clean data. This time, we will save as a <code>.csv</code> so that it can be read into another program if necessary.</p>
 <pre class="r"><code>write_csv(jur_4, 
           paste0(jdir, filepath, &quot;-cleaned-data.csv&quot;))</code></pre>
+<p>Clear global environment.</p>
+<pre class="r"><code>rm(list=ls())</code></pre>
 </div>
 </div>
 

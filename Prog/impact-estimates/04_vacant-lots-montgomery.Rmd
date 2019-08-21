@@ -860,4 +860,10 @@ br.breakdown %>% knitr::kable()
 
 ```
 
+Clear global environment.
 
+```{r}
+
+rm(list=ls())
+
+```

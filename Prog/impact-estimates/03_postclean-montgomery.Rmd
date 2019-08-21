@@ -640,5 +640,11 @@ write_csv(jur6,
                "postcleaned-", filepath, "-data.csv"))
 ```
 
+Clear global environment.
 
+```{r}
+
+rm(list=ls())
+
+```
 

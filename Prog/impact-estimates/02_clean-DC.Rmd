@@ -1367,3 +1367,11 @@ Write out clean data.
 write_csv(finaljur, 
           paste0(jdir, filepath, "-cleaned-data.csv"))
 ```
+
+Clear global environment.
+
+```{r}
+
+rm(list=ls())
+
+```

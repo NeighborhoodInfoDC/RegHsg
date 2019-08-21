@@ -44,6 +44,8 @@ The purpose of these programs is to calculate the maximum number of units that c
 
 This step outputs a `max-units` dataset which will be used in the soft sites. 
 
+Note: for Arlington, the zoning code is cleaned in `04_vacant-lots-1-arlington.Rmd`, but the vacant lots numbers are generated in `04_vacant-lots-2-arlington-se.Rmd`
+
 #### 05_combine-parcels
 
 The purpose of this program is to combine the cleaned parcel data to be used in the upzoning analysis.
@@ -63,4 +65,4 @@ The purpose of this program is to determine how many units could be produced if 
 
 ### Output
 
-`.html` files are output into the `Prog/impact-estimates/output` directory, and are categorized by step in the process.
+`.html` files are output into the `Prog/impact-estimates/output` directory.

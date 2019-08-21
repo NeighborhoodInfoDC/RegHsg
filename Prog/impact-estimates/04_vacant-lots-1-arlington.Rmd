@@ -619,3 +619,10 @@ saveRDS(zoningcode1, "L:/Libraries/RegHsg/Data/arlington/arlington-clean-zoning-
 ** Switch to `04_vacant-lots-2-arlington-se.Rmd` **
 
 
+Clear global environment.
+
+```{r}
+
+rm(list=ls())
+
+```

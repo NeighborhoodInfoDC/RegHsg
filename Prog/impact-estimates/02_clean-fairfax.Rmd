@@ -1107,3 +1107,11 @@ Write out clean data. This time, we will save as a `.csv` so that it can be read
 write_csv(jur_4, 
           paste0(jdir, filepath, "-cleaned-data.csv"))
 ```
+
+Clear global environment.
+
+```{r}
+
+rm(list=ls())
+
+```

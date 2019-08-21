@@ -795,7 +795,8 @@ clusters_three_ways <- function(cluster_data) {
     ggplot() +
     geom_sf(bound, mapping = aes(),
             fill = "grey") +
-    geom_sf(mapping = aes(fill = factor(.cluster)),
+    geom_sf(mapping = aes(fill = factor(.cluster),
+                           geometry = geometry),
             alpha = .5) +
     coord_sf(datum = NA)
     
@@ -1091,5 +1092,13 @@ Write out summary table.
 
 # write_csv(upsum, 
 #          "L:/Libraries/RegHsg/Prog/Tables/upzoning-summary.csv")
+
+```
+
+Clear global environment.
+
+```{r}
+
+rm(list=ls())
 
 ```
