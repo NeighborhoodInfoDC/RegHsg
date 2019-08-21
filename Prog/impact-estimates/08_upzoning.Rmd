@@ -62,8 +62,8 @@ set_urbn_defaults("print")
 
 Create directory for data exports
 ```{r dir}
-if (!dir.exists("../Data")) {
-  dir.create("../Data")
+if (!dir.exists("../../Data")) {
+  dir.create("../../Data")
 }
 
 ```

@@ -347,7 +347,7 @@ ggplot() +
 There are a number of combinations of buffer sizes that we will need. In order to accomodate this, we can parametrize the above process. See `"Macros/get_node_geography.R"`.
 ```{r source}
 
-source("../Macros/get_node_geography.R")
+source("../../Macros/get_node_geography.R")
 
 ```
 
