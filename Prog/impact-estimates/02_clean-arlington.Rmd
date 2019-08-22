@@ -1,0 +1,1248 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Clean Arlington County public records data"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+There are three main goals of the jurisdiction level cleaning process:
+
+1. Recategorize the county land use codes into more general codes
+
+2. Collapse observations at the address level
+
+3. Clean the variables needed to provide density estimates
+
+
+## Set-up
+#### Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(DescTools)
+library(purrr)
+library(sf)
+
+source("../../Macros/sample-properties.R")
+source("../../Macros/classify-addresses.R")
+```
+#### Create directory for data exports on local computer
+```{r dir}
+if (!dir.exists("../../Data")) {
+  dir.create("../../Data")
+}
+
+```
+
+
+#### Set FIPS code and filepath name
+```{r fips}
+currentfips <- "51013"
+filepath <- "arlington"
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+
+```
+
+#### Load in Black Knight data for the region, select jurisdiction and standard variables
+```{r read}
+
+jur <- readRDS(paste0(jdir, 
+               "precleaned-",
+               filepath,
+               "-data.Rdata"))
+
+```
+## Recatagorize county land use
+In order to complete the vacant land and soft site analysis, we will need to break down properties into different classifications. This process creates four variables:
+
+1. residential: 1 for residential, 0 for other.
+2. category: categories are sf, mf, commercial, office, and vacant.
+3. category_detail: this will vary by jurisdiction, but  includes the most detail possible to generalize from the county land use codes.
+4. building_type: this indicates the building type for multifamily parcels (condos and apartments)
+
+**Note: `category_detail` and `building_type` will not be uniform accross jurisdictions. `category` and `residential` should be.**
+
+Export county land use codes for manual classification
+```{r export-landuse}
+currentjur_county <- jur %>% 
+  group_by(countylandusedescription) %>% 
+  count()
+
+if (!file.exists(paste0("../../Data/", filepath, "-county-land-use.csv"))) {
+  write_csv(currentjur_county,
+            paste0("../../Data/", filepath, "-county-land-use.csv"))
+}
+
+rm(currentjur_county)
+```
+
+**Note:** Condos that have their own individual addresses are considered single-family. Once we determine which properties have unique addresses, the `category` and `category_detail` will be adjusted to "SF" and "SF attached" respectively. 
+
+### Create categorization variables
+
+We use `ifelse()` and `case_when()` to create the three new variables based on the county land use codes.
+
+#### {.tabset .tabset.fade}
+##### `residential`
+```{r classify}
+res_codes <- 
+  c("AFFORDABLE DWELLING UNIT",
+    "APARTMENT - GARDEN",
+    "APARTMENT - HIGH-RISE",
+    "APARTMENT - MID-RISE",
+    "APARTMENT - PARKING",
+    "COMMUNITY BENEFIT UNIT",
+    "MULTI-FAM IMPR/NO SITE PLAN",
+    "MULTI-FAM IMPR/SITE PLAN",
+    "MULTI-FAM VACANT/NO SITE PLAN",
+    "MULTI-FAM VACANT/SITE PLAN",
+    "NOT VALUED CONDO HOA",
+    "NOT VALUED COSTED - HOA/SITE PLAN",
+    "RESIDENTIAL COST-VAL - DUPLEX",
+    "RESIDENTIAL COST-VAL - IMPR/SF & TW",
+    "RESIDENTIAL COST-VAL - SIDE BY SIDE",
+    "RESIDENTIAL COST-VAL - SINGLE-FAM DET",
+    "RESIDENTIAL COST-VAL - TOWNHOUSE/CO",
+    "RESIDENTIAL COST-VAL - TOWNHOUSE/FSO",
+    "RESIDENTIAL COST-VAL - VAC/SF & TW",
+    "SALES APPR CONDO/CO-OP",
+    "SALES APPR CONDO/GARDEN",
+    "SALES APPR CONDO/HIGH RISE",
+    "SALES APPR CONDO/MID RISE",
+    "SALES APPR CONDO/STACKED",
+    "SFD - APT ZONED/NO SITE PLAN",
+    "SFD - APT ZONED/SITE PLAN",
+    "VACANT RESIDENTIAL",
+    "SFD - COMM ZONED/NO SITE PLAN",
+    "SFD - COMM ZONED/SITE PLAN")
+
+jur <- jur %>% 
+  mutate(residential =
+           ifelse(countylandusedescription %in% res_codes, 1, 0))
+
+rm(res_codes)
+```
+
+##### `category`
+```{r cr-cat}
+other <- c("COMMERCIAL CONDO",
+           "GEN COMM-IND - AUTO DEALERSHIP",
+           "GEN COMM-IND - SELF-STORAGE",
+           "GEN COMM-IND - SERVICE STATION",
+           "GEN COMM-IND - WAREHOUSE",
+           "GEN COMM - BANK",
+           "GEN COMM - FAST FOOD",
+           "GEN COMM - HEALTH CARE FACILITY",
+           "GEN COMM - MIXED OFFICE/COMM",
+           "GEN COMM - NEIGHBORHOOD CTR",
+           "GEN COMM - OTHER",
+           "GEN COMM - REST/EATING FACILITY",
+           "GEN COMM - RETAIL/STRIP",
+           "GEN COMM - SMALL OFFICE",
+           "GEN COMM IMPR-LAND/NO SITE PLAN",
+           "GEN COMM IMPR-LAND/SITE PLAN",
+           "GEN COMM/PARKING",
+           "HOTEL - FULL SERVICE",
+           "HOTEL - LAND/OTHER",
+           "HOTEL - LIMITED SERVICE",
+           "HOTEL - LODGING",
+           "HOTEL - SELECT DRIVE",
+           "HOTEL RESIDENCE SUITES",
+           "MIXED USE",
+           "OFFICE BLDG IMPR-LAND/SITE PLAN",
+           "OFFICE BLDG/7 OR MORE STORIES",
+           "OFFICE BLDG/PARKING",
+           "OFFICE BLDG/UNDER 7 STORIES")
+
+mf <- c("AFFORDABLE DWELLING UNIT",
+        "APARTMENT - GARDEN",
+        "APARTMENT - HIGH-RISE",
+        "APARTMENT - MID-RISE",
+        "APARTMENT - PARKING",
+        "COMMUNITY BENEFIT UNIT",
+        "MULTI-FAM IMPR/NO SITE PLAN",
+        "MULTI-FAM IMPR/SITE PLAN",
+        "NOT VALUED CONDO HOA",
+        "RESIDENTIAL COST-VAL - DUPLEX",
+        "SALES APPR CONDO/CO-OP",
+        "SALES APPR CONDO/GARDEN",
+        "SALES APPR CONDO/HIGH RISE",
+        "SALES APPR CONDO/MID RISE",
+        "SALES APPR CONDO/STACKED")
+
+
+sf <- c("NOT VALUED COSTED - HOA/SITE PLAN",
+        "RESIDENTIAL COST-VAL - IMPR/SF & TW",
+        "RESIDENTIAL COST-VAL - SIDE BY SIDE",
+        "RESIDENTIAL COST-VAL - SINGLE-FAM DET",
+        "RESIDENTIAL COST-VAL - TOWNHOUSE/CO",
+        "RESIDENTIAL COST-VAL - TOWNHOUSE/FSO",
+        "SFD - APT ZONED/NO SITE PLAN",
+        "SFD - APT ZONED/SITE PLAN",
+        "SFD - COMM ZONED/NO SITE PLAN",
+        "SFD - COMM ZONED/SITE PLAN")
+
+vacant <- c("MULTI-FAM VACANT/NO SITE PLAN",
+            "MULTI-FAM VACANT/SITE PLAN",
+            "RESIDENTIAL COST-VAL - VAC/SF & TW",
+            "VACANT RESIDENTIAL",
+            "GEN COMM VAC-LAND/NO SITE PLAN",
+            "GEN COMM VAC-LAND/SITE PLAN",
+            "OFFICE BLDG VAC-LAND/NO SITE PLAN",
+            "OFFICE BLDG VAC-LAND/SITE PLAN",
+            "VACANT COMMERCIAL",
+            "VACANT EXEMPT",
+            "VACANT LIGHT INDUSTRIAL",
+            "VACANT OFFICE")
+
+
+jur <- jur %>% 
+  mutate(category = case_when(
+           countylandusedescription %in% other ~ "other",
+           countylandusedescription %in% mf ~ "mf",
+           countylandusedescription %in% sf ~ "sf",
+           countylandusedescription %in% vacant ~ "vacant"))
+
+rm(other, mf, sf, vacant)
+```
+
+##### `category_detail`
+```{r cr-catd}
+apartment <- c("AFFORDABLE DWELLING UNIT",
+               "APARTMENT - GARDEN",
+               "APARTMENT - HIGH-RISE",
+               "APARTMENT - MID-RISE",
+               "APARTMENT - PARKING",
+               "COMMUNITY BENEFIT UNIT",
+               "MULTI-FAM IMPR/NO SITE PLAN",
+               "MULTI-FAM IMPR/SITE PLAN")
+
+commercial <- c("COMMERCIAL CONDO",
+                "GEN COMM-IND - AUTO DEALERSHIP",
+                "GEN COMM-IND - SELF-STORAGE",
+                "GEN COMM-IND - SERVICE STATION",
+                "GEN COMM-IND - WAREHOUSE",
+                "GEN COMM - BANK",
+                "GEN COMM - FAST FOOD",
+                "GEN COMM - HEALTH CARE FACILITY",
+                "GEN COMM - MIXED OFFICE/COMM",
+                "GEN COMM - NEIGHBORHOOD CTR",
+                "GEN COMM - OTHER",
+                "GEN COMM - REST/EATING FACILITY",
+                "GEN COMM - RETAIL/STRIP",
+                "GEN COMM - SMALL OFFICE",
+                "GEN COMM IMPR-LAND/NO SITE PLAN",
+                "GEN COMM IMPR-LAND/SITE PLAN",
+                "GEN COMM/PARKING",
+                "HOTEL - FULL SERVICE",
+                "HOTEL - LAND/OTHER",
+                "HOTEL - LIMITED SERVICE",
+                "HOTEL - LODGING",
+                "HOTEL - SELECT DRIVE",
+                "HOTEL RESIDENCE SUITES",
+                "MIXED USE")
+
+condo <- c("NOT VALUED CONDO HOA",
+           "SALES APPR CONDO/CO-OP",
+           "SALES APPR CONDO/GARDEN",
+           "SALES APPR CONDO/HIGH RISE",
+           "SALES APPR CONDO/MID RISE",
+           "SALES APPR CONDO/STACKED")
+
+duplex <- c("RESIDENTIAL COST-VAL - DUPLEX")
+
+office <- c("OFFICE BLDG IMPR-LAND/SITE PLAN",
+            "OFFICE BLDG/7 OR MORE STORIES",
+            "OFFICE BLDG/PARKING",
+            "OFFICE BLDG/UNDER 7 STORIES")
+
+sfattached <- c("RESIDENTIAL COST-VAL - SIDE BY SIDE")
+
+sfdetached <- c("NOT VALUED COSTED - HOA/SITE PLAN",
+                "RESIDENTIAL COST-VAL - IMPR/SF & TW",
+                "RESIDENTIAL COST-VAL - SINGLE-FAM DET",
+                "SFD - APT ZONED/NO SITE PLAN",
+                "SFD - APT ZONED/SITE PLAN",
+                "SFD - COMM ZONED/NO SITE PLAN",
+                "SFD - COMM ZONED/SITE PLAN")
+
+townhouse <-  c("RESIDENTIAL COST-VAL - TOWNHOUSE/CO",
+                "RESIDENTIAL COST-VAL - TOWNHOUSE/FSO") 
+
+vacantcom <- c("GEN COMM VAC-LAND/NO SITE PLAN",
+               "GEN COMM VAC-LAND/SITE PLAN",
+               "VACANT COMMERCIAL") 
+
+vacantexempt <- c("VACANT EXEMPT")
+
+vacantlight <- c("VACANT LIGHT INDUSTRIAL")
+
+vacantmf <- c("MULTI-FAM VACANT/NO SITE PLAN",
+              "MULTI-FAM VACANT/SITE PLAN")
+
+vacantoffice <- c("OFFICE BLDG VAC-LAND/NO SITE PLAN",
+                  "OFFICE BLDG VAC-LAND/SITE PLAN",
+                  "VACANT OFFICE")
+
+vacantres <- c("VACANT RESIDENTIAL")
+
+vacantsf <- c("RESIDENTIAL COST-VAL - VAC/SF & TW")
+
+
+jur <- jur %>% 
+  mutate(category_detail = case_when(
+           countylandusedescription %in% apartment ~ "apartment",
+           countylandusedescription %in% commercial ~ "commercial",
+           countylandusedescription %in% condo ~ "condo",
+           countylandusedescription %in% duplex ~ "duplex",
+           countylandusedescription %in% office ~ "office",
+           countylandusedescription %in% sfattached ~ "sf attached",
+           countylandusedescription %in% sfdetached ~ "sf detached",
+           countylandusedescription %in% townhouse ~ "townhouse",
+           countylandusedescription %in% vacantcom ~ "vacant commercial",
+           countylandusedescription %in% vacantexempt ~ "vacant exempt",
+           countylandusedescription %in% vacantlight ~ "vacant light industrial",
+           countylandusedescription %in% vacantmf ~ "vacant mf",
+           countylandusedescription %in% vacantoffice ~ "vacant office",
+           countylandusedescription %in% vacantres ~ "vacant residential",
+           countylandusedescription %in% vacantsf ~ "vacant sf"))
+
+rm(apartment, commercial, condo, duplex,
+   office, sfattached, sfdetached, townhouse,
+   vacantcom, vacantexempt, vacantlight, vacantmf,
+   vacantoffice, vacantres, vacantsf)
+
+```
+
+##### `building_type`
+```{r cr-bt}
+
+garden <- c("APARTMENT - GARDEN",
+            "SALES APPR CONDO/GARDEN")
+               
+highrise <- c("APARTMENT - HIGH-RISE",
+              "SALES APPR CONDO/HIGH RISE")
+               
+midrise <- c("SALES APPR CONDO/MID RISE",
+             "APARTMENT - MID-RISE")
+               
+parking <- c("APARTMENT - PARKING")
+
+stacked <- c("SALES APPR CONDO/STACKED")
+
+coop <- c("SALES APPR CONDO/CO-OP")
+
+duplex <- c("RESIDENTIAL COST-VAL - DUPLEX")
+
+other <- c("AFFORDABLE DWELLING UNIT",
+           "COMMUNITY BENEFIT UNIT",
+           "MULTI-FAM IMPR/NO SITE PLAN",
+           "MULTI-FAM IMPR/SITE PLAN",
+           "NOT VALUED CONDO HOA")
+               
+jur <- jur %>% 
+  mutate(building_type = case_when(
+           countylandusedescription %in% garden ~ "garden",
+           countylandusedescription %in% highrise  ~ "high-rise",
+           countylandusedescription %in% midrise ~ "mid-rise",
+           countylandusedescription %in% parking ~ "parking",
+           countylandusedescription %in% stacked ~ "stacked",
+           countylandusedescription %in% coop ~ "co-op",
+           countylandusedescription %in% duplex ~ "duplex",
+           countylandusedescription %in% other ~ "other"))
+
+rm(garden, highrise, midrise, parking, stacked, coop, duplex, other)           
+```
+
+### Check variable classifications
+These checks make sure that all county land use codes recieved new classifications, and shows the distribution of properties 
+
+#### {.tabset .tabset.fade}
+##### `residential`
+```{r res-check}
+count(jur, residential)
+count(jur, is.na(residential))
+
+if (TRUE %in% is.na(jur$residential)) {
+  warning("NAs introduced")
+}
+
+```
+
+##### `category`
+```{r cat-check}
+count(jur, category)
+count(jur, is.na(category))
+
+if (TRUE %in% is.na(jur$category)) {
+  warning("NAs introduced")
+}
+
+```
+
+##### `category_detail`
+```{r catd-check}
+count(jur, category_detail)
+count(jur, is.na(category_detail))
+
+if (TRUE %in% is.na(jur$category_detail)) {
+  warning("NAs introduced")
+}
+
+```
+##### `building_type`
+Here, we expect NAs since `building_type` is only for MF properties- but we should have the same number of non-missing values as we do MF observations
+```{r bt-check}
+newcat <- sum(!is.na(jur$building_type))
+mf <- nrow(filter(jur, category == "mf"))
+
+if (mf != newcat) {
+  warning(newcat, " observations categorized, expecting ", mf)
+}
+
+rm(newcat, mf)
+    
+```
+
+### Recreate lot size
+There are errors in the different Black Knight lot size variables that make it impossible to compare lot size when reported in acres and square feet. Here, we create two new variables, `lotsize_acres` and `lotsize_sf` that standardize the unit of measurement. These variables will also convert values of 0 to `NA`, which will simplify calculations down the line.
+```{r count}
+count(jur, lotsizeareaunit)
+```
+
+```{r lot}
+jur <- jur %>% 
+  mutate(lotsize_acres = case_when(lotsizeareaunit == "AC" ~ lotsizeorarea ,
+                                   lotsizeareaunit == "SF" ~ lotsizeorarea / 43560),
+         lotsize_sf = lotsize_acres * 43560) %>% 
+  mutate_at(vars(lotsize_acres, lotsize_sf), ~ replace(., .==0, NA))
+
+```
+
+## Collapsing properties
+Next, we need to collapse parcels to the number of units per acre, primarily due to condos habing seperate parcel numbers.
+
+### Preserving parcel numbers
+Parcels that have the same address do not share the same parcel ID, but they do share the same first five digits. We can clean up the parcel ID and preserve the first 5 digits in case there is a need to later combine with another parcel-level dataset.
+
+First- summarize and create a list, so we can see all the cases where there is not a unique partial parcel number for each address. If there is more than one 5-digit parcel ID for the building, we replace `parcel_address` with `NA`.
+
+**Note:** It is possible that this may not hold for all jurisdiction. Visually confirm with a few multiple addresses.
+
+```{r parcel}
+jur <- jur %>% 
+  mutate(parcel_address = substr(assessorsparcelnumberapnpin, 1, 6))
+
+bad_parcels <- jur %>% 
+  group_by(propaddress) %>% 
+  summarize(parcel = list(parcel_address)) %>% 
+  mutate(unq_parcels = as.integer(map(parcel, 
+                                  function(x) length(unique(x))))) %>% 
+  filter(unq_parcels > 1)
+
+bad_reverse <- jur %>% 
+  group_by(parcel_address) %>% 
+  summarize(address = list(propaddress)) %>% 
+  mutate(unq_address = as.integer(map(address, 
+                                  function(x) length(unique(x))))) %>% 
+  filter(unq_address > 1)
+
+sum(bad_reverse$unq_address)
+
+bad_addresses <- bad_parcels %>% 
+  pull(propaddress)
+
+jur <- jur %>% 
+  mutate(parcel_address = ifelse(propaddress %in% bad_addresses,
+                                 NA,
+                                 parcel_address))
+
+rm(bad_addresses, bad_parcels)
+
+```
+
+We can do a quick check to make sure that there are no properties that have the same address but different parcel IDs by seeing if the number of rows are the same when we group by address and parcel ID, vs. just grouping by address.
+
+```{r check-parcel}
+x <- jur %>% 
+  filter(residential == 1) %>% 
+  group_by(propaddress) %>% 
+  count() %>% 
+  nrow()
+
+y <- jur %>% 
+  filter(residential == 1) %>% 
+  group_by(propaddress, parcel_address) %>% 
+  count() %>% 
+  nrow()
+
+if (x == y) {
+  print(paste0(x, " = ", y, ": clean collapse"))
+  } else if (y > x) {
+    warning("additional observations introduced")
+}
+
+rm(x, y)
+
+```
+
+### House number cleaning 
+There are a number of properties that have numbers or symbols in their house numbers that prevent a collapse. This next step removes those characters so the collapse is clean.
+This will also recategorize properties that have a missing house number as properties that have a missing address. This is important for the collapse because it could cause us to combine two observations that would otherwise be seperate.
+
+```{r letters}
+jur <- jur %>% 
+  mutate(house_letter = ifelse(str_detect(prophouseno, "[:alpha:]") == 1, 1, 0),
+         oldadd = propaddress,
+         new_houseno = ifelse(house_letter == 1,
+                              str_replace(prophouseno, "[:alpha:]", ""), 
+                              prophouseno),
+         propaddress = ifelse(house_letter == 1, 
+                              paste(str_replace_all(new_houseno, "-", ""),
+                                    propstreetname, 
+                                    propstreetsuffix,
+                                    sep = " "),
+                              propaddress))
+```
+
+ Compare the first 20 addresses to check
+```{r letters-check}
+jur %>% 
+  filter(house_letter == 1) %>% 
+  select(oldadd, propaddress, category_detail) %>% 
+  head(20)
+
+
+```
+
+After this change, the number of NAs in the address variable should be the same as the number of observations that previously had either a missing address, missing house number, or both.
+```{r letters-check2}
+stopifnot(sum(is.na(jur$propaddress)) == nrow(filter(jur, 
+            is.na(propaddress) | is.na(prophouseno))))
+```
+
+### Address break out
+In order to do the collapse, we first identify addresses with more than one observation, and filter out those with a missing house number or address to avoid an improper collapse. Then, run a quick check to make sure there are no NAs.
+
+```{r sep}
+jur <- jur %>% 
+  classify_addresses()
+
+count(jur, address_type)
+
+if (TRUE %in% is.na(jur$address_type)) {
+  warning("NAs in address_type")
+}
+
+```
+
+For townhouses and other forms of attached housing, we do not want a collapse, since this is a function of addressing and not the unit type. We will reclassify the address type as `single` for properties that have a value of `sf attached` and `townhouse` for the `category_detail` variable.
+
+```{r th}
+
+jur <- jur %>% 
+  mutate(address_type = ifelse(category_detail %in% c("townhouse", "sf attached"),
+                                  "single",
+                                  address_type))
+
+```
+
+Seperate the address types for different operations.
+
+```{r mlt}
+multiples <- jur %>% 
+  filter(address_type == "multiple")
+
+singles <- jur %>% 
+  filter(address_type == "single")
+
+missing <- jur %>% 
+  filter(address_type == "missing")
+
+```
+
+For addresses that have some records with missing zoning, but others that have a zoning designation: we need to fill the NAs with the appropriate zoning code. `group_by()` means that zoning codes will not be passed on to observations with a different address, and using `fill()` in both directions means that the NAs will be filled regardless of their position.
+
+### Multiple addresses
+```{r fill}
+multiples <- multiples %>% 
+  group_by(propaddress) %>% 
+  fill(zoning) %>% 
+  fill(zoning, .direction = "up") %>% 
+  ungroup()
+```
+
+Next, we summarize the data using nested lists, which allow us to preserve all the details from each record and apply the right function to each. The table below describes each variable, which function to use, and what to do in the case of a tie. Lot size is a unique case, detail provided in the next section.
+
+```{r var-table, echo=FALSE, results = 'asis', eval=TRUE}
+
+v <- tibble::tibble(variable = c("zoning", 
+                                 "lotsize_sf", 
+                                 "buildingarea", 
+                                 "countylandusedescription",
+                                 "residential", 
+                                 "category", 
+                                 "category_detail",
+                                 "building_type",
+                                 "yearbuilt", 
+                                 "long", 
+                                 "lat"),
+            operation = c("mode", 
+                          "conditional based on values",
+                          "sum",
+                          "mode",
+                          "max",
+                          "mode",
+                          "mode",
+                          "mode",
+                          "max",
+                          "median",
+                          "median"),
+            `in case of tie` = c("take most dense zoning code (?)",
+                                 "",
+                                 "",
+                                 "case-by-case basis",
+                                 "residential",
+                                 "case-by-case basis",
+                                 "case-by-case basis",
+                                 "case-by-case basis",
+                                 "take maxiumum year- accounts for renovation",
+                                 "median longitude and latitude ensures this is a correct pairing, falls within the address",
+                                 "median longitude and latitude ensures this is a correct pairing, falls within the address"))
+
+knitr::kable(v)
+
+rm(v)
+
+```
+
+**Note:** there are some instances where there are no non-`NA` values, so this next step will throw some warning messages.
+
+``` {r nest}
+nested <- multiples %>% 
+  group_by(propaddress, parcel_address) %>%
+  summarize_at(vars(zoning,lotsize_sf,
+                    buildingarea, countylandusedescription,
+                    residential, category, category_detail, building_type,
+                    yearbuilt, long, lat,
+                    parcel_area, parcel_length,
+                    assessedlandvalue, assessedimprovementvalue, totalassessedvalue), list) %>% 
+  rename_at(vars(-propaddress, -parcel_address), ~ paste0(., "_list")) %>% 
+  mutate(nprops = map(zoning_list, length),
+         zoning = map(zoning_list, Mode),
+         lotsize_sf_sum = map_dbl(lotsize_sf_list, sum, na.rm = TRUE),
+         buildingarea = map_dbl(buildingarea_list, sum, na.rm = TRUE),
+         countylandusedescription = map(countylandusedescription_list, Mode),
+         residential = map(residential_list, max, na.rm = FALSE),
+         category = map(category_list, Mode),
+         category_detail = map(category_detail_list, Mode),
+         building_type = ifelse(category == "MF",
+                                map(building_type_list, Mode),
+                                NA),
+         long = map(long_list, median),
+         lat = map(lat_list, median),
+         # year built handled differently due to missing values
+         yearbuilt_list = ifelse(as.integer(map(yearbuilt_list, 
+                                                function(x) 
+                                                  sum(!is.na(x)))) == 0,
+                                 NA,
+                                 yearbuilt_list),
+         yearbuilt = ifelse(!is.na(yearbuilt_list),
+                      map(yearbuilt_list, max, na.rm = TRUE),
+                      NA),
+         parcel_area = map_dbl(parcel_area_list, sum, na.rm = TRUE),
+         parcel_length = map_dbl(parcel_length_list, sum, na.rm = TRUE),
+         totalassessedvalue = map_dbl(totalassessedvalue_list, sum, na.rm = TRUE),
+         assessedimprovementvalue = map_dbl(assessedimprovementvalue_list, 
+                                            sum, na.rm = TRUE),
+         assessedlandvalue = map_dbl(assessedlandvalue_list, sum, na.rm = TRUE))
+
+```
+
+#### Lot size
+
+**Note: This entire section may not hold accross jurisdictions. Visually confirm that this applies. Some thresholds may need to be adjusted.**
+
+Lot size cannot be summarized with one operation, because it is reported differently for different buildings. The following examples show five cases that we have to reconcile.
+
+``` {r lot-ex, echo=FALSE}
+weird <- tibble(propaddress = c( "1330 S FAIR ST", 
+                                 "1633 N COLONIAL TER", 
+                                 "1117 N VERMONT ST", 
+                                 "1500 N GLEBE RD", 
+                                 "1300 N MEADE ST"),
+                instance = 1:5)
+
+nested %>% 
+  filter(propaddress %in% weird$propaddress) %>%
+  left_join(weird, by = "propaddress") %>% 
+  select(instance, propaddress, nprops, lotsize_sf_list, lotsize_sf_sum) %>% 
+  arrange(instance) %>% 
+  knitr::kable()
+
+rm(weird)
+```
+
+- In the first instance, the lot size is repeated- the number of unique lot sizes is 1, so mode is the right function.
+- In the second instance, the sum of the lot size is the incorrect lot size, and the mode is a better function- but there is more than one unique value.
+- In the third example, the mode would give is a lot size of 0, which is also incorrect- but again, every value is not unique. 
+- In the fourth instance, there are the same number of unique values as there are properties- sum is the correct function. 
+- In the fifth instance, we need to replace the lot size of 0 with `NA`, so future operations will also return `NA`. 
+
+
+First, filter out all the observations where the function is known. Then, re-examine the remaining observations.
+There are a few variables needed:
+1. The number of unique observations in the `lotsize_sf_list` nested list
+2. The sum, Mode (if unique), and first observation (in the case of a tie in the mode)
+
+``` {r lot-vars}
+nested <- nested %>% 
+  mutate(nprops = as.integer(nprops),
+         lotsize_sf_sum = as.integer(lotsize_sf_sum),
+         unique_lots = map(lotsize_sf_list, function(x) length(unique(x))),
+         lsfirst = map(lotsize_sf_list, function(x) x[1]),
+         lsmode = ifelse(lotsize_sf_sum == 0,
+                         NA,
+                         map(lotsize_sf_list, Mode, na.rm = TRUE))
+         ) %>% 
+  ungroup()
+```
+
+Based on these variables, we can identify when`sum()` is definitely the right function (when the number of unique values in `lotsize_sf_list` is the same as `nprops`), and when we want to take the first argument is definitely the right function (there is only one unique value in `lotsize_sf_list`).
+
+``` {r fx-choice}
+nested <- nested %>% 
+  mutate(fxn = case_when(
+    lotsize_sf_sum < 1 ~ "missing",
+    nprops == unique_lots ~ "sum",
+    unique_lots == 1 ~ "first",
+    TRUE ~ "other"
+  ))
+
+nested %>% count(fxn)
+
+nested_done <- nested %>% 
+  filter(fxn != "other")
+
+```
+
+**NOTE:** The following assumptions are specific to `r str_to_title(filepath)` County. Develop new logic for other jurisdictions!
+
+Based on examining the 77 addressess with different criteria, we develop these assumptions:
+1. Properties with more than 500 units are majority missing, and should be marked missing.
+2. If the mode is > 8,000 SF, we will use the mode.
+3. For all others, we use the sum.
+
+First, we coerce the `lsmode` variable into numeric, and then apply this logic. Then, we remerge with all the multiple addressess and apply the correct operations.
+
+``` {r fx-choice2}
+nested_other <- nested %>% 
+  filter(fxn == "other") %>% 
+  mutate(lsmode_num = ifelse(map(lsmode, length) > 1, NA, lsmode),
+         lsmode_num = as.integer(lsmode_num),
+         fxn = case_when(
+            nprops > 500 ~ "missing",
+            lsmode_num > 8000 ~ "mode",
+            TRUE ~ "sum"
+  ))
+
+count(nested_other, fxn)
+```
+
+Last, we standardize the variables, recombine the two parts, and select the appropriate variable for lot side.
+
+```{r combine}
+
+nested_all <- bind_rows(nested_done, nested_other) %>% 
+  mutate_at(vars(lotsize_sf_sum, lsfirst, lsmode_num), as.double) %>% 
+  mutate(lotsize_sf_final = 
+           case_when(fxn == "first" ~ lsfirst,
+                     fxn == "sum" ~ lotsize_sf_sum,
+                     fxn == "mode" ~ lsmode_num))
+```
+
+The number of NAs should be the same as the number of those with the designation "missing"
+```{r ls-check}
+count(nested_all, fxn == "missing")
+count(nested_all, is.na(lotsize_sf_final))
+```
+Lastly, the number of rows should be the same as before we split and re-combined.
+
+```{r row-check}
+stopifnot(nrow(nested_all) == nrow(nested))
+
+rm(nested, nested_done, nested_other)
+```
+#### Ties
+
+##### Zoning
+There are 62 instances where there is a tie in the zoning code- examples below.
+
+``` {r ties}
+ties <- nested_all %>% 
+  mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
+  filter(ties_z == 1) %>% 
+  mutate(z1 = map(zoning, 1),
+         z2 = map(zoning, 2),
+         z3 = map(zoning, 3),
+         cl1 = map(countylandusedescription, 1),
+         cl2 = map(countylandusedescription, 2),
+         cl3 = map(countylandusedescription, 3)) %>% 
+  select(propaddress, nprops,
+         z1, z2, z3,
+         cl1, cl2, cl3) %>% 
+  mutate_all(as.character)
+
+ties %>%
+  select(propaddress, z1, z2) %>% 
+  head(5)
+```
+
+Since there is no definitive way to break these ties, we replace the `zoning` variable with `NA`. In a later step, we will spatially join with the zoning layer to determine which zone these properties are in.
+
+``` {r write-ties}
+
+nested_all <- nested_all %>% 
+  mutate(ties_z = ifelse(map(zoning, length) > 1, 1, 0)) %>% 
+  mutate(zoning = ifelse(ties_z == 1,
+                         NA,
+                         zoning),
+         countylandusedescription = ifelse(ties_z == 1,
+                                           NA,
+                                           countylandusedescription)) %>% 
+  select(-ties_z)
+
+```
+
+##### Category_detail
+
+Ties must also be resolved in several of the other variables. Looking at the most detailed of these variables (`category_detail`) will allow us to resolve multiple of these ties at once.
+
+First- identify the instances, and see which categories are most common.
+
+```{r cd-ties}
+cdties <- nested_all %>% 
+  filter(map(category_detail, length) > 1)
+
+cdties %>% 
+  mutate(category_detail_chr = as.character(category_detail)) %>% 
+  group_by(category_detail_chr) %>% 
+  count() %>% 
+  arrange(desc(n))
+
+```
+
+Here, we create a variable to indicate how many of the values in `category_detail` are one of the vacant designations.
+
+**Note:** this logic will likely apply to other jurisdictions- but visually check some of the ties first to make sure this makes sense.
+
+```{r cd-resolve}
+cdties <- cdties %>% 
+  mutate(test_vacant = as.integer(map(category_detail, 
+                                      ~ sum(str_detect(., "vacant")))))
+
+count(cdties, test_vacant) %>% 
+  rename(`Number of vacant categories` = test_vacant,
+         `Number of instances` = n) %>% 
+  mutate(`What to do?` = c("Take the residential code",
+                           "Take the non-vacant categoty",
+                           "Pick the more general vacant category")) %>% 
+  knitr::kable()
+```
+
+We will separate and then recombine to perform different operations and look at the individual cases for each instance.
+For all instances- we will determine position using the entire listed variable (for example, `category_detail_list`), NOT the variable that displays the tie (`category_detail`). Although they look the same, using the variable that ends with `_list` ensures that all the arguements are in the same order for all the variables we need to reclassify.
+
+**If no properties are vacant:**
+
+- If one of the values is residential -> residential
+- If the tie is between commercial or office -> first value
+
+We use the residential indicator to determine which argument of the vector contains the residential category, and then select the same values by arguement position for each other variable that conflicts.
+
+```{r no-vac}
+
+novac <- cdties %>% 
+  filter(test_vacant == 0) %>% 
+  mutate(test_res1 = map(residential_list, 1),
+         test_res2 = map(residential_list, 2)) %>% 
+  mutate(argnum = case_when(test_res1 == 1 ~ 1,
+                            test_res2 == 1 ~ 2,
+                            TRUE ~ 1)) %>% 
+  mutate(category = ifelse(argnum == 1,
+                           map(category_list, 1),
+                           map(category_list, 2)),
+         category_detail = ifelse(argnum == 1,
+                           map(category_detail_list, 1),
+                           map(category_detail_list, 2)),
+         building_type = ifelse(argnum == 1,
+                           map(building_type_list, 1),
+                           map(building_type_list, 2)),
+         countylandusedescription = ifelse(argnum == 1,
+                           map(countylandusedescription_list, 1),
+                           map(countylandusedescription_list, 2))) %>% 
+  select(-test_res1, -test_res2, -argnum)
+
+```
+
+**If one value is vacant:** We want to select the non-vacant observation.
+We can test which argument is vacant using `str_detect` and then select the other value.
+
+Since one of these is vacant, we also want to adjust the `nprops` variable- which will become the our measure of determining number of units once we bind the multiple addresses back to the single addresses- back to `1`.
+
+```{r one-vac}
+onevac <- cdties %>% 
+  filter(test_vacant == 1) %>% 
+  mutate(vac1 = str_detect(map(category_detail_list, 1), "vacant")) %>% 
+  mutate(category = ifelse(vac1 == FALSE,
+                           map(category_list, 1),
+                           map(category_list, 2)),
+         category_detail = ifelse(vac1 == FALSE,
+                           map(category_detail_list, 1),
+                           map(category_detail_list, 2)),
+         building_type = ifelse(vac1 == FALSE,
+                           map(building_type_list, 1),
+                           map(building_type_list, 2)),
+         countylandusedescription = ifelse(vac1 == FALSE,
+                           map(countylandusedescription_list, 1),
+                           map(countylandusedescription_list, 2))) %>% 
+  mutate(nprops = 1,
+         vacant_flag = 1) %>% 
+  select(-vac1)
+
+# this value will be used later to check the number of rows
+nunits <- cdties %>% filter(test_vacant == 1) %>% summarize(sum(nprops)) %>% pull()
+```
+
+**If both values are vacant:**
+There are few examples of this, but in each case we want to default to the more general case.
+
+```{r both-vac}
+bothvac <- cdties %>% 
+  filter(test_vacant == 2) %>% 
+  mutate(countylandusedescription = map(countylandusedescription, 1),
+         category_detail = map(category_detail, 1))
+
+```
+
+Bind all instances back together, check that no observations have gone missing, and then bind back to full dataset.
+
+```{r ties-bind}
+stopifnot(
+  nrow(cdties) == nrow(bind_rows(novac, bothvac, onevac))
+)
+
+nested_final <- bind_rows(
+  filter(nested_all, map(category_detail, length) <= 1),
+  novac, bothvac, onevac) %>% 
+  select(-test_vacant)
+
+stopifnot(nrow(nested_all) == nrow(nested_final))
+
+rm(novac, onevac, bothvac, nested_all)
+```
+
+### Single addresses
+
+For single addresses, we have to reclassify condos that have a unique observation as single-family structures, since condos are listed seperately for each unit
+
+```{r singles-count}
+count(singles, category_detail)
+```
+
+```{r singles-redo}
+
+singles <- singles %>% 
+  mutate(category = ifelse(category_detail == "condo",
+                           "sf",
+                           category),
+         category_detail = ifelse(category_detail == "condo",
+                                  "sf attached",
+                                  category_detail))
+```
+
+## Recombine and save data
+
+The final outputted dataset should not contain nested lists, but should capture all other relevant information from single and multiple address properties.
+First, select approptiate variables from the singles file. Then, re-introduce rename and transform variables from multiple addressess and bind dataframes.
+
+```{r final}
+singles_f <- singles %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin, 
+         propaddress, propcity, propstate, propzip,
+         propunitno, prophouseno, propstreetname, propstreetsuffix,
+         lat, long, tract, owneroccupiedresidential,
+         countylandusedescription, zoning, buildingarea, noofbuildings,
+         noofstories, numberofunits, yearbuilt,
+         lotsize_acres, lotsize_sf, address_type,
+         category, category_detail, residential, building_type,
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue,
+         ends_with("prop"),
+         parcel_area, parcel_length,
+         raw_parcelid_par)
+
+missing_f <- missing %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin, 
+         propaddress, propcity, propstate, propzip,
+         propunitno, prophouseno, propstreetname, propstreetsuffix,
+         lat, long, tract, owneroccupiedresidential,
+         countylandusedescription, zoning, buildingarea, noofbuildings,
+         noofstories, numberofunits, yearbuilt,
+         lotsize_acres, lotsize_sf, address_type,
+         category, category_detail, residential, building_type,
+         assessedlandvalue, assessedimprovementvalue, totalassessedvalue)
+
+multiples_f <- nested_final %>% 
+  select(-ends_with("_list"), -lsmode, -lsfirst, 
+         -lsmode_num, -fxn, -unique_lots, -lotsize_sf_sum) %>% 
+  mutate_at(vars(countylandusedescription, zoning,
+                 category, category_detail, building_type, yearbuilt),
+            as.character) %>% 
+  mutate_at(vars(buildingarea, lat, long, residential), as.double) %>% 
+  rename(lotsize_sf = lotsize_sf_final, numberofunits = nprops) %>% 
+  mutate(lotsize_acres = lotsize_sf / 43560,
+         address_type = "multiple")
+
+jur4 <- bind_rows(singles_f, multiples_f, missing_f) %>% 
+  fill(county_fips) %>% 
+  fill(county_name)
+
+jur4[jur4 == "NULL"] = NA
+jur4[jur4 == "character(0)"] = NA
+
+```
+
+Run one last check to make sure everything from the initial dataset is accounted for. We have to account for the fact that the addresses were collapsed. There were `r nrow(filter(cdties, test_vacant == 1))` multiple-address parcels that were collapsed into just 1 unit- so we subtract the number of total units that had ties, `r nunits`,  minus `r nrow(filter(cdties, test_vacant == 1))`.
+
+```{r fin-check}
+mult <- jur4 %>% 
+  filter(address_type == "multiple") %>% 
+  summarize(num = sum(numberofunits)) %>% 
+  pull()
+
+other <- jur4 %>% 
+  filter(address_type != "multiple")
+
+stopifnot(mult + nrow(other) == nrow(jur) - 
+            (nunits - nrow(filter(cdties, test_vacant == 1))))
+
+rm(mult, other, nunits, cdties)
+
+```
+
+
+## Add additional variables 
+
+Get additional metric for number of units from the Arlington County address file, which was downloaded in the preclean step.
+
+```{r address-file}
+
+# read address file
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
+adfile <- paste0(rdir, filepath, "-address-file.csv")
+address <- read_csv(adfile)
+
+address1 <- address %>% 
+  mutate(address_cap = toupper(FULL_ADDRESS)) %>% 
+  select(address_cap, units_address = UNITCOUNT) %>% 
+  group_by(address_cap) %>% 
+  summarize(units_address = sum(units_address))
+
+
+jur5 <- jur4 %>% 
+  mutate(address_cap = toupper(propaddress)) %>% 
+  left_join(address1, by = "address_cap") %>% 
+  select(-address_cap)
+
+
+```
+
+BEFORE spatial join: collapse condos that were not collapsed by address via the first five digits of their parcel ID.
+
+```{r condo-collapse}
+
+test <- jur5 %>% 
+  filter(category_detail == "condo",
+         address_type != "missing",
+         !is.na(parcel_address))
+
+
+grouped_condos <- test %>% 
+  group_by(parcel_address, countylandusedescription) %>% 
+  summarize()
+
+```
+
+
+Use a spatial join to the parcel shapefule to fill in lot size.
+
+```{r spatial}
+
+# read parcel shapefile
+par <- st_read(dsn = "L:/Libraries/RegHsg/Maps/arlington-parcel-map",
+               layer = "Parcel_Polygons") %>% 
+  st_transform(crs = 4326)
+
+# calculate area in square feet
+par <- par %>% 
+  mutate(area = st_area(par) %>% units::set_units("feet^2") %>% units::set_units(NULL))
+
+# convert arlington to spatial
+jursf <- jur5 %>% 
+  filter(!is.na(lat), !is.na(long)) %>% 
+  mutate(longx = long, laty = lat) %>% 
+  st_as_sf(coords = c("longx", "laty")) %>% 
+  st_set_crs(st_crs(4326))
+
+# join to zoning layer
+jurj <- st_join(jursf, par, st_intersects)
+
+# check match rate
+jurj %>% 
+  as.data.frame() %>% 
+  count(is.na(OBJECTID))
+
+jur6 <- jurj %>% 
+  # strip geometry
+  st_set_geometry(NULL)
+
+# identify when multiple condos join to one lot
+jur6condo <- jur6 %>%
+  filter(category_detail == "condo") %>% 
+  group_by(RPCMSTR) %>% 
+  count() %>% 
+  filter(n > 1)
+sum(jur6condo$n)
+
+# collapse by parcel ID and county land use. 
+# the area will be the same for all the parcels within a parcel ID- so take the average,
+# and divide this by the number of parcels joining to it.
+correct_area <- jur6 %>% 
+  group_by(RPCMSTR, countylandusedescription) %>% 
+  filter(n() > 1,
+         !is.na(RPCMSTR)) %>% 
+  summarize(n(),
+            area_new = mean(area, na.rm = TRUE) / n()) %>% 
+  mutate(area_new = ifelse(area_new == "NaN",
+                           NA,
+                           area_new))
+
+# select only what we want to join
+correct_area_merge <- correct_area %>% 
+  select(RPCMSTR, countylandusedescription, area_new)
+
+# merge on corrected area fill in lot size
+jur6a <- jur6 %>%
+  left_join(correct_area_merge, by = c("RPCMSTR", "countylandusedescription")) %>% 
+  # substitute when needed
+  mutate(area = ifelse(!is.na(area_new),
+                       area_new,
+                       area)) %>% 
+  # fill in lot size with area
+  mutate(lotsize_sf = ifelse((lotsize_sf == 0 | is.na(lotsize_sf)) & !is.na(OBJECTID),
+                             area,
+                             lotsize_sf)) %>% 
+  select(-OBJECTID, -EVENT_ID, -RPCMSTR) %>% 
+  # bind back to obs with missing coords
+  bind_rows(filter(jur5, is.na(lat)))
+
+sum(is.na(jur6$lotsize_sf))
+sum(jur6$lotsize_sf == 0, na.rm = TRUE)
+
+```
+
+## Replace missing variables when possible
+
+```{r replace}
+
+jur7 <- jur6a %>% 
+  mutate(lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) & !is.na(parcel_area),
+                             parcel_area,
+                             lotsize_sf),
+         lotsize_sf = ifelse((is.na(lotsize_sf) | lotsize_sf == 0) & !is.na(lotsize_prop),
+                             lotsize_prop,
+                             lotsize_sf),
+         lotsize_acres = lotsize_sf / 43560) %>% 
+  mutate(numberofunits = ifelse(category_detail == "duplex" & numberofunits == 0,
+                                2,
+                                numberofunits),
+         numberofunits = ifelse(category == "sf" & numberofunits == 0,
+                                1,
+                                numberofunits),
+         numberofunits = ifelse(numberofunits == 0 & units_address != 0 & 
+                                  !is.na(units_address) & units_address != 0,
+                                units_address,
+                                numberofunits),
+         numberofunits = ifelse((is.na(numberofunits) | numberofunits == 0) & 
+                                  !is.na(numberofunits_prop) & numberofunits_prop != 0,
+                                numberofunits_prop,
+                                numberofunits))
+
+
+sum(is.na(jur7$lotsize_sf))
+
+
+sum(jur6$numberofunits == 0)
+
+jur7 %>% 
+  filter(residential == 1, category != "vacant") %>% 
+  summarize(sum(is.na(numberofunits)),
+            sum(numberofunits == 0))
+
+
+jur7 %>% 
+  filter(residential == 1, 
+         category != "vacant",
+         numberofunits == 0) %>% 
+  count(category_detail)
+
+```
+
+
+Write out clean data. This time, we will save as a `.csv` so that it can be read into another program if necessary.
+
+```{r write}
+write_csv(jur7, 
+          paste0(jdir, filepath, "-cleaned-data.csv"))
+```
+
+Clear global environment.
+
+```{r}
+
+rm(list=ls())
+
+```

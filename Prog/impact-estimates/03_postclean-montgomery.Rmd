@@ -1,0 +1,650 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Post Clean Montgomery BK data and join it with county data"
+description: "takes the collapsed parcel file and spatially joins it with a county parcel file to fill in missing lot size and zoning variables. Merges with rockville and gaithersburg shape files to create analysis flags for use in the vacant lots analysis"
+author: "Patrick Spauster"
+date: "February 13, 2019"
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Patrick Spauster
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+## Set-up
+
+
+Load libraries and functions
+
+```{r setup}
+library(tidyverse)
+library(DescTools)
+library(purrr)
+library(sf)
+
+source("../../Macros/read-bk.R")
+source("../../Macros/filter-bk.R")
+source("../../Macros/select-vars.R")
+source("../../Macros/sample-properties.R")
+source("../../Macros/classify-addresses.R")
+source("../../Macros/max_narm.R")
+source("../../Macros/mode_narm.R")
+```
+
+Set FIPS code and filepath name
+
+```{r fips}
+currentfips <- "24031"
+filepath <- "montgomery"
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
+```
+
+Load in cleaned Black Knight data.
+
+```{r readR}
+jur <- readRDS(paste0(jdir, 
+               "cleaned-",
+               filepath,
+               "-data.Rdata"))
+```
+
+
+
+## Supplement with county data
+
+Use county data sources to fill in missing information.
+
+Read in zoning file (zoning_sf) to match to the collapsed BK data.
+Read in property file and master address file.
+
+```{r readin}
+
+zoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/montgomery-parcel-file/MCzoning_parcels',
+                     layer = "MC_zoning")
+
+# property shape stored in geodatabase- assign gdb for extraction
+prop <- "L:/Libraries/RegHsg/Maps/montgomery/property/property.gdb"
+
+# function below lists layers in geodatabase
+# rgdal::ogrListLayers(prop)
+
+propsf <- read_sf(prop, layer = "Property_poly_with_data")
+
+# read in master address file
+ma <- read_csv("L:/Libraries/RegHsg/Data/masteraddress_gis.csv",
+               col_types = cols(
+  ADDRID = col_double(),
+  ADDR_STATUS = col_double(),
+  ADDR_TYPE = col_double(),
+  ADDR_DATE = col_character(),
+  ADDR_NUMBER = col_double(),
+  ADDR_NUMBER_SUFFIX = col_character(),
+  PRE_DIR = col_character(),
+  ST_NAME = col_character(),
+  ST_TYPE = col_character(),
+  SUF_DIR = col_character(),
+  UNIT = col_character(),
+  XCOORD = col_double(),
+  YCOORD = col_double(),
+  FULL_ADDRESS = col_character(),
+  CITY = col_character(),
+  ZIPCODE = col_double(),
+  COMMENTS = col_character(),
+  COUNTY_CODE = col_double(),
+  DISTRICT = col_character(),
+  ACCT = col_character(),
+  SUBDIVISION = col_character(),
+  SUBDIV_ID = col_double(),
+  SUBDIV_NAME = col_character(),
+  LOT = col_character(),
+  BLOCK = col_character(),
+  PARCEL_NO = col_character(),
+  LU_CATEGORY = col_character(),
+  CBPTEAM = col_double(),
+  LONGZONE = col_character(),
+  MASTERPLAN_CODE = col_character(),
+  MASTERPLAN = col_character(),
+  POLICY_NUMBER = col_double(),
+  POLICY_AREA = col_character(),
+  PRELIM_APNO = col_character(),
+  SITE_APNO = col_character(),
+  SAR_STATUS = col_character(),
+  CHAMPTREE = col_character(),
+  SFP_ES = col_character(),
+  SFP_MS = col_character(),
+  SFP_HS = col_character(),
+  TPAR_REQ = col_character(),
+  PAMR_REQ = col_character(),
+  CONDITION_APNOS = col_character(),
+  CHANGE_DATE = col_character(),
+  X45 = col_character()
+))
+
+```
+
+Use the property file to supplement lot size for parcels with no "C" in their ACCT. For those who do not match on this- supplement parcels with a "C" with the address file, which crosswalks addresses to parcels with "C"s. Then re-merge to the property file, and divide the area of the "C" parcels by the number of observations per parcel ID.
+
+```{r}
+# get rid of geomerty for processing time
+prop_testing <- propsf %>% 
+  as.data.frame()
+
+# select and create variables from property file to merge with black knight data
+# select only obs with unique parcel ID
+propmerge <- prop_testing %>% 
+  select(DISTRICT, ACCT, 
+         LU_CATEGORY,
+         CONDO_UNIT_NO, 
+         NO_DWELLINGS, DWELLING_TYPE,
+         PLANNING, POLICY, MASTER_PLAN,
+         RES_DWELLU, LAND_ASSMT, IMPROV_ASSMT, Shape_Area) %>% 
+  mutate(parcel_id = paste0(DISTRICT, "-", ACCT),
+         cflag = str_detect(ACCT, "C"),
+         propflag = 1) %>% 
+  group_by(parcel_id) %>% 
+  filter(n() == 1) %>% 
+  ungroup()
+
+# join black knight with property file
+jur1 <- jur %>% 
+  mutate(missing_houseno = ifelse(is.na(prophouseno) &
+                                    address_type == "single",
+                                  1,
+                                  0)) %>% 
+  left_join(propmerge, by = c("assessorsparcelnumberapnpin" = "parcel_id"))
+
+# from master address file- select obs that are distinct address + parcel ID pairs
+mac <- ma %>% 
+  filter(str_detect(ACCT, "C")) %>% 
+  group_by(FULL_ADDRESS) %>% 
+  summarize(acct_list = list(ACCT)) %>% 
+  mutate(num = map_dbl(acct_list, ~ length(unique(.))),
+         house1 = substr(FULL_ADDRESS, 1, 2)) %>% 
+  filter(num == 1,
+         # get rid of observations with house numbers of 0
+         !house1 == "0 ") %>% 
+  mutate(ACCT_address = map_chr(acct_list, 1))
+
+# use this as parcel-address crosswalk
+macmerge <- mac %>% 
+  select(FULL_ADDRESS, ACCT_address)
+
+# join only obs that did not match in parcel file and do not have missing addresses
+jur1a <- jur1 %>% 
+  filter(is.na(propflag),
+         missing_houseno == 0) %>% 
+  select(-c(38:48)) %>% 
+  left_join(macmerge, by = c("propaddress" = "FULL_ADDRESS"))
+
+# see how many obs in the black knight data did not have a match in the master address file
+jur1 %>% 
+  filter(is.na(propflag),
+         missing_houseno == 0) %>% 
+  anti_join(mac, by = c("propaddress" = "FULL_ADDRESS")) %>% 
+  nrow()
+
+# join by parcel ID back to property file
+jur1b <- jur1a %>% 
+  left_join(propmerge, by = c("ACCT_address" = "ACCT")) %>% 
+  group_by(ACCT_address) %>% 
+  # divide area by the number of parcels
+  mutate(lot_acct = Shape_Area.y / n(),
+         clotflag = 1) %>% 
+  ungroup()
+
+# test how many and which type of properties did not join
+jur1banti <- jur1a %>% 
+  anti_join(propmerge, by = c("ACCT_address" = "ACCT")) %>% 
+  count(category_detail)
+
+```
+## Fill lot size.
+
+Recombine and replace lot size with the appropriate measure.
+
+```{r recombine}
+
+# recombine with obs that joined to property file or have missing house number
+jur2 <- jur1 %>% 
+  filter(propflag == 1 & !is.na(propflag) |
+         missing_houseno == 1) %>% 
+  bind_rows(jur1b) %>% 
+  # create a flag for when the subsetted area should be used
+  mutate(clotflag = ifelse(is.na(clotflag),
+                           0,
+                           clotflag))
+
+
+jur3 <- jur2 %>% 
+  mutate(arc_lotsize = lotsize_sf,
+         lotsize_sf = case_when(
+    # if subsetted area is available, use this
+    clotflag == 1 ~ lot_acct,
+    # if area was not subsetted and original lot size is missing, use the shape area
+    clotflag == 0 & is.na(arc_lotsize) ~ Shape_Area,
+    # if neither of these things are true, keep black knight lot size
+    TRUE ~ lotsize_sf
+  ))
+
+# test how many properties have missing lot size
+jur3 %>% 
+  group_by(category_detail) %>% 
+  summarize(n(),
+            sum(is.na(lotsize_sf)),
+            sum(lotsize_sf == 0, na.rm = TRUE)) %>% 
+  knitr::kable()
+```
+
+Look at the difference between shape area and the original black knight lot size- make sure it is not severly skewed one way.
+
+```{r}
+jur3 %>% 
+  mutate(lsdiff = Shape_Area - arc_lotsize) %>% 
+  filter(!is.na(arc_lotsize),
+         !is.na(Shape_Area),
+         clotflag != 1) %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(lsdiff)) +
+  scale_x_continuous(limits = c(-500, 500))
+
+```
+
+### Fix land use
+
+Use the property land use file to fix Black Knight land use where it is (most likely) wrong.
+
+```{r fix-landuse}
+
+landuse <- pull(prop_testing, LU_CATEGORY) %>% unique() %>% sort()
+
+landuse_recode <- tibble(LU_CATEGORY = landuse,
+                         landuse_residential = 
+                           c(0, 1, 0, NA, 0, 0, 
+                             1, 0, 0, 0, 0, 0,
+                             0, 1, 1, 0, 0, 0),
+                         landuse_category = c("other", "mf", "other",
+                                              NA, "other", "other",
+                                              "mf", "other", "other",
+                                              "other", "other", "other",
+                                              "other", "sf", "sf",
+                                              "other", "vacant", "other"))
+
+jur3a <- jur3 %>% 
+  left_join(landuse_recode, by = "LU_CATEGORY")
+
+jur3a %>% 
+  count(residential == landuse_residential)
+
+jur3a %>% 
+  count(category == landuse_category)
+
+jur3a <- jur3a %>% 
+  mutate(residential = ifelse(!is.na(landuse_residential) &
+                                residential != landuse_residential,
+                              landuse_residential,
+                              residential),
+         category = ifelse(!is.na(landuse_category) &
+                           category != landuse_category,
+                           landuse_category,
+                           category))
+
+jur3a %>% 
+  count(residential == landuse_residential)
+
+jur3a %>% 
+  count(category == landuse_category)
+
+jur3a %>% 
+  count(category)
+
+```
+
+
+## Spatial joins
+
+Next, use a spatial join to make flags for Rockville and Gaithersburg.
+
+Convert Black Knight data to spatial.
+
+```{r cleanjur}
+jur4 <- jur3a %>% 
+  mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
+                                1,
+                                0))
+
+jur4 <- jur4 %>% #archive the lat and long so that we can do multiples spatial joins. SF replace lat long with an SF object
+  mutate(latarc = lat) %>% 
+  mutate(longarc = long) %>% 
+  mutate(lat1 = lat) %>% 
+  mutate(long1 = long) %>% 
+  mutate(lat2 = lat) %>% 
+  mutate(long2 = long)
+
+
+jur_sf <- jur4 %>% #set geometry
+  filter(missing_coord == 0) %>% 
+  st_as_sf(coords = c("long", "lat")) %>% 
+  st_set_crs(st_crs(4326))
+
+```
+
+
+### Zoning code: fill zoning
+
+Find the invalid geometries in the zoning code
+
+```{r find bad geometries zoning}
+
+zoning_sf1 <- zoning_sf %>% 
+  # there is one large shape overlayed over all the other shapes- filter this out
+  filter(PERIMETER == 0) %>%
+  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
+                                1,
+                                0))
+
+zoning_sf1 %>% as.data.frame() %>% 
+  count(validgeo)
+
+# transform CRS to be consistent with Black Knight data
+zoning_sf1 <- st_transform(zoning_sf1, crs = 4326)
+
+```
+
+
+Join the Black Knight data to the zoning code to fill in missing instances.
+
+```{r join zoning onto parcel}
+
+zjoin <- st_join(jur_sf, zoning_sf1, join = st_intersects)
+
+# Make sure test variable is never missing
+zoning_sf1 %>% as.data.frame() %>% 
+  count(is.na(ZONE_))
+
+zjoin %>% 
+  as.data.frame() %>% 
+  count(is.na(ZONE_))
+
+zjoin <- zjoin %>% 
+  mutate(notinmont = if_else(is.na(ZONE_), 1, 0))
+
+zjoin %>%  
+  as.data.frame() %>% 
+  count(notinmont)
+
+
+```
+
+
+### Jurisdiction flags
+
+Our Data on the property city is not reliable, so we need to create a flag ourselves using the Tiger line shapefiles.
+
+```{r read tiger line 2018 place shapefile}
+
+#read in tiger line place file to create flags for places with their own zoning codes
+
+placepfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/placefile'), 
+                     end = -5) %>% unique()
+Mocoplaces_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/placefile',
+                     layer = placepfile[1])
+
+Mocoplaces_sf1 <- Mocoplaces_sf %>% 
+  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
+                                1,
+                                0))
+Mocoplaces_sf1 %>% as.data.frame() %>% 
+  count(validgeo)
+
+st_geometry(Mocoplaces_sf1)
+
+Mocoplaces_sf2 <- st_transform(Mocoplaces_sf1, crs = 4326)
+
+
+pjoin <- st_join(zjoin, Mocoplaces_sf2, join = st_intersects)
+
+pjoin2 <- pjoin %>% 
+  # make Rockville flag
+  mutate(rockflag = if_else(NAME=="Rockville",1,0),
+         rockflag = if_else(is.na(NAME),0,rockflag),
+         gaitflag = if_else(NAME=="Gaithersburg",1,0),
+         gaitflag = if_else(is.na(NAME),0,gaitflag),
+         othernotmoco = if_else(NAME %in% c("Barnesville","Brookville","Laytonsville","Poolesville"),1,0),
+         othernotmoco = if_else(is.na(NAME),0,othernotmoco)
+        
+  )
+count(pjoin2,rockflag)
+count(pjoin2,gaitflag)
+count(pjoin2,othernotmoco)
+
+```
+
+
+
+#### Rockville
+
+Read in Rockville shapefile.
+
+
+```{r test-rockville-zoning}
+
+rockpfile <- str_sub(list.files('L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts'), 
+                     end = -5) %>% unique()
+
+rockzoning_sf <- read_sf(dsn = 'L:/Libraries/RegHsg/Raw/montgomery/Rockville_zoning_districts',
+                     layer = rockpfile[1])
+
+rockzoning_sf1 <- rockzoning_sf %>% 
+  mutate(validgeo = ifelse(st_is_valid(st_sfc(geometry)),
+                                1,
+                                0))
+rockzoning_sf1 %>% as.data.frame() %>% 
+  count(validgeo)
+rockzoning_sf1 <- rockzoning_sf1 %>% 
+  filter(validgeo == 1 & !is.na(validgeo))
+
+st_geometry(rockzoning_sf1)
+```
+Remove overlaps so that points do not join more than once.
+
+```{r join rockville}
+
+# remove overlap in the zoning shapefile
+rzoning <- st_intersection(rockzoning_sf1) %>% 
+  filter(n.overlaps == 1)
+
+rjoin <- st_join(pjoin2, rzoning, join = st_intersects)
+
+```
+
+```{r test join rockville}
+
+paste0(sum(!is.na(rjoin$ZONE)), " observations joined- ",
+      round(sum(!is.na(rjoin$ZONE)) / nrow(rjoin) * 100, 2), "%")
+
+```
+
+16150 observations joined, so we estimate there are that many parcels in Rockville.
+
+##### Replace BK Zoning with Rockvile Zoning 
+
+```{r filter to make flag}
+
+rjoin2 <- rjoin %>% 
+  # replace moco zoning with rockville zoning
+  mutate(zoning = if_else(rockflag == 1, ZONE, zoning))
+
+rjoin2 %>% 
+  as.data.frame() %>% 
+  filter(rockflag ==1) %>% 
+  count(zoning)
+
+# test to see that these parcels are actually in rockville =
+test <- rjoin2 %>% 
+  filter(rockflag ==1) %>% 
+  sample_n(1000)
+
+ggplot() +
+  geom_sf(rockzoning_sf1, mapping = aes()) +
+  geom_sf(test, mapping = aes())
+
+
+# see how this compares to result of moco zoning join
+rjoin2 %>%  
+  as.data.frame() %>% 
+  count(notinmont, rockflag)
+
+```
+
+
+After the join, we convert back to a dataframe, for ease of computations.
+```{r back-to-df-again}
+
+jur5 <- st_set_geometry(rjoin2, NULL)
+
+```
+
+
+There are 4046 observations that we think are not in montgomery codes, rockville, or gaithersburg.
+
+```{r}
+jur5 %>% 
+  filter(notinmont == 1 &
+           rockflag == 0 &
+           gaitflag == 0) %>% 
+  nrow()
+
+```
+
+
+## Missing zoning variables
+
+Use the montgomery county zoning layer to fill in any remaining missing zoning variables.
+
+
+### Missing zoning
+
+```{r fill-lots zoning}
+
+jur6 <- jur5 %>% 
+  # archive the original zoning variable
+  mutate(arc_zoning = zoning, 
+         # fill in whatever we can from the montgomery shape file if it's missing
+         zoning = ifelse(is.na(zoning),
+                             CODE,
+                             zoning))
+        
+
+```
+
+See how many were filled in
+
+```{r count-lotsZ}
+sum(is.na(jur6$arc_zoning)) - sum(is.na(jur6$zoning))
+
+# look at remaining missing zoning
+jur6 %>% 
+  filter(is.na(zoning) & othernotmoco==0) %>% 
+  count(category_detail)
+
+```
+
+
+
+Test how many have different results from the Black Knight zoning variable.
+
+```{r test-spatialZ}
+
+jur6 %>% 
+  group_by(is.na(zoning)) %>% 
+  count(zoning == CODE)
+
+```
+
+
+
+```{r missingZ}
+
+jur6 %>% 
+  mutate(num = NA) %>% 
+  group_by(category_detail) %>% 
+  summarize_at(vars(propaddress, lotsize_sf, zoning, num),
+               ~ sum(is.na(.))) %>% 
+  mutate_at(vars(propaddress, lotsize_sf, zoning),
+            .funs = funs(percent = scales::percent(. / num))) %>% 
+  knitr::kable(caption = "Number and percent of missing values")
+
+
+count(jur6, is.na(lotsize_sf), category_detail)
+
+```
+
+## Save and write out
+
+```{r save}
+
+jur6 %>%  as.data.frame() %>% 
+  count(notinmont, rockflag, gaitflag, othernotmoco)
+
+jur6 %>% 
+  count(category)
+
+jur6 <- jur6 %>% 
+  select(-c(n.overlaps, origins, validgeo, validgeo.x, validgeo.y,
+         ALAND, AWATER, FUNCSTAT, NAMELSAD, GEOID,
+         BEGINDATE, BEGINREASO, BEGINPLANN, ENDDATE, ENDREASON,
+         ENDPLANNER))
+
+saveRDS(jur6,
+        paste0(jdir, 
+               "postcleaned-",
+               filepath,
+               "-data.Rdata"))
+```
+
+
+### Write out clean data.
+
+```{r write}
+write_csv(jur6, 
+          paste0(jdir, 
+               "postcleaned-", filepath, "-data.csv"))
+```
+
+Clear global environment.
+
+```{r}
+
+rm(list=ls())
+
+```
+

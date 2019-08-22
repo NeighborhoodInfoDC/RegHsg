@@ -1,0 +1,1002 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Vacant lots analysis for DC"
+author: "YS"
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Yipeng adapted from Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The goal of this analysis is to determine how many units could be added by filling vacant lots with the most-dense developments allowed under the current zoning codes.
+The two steps are:
+
+1. Merge cleaned vacant lots data with zoning code data.
+2. Calculate how many units are allowed one each vacant lot.
+
+## Set-up
+Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(urbnthemes)
+library(sf)
+
+set_urbn_defaults("print")
+
+```
+
+Create directory for data exports
+```{r dir}
+if (!dir.exists("../../Data")) {
+  dir.create("../../Data")
+}
+
+if (!dir.exists("L:/Libraries/RegHsg/Prog/Tables")) {
+  dir.create("L:/Libraries/RegHsg/Prog/Tables")
+}
+```
+
+Set FIPS code and filepath name
+```{r fips}
+
+currentfips <- "11001"
+filepath <- "DC"
+```
+
+
+Load in cleaned Black Knight data for `r str_to_title(filepath)` County.
+
+```{r read}
+
+read_dc <- function(rmd = TRUE) {
+  
+  filename <- paste0("L:/Libraries/RegHsg/Data/", filepath,
+                     "/", filepath, "-cleaned-data.csv")
+  
+  if (!file.exists(filename)) {
+    stop("cleaned data not found in Data directory")
+  } else {
+    
+    read_csv(filename,
+             col_types = cols(county_fips = col_character(),
+                              county_name = col_character(),
+                              parcelbase_SSL = col_character(),
+                              propaddress = col_character(),
+                              propcity = col_character(),
+                              propstate = col_character(),
+                              propzip = col_character(),
+                              propunitno = col_character(),
+                              prophouseno = col_character(),
+                              propstreetname = col_character(),
+                              propstreetsuffix = col_character(),
+                              lat = col_double(),
+                              long = col_double(),
+                              tract = col_character(),
+                              owneroccupiedresidential = col_character(),
+                              countylandusedescription = col_character(),
+                              zoning = col_character(),
+                              buildingarea = col_double(),
+                              noofbuildings = col_character(),
+                              noofstories = col_character(),
+                              numberofunits = col_integer(),
+                              yearbuilt = col_integer(),
+                              lotsize_acres = col_double(),
+                              lotsize_sf = col_double(),
+                              address_type = col_character(),
+                              category = col_character(),
+                              category_detail = col_character(),
+                              residential = col_integer(),
+                              building_type = col_character(),
+                              parcelbase_address = col_character(),
+                              parcelbase_usecode = col_character(),
+                              parcelgeo_x = col_double(),
+                              parcelgeo_y = col_double(),
+                              assessedlandvalue = col_double(),
+                              assessedimprovementvalue = col_double(),
+                              totalassessedvalue = col_double(),
+                              parcelbase_phasebuild = col_double(),
+                              parcelbase_phaseland = col_double(),
+                              parcelbase_mix1txtype = col_character(),
+                              parcelbase_newimpr = col_double(),
+                              ties_cat = col_double(),
+                              vacant_flag = col_integer()))
+  }
+}
+
+
+if (!exists("jur")) {
+  jur <- read_dc()
+} else {
+  warning(filepath, " data already read in")
+}
+
+
+```
+
+## Clean zoning code information
+
+### Move file 
+
+First- **manually** move file from Box to the `zoning-codes` directory in the `Doc` folder on the L drive. Name file accordingly:
+"jursidiction-zoning-code.csv"
+
+### Read file
+
+Read in zoning code, rename variables so that they are machine readable
+
+```{r file-check}
+
+if (!file.exists(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              filepath,
+                              " zoning code.csv"))) {
+  
+  stop("Move zoning file for jurisdiction to L:/Libraries/RegHsg/Doc/zoning-codes directory")
+}
+
+```
+
+
+```{r read-zoning-csv}
+z <- cols(
+   `Code` = col_character(),
+  `District Type` = col_character(),
+  `Type of Dwelling` = col_character(),
+  `Number of Dwelling units allowed` = col_number(),
+  `Site Area` = col_number(),
+  `Lot area` = col_number(),
+  `Lot area per dwelling unit (sq. ft.) (minimum)` = col_number(),
+  `Lot Width (average minimum, ft)` = col_character(),
+  `Height (ft)` = col_double(),
+  `Height (stories)` = col_double(),
+  `Lot coverage maximum` = col_number(),
+  `Floor area ratio max`=col_double(),
+  `Maximum Density of Floor-Area-Ratio (FAR)` = col_character(),
+  `Setbacks (centerline)` = col_character(),
+  `Setbacks (right of way line)` = col_double(),
+  `Side yard (ft)` = col_number(),
+  `Side yard (both sides: minimum percent of required width)` = col_number(),
+  `Rear yard` = col_double(),
+  `Frontage` = col_double(),
+  `Comments` = col_character()
+)
+
+
+zoningcode <- read_csv(paste0("L:/Libraries/RegHsg/Doc/zoning-codes/",
+                              filepath,
+                              " zoning code.csv"),
+                       col_types = z)
+
+names(zoningcode) <- 
+  c("zoning_code", "district_type", "dwelling_type","dwelling_units_allowed",
+    "site_area", "lot_area_min", "lotarea_per_unit",
+    "lot_width", "height_ft", "height_stories",
+    "lot_coverage_max","floor_area_ratio_max", "far_max",
+    "setbacks_center", "setbacks_row",
+    "front_side_yard", "side_yard_bothside","rear_side_yard", "frontage", "comments")
+
+# fix variables read in as whole numbers (should be percent)
+zoningcode <- zoningcode %>% 
+  mutate_at(vars(lot_coverage_max, side_yard_bothside),
+            ~ . / 100)
+rm(z)
+
+```
+
+### Creating dwelling_type hierarchy
+
+For the vacant lots analysis, we want to determine the `dwelling_type` that allows for the most and least dense construction for that zone. 
+
+First, we look at all the options, these categories are not as helpful because attached and detached can have different meaning in the context ofdifferent zoning types (both residential house and residential flat has these two types, for example)plus we have a lot of NAs for residential code. So need to create a new dwelling type variable.
+
+```{r tab-dwellings}
+zoningcode %>% 
+  count(dwelling_type) %>% 
+  knitr::kable()
+
+```
+
+Count the number of unique zoning codes to make sure we won't get rid of any codes entirely.
+
+```{r count-zoning}
+length(unique(zoningcode$zoning_code))
+
+```
+
+
+Plus, the DC dwelling type is missing for a lot of zoning, so it is difficult to follow the exact same method. I will here create a new dwelling type variable based on #of units allowed, district type variable. 
+
+Since the variables are not always comparable, after the recoding, from most to least dense, order applies:
+
+1. Residential apartments
+2. Residential flats with # dwelling units limit of 4
+3. Residential flats with # dwelling units limit of 3
+4. Residential flats with # dwelling units limit of 2
+5. One Family 
+
+Then within each category, DC has different requirements for each different type of dwelling within the same zoning code. So need to furthur break down the new dwelling type variable. 
+
+```{r recode dwelling}
+zoningcode1 <- zoningcode %>% 
+  mutate(newdwelling_type = case_when(
+    dwelling_units_allowed==1 & lot_area_min>=5000~ "One Family-A",
+    dwelling_units_allowed==1 & dwelling_type== "detached"~ "One Family-A",
+    dwelling_units_allowed==1 & dwelling_type== "IZ detached"~ "One Family-B",
+    dwelling_units_allowed==1 & dwelling_type== "semi-detached"~ "One Family-C",
+    dwelling_units_allowed==1 & dwelling_type== "attached"~ "One Family-D",
+    dwelling_units_allowed==1 & dwelling_type== "IZ semi-detached"~ "One Family-E",
+    dwelling_units_allowed==1 & dwelling_type== "IZ attached"~ "One Family-F",
+    dwelling_units_allowed==1 & dwelling_type== "all other structures"~ "All Other",
+    dwelling_units_allowed==2 & dwelling_type== "semi-detached" ~ "RF2-A",
+    dwelling_units_allowed==2 & dwelling_type== "row dwelling or flat" ~ "RF2-B",
+    dwelling_units_allowed==2 & dwelling_type== "row dwelling or flat (IZ)" ~ "RF2-C",
+    dwelling_units_allowed==2 & dwelling_type== "all other structures" ~ "All Other",
+    dwelling_units_allowed==3 & dwelling_type=="semi-detached" ~ "RF3-A",
+    dwelling_units_allowed==3 & dwelling_type=="row dwelling or flat" ~ "RF3-B",
+    dwelling_units_allowed==3 & dwelling_type=="row dwelling or flat (IZ)" ~ "RF3-C",
+    dwelling_units_allowed==3 & dwelling_type=="all other structures" ~ "All Other",
+    dwelling_units_allowed==4 & dwelling_type=="semi-detached"~ "RF4-A",
+    dwelling_units_allowed==4 & dwelling_type=="row dwelling or flat"~ "RF4-B",
+    dwelling_units_allowed==4 & dwelling_type=="row dwelling or flat (IZ)"~ "RF4-C",
+    dwelling_units_allowed==4 & dwelling_type=="all other structures"~ "All Other", 
+    district_type== "Residential Apartment" ~ "RA",
+    district_type== "Mixed-Use"|district_type== "Neighborhood Mixed Use"|district_type=="Downtown" ~ "Mixed",
+    district_type== "Special Purpose" & dwelling_type=="All"~ "Special purpose-All",
+    district_type== "Special Purpose" & dwelling_type=="Non-IZ"~ "Special purpose-A",
+    district_type== "Special Purpose" & dwelling_type=="IZ"~ "Special purpose-B"
+  )) %>% 
+  mutate(dwelling_type= (ifelse(is.na(dwelling_type)==1, "All", dwelling_type)))
+
+```
+Filter out dwelling_types of "All", "All Other", and those that are dependent on a shared boundary.
+
+```{r purge}
+zoningcode2 <- zoningcode1 %>% 
+  group_by(zoning_code) %>% 
+  filter(!(newdwelling_type %in% c("All Other")
+           & n() > 1)) %>%
+  ungroup() 
+
+```
+
+ Make sure we did not lose any zoning codes entirely.
+```{r responsible-purge}
+
+stopifnot(length(unique(zoningcode$zoning_code))
+          == length(unique(zoningcode1$zoning_code)))
+
+```
+
+### Create factor variable
+To use this hierarchy, we transform the `newdwelling_type` variable into a factor, assign the factors to the appropriate level, (1-6, as listed above).
+We will also create a designation for dwelling types that are restricted to a certain amount of units (one unit for "One Family Dwelling" and one for two units for "Duplex"). 
+
+**NOTE** This will be VERY jurisdiction specific.
+
+**NOTE** If there are no one or two unit limitations, still make the variable and set them all equal to zero. This allows the functionality of the calculation to be more uniform across counties.
+
+```{r dwelling-factor}
+
+zoningcode_factor <- zoningcode2 %>% 
+  mutate( newdwelling_type = factor(newdwelling_type,
+                                levels = c("RA", "Mixed", "Special purpose-B","Special purpose-A","Special purpose-All",
+                                           "RF4-C","RF4-B", "RF4-A",
+                                           "RF3-C","RF3-B","RF3-A",
+                                           "RF2-C","RF2-B","RF2-A",
+                                           "One Family-F", "One Family-E","One Family-D", "One Family-C", "One Family-B", "One Family-A")),
+         one_unit_flag = ifelse(dwelling_units_allowed==1, 1,0),
+         two_unit_flag = ifelse(dwelling_units_allowed==2, 1,0),
+         three_unit_flag = ifelse(dwelling_units_allowed==3, 1,0),
+         four_unit_flag = ifelse(dwelling_units_allowed==4, 1,0))
+
+
+```
+
+## Clean vacant lots data
+
+We are switching back to blacknight data here:
+
+Select vacant lots and see how many lots have missing key variables by address. 
+
+```{r missing}
+jur %>% 
+  filter(category=="vacant") %>% 
+  mutate(num = NA) %>% 
+  group_by(category_detail) %>% 
+  summarize_at(vars(propaddress, lotsize_sf, zoning, num),
+               ~ sum(is.na(.))) %>% 
+  mutate_at(vars(propaddress, lotsize_sf, zoning),
+            .funs = list(percent = ~scales::percent(. / num))) %>% 
+  knitr::kable(caption = "Number and percent of missing values")
+
+# |category_detail        | propaddress| lotsize_sf| zoning|   num|propaddress_percent |lotsize_sf_percent |zoning_percent |
+# |:----------------------|-----------:|----------:|------:|-----:|:-------------------|:------------------|:--------------|
+# |Vacant unimproved      |        6299|        269|   1471| 11565|54.5%               |2.33%              |12.72%         |
+# |Vacant with structures |         197|          2|     27|   242|81.4%               |0.83%              |11.16%         |
+
+```
+
+### Missing lot size
+We filled in the missing lot size, when we can, with the cleaned parcelbase lot area data in the clean DC step. So skip this step.
+
+We have 271 lotsize missing after the cleaning. 
+
+```{r count-lots}
+jur %>% 
+  filter(category=="vacant") %>% 
+  count(is.na(lotsize_sf))
+
+#this is what you should be getting: [1] 271
+```
+
+### Assessment values
+
+The difference between the land value, improvement value, and total value can help us determine if lots are really vacant.
+
+```{r check-assess}
+
+jur %>% 
+  filter(category=="vacant") %>% 
+  group_by(category_detail) %>% 
+  summarize(nprops = n(),
+            imp_zero2 = sum(parcelbase_newimpr==0, na.rm =TRUE),
+            imp_zero = sum(parcelbase_phasebuild == 0, na.rm = TRUE),
+            imp_na = sum(is.na(parcelbase_phasebuild))) %>% 
+  mutate(imp_none = imp_zero + imp_na,
+         percent_none = imp_none / nprops) %>% 
+  knitr::kable()
+
+  
+```
+
+151 of the vacant lots in DC do not have either a 0 or a missing value for the improvement value, so we will reclassify as vacant with structures. The rest have zero or NA, which we would expect. 
+
+```{r not-so-vacant}
+
+jur1a <- jur %>% 
+  
+  mutate(allimpr=ifelse((parcelbase_phasebuild > 0 | parcelbase_newimpr > 0),1,0), 
+         category = ifelse(allimpr == 1 & 
+                           !is.na(allimpr) &
+                             category== "vacant",
+                           "vacant with structure",
+                           category))
+
+jur1a %>% 
+  filter(category=="vacant") %>% 
+  group_by(category_detail) %>% 
+  summarize(nprops = n(),
+            imp_zero2 = sum(parcelbase_newimpr==0, na.rm =TRUE),
+            imp_zero = sum(parcelbase_phasebuild == 0, na.rm = TRUE),
+            imp_na = sum(is.na(parcelbase_phasebuild))) %>% 
+  mutate(imp_none = imp_zero + imp_na,
+         percent_none = imp_none / nprops) %>% 
+  knitr::kable()
+
+count(jur1a, category)
+
+vacantstructure <- jur1a %>% 
+  filter(category=="vacant") %>% 
+  filter(category_detail=="Vacant with structures") %>% 
+  group_by(countylandusedescription) %>% 
+  summarize(n=n()) 
+
+```
+
+We will not include vacant with structures (214 cases) in the calculation. We can also make a flag for missing coordinates.
+
+```{r not-vacant-recat}
+
+
+jur1 <- jur1a %>% 
+  mutate(missing_coord = ifelse(is.na(lat) | is.na(long),
+                                1,
+                                0),
+         parcel_x= parcelgeo_x,
+         parcel_y= parcelgeo_y,
+         missing_parcelgeoXY= ifelse(is.na(parcelgeo_x) | is.na(parcelgeo_y),
+                                1,
+                                0),
+         missing_latlon= ifelse(is.na(lat) | is.na(long),
+                                1,
+                                0))
+
+
+jur1 %>% 
+  filter(category=="vacant") %>% 
+  group_by (missing_parcelgeoXY) %>% 
+  summarize_at (vars(propaddress), ~ sum(!is.na(.))) %>% 
+  knitr::kable (caption = "Number of vacant addresses that are missing XY coordinates from parcel base data")
+
+jur1 %>% 
+  filter(category=="vacant") %>% 
+  filter(missing_parcelgeoXY==1) %>% 
+  group_by (missing_latlon) %>% 
+  summarize_at (vars(propaddress), ~ sum(!is.na(.))) %>% 
+  knitr::kable (caption = "Number of vacant addresses that are missing XY coordinates from blacknight data")
+
+```
+
+### Missing zoning variables
+Blackknight zoning data for DC is outdated, making it complicated to crosswalk it to the new zoning code and our zoning statistics. Instead, we will use a spatial join to the county's zoning layer to get zoning information for all parcels. 
+
+Read in zoning layer, set CRS. 
+
+```{r read-zoning}
+zdir <- paste0("L:/Libraries/RegHsg/Maps/",
+               filepath,
+               "-zoning-map")
+
+zfile <- str_sub(list.files(zdir), end = -5) %>% unique()
+
+zon <- read_sf(dsn = zdir,
+               layer = zfile)
+
+st_geometry(zon)
+zon <- st_transform(zon, crs = 4326)
+
+```
+
+Convert vacant lots to SF, set CRS. To convert to SF, we need to use only the observations with non-missing longitude and latitude. We separate these off and recombine after the spatial join.
+
+```{r convert-sf}
+
+#convert the parcelbase XY to lat and lon
+jursfparcel <- jur1 %>% 
+  filter(missing_parcelgeoXY == 0) %>% 
+  st_as_sf(coords = c("parcel_x", "parcel_y")) %>% 
+  st_set_crs(2804) %>% 
+  st_transform(4326)
+
+#convert missing parcelbase geo obvservations that have a blacknight lat lon
+jursfbk <- jur1 %>% 
+  filter(missing_parcelgeoXY == 1 & missing_latlon==0) %>% 
+  st_as_sf(coords = c("long", "lat")) %>% 
+  st_set_crs(st_crs(zon))
+
+vacantparcel <- jursfparcel %>% 
+  filter(category=="vacant")
+
+#I'm plotting only the vacant lots because the plotting is taking forever
+#ggplot()+
+#geom_sf(data = vacantparcel, mapping = aes(),
+         # color = "black", size=0.1)
+
+
+```
+
+Plot to make sure they are overlapping
+```{r make-map, echo=FALSE}
+#plots are overlapping, commenting out to improve time spent running program. 
+#ggplot() +
+  #geom_sf(data = zon, mapping = aes(fill = ZONE_DISTR)) +
+  #scale_fill_manual(values = c("#1696d2", "#fdbf11", 
+                              # "#d2d2d2", "#ec008b", 
+                               #"#55b748", "red", "green", "yellow", "blue")) +
+ #geom_sf(data = jursfparcel, mapping = aes(),
+          #color = "black", size=0.1) +
+  #geom_sf(data = jursfbk, mapping = aes(),
+          #color = "black", size=0.1) 
+
+
+
+```
+
+Spatial join
+
+spatial join with zoning shapefile separately
+
+```{r spatial-join}
+
+
+jurjoin_parcel <- st_join(jursfparcel, zon, join = st_intersects)
+
+jurjoin_bk <- st_join(jursfbk, zon, join = st_intersects)
+
+
+```
+
+After the join, we convert back to a dataframe and recombine the two datasets together.
+
+```{r back-to-df}
+
+
+jur2_parcel <- st_set_geometry(jurjoin_parcel, NULL)
+
+jur2_bk <- st_set_geometry(jurjoin_bk, NULL)
+
+jur2 <- jur2_parcel %>% 
+     bind_rows(jur2_bk)
+
+```
+
+Count how many observations did not join.(0) This will throw an error if more than 5% did not match- in this case, check the underlying shapefiles for compatability.
+
+```{r count-spatial}
+
+paste0(sum(is.na(jur2$ZONING_LAB)), " observations didn't join- ",
+      round(sum(is.na(jur2$ZONING_LAB)) / nrow(jur2) * 100, 2), "%")
+
+if (sum(is.na(jur2$ZONING_LAB)) / nrow(jur2) > .05) {
+  stop("More than 5% of observations could not be spatially joined.")
+}
+      
+```
+
+I'm skipping the comparing blacknight zoning with shapefile zoning because 1. We can only compare the old zoning data. 2. The crosswalk is one directional-- there's no way we can infer the new zoning code from old one, other than the spatial join. So I'm going to use zoning code from the spatial join and merge it with the zoning statistics spreadsheet. 
+
+Recombine with observations with missing coordinates, check that number of rows is the same. But we are going to only use the ones that are geojoined for the most up to date zoning information. 
+
+```{r get-final}
+
+jurtotal <- jur1 %>% 
+  filter(missing_parcelgeoXY == 1 & missing_latlon==1) %>% 
+  mutate(zoning_bk = zoning) %>% 
+  bind_rows(jur2)
+
+stopifnot(nrow(jurtotal) == nrow(jur1))
+
+```
+
+### Dual zoning codes
+
+The last step is to identify a zoning designation from shapefile that has more than 1 code. There's no dual zoning code from the shapefile. 
+
+```{r real-final}
+
+dual1 <- jur2 %>% 
+  filter(category=="vacant") %>% 
+  filter((str_detect(ZONING_LAB, ",") == TRUE)) %>% 
+  group_by(ZONING_LAB) %>% 
+  count() 
+
+dual2 <- jur2 %>% 
+  filter(category=="vacant") %>% 
+  filter((str_detect(ZONING_LAB, "/") == TRUE)) %>% 
+  group_by(ZONING_LAB) %>% 
+  count() 
+
+nrow(dual1)
+nrow(dual2)
+
+```
+
+## Merge zoning with cleaned parcel data
+
+We need to clean the spatial joined zoning code, especially the Residential codes started ones that have a dash in the middle that are not joined with the zoning spreadsheet. After cleaning, use anti_join again to test if there are any left over residential codes that are not joined.
+
+```{r remove dash}
+
+jurtotaltest <- jur2 %>% 
+  mutate(zoning_code=ZONING_LAB)
+
+anti_join(jurtotaltest, zoningcode_factor, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
+#we are using jur2 instead of jur total here to genereate the jurcleaned dataset because jur2 only have observatinos that are not missing geo information in them. 
+jurcleaned <- jur2 %>% 
+          mutate(zoning_code=ZONING_LAB, 
+                 zoning_bk= zoning) %>% 
+          mutate(firsttwo= substr(ZONING_LAB, 1,2),
+                 badrescode=ifelse(str_detect(firsttwo, "R-")==1, 1, 0),
+                 zoning_code=str_trim(ifelse(badrescode==1, paste0(substr(ZONING_LAB, 1,1),substr(ZONING_LAB,3,4)),ZONING_LAB), side="right"),
+                 zoning_code=ifelse(ZONING_LAB== "R-1-A", "R1A", zoning_code),
+                 zoning_code= ifelse(ZONING_LAB== "R-1-B", "R1B", zoning_code))
+
+```
+
+After cleaning, use anti_join again to test if there are any left over residential codes that are not joined.PDR are not residential codes. Fix SEFC-1B and StE-14 (assign StE-14 to StE-14A)
+```{r antijoinagain}
+
+anti_join(jurcleaned, zoningcode_factor, by = c("zoning_code")) %>%
+  count(zoning_code) %>%
+  knitr::kable()
+
+jurcleaned2 <- jurcleaned %>% 
+          mutate(zoning_code=ifelse(ZONING_LAB== "StE-14", "StE-14A", zoning_code),
+                 zoning_code= ifelse(ZONING_LAB== "SEFC-1B", "SEFC-1-B", zoning_code))
+
+
+anti_join(jurcleaned2, zoningcode_factor, by = c("zoning_code")) %>% 
+  count(zoning_code) %>% 
+  knitr::kable()
+
+
+```
+
+After cleaning the zoning code from shapefile, we are merging the cleaned blacknight data with the zoning code spreadsheet.
+
+```{r zoning-merge}
+
+jurzoningdata <- left_join(jurcleaned2, zoningcode_factor, by = "zoning_code") 
+#since we cleaned the jur dataset in the previous step, the codes in jur that are not joined are all codes that are not in the DC residential zoning spreasheet we have. Those didn't join include PDR-1= PDR-7, and UNZONED.
+
+jurzoningdata %>% 
+  group_by(newdwelling_type) %>% 
+  count() %>% 
+  knitr::kable()
+
+jurzoningdata %>% 
+  group_by(zoning_code) %>% 
+  count() %>% 
+  knitr::kable()
+
+
+```
+
+Filter out lots that are too small to build on and lots with missing zoning information, and select most dense zoning code for those that are big enough.
+
+```{r filter-small}
+
+jurzoningdata1 <- jurzoningdata %>% 
+  mutate(lotsize_sf=(ifelse(is.na(lotsize_sf)==1,0, lotsize_sf)),
+         lot_area_min=(ifelse(is.na(lot_area_min)==1,0, lot_area_min))) %>% 
+#since we cleaned the jur dataset in the previous step, the codes in jur that are not joined are all codes that are not in the DC residential zoning spreasheet we have. Those didn't join include PDR-1= PDR-7, and UNZONED.
+  mutate( smallsize_flag= ifelse(lotsize_sf >= lot_area_min, 0,1)) %>% 
+  mutate(smallsize_flag= ifelse(is.na(smallsize_flag)==1, 0, smallsize_flag)) %>% 
+  group_by(propaddress, smallsize_flag) %>% 
+  slice(which.min(newdwelling_type)) %>% 
+  ungroup() %>% 
+  group_by(propaddress) %>% 
+  slice(which.min(smallsize_flag)) %>%
+  ungroup()
+
+nrow(jurzoningdata1)
+
+
+
+```
+
+filter out special zoning codes that are not for housing. Recategorize for exporting tables. Leah-- please let me know if there are better categories. We can also just export the unit estimates by each zoning code-- more precise that way and we can categorize those codes later.
+```{r filter-special purpose}
+
+#filter out codes that can't be used for residential even if it is a code for residential 
+jurzoningdata2 <- jurzoningdata1 %>% 
+    filter(zoning_code != "SEFC-4"| zoning_code!= "WR-6") 
+
+jurzoningdata3 <- jurzoningdata2 %>% 
+  mutate(housing_type= case_when(newdwelling_type=="RA" ~ "Multifamily",
+                                   newdwelling_type=="Mixed"|newdwelling_type=="Special purpose-All"| newdwelling_type=="Special purpose-B"~ "Multifamily",
+                                   newdwelling_type=="RF2-C" ~ "SF-attached", 
+                                   newdwelling_type=="One Family-F" ~ "SF-attached",
+                                   newdwelling_type=="One Family-E" ~ "SF-attached", 
+                                   newdwelling_type=="One Family-A" ~ "Single Family" 
+                                   )) 
+
+
+```
+
+
+## Calculate missing units
+
+There are several variables we will use to calculate how many units we can put on each vacant lot.
+
+1. Buildable area: this is `lotsize_sf` x the coverage ratio (`lot_coverage_max`)
+2. Living area: this is the buildable area x the construction efficiency. The lower bound estimate is 70%, the upper bound estimate is 85%.
+3. Units per floor: this is the living area divided by the average unit size. We use 940 sq. feet, based on the American Housing Survey 2017 data for the DC metro area.
+4. Units allowed based on height limits: This is the units per floor x the number of stories.
+5. Units allowed based on FAR: use FAR to calculate gross floor area instead of coverage ratio, units     per floor *floors
+
+We can create a function that will allow us to easily adjust these parameters and compare results.
+
+```{r get-est}
+
+#' Get maximum unit variables
+#' @description this function generates the variables necessary to calculate the maximum number of units that can occupy one lot, per the by-right zoning code.
+#'
+#' @param dataset dataset with lot size and zoning variables 
+#' @param construction_efficiency Assumption for construction efficiency
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
+#'
+#' @return returns a dataframe with new variables: `parameters`, `buildable_area`, `living_area`, `units_per_floor`, `floors`, `units_height`, `units_lotsize`, and `units_total`
+#'
+#' @examples
+get_unit_variables <- function(dataset, 
+                               construction_efficiency, 
+                               average_unit_size) {
+  
+  dataset %>% 
+    mutate(parameters = paste0("CE: ", construction_efficiency * 100,
+                               "% , Unit size: ", average_unit_size,
+                               " sf"),
+           lot_coverage_max = ifelse(is.na(lot_coverage_max), .75, lot_coverage_max), #change to .75 for max if NA (4/8/19)
+           buildable_area = lotsize_sf * lot_coverage_max,
+           living_area = buildable_area * construction_efficiency,
+           units_per_floor = floor(living_area / average_unit_size), # it will set to 0 when less than 1. 
+           lot_coverage_FAR= ifelse(floor_area_ratio_max <= lot_coverage_max, 
+                                         floor_area_ratio_max, 
+                                         lot_coverage_max),
+           buildable_area_FAR= lotsize_sf*lot_coverage_FAR,
+           living_area_FAR= buildable_area_FAR * construction_efficiency,
+           units_per_floor_FAR = floor(living_area_FAR/ average_unit_size),
+           percent_per_floor_FAR = (units_per_floor_FAR*average_unit_size*1/construction_efficiency)/lotsize_sf,
+           FAR_stories = ifelse(percent_per_floor_FAR!=0&!is.na(percent_per_floor_FAR),
+                                floor(floor_area_ratio_max/percent_per_floor_FAR),
+                                0),
+           floors = floor(height_ft /10),
+           units_FAR= units_per_floor_FAR * FAR_stories,
+           units_FAR= ifelse(is.na(floor_area_ratio_max)==1, NA, units_FAR),
+           units_height= units_per_floor * floors,
+           units_min= pmin(units_FAR, units_height, na.rm= TRUE)
+           ) %>%
+    mutate(subset=floor(lotsize_sf/lot_area_min), na.rm = TRUE) %>% 
+    mutate( units_total = case_when(
+      one_unit_flag == 1 & subset<1 & units_min>=1 ~ 0,
+      two_unit_flag == 1 & subset<1 & units_min>=2 ~ 0,
+      three_unit_flag == 1 & subset<1 & units_min>=3 ~ 0,
+      four_unit_flag == 1 & subset<1 & units_min>=4 ~ 0,
+      one_unit_flag == 1 & subset>=1 & units_min/subset>=1 ~ 1*subset,
+      two_unit_flag == 1 & subset>=1 & units_min/subset>=2 ~ 2*subset,
+      three_unit_flag == 1 & subset>=1 & units_min/subset>=3 ~ 3*subset,
+      four_unit_flag == 1 & subset>=1 & units_min/subset>=4~ 4*subset, 
+      TRUE ~ units_min))
+}
+
+#' Get maximum unit summary
+#'
+#' @param dataset dataset with lot size and zoning variables 
+#' @param construction_efficiency Assumption for construction efficiency
+#' @param average_unit_size Assuption for average unit size- should be derived from the American Housing Survey. Given in square feet.
+#' @param dwelling_type_breakdown Options are TRUE or FALSE- indicates whether or not estimates should be broken down by `dwelling_type`
+#'
+#' @return Returns a dataframe with summary statistics on the maximum units that can be build on lots, per the by-right zoning code.
+#'
+#' @examples
+get_unit_summary <- function(dataset, 
+                             construction_efficiency, 
+                             average_unit_size,
+                             dwelling_type_breakdown) {
+
+  x <- dataset %>% 
+    get_unit_variables(construction_efficiency,
+                       average_unit_size) %>%
+    group_by(parameters) %>% 
+    summarize(lots = n(),
+              units_total = sum(units_total, na.rm = TRUE),
+              units_FAR = sum(units_FAR, na.rm = TRUE),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_per_lot = floor(sum(units_total /lots)))
+  
+  y <- dataset %>% 
+    get_unit_variables(construction_efficiency,
+                       average_unit_size) %>%
+    group_by(parameters, housing_type) %>% 
+    summarize(lots = n(),
+              units_total = sum(units_total, na.rm = TRUE),
+              units_FAR = sum(units_FAR, na.rm = TRUE),
+              units_height = sum(units_height, na.rm = TRUE),
+              units_per_lot = floor(sum(units_total / lots))) %>% 
+    mutate(dwelling_type2 = as.character(housing_type))
+  
+  
+  if (dwelling_type_breakdown == TRUE) {
+   
+      bind_rows(y, mutate(x, housing_type = "All"))  
+  
+  } else if (dwelling_type_breakdown == FALSE) {
+      x
+    }
+}
+
+```
+
+Get summary statistics for several different parameters
+
+```{r sum}
+
+#this is taking forever to run on the whole dataset, we have this later for vacant lots before exporting, comment out 
+# get_unit_summary(dataset = jurzoningdata6,
+#                  construction_efficiency = .7,
+#                  average_unit_size = 940,
+#                  dwelling_type_breakdown = TRUE) %>%
+#   knitr::kable()
+# 
+# map_df(c(.7, .85), ~ get_unit_summary(dataset = zoningdata3,
+#                                       construction_efficiency = .,
+#                                       average_unit_size = 940,
+#                                       dwelling_type_breakdown = TRUE)) %>%
+#   knitr::kable()
+
+
+#filter out usecode 093 and 193 (vacant with zoning limits) 194 & 094 (vacant false - has structure but imprv value assigned to adj lot), 095 & 195 (vacant with relatively permanent commerical structures - like railroad) and lotsize that are big enough for vacant lot anlaysis
+
+#add 'not in' function
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+vacantlotunits <- jurzoningdata3 %>% 
+  filter(parcelbase_usecode %!in% c("093","193","094","194","095","195")) %>% 
+  filter(category=="vacant" & smallsize_flag==0)
+
+nrow(vacantlotunits)
+
+
+#for SF vacant lots, some lots are extremely large and are driving up the unit per lot var: 3842 ALABAMA AVE SE (116), 1801 FOXHALL RD NW (67), 3900 RESERVOIR RD NW (47), 4530 MACARTHUR BLVD NW (43)
+
+testvacant <- get_unit_variables(dataset = vacantlotunits,
+                 construction_efficiency = .7,
+                 average_unit_size = 940) %>% 
+  filter(housing_type=="Single Family") %>% 
+  select(propaddress, parcelbase_SSL, parcelbase_usecode,lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories, units_per_floor, units_min, units_FAR, units_height, units_total, zoning_code, one_unit_flag, two_unit_flag, subset ) 
+ 
+
+get_unit_variables(dataset = vacantlotunits,
+                 construction_efficiency = .7,
+                 average_unit_size = 940) %>% 
+  select(parameters, parcelbase_SSL, parcelbase_usecode,lotsize_sf, lotsize_sf, buildable_area, living_area, height_ft, floors, FAR_stories,units_per_floor, units_min, units_FAR, units_height, units_total, propaddress, zoning_code, one_unit_flag, two_unit_flag, subset, parcelbase_mix1txtype) %>% 
+  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
+                   filepath,
+                   "-vacant-lots-analysis-basedata.csv"))
+
+
+#write out whole dataset for Sarah
+get_unit_variables(dataset = jurzoningdata3,
+                 construction_efficiency = .7,
+                 average_unit_size = 940) %>% 
+  mutate(units_bk= as.numeric(case_when(category== "vacant" ~ 0,
+                                        category=="sf"~ 1,
+                                        TRUE ~ as.numeric(numberofunits)))) %>% 
+  write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
+                   filepath,
+                   "-units.csv"))
+
+#write out a Rdata version
+DCmaxunit <- get_unit_variables(dataset = jurzoningdata3,
+                 construction_efficiency = .7,
+                 average_unit_size = 940) %>% 
+  mutate(units_bk= as.numeric(case_when(category== "vacant" ~ 0,
+                                        category=="sf"~ 1,
+                                        TRUE ~ as.numeric(numberofunits)))) 
+
+
+ saveRDS(DCmaxunit, "L:/Libraries/RegHsg/Data/DC/DC-max-units.Rdata")
+
+jurzoningdata3 %>% 
+    group_by(category) %>% 
+    summarize(lots = n()) %>% 
+    write_csv(paste0("L:/Libraries/RegHsg/Prog/Tables/",
+                   filepath,
+                   "-units-summary.csv"))
+
+
+```
+Look at the distribution of units for lots with more than 1 unit, to check for extreme outliers.
+
+```{r scatter, echo = FALSE}
+
+vacantlotunits %>% 
+  get_unit_variables(construction_efficiency = .7,
+                     average_unit_size = 940) %>% 
+             select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
+  filter(units_total > 1) %>% 
+  ggplot() +
+  geom_point(mapping = aes(lotsize_sf, units_total),
+             alpha = .5) +
+  scale_x_continuous(labels = scales::comma,
+                     expand = expand_scale(mult = c(0, 0.002)), 
+                     limits = c(0, 200000),
+                     breaks = 0:6 * 50000) +
+  scale_y_continuous(expand = expand_scale(mult = c(0, 0.002)), 
+                     limits = c(0, 300),
+                     breaks = 0:7 * 50) +
+  scatter_grid() +
+  labs(x = "Lot size (square feet)", y = "Total units") +
+  theme(plot.margin = margin(t = 20, r = 20))
+
+
+zoningdata1test <- vacantlotunits %>% 
+  get_unit_variables(construction_efficiency = .7,
+                     average_unit_size = 940) %>% 
+             select(zoning_code, lotsize_sf, units_total, one_unit_flag, two_unit_flag, parameters)%>% 
+  filter(units_total > 1) 
+
+
+```
+
+Look more closely at vacant lots < 50,000 SF
+
+```{r scatter-small, echo = FALSE}
+
+vacantlotunits %>% 
+  get_unit_variables(construction_efficiency = .7,
+                     average_unit_size = 940) %>% 
+  filter(lotsize_sf < 50000) %>% 
+  select(lotsize_sf, newdwelling_type, housing_type, units_total)%>% 
+  ggplot() +
+  geom_point(mapping = aes(lotsize_sf, units_total,
+                           color = housing_type),
+             alpha = .8) +
+  scale_x_continuous(labels = scales::comma,
+                     expand = expand_scale(mult = c(0, 0.0002)), 
+                     limits = c(0, 50000),
+                     breaks = 0:5 * 10000) +
+  scale_y_continuous(expand = expand_scale(mult = c(0, 0.0002)), 
+                     limits = c(0, 60),
+                     breaks = 0:4 * 15) +
+  scatter_grid() +
+  labs(x = "Lot size (square feet)", y = "Total units") +
+  theme(plot.margin = margin(t = 20,
+                             r = 20))
+
+
+```
+
+## Write out results
+
+Write out the results to a csv. Include jurisdiction name in the title.
+
+```{r write-results}
+
+vacant_sum <- get_unit_summary(dataset = vacantlotunits,
+                 construction_efficiency = .7,
+                 average_unit_size = 940,
+                 dwelling_type_breakdown = TRUE)
+
+
+write_csv(vacant_sum,
+          paste0("L:/Libraries/RegHsg/Prog/Tables/",
+                   filepath,
+                   "-vacant-lots-analysis.csv"))
+
+
+```
+
+
+## Generate table
+
+```{r get-table}
+
+mf.dc <- jurzoningdata3 %>% 
+  filter(!is.na(newdwelling_type),
+         housing_type == "Multifamily",
+         category == "vacant") %>% 
+  group_by(propaddress) %>%
+  count() %>% 
+  nrow()
+
+
+dc.summary <-
+  c(nrow(jur),
+    nrow(filter(jur, category == "vacant")),
+    mf.dc,
+    vacant_sum %>% filter(housing_type == "Multifamily") %>% pull(lots) %>% sum(),
+    vacant_sum %>% filter(housing_type == "Multifamily") %>% pull(units_total) %>% sum())
+
+dc.summary
+
+```
+
+Clear global environment.
+
+```{r}
+
+rm(list=ls())
+
+```

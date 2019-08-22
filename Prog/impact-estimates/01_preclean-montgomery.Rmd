@@ -1,0 +1,135 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Pre-clean Montgomery County public records data"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Patrick Spauster, adapted from Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+Read in Blacknight Parcel data and save it as an R data file.
+
+
+## Set-up
+#### Load libraries and functions
+```{r setup}
+library(tidyverse)
+library(DescTools)
+library(purrr)
+library(lwgeom)
+library(sf)
+
+source("../../Macros/read-bk.R")
+source("../../Macros/filter-bk.R")
+source("../../Macros/select-vars.R")
+source("../../Macros/sample-properties.R")
+source("../../Macros/classify-addresses.R")
+source("../../Macros/mode_narm.R")
+source("../../Macros/max_narm.R")
+```
+
+#### Set FIPS code and filepath name
+```{r fips}
+currentfips <- "24031"
+filepath <- "montgomery"
+
+jdir <- paste0("L:/Libraries/RegHsg/Data/", filepath, "/")
+rdir <- paste0("L:/Libraries/RegHsg/Raw/", filepath, "/")
+```
+
+####Create directory for data exports
+```{r dir}
+if (!dir.exists("../../Data")) {
+  dir.create("../../Data")
+}
+if (!dir.exists(paste0("L:/Libraries/RegHsg/Raw/", filepath))) {
+  dir.create(paste0("L:/Libraries/RegHsg/Raw/", filepath))
+}
+
+if (!dir.exists(paste0("L:/Libraries/RegHsg/Data/", filepath))) {
+  dir.create(paste0("L:/Libraries/RegHsg/Data/", filepath))
+}
+```
+
+#### Load in Black Knight data for the region, select jurisdiction and standard variables
+```{r read}
+if (!exists("region")) {
+  region <- read_bk("dc-cog-assessment_20181228.csv")
+} else {
+  warning("region data already read in")
+}
+
+jur <- region %>% 
+  filter_bk(fips = currentfips) %>% 
+  select_vars()
+
+```
+
+## Download files
+
+Montgomery has one files of use
+- Parcel-level shape file, could provide alternative lot area metric, be of use for later analyses
+- Will merge shape file after data cleaning
+
+```{r download-data}
+pafile <- paste0(rdir, filepath, "-parcel-file.zip")
+zdir <- paste0(rdir, filepath, "-parcel-file")
+zurl <- "https://mcatlas.org/tiles/00_Shapefiles/Zoning_parcels_March2018.zip"
+
+
+# parcel file
+if (!file.exists(pafile)) {
+  download.file(zurl,
+                destfile = pafile)
+  dir.create(zdir)
+  unzip(pafile, exdir = zdir)
+}
+
+
+```
+
+
+
+## Save
+
+Since this is an intermediary dataset, save as an R dataset for easy reading into the the next step in the cleaning.
+
+```{r save}
+saveRDS(jur,
+        paste0(jdir, 
+               "precleaned-",
+               filepath,
+               "-data.Rdata"))
+```
+
+

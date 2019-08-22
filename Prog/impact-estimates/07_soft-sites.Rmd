@@ -1,0 +1,341 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Soft sites analysis for all jurisdictions"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Description
+
+The goal of this analysis is to determine which sites are underutilized, and estimate how many units could be added by increasing the utilization. "Underutilized" is defined as built to 30 percent of less of the maximum capacity of the lot, based on zoning code.
+
+## Set-up
+
+Load libraries and functions
+
+```{r setup}
+
+library(tidyverse)
+library(urbnthemes)
+
+set_urbn_defaults("print")
+
+source("../../Macros/read-combined-parcels.R")
+
+today <- Sys.Date()
+
+```
+
+## Get maximum unit data for each jurisdiction.
+
+
+Read in each maximum unit dataset. Fill in number of units where possible (per `combine-parcels.Rmd`)
+
+```{r get-max-units}
+mudir <- "L:/Libraries/RegHsg/Data/"
+
+arlbr <- readRDS(paste0(mudir,
+                        "/arlington/arlington-max-units-br.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity, propstate, address_type,
+         zoning_code, lotsize_sf,
+         category, category_detail, numberofunits,
+         units_total, units_height, units_lotsize) %>% 
+  mutate(jurisdiction = "Arlington by right") %>% 
+  mutate(numberofunits = ifelse(category == "mf" & numberofunits == 0,
+                                NA,
+                                numberofunits)) %>% 
+  mutate(lotsize_sf = ifelse(lotsize_sf == 0,
+                             NA,
+                             lotsize_sf)) 
+
+
+arlse <- readRDS(paste0(mudir,
+                        "/arlington/arlington-max-units-se.Rdata"))  %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity, propstate, address_type,
+         zoning_code, lotsize_sf,
+         category, category_detail, numberofunits,
+         units_total, units_height, units_lotsize) %>% 
+  mutate(jurisdiction = "Arlington special exception") %>% 
+  mutate(numberofunits = ifelse(category == "mf" & numberofunits == 0,
+                                NA,
+                                numberofunits)) %>% 
+  mutate(lotsize_sf = ifelse(lotsize_sf == 0,
+                             NA,
+                             lotsize_sf)) 
+
+mont <- readRDS(paste0(mudir,
+                       "/montgomery/montgomery-max-units.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity, propstate, address_type,
+         zoning_code, lotsize_sf,
+         category, category_detail, numberofunits,
+         units_total, units_height, units_lotsize,
+         units_FAR, units_height) %>% 
+  mutate(jurisdiction = "Montgomery") %>% 
+  mutate(numberofunits = ifelse(category_detail == "sf detached" & 
+                                  numberofunits == 0,
+                                1,
+                                numberofunits))
+
+
+rock <- readRDS(paste0(mudir,
+                       "/montgomery/Rockville-max-units.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity, propstate, address_type,
+         zoning_code, lotsize_sf,
+         category, category_detail, numberofunits,
+         units_total, units_height)  %>% 
+  mutate(jurisdiction = "Rockville") %>% 
+  mutate(numberofunits = ifelse(category_detail == "sf detached" & 
+                                  numberofunits == 0,
+                                1,
+                                numberofunits))
+
+
+gait <- readRDS(paste0(mudir,
+                       "/montgomery/Gaithersburg-max-units.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity, propstate, address_type,
+         zoning_code, lotsize_sf,
+         category, category_detail, numberofunits,
+         units_total, units_height, units_density,
+         units_lotsize)  %>% 
+  mutate(jurisdiction = "Gaithersburg") %>% 
+  mutate(numberofunits = ifelse(category_detail == "sf detached" & 
+                                  numberofunits == 0,
+                                1,
+                                numberofunits))
+
+
+fair <- readRDS(paste0(mudir,
+                       "/fairfax/fairfax-max-units.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin,
+         propaddress, propcity, propstate, address_type,
+         zoning_code, lotsize_sf,
+         category, category_detail, numberofunits,
+         units_total, units_height, units_density,
+        num_livunit, numberofunits_tax) %>% 
+  mutate(county_fips = as.character(county_fips))  %>% 
+  mutate(jurisdiction = "Fairfax") %>% 
+  mutate(numberofunits = ifelse(category_detail == "duplex" & numberofunits == 0,
+                                2,
+                                numberofunits),
+         numberofunits = ifelse(category_detail == "townhouse" & address_type == "single",
+                                1,
+                                numberofunits),
+         numberofunits = ifelse(category == "sf" & address_type == "single",
+                                1,
+                                numberofunits)) %>% 
+  mutate(numberofunits = ifelse(numberofunits == 0 & !is.na(num_livunit),
+                                num_livunit,
+                                numberofunits),
+         numberofunits = ifelse(numberofunits == 0 & !is.na(numberofunits_tax),
+                                numberofunits_tax,
+                                numberofunits)) %>% 
+  mutate(numberofunits = as.integer(numberofunits)) %>% 
+  select(-num_livunit, -numberofunits_tax)
+
+
+dc <- readRDS(paste0(mudir,
+                       "/DC/DC-max-units.Rdata")) %>% 
+  ungroup() %>% 
+  select(county_fips, county_name,
+         assessorsparcelnumberapnpin = parcelbase_SSL,
+         propaddress, propcity, propstate, address_type,
+         zoning_code, lotsize_sf,
+         category, category_detail, numberofunits,
+         units_FAR, units_height, units_total)  %>% 
+  mutate(jurisdiction = "DC")  %>% 
+  mutate(numberofunits = ifelse(is.na(numberofunits) & 
+                                  category_detail == "Single-family home" &
+                                  address_type %in% c("single", "missing"),
+                                1,
+                                numberofunits)) %>% 
+  # align categories with other jurisdictions
+  mutate(category = ifelse(category == "all other category",
+                           "other",
+                           category)) %>% 
+  mutate(numberofunits = ifelse(category == "mf" & numberofunits == 0,
+                                NA,
+                                numberofunits)) %>% 
+  mutate(numberofunits = as.integer(numberofunits))
+
+```
+
+Combine.
+
+```{r combine}
+
+maxunits <- bind_rows(fair, mont, rock, gait, arlbr, arlse, dc)
+
+```
+
+
+## Identify underutilized parcels
+
+### Multifamily
+
+```{r mf}
+
+mfmax <- maxunits %>% 
+  filter(category == "mf", 
+         numberofunits >= 3,
+         !is.na(numberofunits),
+         !is.na(lotsize_sf),
+         !is.na(units_total)) %>% 
+  mutate(putil = numberofunits / units_total,
+         under = ifelse(numberofunits / units_total < 1,
+                          1,
+                          0),
+         under30 = ifelse(numberofunits / units_total < .3,
+                          1,
+                          0),
+         under50 = ifelse(numberofunits / units_total < .5,
+                          1,
+                          0),
+         under70 = ifelse(numberofunits / units_total < .7,
+                          1,
+                          0),
+         units_behind = ifelse(under == 1,
+                               units_total - numberofunits,
+                               0),
+         units_behind_30 = ifelse(under30 == 1,
+                                  units_total - numberofunits,
+                                  0),
+         units_behind_50 = ifelse(under50 == 1,
+                                  units_total - numberofunits,
+                                  0),
+         units_behind_70 = ifelse(under70 == 1,
+                                  units_total - numberofunits,
+                                  0))
+
+mfsum <- mfmax %>% 
+  group_by(jurisdiction) %>% 
+  summarize(total_mf = n(),
+            total_units = sum(numberofunits),
+            under = sum(under),
+            punder = sum(under) / n(),
+            under30 = sum(under30),
+            punder30 = sum(under30) / n(),
+            units_behind = sum(units_behind),
+            units_behind_30 = sum(units_behind_30))
+knitr::kable(mfsum)
+write_csv(mfsum, 
+          str_glue("L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf_{today}.csv"))
+
+
+mflevels <- mfmax %>% 
+  group_by(jurisdiction) %>% 
+  summarize(total_mf = n(),
+            total_units = sum(numberofunits),
+            under = sum(under),
+            units_behind = sum(units_behind),
+            under30 = sum(under30),
+            units_behind_30 = sum(units_behind_30),
+            under50 = sum(under50),
+            units_behind_50 = sum(units_behind_50),
+            under70 = sum(under70),
+            units_behind_70 = sum(units_behind_70))
+knitr::kable(mflevels)
+write_csv(mflevels, 
+          str_glue("L:/Libraries/RegHsg/Prog/Tables/soft-sites-mf-levels_{today}.csv"))
+
+mfmax %>% 
+  filter(putil < 1, putil > 0,
+         # jurisdiction != "Gaithersburg",
+         jurisdiction != "Arlington by right") %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(putil),
+                 bins = 20) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_y_continuous(expand = expand_scale(mult = c(0,0.1))) +
+  facet_wrap(~county_name) +
+  labs(x = "Percent of maximum capacity",
+       title = "Utilization distribution for under-utilized land")
+
+
+mfmax %>% 
+  filter(putil < 1, putil > 0,
+         county_name == "Arlington County") %>% 
+  ggplot() +
+  geom_histogram(mapping = aes(putil),
+                 bins = 50) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_y_continuous(expand = expand_scale(mult = c(0,0.1))) +
+  facet_wrap(~jurisdiction, nrow = 2) +
+  labs(x = "Percent of maximum capacity",
+       title = "Utilization distribution for under-utilized land")
+
+
+```
+
+Check individual jurisdictions.
+
+```{r ff}
+
+ff <- mfmax %>% 
+  filter(jurisdiction == "Fairfax")
+
+m <- mfmax %>% 
+  filter(county_name == "Montgomery County")
+
+a <- mfmax %>% 
+  filter(jurisdiction == "Arlington special exception")
+
+r <- mfmax %>% 
+  filter(jurisdiction == "Rockville")
+
+```
+
+
+Clear global environment.
+
+```{r}
+
+rm(list=ls())
+
+```

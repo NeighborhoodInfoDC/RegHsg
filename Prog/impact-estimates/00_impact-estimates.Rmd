@@ -1,0 +1,140 @@
+---
+title: "Regional Housing Framework"
+subtitle: "Impact Estimates"
+author: ""
+output:
+  html_document:
+    number_sections: FALSE
+    self_contained: TRUE
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+    css: ../../www/web_report.css
+    editor_options:
+      chunk_output_type: console
+---
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato" />
+
+Library: RegHsg
+
+Project: Regional Housing Framework
+
+Author: Sarah Strochak
+
+Version: R 3.5.1, RStudio 1.1.423
+
+Last updated `r format(Sys.time(), '%B %d, %Y')`
+
+Environment: Local Windows session (desktop)
+
+```{r rmarkdown-setup, echo = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+# knitr::opts_chunk$set(eval = FALSE)
+```
+
+
+## Description
+
+This program runs all code used to generate impact estimates.
+
+## Set up
+
+```{r setup}
+
+library(tidyverse)
+library(rmarkdown)
+
+```
+
+
+## Preclean
+
+```{r preclean}
+
+preclean <- list.files(pattern = "01_preclean") %>% 
+  list()
+
+pwalk(preclean,
+      ~ render(input = ., output_dir = "output"))
+
+rm(list=ls())
+
+```
+
+## Clean
+
+```{r clean}
+
+clean <- list.files(pattern = "02_clean") %>% 
+  list()
+
+pwalk(clean,
+      ~ render(input = ., output_dir = "output"))
+
+```
+
+## Postclean
+
+```{r postclean}
+
+postclean <- list.files(pattern = "03_postclean") %>% 
+  list()
+
+pwalk(postclean,
+      ~ render(input = ., output_dir = "output"))
+
+```
+
+## Vacant Lots
+
+```{r vacant-lots}
+
+vacant <- list.files(pattern = "04_vacant") %>% 
+  list()
+
+pwalk(vacant,
+      ~ render(input = ., output_dir = "output"))
+
+```
+
+## Combine parcels
+
+```{r combine-parcels}
+
+render(input = "05_combine-parcels.Rmd",
+       output_dir = "output")
+
+```
+
+
+## Clean node geography
+
+```{r nodes}
+
+render(input = "06_clean-node-geographies.Rmd",
+       output_dir = "output")
+
+```
+
+
+## Soft sites
+
+```{r soft-sites}
+
+render(input = "07_soft-sites.Rmd",
+       output_dir = "output")
+
+```
+
+
+## Upzoning
+
+```{r upzoning}
+
+render(input = "08_upzoning.Rmd",
+       output_dir = "output")
+
+```
+
