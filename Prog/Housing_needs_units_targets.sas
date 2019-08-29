@@ -39,6 +39,8 @@
                 02-17-19 LH Readjust weights after changes to calibration to move 2 HH w/ GQ=5 out of head of HH
 				03-30-19 LH Remove hard coding and merge in contract rent to gross rent ratio for vacant units. 
 				04-26-19 LH Change halfway from 30% of income to max_rent or max_ocost.
+				08-29-19 LH On Issue #110 request what does the cost distrubtion of recently built housing look like.
+							 (tables added to end of program)
 **************************************************************************/
 
 %include "L:\SAS\Inc\StdLocal.sas";
@@ -157,7 +159,7 @@ run;
 data Housing_needs_baseline_&year.;
 
   set COGSarea_&year.
-        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh Jurisdiction
+        (keep=year serial pernum hhwt hhincome numprec bedrooms gq ownershp owncost ownershpd rentgrs valueh Jurisdiction builtyr2
          where=(pernum=1 and gq in (1,2) and ownershpd in ( 12,13,21,22 )));
 
 	 *adjust all incomes to 2016 $ to match use of 2016 family of 4 income limit in projections (originally based on use of most recent 5-year IPUMS; 
@@ -217,7 +219,13 @@ data Housing_needs_baseline_&year.;
 
 		tothh = 1;
 
-    
+     ***create flag for built after 2010***;
+
+		if builtyr2 > 0 then do;*0=n/a;
+			if builtyr2 >= 15 then recentbuild=1; *15=2010; 
+				else if builtyr2 < 15 then recentbuild=0; 
+		end; 
+
     ****** Rental units ******;
     
    if ownershpd in (21, 22) then do;
@@ -358,7 +366,7 @@ data Housing_needs_baseline_&year.;
 				  mallcostlevel='Housing Cost Categories (tenure combined) based on Max affordable-desired Rent-Buyer Mtg'
 				  ownlevel = 'Owner Cost Categories based on First-Time HomeBuyer Costs'
 				  mownlevel = 'Owner Cost Categories based on Max affordable-desired First-Time HomeBuyer Costs'
-
+				  recentbuild='Flag for property built 2010 or later'
 				;
 	
 format mownlevel ownlevel ocost. rentlevel mrentlevel rcost. allcostlevel mallcostlevel acost. hud_inc hud_inc. incomecat inc_cat.; 
@@ -366,7 +374,7 @@ run;
 
 data Housing_needs_vacant_&year. Other_vacant_&year. ;
 
-  set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction );
+  set COGSvacant_&year.(keep=year serial hhwt bedrooms gq vacancy rent valueh Jurisdiction builtyr2);
 
   	if _n_ = 1 then set Ratio_&year.;
 
@@ -376,6 +384,14 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
   vacancy_r=vacancy; 
   if vacancy=3 and rent ~= .n then vacancy_r=1; 
   if vacancy=3 and valueh ~= .u then vacancy_r=2; 
+
+
+  ***create flag for built after 2010***;
+
+	if builtyr2 > 0 then do;*0=n/a;
+			if builtyr2 >= 15 then recentbuild=1; *15=2010; 
+				else if builtyr2 < 15 then recentbuild=0; 
+		end; 
     
     ****** Rental units ******;
 	 if  vacancy_r = 1 then do;
@@ -455,6 +471,7 @@ data Housing_needs_vacant_&year. Other_vacant_&year. ;
 		label rentlevel = 'Rent Level Categories based on Current Gross Rent'
 		 		  allcostlevel='Housing Cost Categories (tenure combined) based on Current Rent or First-time Buyer Mtg'
 				  ownlevel = 'Owner Cost Categories based on First-Time HomeBuyer Costs'
+				  recentbuild='Flag for property built 2010 or later'
 				;
 	format ownlevel ocost. rentlevel rcost. vacancy_r VACANCY_F. allcostlevel acost. ; 
 
@@ -983,3 +1000,28 @@ proc export data=jurisdiction_all
    replace;
    run;
 
+
+
+/*added 8-29-19 for request on issue #110*/
+   
+proc freq data=all;
+tables builtyr2 * recentbuild/missprint;
+weight hhwt_COG;
+run;
+
+proc freq data=all;
+tables builtyr2/missprint;
+weight hhwt_COG;
+run;
+
+   proc freq data=all;
+   where recentbuild=1;
+   tables allcostlevel /out=recentbuild ;
+   weight hhwt_COG;
+   run;
+    proc freq data=all;
+   where recentbuild=0;
+   tables allcostlevel /out=recentbuild2 ;
+   weight hhwt_COG;
+   run;
+  
