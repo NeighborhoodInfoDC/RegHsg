@@ -1008,12 +1008,16 @@ proc freq data=all;
 tables builtyr2 * recentbuild/missprint;
 weight hhwt_COG;
 run;
+data all_and_othervacant;
+	set all fiveyeartotal_othervacant_C;
 
-proc freq data=all;
+run;
+proc freq data=all_and_othervacant;
 tables builtyr2/missprint;
 weight hhwt_COG;
 run;
 
+*these do not include other vacant because we do not have cost data for those; 
    proc freq data=all;
    where recentbuild=1;
    tables allcostlevel /out=recentbuild ;
