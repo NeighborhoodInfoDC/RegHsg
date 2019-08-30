@@ -1018,14 +1018,16 @@ weight hhwt_COG;
 run;
 
 *these do not include other vacant because we do not have cost data for those; 
+title2 'Units built 2010 or later';
    proc freq data=all;
    where recentbuild=1;
    tables allcostlevel /out=recentbuild ;
    weight hhwt_COG;
    run;
+title2 'Units built before 2010';
     proc freq data=all;
    where recentbuild=0;
    tables allcostlevel /out=recentbuild2 ;
    weight hhwt_COG;
    run;
-  
+title2;  
